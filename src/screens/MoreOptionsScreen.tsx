@@ -13,11 +13,13 @@ import {useTheme} from '../utils/ThemeContext';
 import {getThemeColors} from '../utils/themeStyles';
 import CommonHeader from '../components/CommonHeader';
 import {useTranslation} from 'react-i18next';
+import {useAuth} from '../utils/AuthContext';
 
 const MoreOptionsScreen = ({navigation}: any) => {
   const {isDark, themeMode, setThemeMode} = useTheme();
   const colors = getThemeColors(isDark);
   const {t} = useTranslation();
+  const {logout} = useAuth();
 
   const handleLedger = () => {
     navigation.navigate('Ledger');
@@ -79,7 +81,7 @@ const MoreOptionsScreen = ({navigation}: any) => {
     );
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     Alert.alert(
       t('common.logout'),
       t('alerts.logoutConfirm'),
@@ -91,7 +93,16 @@ const MoreOptionsScreen = ({navigation}: any) => {
         {
           text: t('common.logout'),
           style: 'destructive',
-          onPress: () => navigation.navigate('Login'),
+          onPress: async () => {
+            try {
+              await logout();
+              navigation.navigate('Login');
+            } catch (error) {
+              console.error('Logout error:', error);
+              // Even if logout fails, navigate to login
+              navigation.navigate('Login');
+            }
+          },
         },
       ],
     );

@@ -16,6 +16,9 @@ import LogoImage from '../components/LogoImage';
 import {useTheme} from '../utils/ThemeContext';
 import {getThemeColors} from '../utils/themeStyles';
 import {useTranslation} from 'react-i18next';
+import {useAuth} from '../utils/AuthContext';
+import {apiService} from '../services/api';
+import sessionManager from '../services/sessionManager';
 //import ispLogo from '../assets/isp_logo.png';
 
 const {width: screenWidth} = Dimensions.get('window');
@@ -27,8 +30,18 @@ const HomeScreen = ({navigation}: any) => {
   const [currentAdIndex, setCurrentAdIndex] = useState(0);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const flatListRef = useRef<FlatList>(null);
+  const {logout} = useAuth();
 
-  // Mock user data - replace with actual API data
+  // State for API data
+  const [authData, setAuthData] = useState<any>(null);
+  const [planDetails, setPlanDetails] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [apiResponse, setApiResponse] = useState<string>('');
+
+  // Test if component is rendering
+  console.warn('HomeScreen component is rendering');
+
+  // Mock user data - fallback if API fails
   const userData = {
     name: 'Chirag Bhatt',
     planName: 'Premium Fiber 100 Mbps',
@@ -64,8 +77,115 @@ const HomeScreen = ({navigation}: any) => {
     },
   ];
 
+  // API call to fetch account summary and usage data
+  useEffect(() => {
+    //console.warn('=== HOMESCREEN MOUNTED ===');
+    //Alert.alert('HomeScreen', 'Component mounted');
+    fetchAccountData();
+  }, []);
+
+  const fetchAccountData = async () => {
+    //Alert.alert('Fetching account data...');
+    //console.warn('=== FETCH ACCOUNT DATA CALLED ===');
+    try {
+      setIsLoading(true);
+      //console.warn('Loading state set to true');
+      
+      // Test session manager
+      //console.warn('Testing session manager...');
+      const isLoggedIn = await sessionManager.isLoggedIn();
+      //console.warn('Is logged in:', isLoggedIn);
+      //Alert.alert('Session Check', `Is logged in: ${isLoggedIn}`);
+      
+      // Get current session data
+      //console.warn('Getting current session...');
+      const session = await sessionManager.getCurrentSession();
+      //console.warn('Session result:', session);
+      
+      if (!session) {
+          // console.warn('No active session found');
+          // console.warn('You need to login first');
+          // Alert.alert('No Session', 'No active session found. Please login first.');
+        setIsLoading(false);
+        return;
+      }
+
+      const { username, token } = session;
+        // console.warn('=== FETCHING ACCOUNT DATA ===');
+        // console.warn('Username:', username);
+        // console.warn('Token:', token ? 'Token exists' : 'No token');
+      //Alert.alert('Session Info', `Username: ${username}, Token: ${token ? 'Exists' : 'Missing'}`);
+
+      // Call the authUser API to get user's account information
+      //console.warn('Calling apiService.authUser...');
+      const authResponse = await apiService.authUser(username, token);
+      
+      // console.warn('=== AUTH USER API RESPONSE ===');
+      // console.warn('Full Response:', JSON.stringify(authResponse, null, 2));
+      // console.warn('Response Type:', typeof authResponse);
+      // console.warn('Is Array:', Array.isArray(authResponse));
+      // console.warn('Keys:', authResponse ? Object.keys(authResponse) : 'No response');
+      
+      // Display response on screen and in alert
+      const responseString = JSON.stringify(authResponse, null, 2);
+      setApiResponse(responseString);
+      //Alert.alert('API Response', `Response received: ${responseString.substring(0, 200)}...`);
+      
+      if (authResponse) {
+        // console.warn('=== RESPONSE DETAILS ===');
+        // console.warn('First Name:', authResponse.firstname);
+        // console.warn('Last Name:', authResponse.lastname);
+        // console.warn('Current Plan:', authResponse.currentPlan);
+        // console.warn('Account Status:', authResponse.accountStatus);
+        // console.warn('Data Allotted:', authResponse.dataAllotted);
+        // console.warn('Data Used:', authResponse.dataUsed);
+        // console.warn('Days Allotted:', authResponse.daysAllotted);
+        // console.warn('Days Used:', authResponse.daysUsed);
+        // console.warn('Login Status:', authResponse.loginStatus);
+        // console.warn('Plan Price:', authResponse.planPrice);
+        // console.warn('Plan Duration:', authResponse.planDuration);
+        // console.warn('Expiry Date:', authResponse.expiryDateString);
+        // console.warn('Last Renew Date:', authResponse.lastRenewDateString);
+        // console.warn('Creation Date:', authResponse.creationDateString);
+        // console.warn('Disable Time:', authResponse.disableTime);
+        
+        // // Log all available keys for reference
+        // console.warn('=== ALL AVAILABLE KEYS ===');
+        // Object.keys(authResponse).forEach(key => {
+        //   console.warn(`${key}:`, authResponse[key]);
+        // });
+
+        setAuthData(authResponse);
+        
+        // Extract plan details from auth response
+        if (authResponse.currentPlan) {
+          setPlanDetails({
+            name: authResponse.currentPlan,
+            price: authResponse.planPrice || '₹999',
+            duration: authResponse.planDuration || '30 days',
+            dataLimit: authResponse.dataAllotted || '100 GB',
+          });
+        }
+        
+        //Alert.alert('Success', 'Account data loaded successfully!');
+      } else {
+        //console.warn('No auth response received');
+        //Alert.alert('No Response', 'No auth response received from API');
+      }
+    } catch (error: any) {
+      //console.error('=== ERROR FETCHING ACCOUNT DATA ===');
+      //console.error('Error:', error);
+      //console.error('Error Message:', error.message);
+      //console.error('Error Stack:', error.stack);
+      //Alert.alert('Error', `Failed to load account data: ${error.message}`);
+    } finally {
+      //console.warn('Setting loading to false');
+      setIsLoading(false);
+    }
+  };
+
   const handleAdPress = (ad: any) => {
-    Alert.alert('Advertisement', `Opening ${ad.title}...`);
+    //Alert.alert('Advertisement', `Opening ${ad.title}...`);
   };
 
   const renderAdItem = ({item}: {item: any}) => (
@@ -144,13 +264,32 @@ const HomeScreen = ({navigation}: any) => {
     navigation.navigate('ContactUs');
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setShowProfileMenu(false);
     Alert.alert('Logout', 'Are you sure you want to logout?', [
       {text: 'Cancel', style: 'cancel'},
-      {text: 'Logout', style: 'destructive', onPress: () => navigation.navigate('Login')}
+      {
+        text: 'Logout', 
+        style: 'destructive', 
+        onPress: async () => {
+          try {
+            await logout();
+            navigation.navigate('Login');
+          } catch (error) {
+            console.error('Logout error:', error);
+            // Even if logout fails, navigate to login
+            navigation.navigate('Login');
+          }
+        }
+      }
     ]);
   };
+
+  // Calculate usage percentages
+  const dataFill = authData?.usage_details?.[0]?.plan_data === 'Unlimited' ? 50 : 
+    authData?.usage_details?.[0] ? (parseFloat(authData.usage_details[0].data_used) / (1024 * 1024 * 1024) / 100 * 100) : 0;
+  const daysFill = authData?.usage_details?.[0]?.plan_days === 'Unlimited' ? 50 : 
+    authData?.usage_details?.[0] ? (parseFloat(authData.usage_details[0].days_used) / parseFloat(authData.usage_details[0].plan_days) * 100) : 0;
 
   return (
     <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}>
@@ -162,7 +301,9 @@ const HomeScreen = ({navigation}: any) => {
             <TouchableOpacity 
               style={[styles.profileButton, {backgroundColor: colors.accent}]} 
               onPress={handleProfilePress}>
-              <Text style={styles.profileText}>CB</Text>
+              <Text style={styles.profileText}>
+                {authData ? `${authData.first_name?.[0] || ''}${authData.last_name?.[0] || ''}` : 'CB'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -184,7 +325,11 @@ const HomeScreen = ({navigation}: any) => {
         {/* Welcome Message */}
         <View style={styles.welcomeSection}>
           <Text style={[styles.welcomeText, {color: colors.textSecondary}]}>{t('common.welcome')},</Text>
-          <Text style={[styles.userName, {color: colors.text}]}>{userData.name}</Text>
+          <Text style={[styles.userName, {color: colors.text}]}>
+            {authData ? `${authData.first_name || ''} ${authData.last_name || ''}`.trim() || userData.name : userData.name}
+          </Text>
+          
+          
         </View>
 
         {/* Account Summary Card */}
@@ -198,23 +343,69 @@ const HomeScreen = ({navigation}: any) => {
           
           <View style={styles.detailRow}>
             <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>{t('home.currentPlan')}</Text>
-            <Text style={[styles.detailValue, {color: colors.text}]}>{userData.planName}</Text>
+            <Text style={[styles.detailValue, {color: colors.text}]}>
+              {authData?.current_plan || userData.planName}
+            </Text>
           </View>
           
-          <View style={styles.detailRow}>
-            <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>{t('home.planPrice')}</Text>
-            <Text style={[styles.detailValue, {color: colors.text}]}>{userData.planPrice}</Text>
-          </View>
-          
-          <View style={styles.detailRow}>
-            <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>{t('home.dataUsage')}</Text>
-            <Text style={[styles.detailValue, {color: colors.text}]}>{userData.dataUsage}</Text>
-          </View>
+         {/* Expiry Date
+         <View style={styles.detailRow}>
+            <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>Expiry Date</Text>
+            <Text style={[styles.detailValue, {color: colors.text}]}>
+              {authData?.exp_date || 'N/A'}
+            </Text>
+          </View> */}
           
           <View style={styles.detailRow}>
             <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>{t('home.validity')}</Text>
-            <Text style={[styles.detailValue, {color: colors.text}]}>{userData.validity}</Text>
+            <Text style={[styles.detailValue, {color: colors.text}]}>
+              {authData?.usage_details?.[0] ? 
+                `${authData.usage_details[0].days_used} used of ${authData.usage_details[0].plan_days} days` : 
+                userData.validity}
+            </Text>
           </View>
+
+          {/* Account Status */}
+          <View style={styles.detailRow}>
+            <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>Account Status</Text>
+            <Text style={[styles.detailValue, {color: authData?.user_status === 'active' ? '#4CAF50' : '#F44336'}]}>
+              {authData?.user_status?.replace(/_+/g, ' ') || 'Active'}
+            </Text>
+          </View>
+
+          {/* Login Status */}
+          <View style={styles.detailRow}>
+            <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>Login Status</Text>
+            <Text style={[styles.detailValue, {color: authData?.login_status === 'IN' ? '#4CAF50' : '#F44336'}]}>
+              {authData?.login_status === 'IN' ? 'Online' : 'Offline'}
+            </Text>
+          </View>
+
+          
+
+          {/* Renewal Count */}
+          {/* <View style={styles.detailRow}>
+            <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>Renewal Count</Text>
+            <Text style={[styles.detailValue, {color: colors.text}]}>
+              {authData?.renewal_count || '0'}
+            </Text>
+          </View> */}
+
+          {/* Connection Type */}
+          {/* <View style={styles.detailRow}>
+            <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>Connection Type</Text>
+            <Text style={[styles.detailValue, {color: colors.text}]}>
+              {authData?.connection_type || 'N/A'}
+            </Text>
+          </View> */}
+
+          {/* User Profile */}
+          {/* <View style={styles.detailRow}>
+            <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>User Profile</Text>
+            <Text style={[styles.detailValue, {color: colors.text}]}>
+              {authData?.user_profile || 'N/A'}
+            </Text>
+          </View> */}
         </View>
 
         {/* Advertisement Carousel */}
@@ -314,19 +505,36 @@ const HomeScreen = ({navigation}: any) => {
           <Text style={[styles.billTitle, {color: colors.text}]}>{t('account.billingInfo')}</Text>
           <View style={styles.billDetails}>
             <View style={styles.billRow}>
-              <Text style={[styles.billLabel, {color: colors.textSecondary}]}>{t('account.currentBill')}</Text>
-              <Text style={[styles.billAmount, {color: colors.accent}]}>{userData.billAmount}</Text>
+              <Text style={[styles.billLabel, {color: colors.textSecondary}]}>Account Number</Text>
+              <Text style={[styles.billAmount, {color: colors.accent}]}>{authData?.account_no || 'N/A'}</Text>
             </View>
             <View style={styles.billRow}>
-              <Text style={[styles.billLabel, {color: colors.textSecondary}]}>{t('home.dueDate')}</Text>
-              <Text style={[styles.billDate, {color: colors.text}]}>{userData.dueDate}</Text>
+              <Text style={[styles.billLabel, {color: colors.textSecondary}]}>Renewal Date</Text>
+              <Text style={[styles.billDate, {color: colors.text}]}>{authData?.renew_date || 'N/A'}</Text>
+            </View>
+            <View style={styles.billRow}>
+              <Text style={[styles.billLabel, {color: colors.textSecondary}]}>Expiry Date</Text>
+              <Text style={[styles.billDate, {color: colors.text}]}>{authData?.exp_date || 'N/A'}</Text>
+            </View>
+            <View style={styles.billRow}>
+              <Text style={[styles.billLabel, {color: colors.textSecondary}]}>Next Renewal</Text>
+              <Text style={[styles.billDate, {color: colors.text}]}>{authData?.next_renewal_date || 'N/A'}</Text>
+            </View>
+            <View style={styles.billRow}>
+              <Text style={[styles.billLabel, {color: colors.textSecondary}]}>Payment Dues</Text>
+              <Text style={[styles.billAmount, {color: authData?.payment_dues > 0 ? '#F44336' : '#4CAF50'}]}>
+                ₹{authData?.payment_dues || 0}
+              </Text>
             </View>
           </View>
-          <TouchableOpacity 
-            style={[styles.payNowButton, {backgroundColor: colors.accent}]} 
-            onPress={handlePayBill}>
-            <Text style={styles.payNowText}>Pay Now</Text>
-          </TouchableOpacity>
+          {/* Only show Pay Now button if there are payment dues */}
+          {authData?.payment_dues > 0 && (
+            <TouchableOpacity 
+              style={[styles.payNowButton, {backgroundColor: colors.accent}]} 
+              onPress={handlePayBill}>
+              <Text style={styles.payNowText}>Pay Now</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* More Options */}
@@ -341,12 +549,64 @@ const HomeScreen = ({navigation}: any) => {
 
         {/* Usage Statistics */}
         <View style={[styles.usageCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
-          <Text style={[styles.usageTitle, {color: colors.text}]}>Usage Statistics</Text>
-          <View style={[styles.usageBar, {backgroundColor: colors.borderLight}]}>
-            <View style={[styles.usageProgress, {width: '75%', backgroundColor: colors.primary}]} />
+          <View style={styles.usageHeader}>
+            <Text style={[styles.usageTitle, {color: colors.text}]}>Usage Statistics</Text>
+            <View style={[styles.usageBadge, {backgroundColor: colors.primaryLight}]}>
+              <Text style={[styles.usageBadgeText, {color: colors.primary}]}>Live</Text>
+            </View>
           </View>
-          <Text style={[styles.usageText, {color: colors.textSecondary}]}>{userData.dataUsage}</Text>
+          
+          {/* Data Usage Section */}
+          <View style={styles.dataUsageSection}>
+            <View style={styles.dataUsageHeader}>
+              <Text style={[styles.dataUsageLabel, {color: colors.textSecondary}]}>Data Usage</Text>
+              <Text style={[styles.dataUsageValue, {color: colors.text}]}>
+                {authData?.usage_details?.[0] ? 
+                  `${(parseFloat(authData.usage_details[0].data_used) / (1024 * 1024 * 1024)).toFixed(2)} GB` : 
+                  '0 GB'}
+              </Text>
+            </View>
+            <View style={[styles.dataUsageBar, {backgroundColor: colors.borderLight}]}>
+              <View style={[styles.dataUsageProgress, {width: `${dataFill}%`, backgroundColor: colors.primary}]} />
+            </View>
+            <Text style={[styles.dataUsageTotal, {color: colors.textSecondary}]}>
+              of {authData?.usage_details?.[0]?.plan_data || 'Unlimited'}
+            </Text>
+          </View>
+          
+          {/* Usage Stats Row */}
+          <View style={styles.usageStatsRow}>
+            <View style={styles.usageStat}>
+              <Text style={[styles.usageStatIcon, {color: colors.primary}]}>⏱️</Text>
+              <Text style={[styles.usageStatLabel, {color: colors.textSecondary}]}>Hours Used</Text>
+              <Text style={[styles.usageStatValue, {color: colors.text}]}>
+                {authData?.usage_details?.[0]?.hours_used || '0:00:00'}
+              </Text>
+            </View>
+            
+            <View style={styles.usageStat}>
+              <Text style={[styles.usageStatIcon, {color: colors.success}]}>📅</Text>
+              <Text style={[styles.usageStatLabel, {color: colors.textSecondary}]}>Days Remaining</Text>
+              <Text style={[styles.usageStatValue, {color: colors.text}]}>
+                {authData?.usage_details?.[0] ? 
+                  `${parseInt(authData.usage_details[0].plan_days) - parseInt(authData.usage_details[0].days_used)}` : 
+                  '0'}
+              </Text>
+            </View>
+            
+            {authData?.usage_details?.[0]?.plan_data !== 'Unlimited' && (
+              <View style={styles.usageStat}>
+                <Text style={[styles.usageStatIcon, {color: colors.accent}]}>📊</Text>
+                <Text style={[styles.usageStatLabel, {color: colors.textSecondary}]}>Usage %</Text>
+                <Text style={[styles.usageStatValue, {color: colors.text}]}>
+                  {Math.round(dataFill)}%
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
+
+        
       </ScrollView>
     </SafeAreaView>
   );
@@ -655,23 +915,90 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
+  usageHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
   usageTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 16,
   },
-  usageBar: {
-    height: 8,
-    borderRadius: 4,
+  usageBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  usageBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  dataUsageSection: {
+    marginBottom: 20,
+  },
+  dataUsageHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 8,
   },
-  usageProgress: {
+  dataUsageLabel: {
+    fontSize: 14,
+  },
+  dataUsageValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  dataUsageBar: {
+    height: 8,
+    borderRadius: 4,
+    marginBottom: 4,
+  },
+  dataUsageProgress: {
     height: '100%',
     borderRadius: 4,
+  },
+  dataUsageTotal: {
+    fontSize: 12,
+    textAlign: 'right',
+  },
+  usageStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  usageStat: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  usageStatIcon: {
+    fontSize: 24,
+    marginBottom: 4,
+  },
+  usageStatLabel: {
+    fontSize: 12,
+    marginBottom: 2,
+  },
+  usageStatValue: {
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   usageText: {
     fontSize: 14,
     textAlign: 'center',
+  },
+  usageRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  usageLabel: {
+    fontSize: 14,
+  },
+  usageValue: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   quickMenuGrid: {
     flexDirection: 'row',
@@ -733,6 +1060,42 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  testButton: {
+    marginTop: 10,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  testButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  apiResponseCard: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+    borderRadius: 16,
+    padding: 20,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  apiResponseTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 16,
+  },
+  apiResponseScroll: {
+    maxHeight: 200, // Limit height for scrolling
+  },
+  apiResponseText: {
+    fontSize: 14,
+    lineHeight: 20,
   },
 });
 
