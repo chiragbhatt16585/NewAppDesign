@@ -13,6 +13,7 @@ import {
   Animated,
   Easing,
   Image,
+  Linking,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import LogoImage from '../components/LogoImage';
@@ -316,6 +317,20 @@ const LoginScreen = ({navigation}: any) => {
   // Theme toggle handler
   const handleThemeToggle = () => {
     setThemeMode(isDark ? 'light' : 'dark');
+  };
+
+  // Open Spacecom website
+  const handleSpacecomWebsite = async () => {
+    try {
+      const url = 'https://spacecom.in/';
+      
+      // Try to open URL directly without canOpenURL check
+      // This works better on iOS and Android
+      await Linking.openURL(url);
+    } catch (error) {
+      console.error('Failed to open website:', error);
+      Alert.alert('Error', 'Failed to open website. Please try again.');
+    }
   };
 
   return (
@@ -638,6 +653,17 @@ const LoginScreen = ({navigation}: any) => {
             </View>
           </View>
 
+          {/* Powered By Info */}
+          <Text style={[styles.poweredByText, {color: colors.textSecondary}]}>
+            Powered By{'\n'}
+            <Text 
+              style={[styles.companyLink, {color: colors.primary}]}
+              onPress={handleSpacecomWebsite}
+            >
+              Spacecom Software LLP
+            </Text>
+          </Text>
+          
           {/* Version Info */}
           <Text style={[styles.versionText, {color: colors.textSecondary}]}>
             Version {appVersion} ({buildNumber})
@@ -869,9 +895,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
   },
+  poweredByText: {
+    fontSize: 12,
+    marginTop: 10,
+    textAlign: 'center',
+  },
+  companyLink: {
+    fontWeight: '600',
+  },
   versionText: {
     fontSize: 12,
-    marginTop: 15,
+    marginTop: 5,
   },
 });
 

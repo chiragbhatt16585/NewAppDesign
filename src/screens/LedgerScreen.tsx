@@ -22,7 +22,7 @@ import {downloadService} from '../services/downloadService';
 
 const {width: screenWidth} = Dimensions.get('window');
 
-console.log('=== LEDGER SCREEN: downloadService imported ===', downloadService);
+// console.log('=== LEDGER SCREEN: downloadService imported ===', downloadService);
 
 const LedgerScreen = ({navigation}: any) => {
   const {isDark} = useTheme();
@@ -40,27 +40,27 @@ const LedgerScreen = ({navigation}: any) => {
   const [summaryData, setSummaryData] = useState<any>(null);
 
   useEffect(() => {
-    console.log('=== LEDGER SCREEN: useEffect triggered ===');
+    // console.log('=== LEDGER SCREEN: useEffect triggered ===');
     loadLedgerData();
   }, []);
 
   const loadLedgerData = async () => {
     try {
-      console.log('=== LEDGER SCREEN: Starting to load ledger data ===');
+      // console.log('=== LEDGER SCREEN: Starting to load ledger data ===');
       setLoading(true);
       setError(null);
       
       const session = await sessionManager.getCurrentSession();
-      console.log('=== LEDGER SCREEN: Session data ===', session);
+      // console.log('=== LEDGER SCREEN: Session data ===', session);
       
       if (!session?.username) {
-        console.log('=== LEDGER SCREEN: No username found in session ===');
+        // console.log('=== LEDGER SCREEN: No username found in session ===');
         throw new Error('No user session found');
       }
 
-      console.log('=== LEDGER SCREEN: Calling API with username ===', session.username);
+      // console.log('=== LEDGER SCREEN: Calling API with username ===', session.username);
       const data = await apiService.userLedger(session.username, 'default');
-      console.log('=== LEDGER SCREEN: API response data ===', data);
+      // console.log('=== LEDGER SCREEN: API response data ===', data);
       
       // Extract data from the response array
       const payments = data[0] || [];
@@ -68,12 +68,12 @@ const LedgerScreen = ({navigation}: any) => {
       const proforma = data[2] || [];
       const summary = data[3] || {};
 
-      console.log('=== LEDGER SCREEN: Extracted data ===', {
-        payments: payments.length,
-        invoices: invoices.length,
-        proforma: proforma.length,
-        summary
-      });
+      // console.log('=== LEDGER SCREEN: Extracted data ===', {
+      //   payments: payments.length,
+      //   invoices: invoices.length,
+      //   proforma: proforma.length,
+      //   summary
+      // });
 
       // Transform data for display
       const transformedPayments = payments.map((item: any) => ({
@@ -100,11 +100,11 @@ const LedgerScreen = ({navigation}: any) => {
         amount: `₹${item.amt}`,
       }));
 
-      console.log('=== LEDGER SCREEN: Setting state with transformed data ===', {
-        payments: transformedPayments.length,
-        invoices: transformedInvoices.length,
-        proforma: transformedProforma.length
-      });
+      // console.log('=== LEDGER SCREEN: Setting state with transformed data ===', {
+      //   payments: transformedPayments.length,
+      //   invoices: transformedInvoices.length,
+      //   proforma: transformedProforma.length
+      // });
 
       setPaymentReceived(transformedPayments);
       setInvoicesGenerated(transformedInvoices);
@@ -112,21 +112,21 @@ const LedgerScreen = ({navigation}: any) => {
       setSummaryData(summary);
       setLedgerData(data);
       
-      console.log('=== LEDGER SCREEN: Data loading completed successfully ===');
+      // console.log('=== LEDGER SCREEN: Data loading completed successfully ===');
     } catch (err: any) {
       console.error('=== LEDGER SCREEN: Error loading ledger data ===', err);
       setError(err.message || 'Failed to load ledger data');
       Alert.alert('Error', err.message || 'Failed to load ledger data');
     } finally {
       setLoading(false);
-      console.log('=== LEDGER SCREEN: Loading state set to false ===');
+      // console.log('=== LEDGER SCREEN: Loading state set to false ===');
     }
   };
 
   const handleDownload = async (item: any) => {
     try {
-      console.log('=== LEDGER SCREEN: Download requested for item ===', item);
-      console.log('=== LEDGER SCREEN: downloadService ===', downloadService);
+      // console.log('=== LEDGER SCREEN: Download requested for item ===', item);
+      // console.log('=== LEDGER SCREEN: downloadService ===', downloadService);
       
       if (!downloadService) {
         throw new Error('Download service is not available');
@@ -151,11 +151,11 @@ const LedgerScreen = ({navigation}: any) => {
           type = 'invoice';
       }
       
-      console.log('=== LEDGER SCREEN: Calling downloadPdf with ===', {
-        id: item.id,
-        type,
-        invoiceNo: item.no
-      });
+      // console.log('=== LEDGER SCREEN: Calling downloadPdf with ===', {
+      //   id: item.id,
+      //   type,
+      //   invoiceNo: item.no
+      // });
       
       await downloadService.downloadPdf({
         id: item.id,
@@ -163,7 +163,7 @@ const LedgerScreen = ({navigation}: any) => {
         invoiceNo: item.no
       });
       
-      console.log('=== LEDGER SCREEN: Download completed successfully ===');
+      // console.log('=== LEDGER SCREEN: Download completed successfully ===');
     } catch (error: any) {
       console.error('=== LEDGER SCREEN: Download error ===', error);
       Alert.alert('Download Error', error.message || 'Failed to download PDF');
@@ -202,7 +202,7 @@ const LedgerScreen = ({navigation}: any) => {
           style={styles.downloadButton}
           onPress={() => handleDownload(item)}
         >
-          <Text style={[styles.downloadIcon, {color: colors.accent}]}>📄</Text>
+          <Text style={[styles.downloadIcon, {color: '#4caf50'}]}>📄</Text>
         </TouchableOpacity>
       </View>
       <View style={styles.itemDetails}>
@@ -223,7 +223,7 @@ const LedgerScreen = ({navigation}: any) => {
           style={styles.downloadButton}
           onPress={() => handleDownload(item)}
         >
-          <Text style={[styles.downloadIcon, {color: colors.accent}]}>📄</Text>
+          <Text style={[styles.downloadIcon, {color: '#4caf50'}]}>📄</Text>
         </TouchableOpacity>
       </View>
       <View style={styles.itemDetails}>
@@ -244,7 +244,7 @@ const LedgerScreen = ({navigation}: any) => {
           style={styles.downloadButton}
           onPress={() => handleDownload(item)}
         >
-          <Text style={[styles.downloadIcon, {color: colors.accent}]}>📄</Text>
+          <Text style={[styles.downloadIcon, {color: '#4caf50'}]}>📄</Text>
         </TouchableOpacity>
       </View>
       <View style={styles.itemDetails}>
@@ -542,10 +542,12 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#e8f5e8',
+    borderWidth: 1,
+    borderColor: '#4caf50',
   },
   downloadIcon: {
-    fontSize: 18,
+    fontSize: 20,
   },
   itemParticulars: {
     fontSize: 14,

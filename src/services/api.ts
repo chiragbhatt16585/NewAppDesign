@@ -412,10 +412,10 @@ class ApiService {
   }
 
   async userLedger(username: string, realm: string) {
-    console.log('=== API SERVICE: userLedger called with ===', { username, realm });
+    // console.log('=== API SERVICE: userLedger called with ===', { username, realm });
     
     const { Authentication } = await this.getCredentials(realm);
-    console.log('=== API SERVICE: Got authentication token ===', !!Authentication);
+    // console.log('=== API SERVICE: Got authentication token ===', !!Authentication);
     
     const data = {
       username: username,
@@ -428,7 +428,7 @@ class ApiService {
       request_app: 'user_app' 
     };
 
-    console.log('=== API SERVICE: Request data ===', data);
+    // console.log('=== API SERVICE: Request data ===', data);
 
     const options = {
       method,
@@ -437,20 +437,20 @@ class ApiService {
       timeout
     };
 
-    console.log('=== API SERVICE: Making API call to ===', `${url}/selfcareGetUserInformation`);
+    // console.log('=== API SERVICE: Making API call to ===', `${url}/selfcareGetUserInformation`);
 
     try {
       const res = await fetch(`${url}/selfcareGetUserInformation`, options);
-      console.log('=== API SERVICE: Response status ===', res.status);
+      // console.log('=== API SERVICE: Response status ===', res.status);
       
       const response = await res.json();
-      console.log('=== API SERVICE: Raw API response ===', response);
+      // console.log('=== API SERVICE: Raw API response ===', response);
       
       if (response.status !== 'ok' && response.code !== 200) {
-        console.log('=== API SERVICE: API returned error ===', response);
+        // console.log('=== API SERVICE: API returned error ===', response);
         throw new Error(response.message);
       } else {
-        console.log('=== API SERVICE: Processing successful response ===');
+        // console.log('=== API SERVICE: Processing successful response ===');
         const resArr: any = [];
         
         // Add proforma invoices
@@ -458,10 +458,10 @@ class ApiService {
         
         // Add receipts (payments)
         if (response.data.user_receipt) {
-          console.log('=== API SERVICE: Processing receipts ===', response.data.user_receipt);
+          // console.log('=== API SERVICE: Processing receipts ===', response.data.user_receipt);
           resArr.push(
             response.data.user_receipt.map((data: any, index: number) => {
-              console.log('=== API SERVICE: Receipt date ===', data.receipt_date);
+              // console.log('=== API SERVICE: Receipt date ===', data.receipt_date);
               return {
                 index,
                 no: data.receipt_prefix + data.receipt_no,
@@ -480,10 +480,10 @@ class ApiService {
         
         // Add invoices
         if (response.data.user_invoice) {
-          console.log('=== API SERVICE: Processing invoices ===', response.data.user_invoice);
+          // console.log('=== API SERVICE: Processing invoices ===', response.data.user_invoice);
           resArr.push(
             response.data.user_invoice.map((data: any, index: number) => {
-              console.log('=== API SERVICE: Invoice date ===', data.invoice_date);
+              // console.log('=== API SERVICE: Invoice date ===', data.invoice_date);
               return {
                 index,
                 no: data.invoice_prefix + data.invoice_no,
@@ -502,10 +502,10 @@ class ApiService {
         
         // Add proforma invoices
         if (response.data.user_profoma_invoice) {
-          console.log('=== API SERVICE: Processing proforma invoices ===', response.data.user_profoma_invoice);
+          // console.log('=== API SERVICE: Processing proforma invoices ===', response.data.user_profoma_invoice);
           resArr.push(
             response.data.user_profoma_invoice.map((data: any, index: number) => {
-              console.log('=== API SERVICE: Proforma invoice date ===', data.invoice_date);
+              // console.log('=== API SERVICE: Proforma invoice date ===', data.invoice_date);
               return {
                 index,
                 no: data.proforma_ref_no,
@@ -531,7 +531,7 @@ class ApiService {
           balance: Math.round(response.data.user_payment_dues || 0)
         });
         
-        console.log('=== API SERVICE: Final processed data ===', resArr);
+        // console.log('=== API SERVICE: Final processed data ===', resArr);
         return resArr;
       }
     } catch (e: any) {
@@ -552,7 +552,7 @@ class ApiService {
   }
 
   private formatDate(dateString: string, format: string): string {
-    console.log('=== API SERVICE: Formatting date ===', { dateString, format });
+    // console.log('=== API SERVICE: Formatting date ===', { dateString, format });
     
     try {
       // Handle the specific format 'DD-MMM,YY HH:mm' (e.g., "15-Jul,24 14:30")
@@ -603,10 +603,10 @@ class ApiService {
       }
       
       // If all else fails, return the original string
-      console.log('=== API SERVICE: Could not parse date, returning original ===', dateString);
+      // console.log('=== API SERVICE: Could not parse date, returning original ===', dateString);
       return dateString;
     } catch (error) {
-      console.error('=== API SERVICE: Error formatting date ===', error);
+      // console.error('=== API SERVICE: Error formatting date ===', error);
       return dateString;
     }
   }
