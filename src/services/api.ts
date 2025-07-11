@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import sessionManager from './sessionManager';
 
 // API Configuration
-export const domainUrl = "crm.dnainfotel.com";
+export const domainUrl = "mydesk.microscan.co.in";
 export const domain = `https://${domainUrl}`;
 const url = `${domain}/l2s/api`;
 export const ispName = 'Microscan';
@@ -408,6 +408,206 @@ class ApiService {
     } catch (error) {
       console.error('API connection test failed:', error);
       return false;
+    }
+  }
+
+  async userLedger(username: string, realm: string) {
+    console.log('=== API SERVICE: userLedger called with ===', { username, realm });
+    
+    const { Authentication } = await this.getCredentials(realm);
+    console.log('=== API SERVICE: Got authentication token ===', !!Authentication);
+    
+    const data = {
+      username: username,
+      get_user_invoice: true,
+      get_user_receipt: true,
+      get_proforma_invoice: true,
+      get_user_opening_balance: true,
+      get_user_payment_dues: true,
+      request_source: 'app',
+      request_app: 'user_app' 
+    };
+
+    console.log('=== API SERVICE: Request data ===', data);
+
+    const options = {
+      method,
+      headers: headers(Authentication),
+      body: toFormData(data),
+      timeout
+    };
+
+    console.log('=== API SERVICE: Making API call to ===', `${url}/selfcareGetUserInformation`);
+
+    try {
+      const res = await fetch(`${url}/selfcareGetUserInformation`, options);
+      console.log('=== API SERVICE: Response status ===', res.status);
+      
+      const response = await res.json();
+      console.log('=== API SERVICE: Raw API response ===', response);
+      
+      if (response.status !== 'ok' && response.code !== 200) {
+        console.log('=== API SERVICE: API returned error ===', response);
+        throw new Error(response.message);
+      } else {
+        console.log('=== API SERVICE: Processing successful response ===');
+        const resArr: any = [];
+        
+        // Add proforma invoices
+        resArr.proforma_payment = response.data.user_profoma_invoice || [];
+        
+        // Add receipts (payments)
+        if (response.data.user_receipt) {
+          console.log('=== API SERVICE: Processing receipts ===', response.data.user_receipt);
+          resArr.push(
+            response.data.user_receipt.map((data: any, index: number) => {
+              console.log('=== API SERVICE: Receipt date ===', data.receipt_date);
+              return {
+                index,
+                no: data.receipt_prefix + data.receipt_no,
+                amt: data.amount,
+                content: data.payment_method,
+                view: data.remarks,
+                dateString: this.formatDate(data.receipt_date, 'DD-MMM,YY HH:mm'),
+                id: data.id,
+                type: 'receipt'
+              };
+            })
+          );
+        } else {
+          resArr.push([]);
+        }
+        
+        // Add invoices
+        if (response.data.user_invoice) {
+          console.log('=== API SERVICE: Processing invoices ===', response.data.user_invoice);
+          resArr.push(
+            response.data.user_invoice.map((data: any, index: number) => {
+              console.log('=== API SERVICE: Invoice date ===', data.invoice_date);
+              return {
+                index,
+                no: data.invoice_prefix + data.invoice_no,
+                amt: data.sale_amount,
+                content: data.invoice_particulars,
+                view: data.remarks,
+                dateString: this.formatDate(data.invoice_date, 'DD-MMM,YY HH:mm'),
+                id: data.id,
+                type: 'invoice'
+              };
+            })
+          );
+        } else {
+          resArr.push([]);
+        }
+        
+        // Add proforma invoices
+        if (response.data.user_profoma_invoice) {
+          console.log('=== API SERVICE: Processing proforma invoices ===', response.data.user_profoma_invoice);
+          resArr.push(
+            response.data.user_profoma_invoice.map((data: any, index: number) => {
+              console.log('=== API SERVICE: Proforma invoice date ===', data.invoice_date);
+              return {
+                index,
+                no: data.proforma_ref_no,
+                amt: data.sale_amount,
+                content: data.invoice_particulars,
+                view: data.remarks,
+                dateString: this.formatDate(data.invoice_date, 'DD-MMM,YY HH:mm'),
+                id: data.id,
+                type: 'proforma'
+              };
+            })
+          );
+        } else {
+          resArr.push([]);
+        }
+        
+        // Add summary data
+        resArr.push({
+          openingBalance: response.data.user_opening_balance?.[0] ? Math.round(response.data.user_opening_balance[0].opening_balance) : 0,
+          billAmount: Math.round(response.data.user_invoice_total || 0),
+          paidAmount: Math.round(response.data.user_receipt_total || 0),
+          proforma_invoice: Math.round(response.data.user_profoma_invoice_total || 0),
+          balance: Math.round(response.data.user_payment_dues || 0)
+        });
+        
+        console.log('=== API SERVICE: Final processed data ===', resArr);
+        return resArr;
+      }
+    } catch (e: any) {
+      console.error('=== API SERVICE: Error in userLedger ===', e);
+      const msg = isNetworkError(e) ? networkErrorMsg : e.message;
+      throw new Error(msg);
+    }
+  }
+
+  private async getCredentials(realm: string) {
+    // This would need to be implemented based on your authentication system
+    // For now, we'll use the session token
+    const token = await sessionManager.getToken();
+    if (!token) {
+      throw new Error('No authentication token available');
+    }
+    return { Authentication: token };
+  }
+
+  private formatDate(dateString: string, format: string): string {
+    console.log('=== API SERVICE: Formatting date ===', { dateString, format });
+    
+    try {
+      // Handle the specific format 'DD-MMM,YY HH:mm' (e.g., "15-Jul,24 14:30")
+      if (format === 'DD-MMM,YY HH:mm') {
+        // Parse the date string manually
+        const parts = dateString.split(' ');
+        if (parts.length >= 2) {
+          const datePart = parts[0]; // "15-Jul,24"
+          const timePart = parts[1]; // "14:30"
+          
+          const dateComponents = datePart.split('-');
+          if (dateComponents.length >= 2) {
+            const day = dateComponents[0]; // "15"
+            const monthYear = dateComponents[1]; // "Jul,24"
+            
+            const monthYearParts = monthYear.split(',');
+            if (monthYearParts.length >= 2) {
+              const month = monthYearParts[0]; // "Jul"
+              const year = monthYearParts[1]; // "24"
+              
+              // Convert to full year
+              const fullYear = year.length === 2 ? `20${year}` : year;
+              
+              // Create a proper date string
+              const properDateString = `${day} ${month} ${fullYear}`;
+              const date = new Date(properDateString);
+              
+              if (!isNaN(date.getTime())) {
+                return date.toLocaleDateString('en-GB', {
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric'
+                });
+              }
+            }
+          }
+        }
+      }
+      
+      // Fallback: try to parse as regular date
+      const date = new Date(dateString);
+      if (!isNaN(date.getTime())) {
+        return date.toLocaleDateString('en-GB', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric'
+        });
+      }
+      
+      // If all else fails, return the original string
+      console.log('=== API SERVICE: Could not parse date, returning original ===', dateString);
+      return dateString;
+    } catch (error) {
+      console.error('=== API SERVICE: Error formatting date ===', error);
+      return dateString;
     }
   }
 

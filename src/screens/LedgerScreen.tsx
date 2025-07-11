@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   View,
   Text,
@@ -7,122 +7,189 @@ import {
   ScrollView,
   FlatList,
   Dimensions,
+  ActivityIndicator,
+  Alert,
+  RefreshControl,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useTheme} from '../utils/ThemeContext';
 import {getThemeColors} from '../utils/themeStyles';
 import CommonHeader from '../components/CommonHeader';
 import {useTranslation} from 'react-i18next';
+import {apiService} from '../services/api';
+import sessionManager from '../services/sessionManager';
+import {downloadService} from '../services/downloadService';
 
 const {width: screenWidth} = Dimensions.get('window');
+
+console.log('=== LEDGER SCREEN: downloadService imported ===', downloadService);
 
 const LedgerScreen = ({navigation}: any) => {
   const {isDark} = useTheme();
   const colors = getThemeColors(isDark);
   const {t} = useTranslation();
   const [activeTab, setActiveTab] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [ledgerData, setLedgerData] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock data for proforma invoices
-  const proformaInvoices = [
-    {
-      id: '1',
-      no: 'PF-2024-001',
-      date: '15 Jul 2024',
-      particulars: 'Premium Fiber 100 Mbps - Monthly Plan',
-      amount: '₹999',
-    },
-    {
-      id: '2',
-      no: 'PF-2024-002',
-      date: '10 Jul 2024',
-      particulars: 'Installation Charges - New Connection',
-      amount: '₹500',
-    },
-    {
-      id: '3',
-      no: 'PF-2024-003',
-      date: '05 Jul 2024',
-      particulars: 'Additional Data Pack - 50 GB',
-      amount: '₹200',
-    },
-    {
-      id: '4',
-      no: 'PF-2024-004',
-      date: '25 Jun 2024',
-      particulars: 'Premium Fiber 100 Mbps - Monthly Plan',
-      amount: '₹999',
-    },
-  ];
+  // State for different data types
+  const [proformaInvoices, setProformaInvoices] = useState<any[]>([]);
+  const [invoicesGenerated, setInvoicesGenerated] = useState<any[]>([]);
+  const [paymentReceived, setPaymentReceived] = useState<any[]>([]);
+  const [summaryData, setSummaryData] = useState<any>(null);
 
-  // Mock data for invoices generated
-  const invoicesGenerated = [
-    {
-      id: '1',
-      no: 'INV-2024-001',
-      date: '15 Jul 2024',
-      particulars: 'Premium Fiber 100 Mbps - Monthly Bill',
-      amount: '₹999',
-    },
-    {
-      id: '2',
-      no: 'INV-2024-002',
-      date: '10 Jul 2024',
-      particulars: 'Installation Charges Invoice',
-      amount: '₹500',
-    },
-    {
-      id: '3',
-      no: 'INV-2024-003',
-      date: '05 Jul 2024',
-      particulars: 'Additional Services Invoice',
-      amount: '₹200',
-    },
-    {
-      id: '4',
-      no: 'INV-2024-004',
-      date: '25 Jun 2024',
-      particulars: 'Premium Fiber 100 Mbps - Monthly Bill',
-      amount: '₹999',
-    },
-  ];
+  useEffect(() => {
+    console.log('=== LEDGER SCREEN: useEffect triggered ===');
+    loadLedgerData();
+  }, []);
 
-  // Mock data for payment received
-  const paymentReceived = [
-    {
-      id: '1',
-      no: 'PAY-2024-001',
-      date: '15 Jul 2024',
-      particulars: 'UPI Payment - Monthly Bill',
-      amount: '₹999',
-    },
-    {
-      id: '2',
-      no: 'PAY-2024-002',
-      date: '10 Jul 2024',
-      particulars: 'Credit Card Payment - Installation',
-      amount: '₹500',
-    },
-    {
-      id: '3',
-      no: 'PAY-2024-003',
-      date: '05 Jul 2024',
-      particulars: 'Net Banking - Additional Services',
-      amount: '₹200',
-    },
-    {
-      id: '4',
-      no: 'PAY-2024-004',
-      date: '25 Jun 2024',
-      particulars: 'UPI Payment - Monthly Bill',
-      amount: '₹999',
-    },
-  ];
+  const loadLedgerData = async () => {
+    try {
+      console.log('=== LEDGER SCREEN: Starting to load ledger data ===');
+      setLoading(true);
+      setError(null);
+      
+      const session = await sessionManager.getCurrentSession();
+      console.log('=== LEDGER SCREEN: Session data ===', session);
+      
+      if (!session?.username) {
+        console.log('=== LEDGER SCREEN: No username found in session ===');
+        throw new Error('No user session found');
+      }
 
-  const tabs = [
-    {id: 0, title: t('ledger.proforma')},
-    {id: 1, title: t('ledger.invoices')},
-    {id: 2, title: t('ledger.payments')},
-  ];
+      console.log('=== LEDGER SCREEN: Calling API with username ===', session.username);
+      const data = await apiService.userLedger(session.username, 'default');
+      console.log('=== LEDGER SCREEN: API response data ===', data);
+      
+      // Extract data from the response array
+      const payments = data[0] || [];
+      const invoices = data[1] || [];
+      const proforma = data[2] || [];
+      const summary = data[3] || {};
+
+      console.log('=== LEDGER SCREEN: Extracted data ===', {
+        payments: payments.length,
+        invoices: invoices.length,
+        proforma: proforma.length,
+        summary
+      });
+
+      // Transform data for display
+      const transformedPayments = payments.map((item: any) => ({
+        id: item.id,
+        no: item.no,
+        date: item.dateString,
+        particulars: item.content,
+        amount: `₹${item.amt}`,
+      }));
+
+      const transformedInvoices = invoices.map((item: any) => ({
+        id: item.id,
+        no: item.no,
+        date: item.dateString,
+        particulars: item.content,
+        amount: `₹${item.amt}`,
+      }));
+
+      const transformedProforma = proforma.map((item: any) => ({
+        id: item.id,
+        no: item.no,
+        date: item.dateString,
+        particulars: item.content,
+        amount: `₹${item.amt}`,
+      }));
+
+      console.log('=== LEDGER SCREEN: Setting state with transformed data ===', {
+        payments: transformedPayments.length,
+        invoices: transformedInvoices.length,
+        proforma: transformedProforma.length
+      });
+
+      setPaymentReceived(transformedPayments);
+      setInvoicesGenerated(transformedInvoices);
+      setProformaInvoices(transformedProforma);
+      setSummaryData(summary);
+      setLedgerData(data);
+      
+      console.log('=== LEDGER SCREEN: Data loading completed successfully ===');
+    } catch (err: any) {
+      console.error('=== LEDGER SCREEN: Error loading ledger data ===', err);
+      setError(err.message || 'Failed to load ledger data');
+      Alert.alert('Error', err.message || 'Failed to load ledger data');
+    } finally {
+      setLoading(false);
+      console.log('=== LEDGER SCREEN: Loading state set to false ===');
+    }
+  };
+
+  const handleDownload = async (item: any) => {
+    try {
+      console.log('=== LEDGER SCREEN: Download requested for item ===', item);
+      console.log('=== LEDGER SCREEN: downloadService ===', downloadService);
+      
+      if (!downloadService) {
+        throw new Error('Download service is not available');
+      }
+      
+      // Get the current tab's original ID to determine the type
+      const currentTab = tabs[activeTab];
+      const originalId = currentTab?.originalId ?? activeTab;
+      
+      let type: 'invoice' | 'receipt' | 'proforma';
+      switch (originalId) {
+        case 0:
+          type = 'proforma';
+          break;
+        case 1:
+          type = 'invoice';
+          break;
+        case 2:
+          type = 'receipt';
+          break;
+        default:
+          type = 'invoice';
+      }
+      
+      console.log('=== LEDGER SCREEN: Calling downloadPdf with ===', {
+        id: item.id,
+        type,
+        invoiceNo: item.no
+      });
+      
+      await downloadService.downloadPdf({
+        id: item.id,
+        type,
+        invoiceNo: item.no
+      });
+      
+      console.log('=== LEDGER SCREEN: Download completed successfully ===');
+    } catch (error: any) {
+      console.error('=== LEDGER SCREEN: Download error ===', error);
+      Alert.alert('Download Error', error.message || 'Failed to download PDF');
+    }
+  };
+
+  // Create dynamic tabs based on available data
+  const getTabs = () => {
+    const availableTabs = [];
+    
+    if (proformaInvoices.length > 0) {
+      availableTabs.push({id: availableTabs.length, title: t('ledger.proforma'), originalId: 0});
+    }
+    
+    if (invoicesGenerated.length > 0) {
+      availableTabs.push({id: availableTabs.length, title: t('ledger.invoices'), originalId: 1});
+    }
+    
+    if (paymentReceived.length > 0) {
+      availableTabs.push({id: availableTabs.length, title: t('ledger.payments'), originalId: 2});
+    }
+    
+    return availableTabs;
+  };
+
+  const tabs = getTabs();
 
   const renderProformaInvoiceItem = ({item}: {item: any}) => (
     <View style={[styles.itemCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
@@ -131,7 +198,10 @@ const LedgerScreen = ({navigation}: any) => {
           <Text style={[styles.itemNo, {color: colors.text}]}>{item.no}</Text>
           <Text style={[styles.itemDate, {color: colors.textSecondary}]}>{item.date}</Text>
         </View>
-        <TouchableOpacity style={styles.downloadButton}>
+        <TouchableOpacity 
+          style={styles.downloadButton}
+          onPress={() => handleDownload(item)}
+        >
           <Text style={[styles.downloadIcon, {color: colors.accent}]}>📄</Text>
         </TouchableOpacity>
       </View>
@@ -149,7 +219,10 @@ const LedgerScreen = ({navigation}: any) => {
           <Text style={[styles.itemNo, {color: colors.text}]}>{item.no}</Text>
           <Text style={[styles.itemDate, {color: colors.textSecondary}]}>{item.date}</Text>
         </View>
-        <TouchableOpacity style={styles.downloadButton}>
+        <TouchableOpacity 
+          style={styles.downloadButton}
+          onPress={() => handleDownload(item)}
+        >
           <Text style={[styles.downloadIcon, {color: colors.accent}]}>📄</Text>
         </TouchableOpacity>
       </View>
@@ -167,7 +240,10 @@ const LedgerScreen = ({navigation}: any) => {
           <Text style={[styles.itemNo, {color: colors.text}]}>{item.no}</Text>
           <Text style={[styles.itemDate, {color: colors.textSecondary}]}>{item.date}</Text>
         </View>
-        <TouchableOpacity style={styles.downloadButton}>
+        <TouchableOpacity 
+          style={styles.downloadButton}
+          onPress={() => handleDownload(item)}
+        >
           <Text style={[styles.downloadIcon, {color: colors.accent}]}>📄</Text>
         </TouchableOpacity>
       </View>
@@ -178,8 +254,27 @@ const LedgerScreen = ({navigation}: any) => {
     </View>
   );
 
+  const renderEmptyState = () => {
+    const currentTab = tabs[activeTab];
+    const tabTitle = currentTab?.title || 'transactions';
+    
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={[styles.emptyIcon, {color: colors.textSecondary}]}>📄</Text>
+        <Text style={[styles.emptyTitle, {color: colors.text}]}>{t('ledger.noTransactions')}</Text>
+        <Text style={[styles.emptySubtitle, {color: colors.textSecondary}]}>
+          No {tabTitle.toLowerCase()} found
+        </Text>
+      </View>
+    );
+  };
+
   const renderContent = () => {
-    switch (activeTab) {
+    // Get the current tab's original ID to determine which data to show
+    const currentTab = tabs[activeTab];
+    const originalId = currentTab?.originalId ?? activeTab;
+    
+    switch (originalId) {
       case 0:
         return (
           <FlatList
@@ -187,7 +282,19 @@ const LedgerScreen = ({navigation}: any) => {
             renderItem={renderProformaInvoiceItem}
             keyExtractor={item => item.id}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.listContainer}
+            contentContainerStyle={[
+              styles.listContainer,
+              proformaInvoices.length === 0 && styles.emptyListContainer
+            ]}
+            refreshControl={
+              <RefreshControl
+                refreshing={loading}
+                onRefresh={loadLedgerData}
+                colors={[colors.primary]}
+                tintColor={colors.primary}
+              />
+            }
+            ListEmptyComponent={renderEmptyState}
           />
         );
       case 1:
@@ -197,7 +304,19 @@ const LedgerScreen = ({navigation}: any) => {
             renderItem={renderInvoiceGeneratedItem}
             keyExtractor={item => item.id}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.listContainer}
+            contentContainerStyle={[
+              styles.listContainer,
+              invoicesGenerated.length === 0 && styles.emptyListContainer
+            ]}
+            refreshControl={
+              <RefreshControl
+                refreshing={loading}
+                onRefresh={loadLedgerData}
+                colors={[colors.primary]}
+                tintColor={colors.primary}
+              />
+            }
+            ListEmptyComponent={renderEmptyState}
           />
         );
       case 2:
@@ -207,13 +326,55 @@ const LedgerScreen = ({navigation}: any) => {
             renderItem={renderPaymentReceivedItem}
             keyExtractor={item => item.id}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.listContainer}
+            contentContainerStyle={[
+              styles.listContainer,
+              paymentReceived.length === 0 && styles.emptyListContainer
+            ]}
+            refreshControl={
+              <RefreshControl
+                refreshing={loading}
+                onRefresh={loadLedgerData}
+                colors={[colors.primary]}
+                tintColor={colors.primary}
+              />
+            }
+            ListEmptyComponent={renderEmptyState}
           />
         );
       default:
         return null;
     }
   };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}>
+        <CommonHeader navigation={navigation} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingText, {color: colors.text}]}>Loading ledger data...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}>
+        <CommonHeader navigation={navigation} />
+        <View style={styles.errorContainer}>
+          <Text style={[styles.errorText, {color: colors.text}]}>Error loading ledger data</Text>
+          <Text style={[styles.errorMessage, {color: colors.textSecondary}]}>{error}</Text>
+          <TouchableOpacity 
+            style={[styles.retryButton, {backgroundColor: colors.primary}]}
+            onPress={loadLedgerData}
+          >
+            <Text style={[styles.retryButtonText, {color: '#FFFFFF'}]}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}>
@@ -231,29 +392,41 @@ const LedgerScreen = ({navigation}: any) => {
       </View>
 
       {/* Tab Navigation */}
-      <View style={styles.tabContainer}>
-        {tabs.map((tab) => (
-          <TouchableOpacity
-            key={tab.id}
-            style={[
-              styles.tab,
-              activeTab === tab.id && {borderBottomColor: colors.primary},
-            ]}
-            onPress={() => setActiveTab(tab.id)}>
-            <Text
+      {tabs.length > 0 && (
+        <View style={styles.tabContainer}>
+          {tabs.map((tab) => (
+            <TouchableOpacity
+              key={tab.id}
               style={[
-                styles.tabText,
-                {color: activeTab === tab.id ? colors.primary : colors.textSecondary},
-              ]}>
-              {tab.title}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+                styles.tab,
+                activeTab === tab.id && {borderBottomColor: colors.primary},
+              ]}
+              onPress={() => setActiveTab(tab.id)}>
+              <Text
+                style={[
+                  styles.tabText,
+                  {color: activeTab === tab.id ? colors.primary : colors.textSecondary},
+                ]}>
+                {tab.title}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
 
       {/* Content */}
       <View style={styles.content}>
-        {renderContent()}
+        {tabs.length > 0 ? (
+          renderContent()
+        ) : (
+          <View style={styles.emptyContainer}>
+            <Text style={[styles.emptyIcon, {color: colors.textSecondary}]}>📄</Text>
+            <Text style={[styles.emptyTitle, {color: colors.text}]}>{t('ledger.noTransactions')}</Text>
+            <Text style={[styles.emptySubtitle, {color: colors.textSecondary}]}>
+              No transaction data available
+            </Text>
+          </View>
+        )}
       </View>
 
       {/* Bottom Total Section */}
@@ -262,27 +435,27 @@ const LedgerScreen = ({navigation}: any) => {
         
         <View style={styles.summaryRow}>
           <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('ledger.openingBalance')}</Text>
-          <Text style={[styles.summaryValue, {color: colors.text}]}>₹0.00</Text>
+          <Text style={[styles.summaryValue, {color: colors.text}]}>₹{summaryData?.openingBalance || 0}</Text>
         </View>
         
         <View style={styles.summaryRow}>
           <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('ledger.proformaAmount')}</Text>
-          <Text style={[styles.summaryValue, {color: colors.accent}]}>₹2,698.00</Text>
+          <Text style={[styles.summaryValue, {color: colors.accent}]}>₹{summaryData?.proforma_invoice || 0}</Text>
         </View>
         
         <View style={styles.summaryRow}>
           <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('ledger.billAmount')}</Text>
-          <Text style={[styles.summaryValue, {color: colors.accent}]}>₹2,698.00</Text>
+          <Text style={[styles.summaryValue, {color: colors.accent}]}>₹{summaryData?.billAmount || 0}</Text>
         </View>
         
         <View style={styles.summaryRow}>
           <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('ledger.paidAmount')}</Text>
-          <Text style={[styles.summaryValue, {color: colors.success}]}>₹2,698.00</Text>
+          <Text style={[styles.summaryValue, {color: colors.success}]}>₹{summaryData?.paidAmount || 0}</Text>
         </View>
         
         <View style={[styles.summaryRow, styles.currentBalanceRow]}>
           <Text style={[styles.summaryLabel, styles.currentBalanceLabel, {color: colors.text}]}>{t('ledger.currentBalance')}</Text>
-          <Text style={[styles.summaryValue, styles.currentBalanceValue, {color: colors.text}]}>₹0.00</Text>
+          <Text style={[styles.summaryValue, styles.currentBalanceValue, {color: colors.text}]}>₹{summaryData?.balance || 0}</Text>
         </View>
       </View>
     </SafeAreaView>
@@ -441,6 +614,67 @@ const styles = StyleSheet.create({
   currentBalanceValue: {
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  loadingText: {
+    fontSize: 16,
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  errorText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  errorMessage: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyIcon: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  emptyListContainer: {
+    flex: 1,
+    justifyContent: 'center',
   },
 });
 
