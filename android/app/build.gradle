@@ -77,14 +77,15 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
+    namespace "com.h8.dnasubscriber"
     defaultConfig {
-        namespace "com.h8.dnasubscriber"  // Default namespace
+        applicationId "com.h8.dnasubscriber"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0.0"
+        versionCode 291
+        versionName "291.0.0"
     }
-
+    
     signingConfigs {
         debug {
             storeFile file('debug.keystore')
@@ -92,62 +93,20 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
-        microscanRelease {
-            storeFile file('Log2SpaceEndUserMicroscan.jks')
-            storePassword 'log2space'
-            keyAlias 'log2space'
-            keyPassword 'log2space'
-        }
-        dnainfotelRelease {
+        release {
             storeFile file('Log2spaceDNAInfotelAppKey.jks')
             storePassword 'log2space'
             keyAlias 'log2space'
             keyPassword 'log2space'
         }
-        onesevenstarRelease {
-            storeFile file('OneSevenStar.jks')
-            storePassword 'log2space'
-            keyAlias 'log2space'
-            keyPassword 'log2space'
-        }
     }
-
-    flavorDimensions "client"
-    productFlavors {
-        microscan {
-            dimension "client"
-            applicationId "com.microscan.app"
-            versionCode 33
-            versionName "33.0.0"
-            resValue "string", "app_name", "Microscan"
-            namespace "com.microscan.app"
-            signingConfig signingConfigs.microscanRelease
-        }
-        dnainfotel {
-            dimension "client"
-            applicationId "com.h8.dnasubscriber"
-            versionCode 291
-            versionName "291.0.0"
-            resValue "string", "app_name", "DNA Infotel"
-            namespace "com.h8.dnasubscriber"
-            signingConfig signingConfigs.dnainfotelRelease
-        }
-        onesevenstar {
-            dimension "client"
-            applicationId "com.spacecom.log2space.onesevenstar"
-            versionCode 4
-            versionName "4.0.0"
-            resValue "string", "app_name", "One Sevenstar"
-            namespace "com.spacecom.log2space.onesevenstar"
-            signingConfig signingConfigs.onesevenstarRelease
-        }
-    }
-
+    
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
+            signingConfig signingConfigs.release
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }

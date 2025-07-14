@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import sessionManager from './sessionManager';
+import sessionManager from '../../src/services/sessionManager';
 
 // API Configuration
 export const domainUrl = "crm.dnainfotel.com";
@@ -12,6 +12,8 @@ const fixedHeaders = {
   'cache-control': 'no-cache',
   'referer': 'L2S-System/User-App-Requests'
 };
+
+const headers = (Authentication: string) => (new Headers({ Authentication, ...fixedHeaders }));
 
 const timeout = 6000;
 const networkErrorMsg = 'Please check your internet connection and try again.';
@@ -201,16 +203,37 @@ class ApiService {
   }
 
   private async performTokenRegeneration() {
+    const session = await sessionManager.getCurrentSession();
+    if (!session) return false;
+
+    const { username } = session;
+    if (!username) return false;
+
+    const data = {
+      username: username.toLowerCase().trim(),
+      password: '', // We don't store password in session manager for security
+      login_from: 'app',
+      request_source: 'app',
+      request_app: 'user_app'
+    };
+
+    const options = {
+      method,
+      body: toFormData(data),
+      headers: new Headers({ ...fixedHeaders }),
+      timeout
+    };
+
     try {
-      // Use the enhanced session manager to regenerate token using stored password
-      const newToken = await sessionManager.regenerateToken();
-      if (newToken) {
-        console.log('Token regenerated successfully using stored password');
-        return newToken;
-      } else {
-        console.log('Failed to regenerate token, no stored password available');
+      const res = await fetch(`${url}/selfcareL2sUserLogin`, options);
+      const response = await res.json();
+      
+      if (response.status === 'ok') {
+        return response.data.token;
+      } else if (response.status === 'error') {
         return false;
       }
+      return false;
     } catch (error) {
       console.error('Token regeneration error:', error);
       return false;
@@ -225,7 +248,7 @@ class ApiService {
     } else {
       const newToken = await this.regenerateToken();
       if (newToken) {
-        console.log('Token updated successfully');
+        await sessionManager.updateToken(newToken);
         return true;
       } else {
         await sessionManager.clearSession();
@@ -245,7 +268,7 @@ class ApiService {
       try {
         const token = await sessionManager.getToken();
         if (!token) {
-          throw new Error('No authentication token available. Please login again.');
+          throw new Error('No authentication token available');
         }
 
         return await requestFn(token);
@@ -259,17 +282,18 @@ class ApiService {
           try {
             const newToken = await this.regenerateToken();
             if (newToken) {
+              await sessionManager.updateToken(newToken);
               console.log('Token regenerated successfully, retrying request...');
               continue; // Retry the request with new token
             } else {
               console.log('Failed to regenerate token, clearing session');
               await sessionManager.clearSession();
-              throw new Error('Your session has expired. Please login again to continue.');
+              throw new Error('Authentication failed. Please login again.');
             }
           } catch (regenerationError) {
             console.error('Token regeneration failed:', regenerationError);
             await sessionManager.clearSession();
-            throw new Error('Your session has expired. Please login again to continue.');
+            throw new Error('Authentication failed. Please login again.');
           }
         } else {
           // Not a token error or max retries reached
@@ -303,12 +327,23 @@ class ApiService {
       
       const formData = toFormData(data);
       
+      if (Loggable) {
+        console.log('=== CHECK AUTH TYPE REQUEST ===');
+        console.log('URL:', `${url}/selfcareL2sUserLogin`);
+        console.log('Data:', data);
+      }
+
       const res = await fetch(`${url}/selfcareL2sUserLogin`, {
         ...options,
         body: formData,
       });
       
       const response = await res.json();
+      
+      if (Loggable) {
+        console.log('=== CHECK AUTH TYPE RESPONSE ===');
+        console.log('Response:', response);
+      }
       
       if (response.status === 'ok' && response.data) {
         // Determine auth type based on response
@@ -365,7 +400,6 @@ class ApiService {
       console.log('Response status:', res.status);
       
       const response = await res.json();
-      
       console.log('API Response:', response);
       
       if (response.status !== 'ok' && response.code !== 200) {
@@ -373,19 +407,7 @@ class ApiService {
         throw new Error(response.message);
       } else {
         console.log('API Success:', response.data);
-        
-        // Create session with password for token regeneration
-        await sessionManager.createSession(username, response.data.token, password);
-        
-        return {
-          token: response.data.token,
-          user: {
-            id: response.data.user_id || username,
-            username: username,
-            name: response.data.name || username,
-            role: 'user'
-          }
-        };
+        return response.data;
       }
     } catch (e: any) {
       console.error('API Request Error:', e);
@@ -490,7 +512,7 @@ class ApiService {
 
       const options = {
         method,
-        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        headers: headers(token),
         body: toFormData(data),
         timeout
       };
@@ -653,6 +675,16 @@ class ApiService {
     });
   }
 
+  private async getCredentials(realm: string) {
+    // This would need to be implemented based on your authentication system
+    // For now, we'll use the session token
+    const token = await sessionManager.getToken();
+    if (!token) {
+      throw new Error('No authentication token available');
+    }
+    return { Authentication: token };
+  }
+
   private formatDate(dateString: string, format: string): string {
     // console.log('=== API SERVICE: Formatting date ===', { dateString, format });
     
@@ -715,8 +747,86 @@ class ApiService {
 
   // Additional methods can be added here following the same pattern
   // For example: planList, userPaymentDues, submitComplaint, etc.
+
+  async lastTenSessions(username: string, accountStatus: string, realm: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const data = {
+        username: username.toLowerCase().trim(),
+        account_status: accountStatus,
+        last_ten_session: 'yes',
+        request_source: 'app',
+        request_app: 'user_app' 
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+
+      try {
+        const res = await fetch(`${url}/selfcareUsageDetails`, options);
+        console.log('Response status:', res.status);
+        
+        const response = await res.json();
+        console.log('=== SESSIONS API RESPONSE ===');
+        console.log('Status:', response.status, 'Code:', response.code);
+        console.log('Sessions found:', response.data?.length || 0);
+        
+        if (response.status === 'ok' && response.data) {
+          if (Array.isArray(response.data)) {
+            console.log('✅ Processing', response.data.length, 'sessions');
+            
+            const units = ['download', 'upload', 'total_upload_download'];
+            const processedSessions = response.data.map((s: any, index: number) => {
+              var result = s.login_time.split(" ");
+              
+              var session: any = {
+                index: index + 1,
+                ipAddress: s.framed_ip_address,
+                loginTime: result[1],
+                loginDate: result[0],
+                loginTs: s.login_time,
+                logoutTs: s.logout_time,
+                sessionTime: s.online_time
+              }
+              
+              units.forEach(unit => {
+                const originalValue = s[unit];
+                session[unit] = originalValue.length > 9 ? (
+                  `${Math.round(Number(originalValue) / 10000000) / 100} GB`
+                ) : (
+                    `${Math.round(Number(originalValue) / 10000) / 100} MB`
+                  );
+              });
+              
+              return session;
+            });
+            
+            console.log('✅ Sessions processed successfully');
+            return processedSessions;
+          } else {
+            console.log('❌ No sessions array in response');
+            console.log('Response data type:', typeof response.data);
+            console.log('Response data:', response.data);
+            return [];
+          }
+        } else if (response.status === 'error') {
+          console.log('❌ API error:', response.message);
+          throw new Error(response.message || 'Failed to fetch sessions');
+        } else {
+          console.log('❌ Unexpected response format');
+          console.log('Response:', response);
+          return [];
+        }
+      } catch (error: any) {
+        console.error('Error fetching sessions:', error);
+        throw new Error(error.message || 'Failed to fetch sessions');
+      }
+    });
+  }
 }
 
 // Export singleton instance
-export const apiService = new ApiService();
-export default apiService; 
+export const apiService = new ApiService(); 

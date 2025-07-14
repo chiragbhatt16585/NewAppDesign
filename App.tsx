@@ -25,6 +25,9 @@ function AppContent() {
   const [isAuthInitialized, setIsAuthInitialized] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
+  // Add error boundary for AuthProvider
+  console.log('AppContent rendering, AuthProvider should be available');
+
   useEffect(() => {
     initializeApp();
   }, []);

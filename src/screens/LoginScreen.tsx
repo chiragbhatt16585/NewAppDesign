@@ -257,13 +257,21 @@ const LoginScreen = ({navigation}: any) => {
           }
           
           console.log('=== PASSWORD LOGIN ATTEMPT ===');
+          console.log('Username:', username);
+          console.log('Password length:', password.length);
+          
           const response = await apiService.authenticate(username, password);
+          console.log('=== LOGIN RESPONSE ===');
+          console.log('Response:', response);
           
           if (response && response.token) {
+            console.log('=== CREATING SESSION ===');
             await sessionManager.createSession(username, response.token, password);
+            console.log('=== SESSION CREATED ===');
             Alert.alert('Success', 'Login successful!');
             navigation.navigate('Home');
           } else {
+            console.log('=== LOGIN FAILED - NO TOKEN ===');
             Alert.alert('Error', 'Login failed. Please check your credentials.');
           }
         } else if (authType === 'otp') {

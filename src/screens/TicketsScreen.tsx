@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   View,
   Text,
@@ -6,80 +6,57 @@ import {
   TouchableOpacity,
   ScrollView,
   FlatList,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useTheme} from '../utils/ThemeContext';
 import {getThemeColors} from '../utils/themeStyles';
 import CommonHeader from '../components/CommonHeader';
 import {useTranslation} from 'react-i18next';
-
-interface Ticket {
-  id: string;
-  ticketNo: string;
-  status: 'Open' | 'In Progress' | 'Resolved' | 'Closed';
-  title: string;
-  remarks: string;
-  dateCreated: string;
-  dateClosed?: string;
-  priority: 'Low' | 'Medium' | 'High' | 'Critical';
-}
+import {apiService, Ticket} from '../services/api';
+import sessionManager from '../services/sessionManager';
 
 const TicketsScreen = ({navigation}: any) => {
   const {isDark} = useTheme();
   const colors = getThemeColors(isDark);
   const {t} = useTranslation();
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
 
-  // Mock ticket data - replace with actual API data
-  const tickets: Ticket[] = [
-    {
-      id: '1',
-      ticketNo: 'TKT-2024-001',
-      status: 'Open',
-      title: 'Internet connectivity issue',
-      remarks: 'Unable to connect to internet since morning. Router shows red light.',
-      dateCreated: '2024-01-15 09:30 AM',
-      priority: 'High',
-    },
-    {
-      id: '2',
-      ticketNo: 'TKT-2024-002',
-      status: 'In Progress',
-      title: 'Slow internet speed',
-      remarks: 'Internet speed is very slow during peak hours. Getting only 10 Mbps instead of 100 Mbps.',
-      dateCreated: '2024-01-14 02:15 PM',
-      priority: 'Medium',
-    },
-    {
-      id: '3',
-      ticketNo: 'TKT-2024-003',
-      status: 'Resolved',
-      title: 'Router configuration issue',
-      remarks: 'Router settings were reset. Need help to reconfigure WiFi settings.',
-      dateCreated: '2024-01-13 11:45 AM',
-      dateClosed: '2024-01-14 10:30 AM',
-      priority: 'Medium',
-    },
-    {
-      id: '4',
-      ticketNo: 'TKT-2024-004',
-      status: 'Closed',
-      title: 'Billing query',
-      remarks: 'Incorrect amount charged in the last bill. Need clarification on charges.',
-      dateCreated: '2024-01-12 04:20 PM',
-      dateClosed: '2024-01-13 03:15 PM',
-      priority: 'Low',
-    },
-    {
-      id: '5',
-      ticketNo: 'TKT-2024-005',
-      status: 'Open',
-      title: 'Service upgrade request',
-      remarks: 'Want to upgrade from 50 Mbps to 100 Mbps plan. Please provide details.',
-      dateCreated: '2024-01-15 01:30 PM',
-      priority: 'Low',
-    },
-  ];
+  useEffect(() => {
+    loadTickets();
+  }, []);
+
+  const loadTickets = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const username = await sessionManager.getUsername();
+      
+      if (!username) {
+        throw new Error('Username not found');
+      }
+
+      // Format username to lowercase and trim (same as other API calls)
+      const formattedUsername = username.toLowerCase().trim();
+
+      // Use default realm since we don't have realm management in session
+      const realm = 'default';
+      const ticketsData = await apiService.lastTenComplaints(formattedUsername, realm);
+      
+      setTickets(ticketsData);
+    } catch (err: any) {
+      console.error('Error loading tickets:', err);
+      setError(err.message || 'Failed to load tickets');
+      Alert.alert('Error', err.message || 'Failed to load tickets');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -146,7 +123,7 @@ const TicketsScreen = ({navigation}: any) => {
       </View>
 
       <Text style={[styles.ticketTitle, {color: colors.text}]}>{item.title}</Text>
-      <Text style={[styles.ticketRemarks, {color: colors.textSecondary}]} numberOfLines={2}>
+      <Text style={[styles.ticketRemarks, {color: colors.textSecondary}]}>
         {item.remarks}
       </Text>
 
@@ -175,6 +152,8 @@ const TicketsScreen = ({navigation}: any) => {
     console.log('Create new ticket');
   };
 
+
+
   return (
     <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}>
       {/* Header */}
@@ -197,23 +176,49 @@ const TicketsScreen = ({navigation}: any) => {
         </Text>
       </View>
 
+      {/* Loading State */}
+      {loading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingText, {color: colors.textSecondary}]}>
+            {t('common.loading')}
+          </Text>
+        </View>
+      )}
+
+      {/* Error State */}
+      {error && !loading && (
+        <View style={styles.errorContainer}>
+          <Text style={[styles.errorIcon, {color: colors.textSecondary}]}>⚠️</Text>
+          <Text style={[styles.errorTitle, {color: colors.text}]}>{t('common.error')}</Text>
+          <Text style={[styles.errorMessage, {color: colors.textSecondary}]}>{error}</Text>
+          <TouchableOpacity
+            style={[styles.retryButton, {backgroundColor: colors.primary}]}
+            onPress={loadTickets}>
+            <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Tickets List */}
-      <FlatList
-        data={tickets}
-        renderItem={renderTicketItem}
-        keyExtractor={(item) => item.id}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.ticketsList}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={[styles.emptyIcon, {color: colors.textSecondary}]}>📋</Text>
-            <Text style={[styles.emptyTitle, {color: colors.text}]}>{t('tickets.noTickets')}</Text>
-            <Text style={[styles.emptySubtitle, {color: colors.textSecondary}]}>
-              {t('tickets.noTicketsSubtitle')}
-            </Text>
-          </View>
-        }
-      />
+      {!loading && !error && (
+        <FlatList
+          data={tickets}
+          renderItem={renderTicketItem}
+          keyExtractor={(item) => item.id}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.ticketsList}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={[styles.emptyIcon, {color: colors.textSecondary}]}>📋</Text>
+              <Text style={[styles.emptyTitle, {color: colors.text}]}>{t('tickets.noTickets')}</Text>
+              <Text style={[styles.emptySubtitle, {color: colors.textSecondary}]}>
+                {t('tickets.noTicketsSubtitle')}
+              </Text>
+            </View>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -351,6 +356,47 @@ const styles = StyleSheet.create({
   emptySubtitle: {
     fontSize: 14,
     textAlign: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    fontSize: 16,
+    marginTop: 16,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 60,
+  },
+  errorIcon: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  errorMessage: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  retryButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    fontSize: 16,
+    color: '#fff',
+    fontWeight: '600',
   },
 });
 
