@@ -10,8 +10,10 @@ import {
   Image,
   Dimensions,
   FlatList,
+  BackHandler,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import {useFocusEffect} from '@react-navigation/native';
 import LogoImage from '../components/LogoImage';
 import {useTheme} from '../utils/ThemeContext';
 import {getThemeColors} from '../utils/themeStyles';
@@ -83,6 +85,34 @@ const HomeScreen = ({navigation}: any) => {
     //Alert.alert('HomeScreen', 'Component mounted');
     fetchAccountData();
   }, []);
+
+  // Handle back button press - exit app instead of going back to login
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        Alert.alert(
+          'Exit App',
+          'Are you sure you want to exit?',
+          [
+            {
+              text: 'Cancel',
+              onPress: () => null,
+              style: 'cancel',
+            },
+            {
+              text: 'Exit',
+              onPress: () => BackHandler.exitApp(),
+            },
+          ]
+        );
+        return true; // Prevent default back behavior
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+      return () => subscription.remove();
+    }, [])
+  );
 
   const fetchAccountData = async () => {
     //Alert.alert('Fetching account data...');
@@ -297,7 +327,7 @@ const HomeScreen = ({navigation}: any) => {
         {/* Header with Logo */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <Image source={require('../assets/isp_logo.png')} style={{ width: 180, height: 56 }} />
+                          <LogoImage type="header" />
             <TouchableOpacity 
               style={[styles.profileButton, {backgroundColor: colors.accent}]} 
               onPress={handleProfilePress}>
@@ -743,7 +773,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   adCarouselSection: {
-    height: screenWidth * 0.6, // Reduced height for more compact design
+    height: screenWidth * 0.4, // Reduced height for more compact design
     marginHorizontal: 20,
     marginBottom: 20,
   },

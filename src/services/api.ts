@@ -2,18 +2,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import sessionManager from './sessionManager';
 
 // API Configuration
-export const domainUrl = "mydesk.microscan.co.in";
+export const domainUrl = "crm.dnainfotel.com";
 export const domain = `https://${domainUrl}`;
 const url = `${domain}/l2s/api`;
-export const ispName = 'Microscan';
+export const ispName = 'DNA Infotel';
 
 const method = 'POST';
 const fixedHeaders = {
   'cache-control': 'no-cache',
   'referer': 'L2S-System/User-App-Requests'
 };
-
-const headers = (Authentication: string) => (new Headers({ Authentication, ...fixedHeaders }));
 
 const timeout = 6000;
 const networkErrorMsg = 'Please check your internet connection and try again.';
@@ -88,8 +86,20 @@ const isNetworkError = (error: any): boolean => {
   return error.name === 'TypeError' || error.message.includes('Network request failed');
 };
 
+// Token expiration detection
+const isTokenExpiredError = (error: any): boolean => {
+  const errorMessage = error.message?.toLowerCase() || '';
+  return errorMessage.includes('token expired') || 
+         errorMessage.includes('unauthorized') || 
+         errorMessage.includes('invalid token') ||
+         errorMessage.includes('authentication failed');
+};
+
 // API Service Class
 class ApiService {
+  private isRegeneratingToken = false;
+  private tokenRegenerationPromise: Promise<string | false> | null = null;
+
   abortController() {
     const abortController = new AbortController();
     return abortController;
@@ -173,37 +183,34 @@ class ApiService {
   }
 
   async regenerateToken() {
-    const session = await sessionManager.getCurrentSession();
-    if (!session) return false;
+    // Prevent multiple simultaneous token regeneration attempts
+    if (this.isRegeneratingToken && this.tokenRegenerationPromise) {
+      return this.tokenRegenerationPromise;
+    }
 
-    const { username } = session;
-    if (!username) return false;
-
-    const data = {
-      username: username.toLowerCase().trim(),
-      password: '', // We don't store password in session manager for security
-      login_from: 'app',
-      request_source: 'app',
-      request_app: 'user_app'
-    };
-
-    const options = {
-      method,
-      body: toFormData(data),
-      headers: new Headers({ ...fixedHeaders }),
-      timeout
-    };
+    this.isRegeneratingToken = true;
+    this.tokenRegenerationPromise = this.performTokenRegeneration();
 
     try {
-      const res = await fetch(`${url}/selfcareL2sUserLogin`, options);
-      const response = await res.json();
-      
-      if (response.status === 'ok') {
-        return response.data.token;
-      } else if (response.status === 'error') {
+      const result = await this.tokenRegenerationPromise;
+      return result;
+    } finally {
+      this.isRegeneratingToken = false;
+      this.tokenRegenerationPromise = null;
+    }
+  }
+
+  private async performTokenRegeneration() {
+    try {
+      // Use the enhanced session manager to regenerate token using stored password
+      const newToken = await sessionManager.regenerateToken();
+      if (newToken) {
+        console.log('Token regenerated successfully using stored password');
+        return newToken;
+      } else {
+        console.log('Failed to regenerate token, no stored password available');
         return false;
       }
-      return false;
     } catch (error) {
       console.error('Token regeneration error:', error);
       return false;
@@ -218,13 +225,60 @@ class ApiService {
     } else {
       const newToken = await this.regenerateToken();
       if (newToken) {
-        await sessionManager.updateToken(newToken);
+        console.log('Token updated successfully');
         return true;
       } else {
         await sessionManager.clearSession();
         return false;
       }
     }
+  }
+
+  // Enhanced API call wrapper with automatic token regeneration
+  async makeAuthenticatedRequest<T>(
+    requestFn: (token: string) => Promise<T>,
+    maxRetries: number = 1
+  ): Promise<T> {
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const token = await sessionManager.getToken();
+        if (!token) {
+          throw new Error('No authentication token available. Please login again.');
+        }
+
+        return await requestFn(token);
+      } catch (error: any) {
+        lastError = error;
+        
+        // Check if it's a token expiration error
+        if (isTokenExpiredError(error) && attempt < maxRetries) {
+          console.log('Token expired, attempting to regenerate...');
+          
+          try {
+            const newToken = await this.regenerateToken();
+            if (newToken) {
+              console.log('Token regenerated successfully, retrying request...');
+              continue; // Retry the request with new token
+            } else {
+              console.log('Failed to regenerate token, clearing session');
+              await sessionManager.clearSession();
+              throw new Error('Your session has expired. Please login again to continue.');
+            }
+          } catch (regenerationError) {
+            console.error('Token regeneration failed:', regenerationError);
+            await sessionManager.clearSession();
+            throw new Error('Your session has expired. Please login again to continue.');
+          }
+        } else {
+          // Not a token error or max retries reached
+          throw error;
+        }
+      }
+    }
+
+    throw lastError || new Error('Request failed after retries');
   }
 
   async checkAuthType(username: string): Promise<AuthTypeResponse> {
@@ -249,23 +303,12 @@ class ApiService {
       
       const formData = toFormData(data);
       
-      if (Loggable) {
-        console.log('=== CHECK AUTH TYPE REQUEST ===');
-        console.log('URL:', `${url}/selfcareL2sUserLogin`);
-        console.log('Data:', data);
-      }
-
       const res = await fetch(`${url}/selfcareL2sUserLogin`, {
         ...options,
         body: formData,
       });
       
       const response = await res.json();
-      
-      if (Loggable) {
-        console.log('=== CHECK AUTH TYPE RESPONSE ===');
-        console.log('Response:', response);
-      }
       
       if (response.status === 'ok' && response.data) {
         // Determine auth type based on response
@@ -322,6 +365,7 @@ class ApiService {
       console.log('Response status:', res.status);
       
       const response = await res.json();
+      
       console.log('API Response:', response);
       
       if (response.status !== 'ok' && response.code !== 200) {
@@ -329,7 +373,19 @@ class ApiService {
         throw new Error(response.message);
       } else {
         console.log('API Success:', response.data);
-        return response.data;
+        
+        // Create session with password for token regeneration
+        await sessionManager.createSession(username, response.data.token, password);
+        
+        return {
+          token: response.data.token,
+          user: {
+            id: response.data.user_id || username,
+            username: username,
+            name: response.data.name || username,
+            role: 'user'
+          }
+        };
       }
     } catch (e: any) {
       console.error('API Request Error:', e);
@@ -339,33 +395,35 @@ class ApiService {
   }
 
   async authUser(user_id: string, Authentication: string) {
-    const data = {
-      username: user_id.toLowerCase().trim(),
-      fetch_company_details: 'yes',
-      request_source: 'app',
-      request_app: 'user_app' 
-    };
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const data = {
+        username: user_id.toLowerCase().trim(),
+        fetch_company_details: 'yes',
+        request_source: 'app',
+        request_app: 'user_app' 
+      };
 
-    const options = {
-      method,
-      headers: new Headers({ Authentication: Authentication || '', ...fixedHeaders }),
-      body: toFormData(data),
-      timeout
-    };
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
 
-    try {
-      const res = await fetch(`${url}/selfcareHelpdesk`, options);
-      const response = await res.json();
-      
-      if (response.status !== 'ok' && response.code !== 200) {
-        throw new Error('Invalid username or password');
-      } else {
-        return response.data;
+      try {
+        const res = await fetch(`${url}/selfcareHelpdesk`, options);
+        const response = await res.json();
+        
+        if (response.status !== 'ok' && response.code !== 200) {
+          throw new Error('Invalid username or password');
+        } else {
+          return response.data;
+        }
+      } catch (e: any) {
+        const msg = isNetworkError(e) ? networkErrorMsg : e.message;
+        throw new Error(msg);
       }
-    } catch (e: any) {
-      const msg = isNetworkError(e) ? networkErrorMsg : e.message;
-      throw new Error(msg);
-    }
+    });
   }
 
   async logout() {
@@ -398,13 +456,13 @@ class ApiService {
     }
   }
 
-  // Test API connection
   async testApiConnection() {
     try {
-      console.log('Testing API connection...');
-      const adminDetails = await this.adminDetails();
-      console.log('Admin details:', adminDetails);
-      return true;
+      const res = await fetch(`${url}/selfcareL2sUserLogin`, {
+        method,
+        headers: new Headers({ ...fixedHeaders })
+      });
+      return res.ok;
     } catch (error) {
       console.error('API connection test failed:', error);
       return false;
@@ -412,143 +470,187 @@ class ApiService {
   }
 
   async userLedger(username: string, realm: string) {
-    // console.log('=== API SERVICE: userLedger called with ===', { username, realm });
-    
-    const { Authentication } = await this.getCredentials(realm);
-    // console.log('=== API SERVICE: Got authentication token ===', !!Authentication);
-    
-    const data = {
-      username: username,
-      get_user_invoice: true,
-      get_user_receipt: true,
-      get_proforma_invoice: true,
-      get_user_opening_balance: true,
-      get_user_payment_dues: true,
-      request_source: 'app',
-      request_app: 'user_app' 
-    };
-
-    // console.log('=== API SERVICE: Request data ===', data);
-
-    const options = {
-      method,
-      headers: headers(Authentication),
-      body: toFormData(data),
-      timeout
-    };
-
-    // console.log('=== API SERVICE: Making API call to ===', `${url}/selfcareGetUserInformation`);
-
-    try {
-      const res = await fetch(`${url}/selfcareGetUserInformation`, options);
-      // console.log('=== API SERVICE: Response status ===', res.status);
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      // console.log('=== API SERVICE: userLedger called with ===', { username, realm });
       
-      const response = await res.json();
-      // console.log('=== API SERVICE: Raw API response ===', response);
+      // console.log('=== API SERVICE: Got authentication token ===', !!token);
       
-      if (response.status !== 'ok' && response.code !== 200) {
-        // console.log('=== API SERVICE: API returned error ===', response);
-        throw new Error(response.message);
-      } else {
-        // console.log('=== API SERVICE: Processing successful response ===');
-        const resArr: any = [];
+      const data = {
+        username: username,
+        get_user_invoice: true,
+        get_user_receipt: true,
+        get_proforma_invoice: true,
+        get_user_opening_balance: true,
+        get_user_payment_dues: true,
+        request_source: 'app',
+        request_app: 'user_app' 
+      };
+
+      // console.log('=== API SERVICE: Request data ===', data);
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+
+      // console.log('=== API SERVICE: Making API call to ===', `${url}/selfcareGetUserInformation`);
+
+      try {
+        const res = await fetch(`${url}/selfcareGetUserInformation`, options);
+        // console.log('=== API SERVICE: Response status ===', res.status);
         
-        // Add proforma invoices
-        resArr.proforma_payment = response.data.user_profoma_invoice || [];
+        const response = await res.json();
+        // console.log('=== API SERVICE: Raw API response ===', response);
         
-        // Add receipts (payments)
-        if (response.data.user_receipt) {
-          // console.log('=== API SERVICE: Processing receipts ===', response.data.user_receipt);
-          resArr.push(
-            response.data.user_receipt.map((data: any, index: number) => {
-              // console.log('=== API SERVICE: Receipt date ===', data.receipt_date);
-              return {
-                index,
-                no: data.receipt_prefix + data.receipt_no,
-                amt: data.amount,
-                content: data.payment_method,
-                view: data.remarks,
-                dateString: this.formatDate(data.receipt_date, 'DD-MMM,YY HH:mm'),
-                id: data.id,
-                type: 'receipt'
-              };
-            })
-          );
+        if (response.status !== 'ok' && response.code !== 200) {
+          // console.log('=== API SERVICE: API returned error ===', response);
+          throw new Error(response.message);
         } else {
-          resArr.push([]);
+          // console.log('=== API SERVICE: Processing successful response ===');
+          const resArr: any = [];
+          
+          // Add proforma invoices
+          resArr.proforma_payment = response.data.user_profoma_invoice || [];
+          
+          // Add receipts (payments)
+          if (response.data.user_receipt) {
+            // console.log('=== API SERVICE: Processing receipts ===', response.data.user_receipt);
+            resArr.push(
+              response.data.user_receipt.map((data: any, index: number) => {
+                // console.log('=== API SERVICE: Receipt date ===', data.receipt_date);
+                return {
+                  index,
+                  no: data.receipt_prefix + data.receipt_no,
+                  amt: data.amount,
+                  content: data.payment_method,
+                  view: data.remarks,
+                  dateString: this.formatDate(data.receipt_date, 'DD-MMM,YY HH:mm'),
+                  id: data.id,
+                  type: 'receipt'
+                };
+              })
+            );
+          } else {
+            resArr.push([]);
+          }
+          
+          // Add invoices
+          if (response.data.user_invoice) {
+            // console.log('=== API SERVICE: Processing invoices ===', response.data.user_invoice);
+            resArr.push(
+              response.data.user_invoice.map((data: any, index: number) => {
+                // console.log('=== API SERVICE: Invoice date ===', data.invoice_date);
+                return {
+                  index,
+                  no: data.invoice_prefix + data.invoice_no,
+                  amt: data.sale_amount,
+                  content: data.invoice_particulars,
+                  view: data.remarks,
+                  dateString: this.formatDate(data.invoice_date, 'DD-MMM,YY HH:mm'),
+                  id: data.id,
+                  type: 'invoice'
+                };
+              })
+            );
+          } else {
+            resArr.push([]);
+          }
+          
+          // Add proforma invoices
+          if (response.data.user_profoma_invoice) {
+            // console.log('=== API SERVICE: Processing proforma invoices ===', response.data.user_profoma_invoice);
+            resArr.push(
+              response.data.user_profoma_invoice.map((data: any, index: number) => {
+                // console.log('=== API SERVICE: Proforma invoice date ===', data.invoice_date);
+                return {
+                  index,
+                  no: data.proforma_ref_no,
+                  amt: data.sale_amount,
+                  content: data.invoice_particulars,
+                  view: data.remarks,
+                  dateString: this.formatDate(data.invoice_date, 'DD-MMM,YY HH:mm'),
+                  id: data.id,
+                  type: 'proforma'
+                };
+              })
+            );
+          } else {
+            resArr.push([]);
+          }
+          
+          // Add summary data
+          resArr.push({
+            openingBalance: response.data.user_opening_balance?.[0] ? Math.round(response.data.user_opening_balance[0].opening_balance) : 0,
+            billAmount: Math.round(response.data.user_invoice_total || 0),
+            paidAmount: Math.round(response.data.user_receipt_total || 0),
+            proforma_invoice: Math.round(response.data.user_profoma_invoice_total || 0),
+            balance: Math.round(response.data.user_payment_dues || 0)
+          });
+          
+          // console.log('=== API SERVICE: Final processed data ===', resArr);
+          return resArr;
         }
-        
-        // Add invoices
-        if (response.data.user_invoice) {
-          // console.log('=== API SERVICE: Processing invoices ===', response.data.user_invoice);
-          resArr.push(
-            response.data.user_invoice.map((data: any, index: number) => {
-              // console.log('=== API SERVICE: Invoice date ===', data.invoice_date);
-              return {
-                index,
-                no: data.invoice_prefix + data.invoice_no,
-                amt: data.sale_amount,
-                content: data.invoice_particulars,
-                view: data.remarks,
-                dateString: this.formatDate(data.invoice_date, 'DD-MMM,YY HH:mm'),
-                id: data.id,
-                type: 'invoice'
-              };
-            })
-          );
-        } else {
-          resArr.push([]);
-        }
-        
-        // Add proforma invoices
-        if (response.data.user_profoma_invoice) {
-          // console.log('=== API SERVICE: Processing proforma invoices ===', response.data.user_profoma_invoice);
-          resArr.push(
-            response.data.user_profoma_invoice.map((data: any, index: number) => {
-              // console.log('=== API SERVICE: Proforma invoice date ===', data.invoice_date);
-              return {
-                index,
-                no: data.proforma_ref_no,
-                amt: data.sale_amount,
-                content: data.invoice_particulars,
-                view: data.remarks,
-                dateString: this.formatDate(data.invoice_date, 'DD-MMM,YY HH:mm'),
-                id: data.id,
-                type: 'proforma'
-              };
-            })
-          );
-        } else {
-          resArr.push([]);
-        }
-        
-        // Add summary data
-        resArr.push({
-          openingBalance: response.data.user_opening_balance?.[0] ? Math.round(response.data.user_opening_balance[0].opening_balance) : 0,
-          billAmount: Math.round(response.data.user_invoice_total || 0),
-          paidAmount: Math.round(response.data.user_receipt_total || 0),
-          proforma_invoice: Math.round(response.data.user_profoma_invoice_total || 0),
-          balance: Math.round(response.data.user_payment_dues || 0)
-        });
-        
-        // console.log('=== API SERVICE: Final processed data ===', resArr);
-        return resArr;
+      } catch (e: any) {
+        console.error('=== API SERVICE: Error in userLedger ===', e);
+        const msg = isNetworkError(e) ? networkErrorMsg : e.message;
+        throw new Error(msg);
       }
-    } catch (e: any) {
-      console.error('=== API SERVICE: Error in userLedger ===', e);
-      const msg = isNetworkError(e) ? networkErrorMsg : e.message;
-      throw new Error(msg);
-    }
+    });
   }
 
-  private async getCredentials(realm: string) {
-    // This would need to be implemented based on your authentication system
-    // For now, we'll use the session token
-    const token = await sessionManager.getToken();
-    if (!token) {
-      throw new Error('No authentication token available');
-    }
-    return { Authentication: token };
+  // Enhanced download PDF with automatic token regeneration
+  async downloadInvoicePDF(id: string, invoiceNo: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const data = {
+        id: id,
+        invoice_no: invoiceNo,
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data)
+      };
+
+      const res = await fetch(`${url}/selfcareGenerateInvoicePDF`, options);
+      
+      if (!res.ok) {
+        const errorResponse = await res.json();
+        throw new Error(errorResponse.message || 'Failed to generate PDF');
+      }
+      
+      return res;
+    });
+  }
+
+  async downloadReceiptPDF(id: string, receiptNo: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const data = {
+        id: id,
+        receipt_no: receiptNo,
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data)
+      };
+
+      const res = await fetch(`${url}/selfcareGenerateReceiptPDF`, options);
+      
+      if (!res.ok) {
+        const errorResponse = await res.json();
+        throw new Error(errorResponse.message || 'Failed to generate PDF');
+      }
+      
+      return res;
+    });
   }
 
   private formatDate(dateString: string, format: string): string {
@@ -616,4 +718,5 @@ class ApiService {
 }
 
 // Export singleton instance
-export const apiService = new ApiService(); 
+export const apiService = new ApiService();
+export default apiService; 

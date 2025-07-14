@@ -41,8 +41,43 @@ const LedgerScreen = ({navigation}: any) => {
 
   useEffect(() => {
     // console.log('=== LEDGER SCREEN: useEffect triggered ===');
-    loadLedgerData();
+    checkSessionAndLoadData();
   }, []);
+
+  const checkSessionAndLoadData = async () => {
+    try {
+      const session = await sessionManager.getCurrentSession();
+      if (!session?.username) {
+        console.log('=== LEDGER SCREEN: No user session found, redirecting to Login ===');
+        Alert.alert(
+          'Authentication Required',
+          'Please login to view your ledger.',
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.navigate('Login')
+            }
+          ]
+        );
+        return;
+      }
+      
+      // If session exists, load ledger data
+      loadLedgerData();
+    } catch (error) {
+      console.error('=== LEDGER SCREEN: Session check error ===', error);
+      Alert.alert(
+        'Authentication Error',
+        'Please login again to continue.',
+        [
+          {
+            text: 'OK',
+            onPress: () => navigation.navigate('Login')
+          }
+        ]
+      );
+    }
+  };
 
   const loadLedgerData = async () => {
     try {

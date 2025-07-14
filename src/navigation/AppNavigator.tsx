@@ -17,11 +17,15 @@ import LanguageScreen from '../screens/LanguageScreen';
 
 const Stack = createStackNavigator();
 
-const AppNavigator = () => {
+interface AppNavigatorProps {
+  initialRoute?: string;
+}
+
+const AppNavigator: React.FC<AppNavigatorProps> = ({ initialRoute = 'Login' }) => {
   return (
     <NavigationContainer>
       <Stack.Navigator
-        initialRouteName="Login"
+        initialRouteName={initialRoute}
         screenOptions={{
           headerShown: false,
         }}>

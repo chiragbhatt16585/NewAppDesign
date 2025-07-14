@@ -1,0 +1,28 @@
+{
+  "clientName": "one-sevenstar",
+  "appName": "One Seven Star",
+  "companyName": "Seven Star Balaji Broadband Pvt Ltd",
+  "logoFileName": "isp_logo.png",
+  "appIconFileName": "one_seven_star_icon.png",
+  "splashScreenFileName": "one_seven_star_splash.png",
+  "adaptiveIconFileName": "one_seven_star_adaptive_icon.png",
+  "faviconFileName": "one_seven_star_favicon.png",
+  "primaryColor": "#1976D2",
+  "secondaryColor": "#42A5F5",
+  "accentColor": "#FFC107",
+  "backgroundColor": "#FFFFFF",
+  "textColor": "#212121",
+  "borderColor": "#E0E0E0",
+  "successColor": "#4CAF50",
+  "errorColor": "#F44336",
+  "warningColor": "#FF9800",
+  "infoColor": "#2196F3",
+  "login": {
+    "width": 120,
+    "height": 40
+  },
+  "header": {
+    "width": 80,
+    "height": 25
+  }
+} 

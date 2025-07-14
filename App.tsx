@@ -16,6 +16,7 @@ import {LanguageProvider} from './src/utils/LanguageContext';
 import {AuthProvider} from './src/utils/AuthContext';
 import biometricAuthService from './src/services/biometricAuth';
 import sessionManager from './src/services/sessionManager';
+import testCredentialStorage from './src/services/credentialStorageTest';
 import './src/i18n';
 
 function AppContent() {
@@ -30,6 +31,10 @@ function AppContent() {
 
   const initializeApp = async () => {
     try {
+      // Test credential storage functionality
+      console.log('Testing credential storage...');
+      await testCredentialStorage();
+      
       // Initialize session manager first
       await sessionManager.initialize();
       
@@ -86,7 +91,7 @@ function AppContent() {
   return (
     <>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <AppNavigator />
+      <AppNavigator initialRoute={isLoggedIn ? 'Home' : 'Login'} />
     </>
   );
 }

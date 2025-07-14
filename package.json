@@ -7,7 +7,16 @@
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "start": "react-native start",
-    "test": "jest"
+    "test": "jest",
+    "build:microscan": "node scripts/build-client.js microscan",
+    "build:dna-infotel": "node scripts/build-client.js dna-infotel",
+    "dev:microscan": "node scripts/dev-with-fix.js microscan",
+    "dev:dna-infotel": "node scripts/dev-with-fix.js dna-infotel",
+    "ios:microscan": "npm run build:microscan && npx react-native run-ios",
+    "ios:dna-infotel": "npm run build:dna-infotel && npx react-native run-ios",
+    "fix-generated": "node scripts/fix-generated-file.js",
+    "fix-ios": "node scripts/fix-ios.js",
+    "create-client": "node scripts/create-client-template.js"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",
@@ -17,6 +26,8 @@
     "@react-navigation/native": "^7.1.14",
     "@react-navigation/stack": "^7.4.2",
     "i18next": "^25.3.2",
+    "jquery-param": "^1.2.4",
+    "moment": "^2.30.1",
     "react": "19.1.0",
     "react-i18next": "^15.6.0",
     "react-native": "0.80.1",
@@ -31,6 +42,7 @@
     "react-native-safe-area-context": "^5.5.1",
     "react-native-screens": "^4.11.1",
     "react-native-vector-icons": "^10.2.0",
+    "react-native-webview": "^13.15.0",
     "rn-fetch-blob": "^0.12.0"
   },
   "devDependencies": {
@@ -45,6 +57,7 @@
     "@react-native/metro-config": "0.80.1",
     "@react-native/typescript-config": "0.80.1",
     "@types/jest": "^29.5.13",
+    "@types/jquery-param": "^1.0.4",
     "@types/react": "^19.1.0",
     "@types/react-test-renderer": "^19.1.0",
     "eslint": "^8.19.0",

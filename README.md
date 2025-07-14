@@ -1,59 +1,282 @@
 # ISP Connect App
 
-A modern React Native app for ISP customers to manage their internet services, inspired by Vodafone, Airtel, and Jio apps.
+A modern React Native app for ISP customers to manage their internet services, with support for multiple clients (Microscan, DNA Infotel, etc.).
+
+## 🚀 Quick Start
+
+### Build for Different Clients
+
+```bash
+# Build for Microscan (Current)
+npm run build:microscan
+
+# Build for DNA Infotel
+npm run build:dna-infotel
+
+# Run on Android
+npm run dev:microscan    # or npm run dev:dna-infotel
+
+# Run on iOS
+npm run ios:microscan    # or npm run ios:dna-infotel
+```
+
+### What Gets Changed Per Client
+
+| Client | Bundle ID | App Name | API URL | Company |
+|--------|-----------|----------|---------|---------|
+| **Microscan** | `in.spacecom.log2space.client.microscan` | "Microscan ISP App" | `https://mydesk.microscan.co.in` | "Microscan Internet Private Limited" |
+| **DNA Infotel** | `com.h8.dnasubscriber` | "DNA Infotel App" | `https://crm.dnainfotel.com` | "DNA Infotel Private Limited" |
+
+## 📚 **Documentation**
+
+- **📖 [README.md](README.md)** - Complete setup and configuration guide
+- **⚡ [QUICK_START.md](QUICK_START.md)** - Quick reference for commands
+- **🍎 [IOS_DEVELOPMENT_NOTES.md](IOS_DEVELOPMENT_NOTES.md)** - iOS development guide
+- **🔧 [API_INTEGRATION.md](API_INTEGRATION.md)** - API integration details
 
 ## Features
 
-- **Login Screen**: Username/Password and OTP login options with ISP logo and beautiful gradient background
-- **Home Screen**: Account details, quick actions, and bill management with branded header
+- **Multi-Client Support**: Easy switching between different ISP clients
+- **Login Screen**: Username/Password and OTP login with client-specific branding
+- **Home Screen**: Account details, quick actions, and bill management
 - **Ledger Screen**: Complete transaction history with PDF download functionality
-- **More Options Screen**: Extended menu with additional features and logo
-- **Modern UI**: Clean, responsive design with beautiful animations and gradients
+- **More Options Screen**: Extended menu with additional features
+- **Modern UI**: Clean, responsive design with beautiful animations
 - **Cross-platform**: Works on both Android and iOS
-- **Branded Design**: ISP logo integration throughout the app
 - **PDF Download**: Download invoices, receipts, and proforma invoices
 - **Real API Integration**: Connected to backend services for live data
 
-## Screenshots
+## 📁 Project Structure
+
+```
+ISPApp/
+├── config/                    # Client configurations
+│   ├── microscan/            # Microscan client config
+│   │   ├── app.json          # App metadata
+│   │   ├── api.ts            # API endpoints
+│   │   ├── strings.json      # Text strings
+│   │   ├── keystore-config.gradle  # Keystore configuration
+│   │   ├── Log2SpaceEndUserMicroscan.jks  # Keystore file
+│   │   └── assets/           # Logos and icons
+│   └── dna-infotel/          # DNA Infotel client config
+│       ├── app.json
+│       ├── api.ts
+│       ├── strings.json
+│       ├── keystore-config.gradle  # Keystore configuration
+│       ├── Log2spaceDNAInfotelAppKey.jks  # Keystore file
+│       └── assets/
+├── src/                      # Main app source code
+│   ├── screens/              # App screens
+│   ├── components/           # Reusable components
+│   ├── services/             # API and utility services
+│   └── utils/                # Context and utilities
+└── scripts/
+    └── build-client.js       # Build automation script
+```
+
+## 🔧 Adding a New Client
+
+### Step 1: Create Client Directory
+```bash
+mkdir -p config/newclient
+mkdir -p config/newclient/assets
+```
+
+### Step 2: Copy Template Files
+```bash
+cp config/microscan/* config/newclient/
+```
+
+### Step 3: Update Configuration Files
+
+**app.json** - Update bundle ID and app name:
+```json
+{
+  "name": "New Client ISP",
+  "displayName": "New Client ISP",
+  "expo": {
+    "name": "New Client ISP",
+    "slug": "newclient-isp-app"
+  }
+}
+```
+
+**api.ts** - Update API endpoints:
+```typescript
+export const API_CONFIG = {
+  BASE_URL: 'https://api.newclient.com',
+  ENDPOINTS: {
+    CHECK_AUTH_TYPE: '/auth/check-type',
+    LOGIN: '/auth/login',
+    // ... other endpoints
+  }
+};
+```
+
+**strings.json** - Update company details:
+```json
+{
+  "companyName": "New Client Internet",
+  "appName": "New Client ISP",
+  "welcomeMessage": "Welcome to New Client ISP"
+}
+```
+
+### Step 4: Add Keystore Files
+
+**Add your keystore file:**
+```bash
+# Copy your keystore file to the client config directory
+cp your-keystore.jks config/newclient/
+```
+
+**Update keystore-config.gradle:**
+```gradle
+// New Client Keystore Configuration
+signingConfigs {
+    debug {
+        storeFile file('debug.keystore')
+        storePassword 'android'
+        keyAlias 'androiddebugkey'
+        keyPassword 'android'
+    }
+    release {
+        storeFile file('your-keystore.jks')  // Your keystore file name
+        storePassword 'your_store_password'   // Your store password
+        keyAlias 'your_key_alias'            // Your key alias
+        keyPassword 'your_key_password'       // Your key password
+    }
+}
+```
+
+### Step 5: Add Build Script
+Add to `package.json`:
+```json
+{
+  "scripts": {
+    "build:newclient": "node scripts/build-client.js newclient",
+    "dev:newclient": "npm run build:newclient && npx react-native run-android"
+  }
+}
+```
+
+### Step 6: Add Client Logo
+- Place logo in `config/newclient/assets/`
+- Update `config/newclient/logo-config.json` with dimensions
+
+## 🔐 Keystore Management
+
+### Current Keystore Files
+
+| Client | Keystore File | Store Password | Key Alias | Key Password |
+|--------|---------------|----------------|-----------|--------------|
+| **Microscan** | `Log2SpaceEndUserMicroscan.jks` | `log2space` | `log2space` | `log2space` |
+| **DNA Infotel** | `Log2spaceDNAInfotelAppKey.jks` | `dnasubscriber` | `dnasubscriber` | `dnasubscriber` |
+
+### Adding Keystore for New Client
+
+1. **Place keystore file** in `config/newclient/your-keystore.jks`
+2. **Update keystore-config.gradle** with your credentials:
+   ```gradle
+   release {
+       storeFile file('your-keystore.jks')
+       storePassword 'your_store_password'
+       keyAlias 'your_key_alias'
+       keyPassword 'your_key_password'
+   }
+   ```
+
+### Security Notes
+- ✅ Keystore files are copied to `android/app/` during build
+- ✅ Each client has separate keystore configuration
+- ✅ Passwords are stored in keystore-config.gradle files
+- ⚠️ Keep keystore files secure and backed up
+- ⚠️ Update passwords in keystore-config.gradle when needed
+
+## 🎨 Logo Management
+
+### In-App Logos
+- **Location**: `src/assets/` (copied from client config)
+- **Usage**: Login screen, headers, etc.
+- **Format**: PNG with transparent background
+
+### App Icons
+- **Android**: `android/app/src/main/res/mipmap-*/`
+- **iOS**: `ios/ISPApp/Images.xcassets/AppIcon.appiconset/`
+
+### Required Icon Sizes
+- **Android**: 48x48, 72x72, 96x96, 144x144, 192x192 px
+- **iOS**: 20x20, 29x29, 40x40, 60x60, 76x76, 83.5x83.5 px
+
+## 🚨 Common Issues & Fixes
+
+### Logo Not Updating
+```bash
+# Clear cache and rebuild
+npx react-native start --reset-cache
+adb shell am force-stop com.h8.dnasubscriber
+npm run build:dna-infotel
+```
+
+### Package Name Errors
+```bash
+# Clean Android build
+cd android && ./gradlew clean && cd ..
+npm run build:dna-infotel
+```
+
+### App Name Not Changing
+```bash
+# Uninstall and reinstall
+adb uninstall com.h8.dnasubscriber
+npm run build:dna-infotel
+```
+
+### Keystore Errors
+```bash
+# Clean Android build
+cd android && ./gradlew clean && cd ..
+
+# Check keystore file exists
+ls android/app/*.jks
+
+# Rebuild with keystore
+npm run build:dna-infotel
+```
+
+### iOS Module Registration Error
+```bash
+# Fix iOS module registration
+npm run fix-ios
+
+# Then rebuild for your client
+npm run build:dna-infotel
+```
+
+## 📱 Screenshots
 
 ### Login Screen
-- Beautiful grey gradient background
-- ISP logo prominently displayed in header
-- Tabbed interface for Username/Password and OTP login
+- Beautiful gradient background
+- Client-specific logo in header
+- Tabbed interface for login methods
 - Modern form design with validation
-- Smooth keyboard handling
 - Glass-morphism effect on form container
 
 ### Home Screen
-- ISP logo in header alongside user information
+- Client logo in header with user information
 - Account details with plan information
-- Quick action buttons (Renew, Pay Bill, Support, Contact Us)
+- Quick action buttons (Renew, Pay Bill, Support)
 - Bill information with payment options
 - Usage statistics with progress bar
-- More options menu with logout button
 
 ### Ledger Screen
 - **Transaction History**: View all invoices, receipts, and proforma invoices
-- **Tabbed Interface**: Dynamic tabs showing only available data types
 - **PDF Download**: Download any document with one tap
 - **Pull-to-Refresh**: Refresh data by pulling down
 - **Account Summary**: Bottom section with balance details
-- **Loading States**: Proper loading indicators
-- **Error Handling**: Graceful error handling with retry options
-- **Empty States**: Beautiful empty state when no data available
+- **Dynamic Tabs**: Shows only available data types
 
-### More Options Screen
-- ISP logo in header with back navigation
-- **Ledger**: Transaction history with PDF downloads
-- **KYC**: Identity verification
-- **Upgrade Plan**: Change your plan
-- **Usage Details**: Detailed statistics
-- **Renew Plan**: Extend your plan
-- **Speed Test**: Opens Speedtest.net website
-- **Refer Friend**: Referral program
-- **Logout**: Sign out functionality
-
-## Setup Instructions
+## 🔧 Setup Instructions
 
 ### Prerequisites
 - Node.js (v16 or higher)
@@ -80,263 +303,43 @@ A modern React Native app for ISP customers to manage their internet services, i
 
 ### Running the App
 
-#### Android
+#### Build and Run for Specific Client
 ```bash
-npx react-native run-android
+# Microscan
+npm run dev:microscan
+
+# DNA Infotel
+npm run dev:dna-infotel
+
+# Custom client
+npm run dev:newclient
 ```
 
-#### iOS (macOS only)
-```bash
-npx react-native run-ios
-```
+## 📋 Client Configuration Checklist
 
-## Project Structure
+When adding a new client, ensure you've updated:
 
-```
-src/
-├── screens/
-│   ├── LoginScreen.tsx
-│   ├── HomeScreen.tsx
-│   ├── LedgerScreen.tsx
-│   ├── AccountDetailsScreen.tsx
-│   ├── BiometricAuthScreen.tsx
-│   ├── ContactUsScreen.tsx
-│   ├── LanguageScreen.tsx
-│   ├── PayBillScreen.tsx
-│   ├── PlanConfirmationScreen.tsx
-│   ├── RenewPlanScreen.tsx
-│   ├── SessionsScreen.tsx
-│   ├── TicketsScreen.tsx
-│   ├── WebViewScreen.tsx
-│   └── MoreOptionsScreen.tsx
-├── components/
-│   ├── CommonHeader.tsx
-│   ├── LogoImage.tsx
-│   ├── PatternLock.tsx
-│   └── PinInput.tsx
-├── services/
-│   ├── api.ts
-│   ├── biometricAuth.ts
-│   ├── downloadService.ts
-│   └── sessionManager.ts
-├── navigation/
-│   └── AppNavigator.tsx
-├── utils/
-│   ├── AuthContext.tsx
-│   ├── LanguageContext.tsx
-│   ├── ThemeContext.tsx
-│   └── themeStyles.ts
-└── i18n/
-    ├── index.ts
-    └── translations/
-        ├── en.json
-        ├── gu.json
-        ├── hi.json
-        └── mr.json
-```
+- [ ] Bundle ID in `android-build.gradle`
+- [ ] App name in `android-strings.xml` and `ios-Info.plist`
+- [ ] API endpoints in `api.ts`
+- [ ] Company name in `strings.json`
+- [ ] Logo dimensions in `logo-config.json`
+- [ ] Logo files in `assets/{client}/`
+- [ ] App icons in `assets/{client}/app-icons/`
+- [ ] **Keystore file** in `config/{client}/`
+- [ ] **Keystore configuration** in `keystore-config.gradle`
+- [ ] Build script entry in `build-client.js`
+- [ ] Package.json scripts
 
-## Features Implemented
+## 🎯 Benefits of Multi-Client Setup
 
-### Login Screen
-- ✅ Beautiful grey gradient background
-- ✅ ISP logo in header
-- ✅ Username/Password login (pre-filled for testing)
-- ✅ OTP login with phone number (pre-filled for testing)
-- ✅ Form validation
-- ✅ Modern UI with tabs
-- ✅ Keyboard handling
-- ✅ Glass-morphism effect on form
-
-### Home Screen
-- ✅ ISP logo in header with user info
-- ✅ Account details display
-- ✅ Renew button
-- ✅ Pay Bill button
-- ✅ Support button
-- ✅ Contact Us button
-- ✅ More menu options
-- ✅ Usage statistics
-- ✅ Bill information
-- ✅ Clean header layout
-
-### Ledger Screen (NEW)
-- ✅ **Real API Integration**: Connected to backend `userLedger` API
-- ✅ **Dynamic Tabs**: Shows only tabs with available data
-- ✅ **PDF Download**: Download invoices, receipts, and proforma invoices
-- ✅ **Cross-platform Download**: Works on both Android and iOS
-- ✅ **Pull-to-Refresh**: Refresh data by pulling down
-- ✅ **Loading States**: Proper loading indicators with spinner
-- ✅ **Error Handling**: Graceful error handling with retry button
-- ✅ **Empty States**: Beautiful empty state when no transactions
-- ✅ **Account Summary**: Bottom section with balance details
-- ✅ **File Management**: Automatic file cleanup and overwrite handling
-- ✅ **Permissions**: Android storage permissions for downloads
-- ✅ **User Feedback**: Success/error alerts for download status
-
-### More Options Screen
-- ✅ ISP logo in header with back navigation
-- ✅ Ledger (Transaction history with PDF downloads)
-- ✅ KYC (Identity verification)
-- ✅ Upgrade Plan (Change plan)
-- ✅ Usage Details (Detailed statistics)
-- ✅ Renew Plan (Extend plan)
-- ✅ Speed Test (Opens Speedtest.net)
-- ✅ Refer Friend (Referral program)
-- ✅ Logout functionality
-- ✅ Back navigation
-- ✅ Modern card-based design
-
-## API Integration
-
-### Ledger API
-- **Endpoint**: `selfcareGetUserInformation`
-- **Features**:
-  - Fetches user invoices, receipts, and proforma invoices
-  - Returns account summary with balances
-  - Handles authentication with session tokens
-  - Error handling for network issues
-  - Data transformation for UI display
-
-### Download API
-- **Endpoints**:
-  - `selfcareGenerateInvoicePDF` - For invoices and proforma invoices
-  - `selfcareGenerateReceiptPDF` - For receipts/payments
-- **Features**:
-  - Cross-platform PDF download
-  - File management (cleanup, overwrite)
-  - User feedback (success/error alerts)
-  - Proper error handling
-
-## Services
-
-### API Service (`api.ts`)
-- ✅ **Authentication**: Session-based authentication
-- ✅ **userLedger**: Fetch transaction history
-- ✅ **Error Handling**: Network error detection
-- ✅ **Data Transformation**: Format dates and structure data
-- ✅ **Request Management**: Proper headers and timeouts
-
-### Download Service (`downloadService.ts`)
-- ✅ **Cross-platform**: Works on Android and iOS
-- ✅ **File Management**: Automatic cleanup and overwrite
-- ✅ **Permissions**: Android storage permissions
-- ✅ **User Feedback**: Success/error alerts
-- ✅ **Error Handling**: Comprehensive error handling
-- ✅ **File Naming**: Proper file naming based on document type
-
-### Session Manager (`sessionManager.ts`)
-- ✅ **Session Storage**: Secure session management
-- ✅ **Token Management**: Authentication token handling
-- ✅ **User Data**: Username and session data storage
-
-## Design Features
-
-- **Gradient Backgrounds**: Beautiful grey gradients for visual appeal
-- **Glass-morphism**: Semi-transparent form containers with blur effects
-- **Branded Design**: ISP logo integration throughout the app
-- **Color Scheme**: Modern blue (#3498db) with grey gradients
-- **Typography**: Clear hierarchy with proper font weights
-- **Cards**: Elevated cards with shadows for depth
-- **Icons**: Emoji icons for quick recognition
-- **Responsive**: Works on different screen sizes
-- **Accessibility**: Proper contrast and touch targets
-- **Navigation**: Smooth transitions between screens
-
-## Special Features
-
-### Ledger Functionality
-- **Real-time Data**: Live data from backend APIs
-- **PDF Downloads**: Download any transaction document
-- **Dynamic UI**: Tabs show only available data types
-- **Pull-to-Refresh**: Refresh data by pulling down
-- **Account Summary**: Complete balance breakdown
-- **Cross-platform**: Works seamlessly on Android and iOS
-
-### PDF Download System
-- **Android**: Downloads to Downloads folder with notification
-- **iOS**: Downloads to Documents folder with preview option
-- **File Management**: Automatic cleanup and overwrite
-- **User Feedback**: Clear success/error messages
-- **Permissions**: Proper Android storage permissions
-- **Error Handling**: Comprehensive error handling
-
-### Gradient Background
-- **Beautiful grey gradient**: From dark grey to light grey
-- **Professional appearance**: Modern, sophisticated look
-- **Cross-platform**: Works on both Android and iOS
-- **Performance optimized**: Smooth rendering
-
-### ISP Logo Integration
-- **Cross-platform**: Works on both Android and iOS
-- **Responsive sizing**: Adapts to different screen sizes
-- **Error handling**: Graceful fallback if image fails to load
-- **Consistent placement**: Logo appears in all major screens
-
-### Speed Test Integration
-- Opens Speedtest.net website directly in device browser
-- Handles errors gracefully if browser is not available
-- Uses React Native Linking API
-
-### Logout Functionality
-- Available in More Options screen
-- Confirmation dialog before logout
-- Returns to Login screen after logout
-
-### Pre-filled Login Credentials
-- **Username**: `testuser`
-- **Password**: `password123`
-- **Phone**: `9876543210`
-- **OTP**: `123456`
-- **Quick testing**: No need to type credentials
-
-## Dependencies Added
-
-### Core Dependencies
-- `react-native-fetch-blob`: For PDF downloads
-- `react-native-safe-area-context`: For safe area handling
-- `react-i18next`: For internationalization
-- `i18next`: Internationalization framework
-
-### Development Dependencies
-- `@types/react-native-fetch-blob`: TypeScript types for fetch-blob
-
-## Recent Updates
-
-### Ledger Screen Implementation
-- ✅ **API Integration**: Connected to real backend APIs
-- ✅ **PDF Download**: Full cross-platform download functionality
-- ✅ **Dynamic Tabs**: Shows only available data types
-- ✅ **Pull-to-Refresh**: Refresh functionality
-- ✅ **Loading States**: Proper loading indicators
-- ✅ **Error Handling**: Comprehensive error handling
-- ✅ **Empty States**: Beautiful empty state design
-- ✅ **Account Summary**: Complete balance breakdown
-
-### Download Service
-- ✅ **Cross-platform**: Android and iOS support
-- ✅ **File Management**: Automatic cleanup and overwrite
-- ✅ **Permissions**: Android storage permissions
-- ✅ **User Feedback**: Success/error alerts
-- ✅ **Error Handling**: Comprehensive error handling
-
-### API Service
-- ✅ **userLedger**: Complete transaction history API
-- ✅ **Authentication**: Session-based authentication
-- ✅ **Error Handling**: Network error detection
-- ✅ **Data Transformation**: Proper data formatting
-
-## Next Steps
-
-1. **Payment Gateway**: Integrate payment processing for bill payments
-2. **Push Notifications**: Add notification support for important updates
-3. **Offline Support**: Add offline capabilities for basic functionality
-4. **Testing**: Add unit and integration tests
-5. **Real Speed Test**: Integrate native speed test functionality
-6. **KYC Integration**: Connect to real KYC verification services
-7. **Custom Logo**: Replace with your specific ISP logo
-8. **Custom Gradients**: Adjust gradient colors to match brand
-9. **Biometric Authentication**: Implement fingerprint/face ID login
-10. **Multi-language Support**: Complete internationalization
+- ✅ **Same codebase** for all clients
+- ✅ **Different bundle IDs** (separate apps)
+- ✅ **Different API endpoints** (client-specific backends)
+- ✅ **Different branding** (logos, company names)
+- ✅ **Different keystores** (separate app signing)
+- ✅ **Easy to add new clients** (5 minutes setup)
+- ✅ **No code duplication** (maintain once, use everywhere)
 
 ## Technologies Used
 

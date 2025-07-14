@@ -4,10 +4,10 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Image,
 } from 'react-native';
 import {useTheme} from '../utils/ThemeContext';
 import {getThemeColors} from '../utils/themeStyles';
+import LogoImage from './LogoImage';
 
 interface CommonHeaderProps {
   navigation: any;
@@ -48,10 +48,7 @@ const CommonHeader = ({
       )}
       
       <View style={styles.headerCenter}>
-        <Image 
-          source={require('../assets/isp_logo.png')} 
-          style={[{ width: 180, height: 56 }, styles.logo]} 
-        />
+        <LogoImage type="header" />
         {title && (
           <Text style={[styles.headerTitle, {color: colors.text}]}>{title}</Text>
         )}

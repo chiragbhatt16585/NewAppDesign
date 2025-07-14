@@ -24,8 +24,43 @@ const AccountDetailsScreen = ({navigation}: any) => {
 
   // Fetch account data on component mount
   useEffect(() => {
-    fetchAccountData();
+    checkSessionAndLoadData();
   }, []);
+
+  const checkSessionAndLoadData = async () => {
+    try {
+      const session = await sessionManager.getCurrentSession();
+      if (!session?.username) {
+        console.log('=== ACCOUNT DETAILS SCREEN: No user session found, redirecting to Login ===');
+        Alert.alert(
+          'Authentication Required',
+          'Please login to view your account details.',
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.navigate('Login')
+            }
+          ]
+        );
+        return;
+      }
+      
+      // If session exists, load account data
+      fetchAccountData();
+    } catch (error) {
+      console.error('=== ACCOUNT DETAILS SCREEN: Session check error ===', error);
+      Alert.alert(
+        'Authentication Error',
+        'Please login again to continue.',
+        [
+          {
+            text: 'OK',
+            onPress: () => navigation.navigate('Login')
+          }
+        ]
+      );
+    }
+  };
 
   const fetchAccountData = async () => {
     try {

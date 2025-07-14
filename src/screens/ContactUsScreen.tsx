@@ -14,6 +14,7 @@ import {useTheme} from '../utils/ThemeContext';
 import {getThemeColors} from '../utils/themeStyles';
 import CommonHeader from '../components/CommonHeader';
 import {useTranslation} from 'react-i18next';
+import clientStrings from '../config/client-strings.json';
 
 const ContactUsScreen = ({navigation}: any) => {
   const {isDark} = useTheme();
@@ -23,7 +24,7 @@ const ContactUsScreen = ({navigation}: any) => {
 
   // Company contact data
   const contactInfo = {
-    companyName: 'Microscan Internet PVT. LTD.',
+    companyName: clientStrings.company_name,
     gstin: '27AABCM4852A1ZT',
     whatsappNumber: '+91 9930793707',
     headOffice: {

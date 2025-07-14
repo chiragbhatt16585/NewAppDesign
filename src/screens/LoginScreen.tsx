@@ -23,6 +23,7 @@ import DeviceInfo from 'react-native-device-info';
 import {apiService} from '../services/api';
 import sessionManager from '../services/sessionManager';
 import { useLanguage } from '../utils/LanguageContext';
+import clientStrings from '../config/client-strings.json';
 
 const {width, height} = Dimensions.get('window');
 
@@ -225,7 +226,7 @@ const LoginScreen = ({navigation}: any) => {
           const response = await apiService.authenticate(username, password);
           
           if (response && response.token) {
-            await sessionManager.createSession(username, response.token);
+            await sessionManager.createSession(username, response.token, password);
             Alert.alert('Success', 'Login successful!');
             navigation.navigate('Home');
             return;
@@ -259,7 +260,7 @@ const LoginScreen = ({navigation}: any) => {
           const response = await apiService.authenticate(username, password);
           
           if (response && response.token) {
-            await sessionManager.createSession(username, response.token);
+            await sessionManager.createSession(username, response.token, password);
             Alert.alert('Success', 'Login successful!');
             navigation.navigate('Home');
           } else {
@@ -354,10 +355,10 @@ const LoginScreen = ({navigation}: any) => {
                 transform: [{translateY: slideAnim}],
               },
             ]}>
-            <View style={styles.logoSection}>
-              <Image source={require('../assets/isp_logo.png')} style={[{ width: 180, height: 60 }, styles.logo]} />
-            </View>
-            <Text style={[styles.title, {color: colors.text}]}>Microscan Internet Private Limited</Text>
+                            <View style={styles.logoSection}>
+                  <LogoImage type="login" />
+                </View>
+                                                      <Text style={[styles.title, {color: colors.text}]}>{clientStrings.company_name}</Text>
           </Animated.View>
 
           {/* Login Interface */}
@@ -697,7 +698,7 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   logoSection: {
-    marginBottom: 15,
+    marginBottom: 2,
   },
   logo: {
     marginBottom: 8,
@@ -705,7 +706,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 6,
+    marginBottom: 2,
     textAlign: 'center',
   },
   loginInterface: {

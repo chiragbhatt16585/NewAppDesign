@@ -1,0 +1,20 @@
+{
+  "company_name": "Microscan Internet Private Limited",
+  "app_name": "Microscan ISP App",
+  "powered_by": "Powered By Spacecom Software LLP",
+  "login": {
+    "title": "Welcome to Microscan",
+    "subtitle": "Your trusted internet service provider"
+  },
+  "common": {
+    "login": "Login",
+    "logout": "Logout",
+    "username": "Username",
+    "password": "Password",
+    "submit": "Submit",
+    "cancel": "Cancel",
+    "ok": "OK",
+    "error": "Error",
+    "success": "Success"
+  }
+} 

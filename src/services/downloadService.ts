@@ -2,6 +2,7 @@ import { Platform, PermissionsAndroid, Alert } from 'react-native';
 import RNFetchBlob from 'rn-fetch-blob';
 import { domainUrl } from './api';
 import sessionManager from './sessionManager';
+import apiService from './api';
 
 export interface DownloadOptions {
   id: string;
@@ -50,13 +51,6 @@ class DownloadService {
       
       // Build the complete URL
       const completeUrl = `https://${domainUrl}/l2s/api/${apiEndpoint}?id=${id.toString()}&username=${session.username}&request_app=user_app&request_source=app`;
-      
-      // console.log('=== DOWNLOAD SERVICE ===');
-      // console.log('Type:', type);
-      // console.log('API Endpoint:', apiEndpoint);
-      // console.log('File Name:', fileName);
-      // console.log('Complete URL:', completeUrl);
-      // console.log('========================');
 
       if (Platform.OS === 'android') {
         await this.downloadForAndroid(completeUrl, fileName, session.token);
@@ -64,7 +58,7 @@ class DownloadService {
         await this.downloadForIOS(completeUrl, fileName, session.token);
       }
     } catch (error: any) {
-      // console.error('Download error:', error);
+      console.error('Download error:', error);
       Alert.alert('Error', `Download failed: ${error.message}`);
     }
   }

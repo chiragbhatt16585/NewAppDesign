@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { apiService } from '../services/api';
 import sessionManager from '../services/sessionManager';
+import sessionMonitor from '../services/sessionMonitor';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -22,7 +23,7 @@ export const useAuth = () => {
 };
 
 interface AuthProviderProps {
-  children: ReactNode;
+  children: React.ReactNode;
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
@@ -46,7 +47,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             username: session.username,
             token: session.token,
           });
+          // Start session monitoring when user is authenticated
+          sessionMonitor.startMonitoring();
         }
+      } else {
+        // Stop session monitoring when user is not authenticated
+        sessionMonitor.stopMonitoring();
       }
     } catch (error) {
       console.error('Error checking auth status:', error);
@@ -61,12 +67,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await apiService.authenticate(username, password);
       
       if (response && response.token) {
-        await sessionManager.createSession(username, response.token);
+        await sessionManager.createSession(username, response.token, password);
         setIsAuthenticated(true);
         setUserData({
           username,
           token: response.token,
         });
+        // Start session monitoring after successful login
+        sessionMonitor.startMonitoring();
         return true;
       }
       return false;
@@ -90,6 +98,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           username: phoneNumber,
           token: response.token,
         });
+        // Start session monitoring after successful OTP login
+        sessionMonitor.startMonitoring();
         return true;
       }
       return false;
@@ -108,12 +118,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await sessionManager.logout();
       setIsAuthenticated(false);
       setUserData(null);
+      // Stop session monitoring when user logs out
+      sessionMonitor.stopMonitoring();
     } catch (error) {
       console.error('Logout error:', error);
       // Even if API logout fails, clear local session
       await sessionManager.logout();
       setIsAuthenticated(false);
       setUserData(null);
+      sessionMonitor.stopMonitoring();
     } finally {
       setLoading(false);
     }

@@ -1,0 +1,20 @@
+{
+  "company_name": "DNA Infotel Private Limited",
+  "app_name": "DNA Infotel App",
+  "powered_by": "Powered By Spacecom Software LLP",
+  "login": {
+    "title": "Welcome to DNA Infotel",
+    "subtitle": "Your trusted internet service provider"
+  },
+  "common": {
+    "login": "Login",
+    "logout": "Logout",
+    "username": "Username",
+    "password": "Password",
+    "submit": "Submit",
+    "cancel": "Cancel",
+    "ok": "OK",
+    "error": "Error",
+    "success": "Success"
+  }
+} 
