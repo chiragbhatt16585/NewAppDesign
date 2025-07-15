@@ -15,11 +15,26 @@ import {useTheme} from '../utils/ThemeContext';
 import {getThemeColors} from '../utils/themeStyles';
 import CommonHeader from '../components/CommonHeader';
 import {useTranslation} from 'react-i18next';
-import {apiService, Session} from '../services/api';
+import {apiService} from '../services/api';
 import {useAuth} from '../utils/AuthContext';
 import sessionManager from '../services/sessionManager';
+import {useFocusEffect} from '@react-navigation/native';
 
 const {width: screenWidth} = Dimensions.get('window');
+
+// Session interface to match the API response
+interface Session {
+  index: number;
+  ipAddress: string;
+  loginTime: string;
+  loginDate: string;
+  loginTs: string;
+  logoutTs: string;
+  sessionTime: string;
+  download: string;
+  upload: string;
+  total_upload_download: string;
+}
 
 interface SessionData {
   id: string;
@@ -32,8 +47,8 @@ interface SessionData {
   uploadsGB: string;
   totalDataGB: string;
   ipAddress: string;
-  loginTime: string;
-  logoutTime: string;
+  loginTime: string; // Now contains full timestamp with date and time
+  logoutTime: string; // Now contains full timestamp with date and time
 }
 
   // Helper function to convert API session to UI session data
@@ -58,15 +73,38 @@ interface SessionData {
     
     // Format duration to be more readable
     const formatDuration = (duration: string) => {
-      if (!duration || duration === '0:0:0') return '0h 0m';
+      if (!duration || duration === '0:0:0') return '0h 0m 0s';
       
       const parts = duration.split(':');
       if (parts.length === 3) {
         const hours = parseInt(parts[0]) || 0;
         const minutes = parseInt(parts[1]) || 0;
-        return `${hours}h ${minutes}m`;
+        const seconds = parseInt(parts[2]) || 0;
+        return `${hours}h ${minutes}m ${seconds}s`;
       }
       return duration;
+    };
+    
+    // Format timestamp to show date and time
+    const formatTimestamp = (timestamp: string) => {
+      if (!timestamp || timestamp === '') return '';
+      
+      // If timestamp contains space, it likely has both date and time
+      if (timestamp.includes(' ')) {
+        return timestamp; // Return as is if it's already formatted
+      }
+      
+      // Try to parse and format the timestamp
+      try {
+        const date = new Date(timestamp);
+        if (!isNaN(date.getTime())) {
+          return date.toLocaleString(); // This will show both date and time
+        }
+      } catch (e) {
+        // If parsing fails, return as is
+      }
+      
+      return timestamp;
     };
     
     const convertedData = {
@@ -80,8 +118,8 @@ interface SessionData {
       uploadsGB: apiSession.upload,
       totalDataGB: apiSession.total_upload_download,
       ipAddress: apiSession.ipAddress,
-      loginTime: apiSession.loginTime,
-      logoutTime: apiSession.logoutTs.split(' ')[1] || apiSession.logoutTs,
+      loginTime: formatTimestamp(apiSession.loginTs),
+      logoutTime: formatTimestamp(apiSession.logoutTs),
     };
     
     return convertedData;
@@ -105,22 +143,34 @@ const SessionsScreen = ({navigation}: any) => {
         setLoading(true);
         setError(null);
         
-        if (!userData?.username) {
+        // Always check if user is authenticated
+        const isLoggedIn = await sessionManager.isLoggedIn();
+        if (!isLoggedIn) {
           throw new Error('User not authenticated');
         }
 
-        const realm = await sessionManager.getUsername(); // Use username as realm for now
-        const accountStatus = 'active'; // You might want to get this from user data
-        
-        console.log('=== FETCHING SESSIONS ===');
-        console.log('Username:', userData.username, 'Realm:', realm);
-        
-        if (!realm) {
-          throw new Error('Realm not available');
+        // Get fresh user data from session
+        const currentSession = await sessionManager.getCurrentSession();
+        if (!currentSession || !currentSession.username) {
+          throw new Error('No valid user session found');
         }
+
+        const username = currentSession.username;
+        const realm = username; // Use username as realm for now
+        const accountStatus = 'active';
         
-        const apiSessions = await apiService.lastTenSessions(userData.username, accountStatus, realm);
+        console.log('=== FETCHING SESSIONS FOR CURRENT USER ===');
+        console.log('Current username:', username);
+        console.log('Realm:', realm);
+        console.log('User data from context:', userData);
+        
+        const apiSessions = await apiService.lastTenSessions(username, accountStatus, realm);
         console.log('Sessions received:', apiSessions.length);
+        console.log('=== RAW API SESSIONS DATA ===');
+        apiSessions.forEach((session: Session, index: number) => {
+          console.log(`Session ${index + 1}:`, JSON.stringify(session, null, 2));
+        });
+        console.log('=== END RAW API DATA ===');
         
         const convertedSessions = apiSessions.map(convertApiSessionToUIData);
         
@@ -141,20 +191,83 @@ const SessionsScreen = ({navigation}: any) => {
       }
     };
 
+    // Fetch sessions immediately when component mounts
     fetchSessions();
+    
+    // Also fetch when userData changes (in case of login/logout)
+    if (userData?.username) {
+      fetchSessions();
+    }
   }, [userData?.username]);
+
+  // Refresh data when screen comes into focus (for when app is reopened)
+  useFocusEffect(
+    React.useCallback(() => {
+      const refreshSessions = async () => {
+        try {
+          setLoading(true);
+          setError(null);
+          
+          // Always check if user is authenticated
+          const isLoggedIn = await sessionManager.isLoggedIn();
+          if (!isLoggedIn) {
+            throw new Error('User not authenticated');
+          }
+
+          // Get fresh user data from session
+          const currentSession = await sessionManager.getCurrentSession();
+          if (!currentSession || !currentSession.username) {
+            throw new Error('No valid user session found');
+          }
+
+          const username = currentSession.username;
+          const realm = username;
+          const accountStatus = 'active';
+          
+          console.log('=== REFRESHING SESSIONS ON FOCUS ===');
+          console.log('Current username:', username);
+          
+          const apiSessions = await apiService.lastTenSessions(username, accountStatus, realm);
+          console.log('Sessions received on focus:', apiSessions.length);
+          console.log('=== RAW API SESSIONS DATA (ON FOCUS) ===');
+          apiSessions.forEach((session: Session, index: number) => {
+            console.log(`Session ${index + 1}:`, JSON.stringify(session, null, 2));
+          });
+          console.log('=== END RAW API DATA (ON FOCUS) ===');
+          
+          const convertedSessions = apiSessions.map(convertApiSessionToUIData);
+          
+          // Filter out empty sessions
+          const validSessions = convertedSessions.filter((session: SessionData) => 
+            session.totalDuration !== "0h 0m" && session.date !== ""
+          );
+          
+          console.log('Valid sessions on focus:', validSessions.length);
+          setSessionsData(validSessions);
+          
+        } catch (err: any) {
+          console.error('Error refreshing sessions:', err);
+          setError(err.message || 'Failed to refresh sessions');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      refreshSessions();
+    }, [])
+  );
 
   // Loading state
   if (loading) {
     return (
       <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}>
         <CommonHeader navigation={navigation} />
-        <View style={styles.headingContainer}>
+        {/* <View style={styles.headingContainer}>
           <Text style={[styles.pageHeading, {color: colors.text}]}>{t('sessions.title')}</Text>
           <Text style={[styles.pageSubheading, {color: colors.textSecondary}]}>
             {t('sessions.subtitle')}
           </Text>
-        </View>
+        </View> */}
         <View style={styles.loadingContainer}>
           <Text style={[styles.loadingText, {color: colors.textSecondary}]}>Loading...</Text>
         </View>
@@ -202,12 +315,18 @@ const SessionsScreen = ({navigation}: any) => {
         <View style={styles.sessionDetails}>
           <View style={styles.detailRow}>
             <View style={styles.detailItem}>
+              <View style={styles.detailIconContainer}>
+                <Text style={styles.detailIcon}>↑</Text>
+              </View>
               <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>
                 {t('sessions.upload')}
               </Text>
               <Text style={[styles.detailValue, {color: colors.text}]}>{item.totalUpload}</Text>
             </View>
             <View style={styles.detailItem}>
+              <View style={styles.detailIconContainer}>
+                <Text style={styles.detailIcon}>↓</Text>
+              </View>
               <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>
                 {t('sessions.download')}
               </Text>
@@ -259,20 +378,51 @@ const SessionsScreen = ({navigation}: any) => {
     
     const totalDuration = `${totalHours}h ${totalMinutes}m`;
     
-    // Calculate total data usage
+    // Calculate total data usage with better format handling
     let totalUpload = 0;
     let totalDownload = 0;
     
-    validSessions.forEach(session => {
-      const uploadMatch = session.totalUpload.match(/(\d+\.?\d*)/);
-      const downloadMatch = session.totalDownload.match(/(\d+\.?\d*)/);
+    console.log('=== UPLOAD/DOWNLOAD DEBUG ===');
+    validSessions.forEach((session, index) => {
+      console.log(`Session ${index + 1}:`);
+      console.log('  Upload:', session.totalUpload);
+      console.log('  Download:', session.totalDownload);
       
-      if (uploadMatch && session.totalUpload.includes('GB')) {
-        totalUpload += parseFloat(uploadMatch[1]);
+      // Handle upload - try different formats
+      let uploadValue = 0;
+      if (session.totalUpload.includes('GB')) {
+        const match = session.totalUpload.match(/(\d+\.?\d*)/);
+        if (match) uploadValue = parseFloat(match[1]);
+      } else if (session.totalUpload.includes('MB')) {
+        const match = session.totalUpload.match(/(\d+\.?\d*)/);
+        if (match) uploadValue = parseFloat(match[1]) / 1024; // Convert MB to GB
+      } else if (session.totalUpload.includes('KB')) {
+        const match = session.totalUpload.match(/(\d+\.?\d*)/);
+        if (match) uploadValue = parseFloat(match[1]) / (1024 * 1024); // Convert KB to GB
+      } else {
+        // Try to parse as plain number (assume MB)
+        const match = session.totalUpload.match(/(\d+\.?\d*)/);
+        if (match) uploadValue = parseFloat(match[1]) / 1024;
       }
-      if (downloadMatch && session.totalDownload.includes('GB')) {
-        totalDownload += parseFloat(downloadMatch[1]);
+      totalUpload += uploadValue;
+      
+      // Handle download - try different formats
+      let downloadValue = 0;
+      if (session.totalDownload.includes('GB')) {
+        const match = session.totalDownload.match(/(\d+\.?\d*)/);
+        if (match) downloadValue = parseFloat(match[1]);
+      } else if (session.totalDownload.includes('MB')) {
+        const match = session.totalDownload.match(/(\d+\.?\d*)/);
+        if (match) downloadValue = parseFloat(match[1]) / 1024; // Convert MB to GB
+      } else if (session.totalDownload.includes('KB')) {
+        const match = session.totalDownload.match(/(\d+\.?\d*)/);
+        if (match) downloadValue = parseFloat(match[1]) / (1024 * 1024); // Convert KB to GB
+      } else {
+        // Try to parse as plain number (assume MB)
+        const match = session.totalDownload.match(/(\d+\.?\d*)/);
+        if (match) downloadValue = parseFloat(match[1]) / 1024;
       }
+      totalDownload += downloadValue;
     });
     
     console.log('=== SUMMARY DEBUG ===');
@@ -280,6 +430,8 @@ const SessionsScreen = ({navigation}: any) => {
     console.log('Session times:', validSessions.map(s => s.sessionTime));
     console.log('Calculated duration:', totalDuration);
     console.log('Total hours:', totalHours, 'Total minutes:', totalMinutes);
+    console.log('Total upload (GB):', totalUpload);
+    console.log('Total download (GB):', totalDownload);
     
     return {
       totalSessions,
@@ -298,6 +450,9 @@ const SessionsScreen = ({navigation}: any) => {
         
         <View style={styles.summaryGrid}>
           <View style={styles.summaryItem}>
+            <View style={styles.summaryIconContainer}>
+              <Text style={styles.summaryIcon}>📊</Text>
+            </View>
             <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>
               {t('sessions.totalSessions')}
             </Text>
@@ -305,6 +460,9 @@ const SessionsScreen = ({navigation}: any) => {
           </View>
           
           <View style={styles.summaryItem}>
+            <View style={styles.summaryIconContainer}>
+              <Text style={styles.summaryIcon}>⏱️</Text>
+            </View>
             <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>
               {t('sessions.totalDuration')}
             </Text>
@@ -312,6 +470,9 @@ const SessionsScreen = ({navigation}: any) => {
           </View>
           
           <View style={styles.summaryItem}>
+            <View style={styles.summaryIconContainer}>
+              <Text style={styles.summaryIcon}>↑</Text>
+            </View>
             <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>
               {t('sessions.totalUpload')}
             </Text>
@@ -319,6 +480,9 @@ const SessionsScreen = ({navigation}: any) => {
           </View>
           
           <View style={styles.summaryItem}>
+            <View style={styles.summaryIconContainer}>
+              <Text style={styles.summaryIcon}>↓</Text>
+            </View>
             <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>
               {t('sessions.totalDownload')}
             </Text>
@@ -336,9 +500,9 @@ const SessionsScreen = ({navigation}: any) => {
 
       {/* Page Heading */}
       <View style={styles.headingContainer}>
-        <Text style={[styles.pageHeading, {color: colors.text}]}>{t('sessions.title')}</Text>
-        <Text style={[styles.pageSubheading, {color: colors.textSecondary}]}>
-          {t('sessions.subtitle')}
+        <Text style={[styles.pageHeading, {color: colors.text}]}>{t('sessions.sessionHistory')}</Text>
+        <Text style={[styles.pageSubheading, {color: colors.textSecondary}]}> 
+          {t('sessions.sessionHistorySubtitle')}
         </Text>
       </View>
 
@@ -351,7 +515,6 @@ const SessionsScreen = ({navigation}: any) => {
         contentContainerStyle={styles.listContainer}
         ListHeaderComponent={
           <View>
-            {renderHeader()}
             {renderSummary()}
           </View>
         }
@@ -385,7 +548,7 @@ const SessionsScreen = ({navigation}: any) => {
               <>
                 <View style={styles.modalRow}>
                   <Text style={[styles.modalLabel, {color: colors.textSecondary}]}>{t('sessions.sessionTime')}</Text>
-                  <Text style={[styles.modalValue, {color: colors.text}]}>{selectedSession.sessionTime}</Text>
+                  <Text style={[styles.modalValue, {color: colors.text}]}>{selectedSession.totalDuration}</Text>
                 </View>
                 <View style={styles.modalRow}>
                   <Text style={[styles.modalLabel, {color: colors.textSecondary}]}>{t('sessions.downloadsGB')}</Text>
@@ -402,6 +565,10 @@ const SessionsScreen = ({navigation}: any) => {
                 <View style={styles.modalRow}>
                   <Text style={[styles.modalLabel, {color: colors.textSecondary}]}>{t('sessions.ipAddress')}</Text>
                   <Text style={[styles.modalValue, {color: colors.text}]}>{selectedSession.ipAddress}</Text>
+                </View>
+                <View style={styles.modalRow}>
+                  <Text style={[styles.modalLabel, {color: colors.textSecondary}]}>Date</Text>
+                  <Text style={[styles.modalValue, {color: colors.text}]}>{selectedSession.date}</Text>
                 </View>
                 <View style={styles.modalRow}>
                   <Text style={[styles.modalLabel, {color: colors.textSecondary}]}>{t('sessions.loginTime')}</Text>
@@ -521,14 +688,29 @@ const styles = StyleSheet.create({
   summaryItem: {
     width: '48%',
     marginBottom: 16,
+    alignItems: 'center',
+  },
+  summaryIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  summaryIcon: {
+    fontSize: 20,
   },
   summaryLabel: {
     fontSize: 12,
     marginBottom: 4,
+    textAlign: 'center',
   },
   summaryValue: {
     fontSize: 16,
     fontWeight: 'bold',
+    textAlign: 'center',
   },
   sessionCard: {
     borderRadius: 12,
@@ -570,14 +752,29 @@ const styles = StyleSheet.create({
   },
   detailItem: {
     flex: 1,
+    alignItems: 'center',
+  },
+  detailIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  detailIcon: {
+    fontSize: 16,
   },
   detailLabel: {
     fontSize: 12,
     marginBottom: 4,
+    textAlign: 'center',
   },
   detailValue: {
     fontSize: 14,
     fontWeight: '600',
+    textAlign: 'center',
   },
   emptyContainer: {
     alignItems: 'center',

@@ -16,6 +16,7 @@ import CommonHeader from '../components/CommonHeader';
 import {useTranslation} from 'react-i18next';
 import {apiService, Ticket} from '../services/api';
 import sessionManager from '../services/sessionManager';
+import AddTicketScreen from './AddTicketScreen';
 
 const TicketsScreen = ({navigation}: any) => {
   const {isDark} = useTheme();
@@ -24,6 +25,7 @@ const TicketsScreen = ({navigation}: any) => {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showAddTicket, setShowAddTicket] = useState(false);
 
 
   useEffect(() => {
@@ -46,7 +48,7 @@ const TicketsScreen = ({navigation}: any) => {
 
       // Use default realm since we don't have realm management in session
       const realm = 'default';
-      const ticketsData = await apiService.lastTenComplaints(formattedUsername, realm);
+      const ticketsData = await apiService.lastTenComplaints(realm);
       
       setTickets(ticketsData);
     } catch (err: any) {
@@ -59,15 +61,16 @@ const TicketsScreen = ({navigation}: any) => {
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Open':
+    const statusLower = status.toLowerCase();
+    switch (statusLower) {
+      case 'open':
         return '#FF6B35';
-      case 'In Progress':
+      case 'in progress':
         return '#FFA500';
-      case 'Resolved':
+      case 'resolved':
         return '#4CAF50';
-      case 'Closed':
-        return '#9E9E9E';
+      case 'closed':
+        return '#4CAF50';
       default:
         return '#757575';
     }
@@ -89,15 +92,16 @@ const TicketsScreen = ({navigation}: any) => {
   };
 
   const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'Open':
+    const statusLower = status.toLowerCase();
+    switch (statusLower) {
+      case 'open':
         return '🔴';
-      case 'In Progress':
+      case 'in progress':
         return '🟡';
-      case 'Resolved':
+      case 'resolved':
         return '🟢';
-      case 'Closed':
-        return '⚫';
+      case 'closed':
+        return '🟢';
       default:
         return '⚪';
     }
@@ -111,29 +115,31 @@ const TicketsScreen = ({navigation}: any) => {
       onPress={() => handleTicketPress(item)}>
       <View style={styles.ticketHeader}>
         <View style={styles.ticketInfo}>
+          <Text style={[styles.ticketIcon, {color: colors.textSecondary}]}>🔢</Text>
           <Text style={[styles.ticketNo, {color: colors.text}]}>{item.ticketNo}</Text>
-          <View style={[styles.statusBadge, {backgroundColor: getStatusColor(item.status)}]}>
-            <Text style={styles.statusIcon}>{getStatusIcon(item.status)}</Text>
-            <Text style={styles.statusText}>{t(`tickets.${item.status.toLowerCase().replace(' ', '')}`)}</Text>
-          </View>
         </View>
-        <View style={[styles.priorityBadge, {backgroundColor: getPriorityColor(item.priority)}]}>
-          <Text style={styles.priorityText}>{t(`tickets.${item.priority.toLowerCase()}`)}</Text>
+        <View style={[styles.statusBadge, {backgroundColor: getStatusColor(item.status)}]}>
+          <Text style={styles.statusText}>{t(`tickets.${item.status.toLowerCase().replace(' ', '')}`)}</Text>
         </View>
       </View>
 
-      <Text style={[styles.ticketTitle, {color: colors.text}]}>{item.title}</Text>
-      <Text style={[styles.ticketRemarks, {color: colors.textSecondary}]}>
+      <View style={styles.titleRow}>
+        <Text style={[styles.titleIcon, {color: colors.textSecondary}]}>📋</Text>
+        <Text style={[styles.ticketTitle, {color: colors.text}]}>{item.title}</Text>
+      </View>
+      {/* <Text style={[styles.ticketRemarks, {color: colors.textSecondary}]}>
         {item.remarks}
-      </Text>
+      </Text> */}
 
       <View style={styles.ticketFooter}>
         <View style={styles.dateInfo}>
+          <Text style={[styles.dateIcon, {color: colors.textSecondary}]}>📅</Text>
           <Text style={[styles.dateLabel, {color: colors.textSecondary}]}>{t('tickets.created')}:</Text>
           <Text style={[styles.dateValue, {color: colors.text}]}>{item.dateCreated}</Text>
         </View>
         {item.dateClosed && (
           <View style={styles.dateInfo}>
+            <Text style={[styles.dateIcon, {color: colors.textSecondary}]}>✅</Text>
             <Text style={[styles.dateLabel, {color: colors.textSecondary}]}>{t('tickets.closed')}:</Text>
             <Text style={[styles.dateValue, {color: colors.text}]}>{item.dateClosed}</Text>
           </View>
@@ -143,15 +149,17 @@ const TicketsScreen = ({navigation}: any) => {
   );
 
   const handleTicketPress = (ticket: Ticket) => {
-    // Navigate to ticket details screen or show modal
     console.log('Ticket pressed:', ticket);
   };
 
   const handleCreateTicket = () => {
-    // Navigate to create ticket screen
-    console.log('Create new ticket');
+    setShowAddTicket(true);
   };
 
+  const handleTicketCreated = () => {
+    // Refresh the tickets list after creating a new ticket
+    loadTickets();
+  };
 
 
   return (
@@ -168,15 +176,16 @@ const TicketsScreen = ({navigation}: any) => {
         }
       />
 
-      {/* Page Heading */}
       <View style={styles.headingContainer}>
-        <Text style={[styles.pageHeading, {color: colors.text}]}>{t('tickets.title')}</Text>
+        <View style={styles.headingRow}>
+          <Text style={[styles.headingIcon, {color: colors.primary}]}>📋</Text>
+          <Text style={[styles.pageHeading, {color: colors.text}]}>{t('tickets.title')}</Text>
+        </View>
         <Text style={[styles.pageSubheading, {color: colors.textSecondary}]}>
           {t('tickets.subtitle')}
         </Text>
       </View>
 
-      {/* Loading State */}
       {loading && (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
@@ -186,7 +195,6 @@ const TicketsScreen = ({navigation}: any) => {
         </View>
       )}
 
-      {/* Error State */}
       {error && !loading && (
         <View style={styles.errorContainer}>
           <Text style={[styles.errorIcon, {color: colors.textSecondary}]}>⚠️</Text>
@@ -200,7 +208,6 @@ const TicketsScreen = ({navigation}: any) => {
         </View>
       )}
 
-      {/* Tickets List */}
       {!loading && !error && (
         <FlatList
           data={tickets}
@@ -217,6 +224,14 @@ const TicketsScreen = ({navigation}: any) => {
               </Text>
             </View>
           }
+        />
+      )}
+
+      {showAddTicket && (
+        <AddTicketScreen
+          visible={showAddTicket}
+          onClose={() => setShowAddTicket(false)}
+          onTicketCreated={handleTicketCreated}
         />
       )}
     </SafeAreaView>
@@ -244,10 +259,18 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 16,
   },
+  headingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  headingIcon: {
+    fontSize: 28,
+    marginRight: 12,
+  },
   pageHeading: {
     fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 8,
   },
   pageSubheading: {
     fontSize: 16,
@@ -280,6 +303,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
   },
+  ticketIcon: {
+    fontSize: 16,
+    marginRight: 6,
+  },
   ticketNo: {
     fontSize: 16,
     fontWeight: '600',
@@ -311,10 +338,19 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  titleIcon: {
+    fontSize: 16,
+    marginRight: 8,
+  },
   ticketTitle: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 8,
+    flex: 1,
   },
   ticketRemarks: {
     fontSize: 14,
@@ -330,6 +366,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 4,
+  },
+  dateIcon: {
+    fontSize: 14,
+    marginRight: 6,
   },
   dateLabel: {
     fontSize: 12,

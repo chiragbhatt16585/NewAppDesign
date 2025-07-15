@@ -41,14 +41,27 @@ function AppContent() {
       // Initialize session manager first
       await sessionManager.initialize();
       
-      // Check if user is already logged in
+      // Check if user is already logged in and session is valid
       const loggedIn = await sessionManager.isLoggedIn();
       
       if (loggedIn) {
-        console.log('User is already logged in, proceeding to app');
-        setIsLoggedIn(true);
-        setIsAuthInitialized(true);
-        return;
+        // Additional check: verify session is still valid by checking activity
+        const session = await sessionManager.getCurrentSession();
+        if (session) {
+          const inactivityInfo = await sessionManager.getInactivityInfo();
+          if (inactivityInfo.isInactive) {
+            console.log('Session expired due to inactivity, clearing session');
+            await sessionManager.clearSession();
+            setIsLoggedIn(false);
+          } else {
+            console.log('User is already logged in, proceeding to app');
+            setIsLoggedIn(true);
+            setIsAuthInitialized(true);
+            return;
+          }
+        } else {
+          setIsLoggedIn(false);
+        }
       }
 
       // If not logged in, check biometric auth
@@ -94,7 +107,7 @@ function AppContent() {
   return (
     <>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <AppNavigator initialRoute={isLoggedIn ? 'Home' : 'Login'} />
+      <AppNavigator initialRoute={isLoggedIn ? undefined : 'Login'} />
     </>
   );
 }

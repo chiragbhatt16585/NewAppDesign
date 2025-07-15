@@ -72,6 +72,18 @@ export interface UserProfile {
   };
 }
 
+export interface Ticket {
+  id: string;
+  ticketNo: string;
+  title: string;
+  remarks: string;
+  status: string;
+  priority: string;
+  dateCreated: string;
+  dateClosed?: string;
+  index?: number;
+}
+
 // Utility function to convert object to FormData
 const toFormData = (data: any): FormData => {
   const formData = new FormData();
@@ -94,7 +106,9 @@ const isTokenExpiredError = (error: any): boolean => {
   return errorMessage.includes('token expired') || 
          errorMessage.includes('unauthorized') || 
          errorMessage.includes('invalid token') ||
-         errorMessage.includes('authentication failed');
+         errorMessage.includes('authentication failed') ||
+         errorMessage.includes('please check your internet connection') ||
+         errorMessage.includes('network request failed');
 };
 
 // API Service Class
@@ -268,8 +282,13 @@ class ApiService {
       try {
         const token = await sessionManager.getToken();
         if (!token) {
-          throw new Error('No authentication token available');
+          console.log('No token available, redirecting to login');
+          await sessionManager.clearSession();
+          throw new Error('Authentication required. Please login again.');
         }
+
+        // Update activity time on every API call
+        await sessionManager.updateActivityTime();
 
         return await requestFn(token);
       } catch (error: any) {
@@ -747,6 +766,140 @@ class ApiService {
 
   // Additional methods can be added here following the same pattern
   // For example: planList, userPaymentDues, submitComplaint, etc.
+
+  async lastTenSessions(username: string, accountStatus: string, realm: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const data = {
+        username: username.toLowerCase().trim(),
+        account_status: accountStatus,
+        last_ten_session: 'yes',
+        request_source: 'app',
+        request_app: 'user_app' 
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+
+      try {
+        const res = await fetch(`${url}/selfcareUsageDetails`, options);
+        console.log('Response status:', res.status);
+        
+        const response = await res.json();
+        console.log('=== SESSIONS API RESPONSE ===');
+        console.log('Status:', response.status, 'Code:', response.code);
+        console.log('Sessions found:', response.data?.length || 0);
+        
+        if (response.status === 'ok' && response.data) {
+          if (Array.isArray(response.data)) {
+            console.log('✅ Processing', response.data.length, 'sessions');
+            
+            const units = ['download', 'upload', 'total_upload_download'];
+            const processedSessions = response.data.map((s: any, index: number) => {
+              var result = s.login_time.split(" ");
+              
+              var session: any = {
+                index: index + 1,
+                ipAddress: s.framed_ip_address,
+                loginTime: result[1],
+                loginDate: result[0],
+                loginTs: s.login_time,
+                logoutTs: s.logout_time,
+                sessionTime: s.online_time
+              }
+              
+              units.forEach(unit => {
+                const originalValue = s[unit];
+                session[unit] = originalValue.length > 9 ? (
+                  `${Math.round(Number(originalValue) / 10000000) / 100} GB`
+                ) : (
+                    `${Math.round(Number(originalValue) / 10000) / 100} MB`
+                  );
+              });
+              
+              return session;
+            });
+            
+            console.log('✅ Sessions processed successfully');
+            return processedSessions;
+          } else {
+            console.log('❌ No sessions array in response');
+            console.log('Response data type:', typeof response.data);
+            console.log('Response data:', response.data);
+            return [];
+          }
+        } else if (response.status === 'error') {
+          console.log('❌ API error:', response.message);
+          throw new Error(response.message || 'Failed to fetch sessions');
+        } else {
+          console.log('❌ Unexpected response format');
+          console.log('Response:', response);
+          return [];
+        }
+      } catch (error: any) {
+        console.error('Error fetching sessions:', error);
+        throw new Error(error.message || 'Failed to fetch sessions');
+      }
+    });
+  }
+
+  async lastTenComplaints(realm: string = 'default') {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      // Get username from session manager
+      const username = await sessionManager.getUsername();
+      if (!username) {
+        throw new Error('No username found in session');
+      }
+
+      const data = {
+        username: username.toLowerCase().trim(),
+        last_ten_tickets: 'yes',
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+
+      try {
+        const res = await fetch(`${url}/selfcareCrmViewTickets`, options);
+        const response = await res.json();
+        
+        if (response.status === 'ok' && response.code !== 200) {
+          if (response.message === "No Content" || response.message === "No Complaints Found.") {
+            return [];
+          } else {
+            throw new Error(response.message);
+          }
+        } else {
+          return response.data.map((ticketObj: any, index: number) => ({
+            id: ticketObj.id || `ticket_${index}`,
+            ticketNo: ticketObj.ticket_no || `TKT${index}`,
+            title: ticketObj.category_name || 'No Title',
+            remarks: ticketObj.remarks || 'No Remarks',
+            status: ticketObj.current_ticket_status || 'Open',
+            priority: ticketObj.ticket_prio || 'Medium',
+            dateCreated: ticketObj.ticket_created_date || 'N/A',
+            dateClosed: ticketObj.ticket_closed_date,
+            index
+          }));
+        }
+      } catch (e: any) {
+        if (isNetworkError(e)) {
+          throw new Error(networkErrorMsg);
+        } else {
+          throw new Error(e.message);
+        }
+      }
+    });
+  }
 }
 
 // Export singleton instance

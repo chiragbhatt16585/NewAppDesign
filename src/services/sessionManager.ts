@@ -129,6 +129,9 @@ export class SessionManager {
       // Clear credentials from AsyncStorage
       await credentialStorage.deleteCredentials();
       
+      // Clear navigation state to prevent redirecting to protected screens
+      await AsyncStorage.removeItem('navigationState');
+      
       console.log('Session cleared successfully');
     } catch (error) {
       console.error('Failed to clear session:', error);

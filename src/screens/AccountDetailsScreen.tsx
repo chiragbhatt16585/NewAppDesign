@@ -14,6 +14,7 @@ import {useTranslation} from 'react-i18next';
 import {apiService} from '../services/api';
 import sessionManager from '../services/sessionManager';
 import CommonHeader from '../components/CommonHeader';
+import {navigateToLogin} from '../utils/navigationUtils';
 
 const AccountDetailsScreen = ({navigation}: any) => {
   const {isDark} = useTheme();
@@ -38,7 +39,7 @@ const AccountDetailsScreen = ({navigation}: any) => {
           [
             {
               text: 'OK',
-              onPress: () => navigation.navigate('Login')
+              onPress: () => navigateToLogin(navigation)
             }
           ]
         );
@@ -55,7 +56,7 @@ const AccountDetailsScreen = ({navigation}: any) => {
         [
           {
             text: 'OK',
-            onPress: () => navigation.navigate('Login')
+            onPress: () => navigateToLogin(navigation)
           }
         ]
       );
@@ -121,6 +122,59 @@ const AccountDetailsScreen = ({navigation}: any) => {
     </View>
   );
 
+  const renderDetailCardWithIcons = (title: string, details: any) => (
+    <View style={[styles.detailCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
+      <Text style={[styles.cardTitle, {color: colors.text}]}>{title}</Text>
+      {Object.entries(details).map(([key, value]) => (
+        <View key={key} style={styles.detailRowWithIcon}>
+          <View style={styles.detailIconContainer}>
+            <Text style={styles.detailIcon}>{getIconForKey(key)}</Text>
+          </View>
+          <Text style={[styles.detailValue, {color: colors.text}]}>{value as string}</Text>
+        </View>
+      ))}
+    </View>
+  );
+
+  const getIconForKey = (key: string) => {
+    switch (key.toLowerCase()) {
+      case 'name':
+        return '👨‍💻';
+      case 'email':
+        return '✉️';
+      case 'mobile':
+        return '📲';
+      case 'phone':
+        return '☎️';
+      default:
+        return '';
+    }
+  };
+
+  const formatMobileNumber = (number: string) => {
+    if (!number || number === 'N/A') return 'N/A';
+    
+    // Remove any existing country code and spaces
+    let cleanNumber = number.replace(/^\+91\s*/, '').replace(/\s+/g, '');
+    
+    // If number doesn't start with +91, add it
+    if (!number.startsWith('+91')) {
+      cleanNumber = '91' + cleanNumber;
+    }
+    
+    // Format as US style: +91 XXX-XXX-XXXX
+    if (cleanNumber.length === 12) { // 91 + 10 digits
+      const countryCode = cleanNumber.substring(0, 2);
+      const areaCode = cleanNumber.substring(2, 5);
+      const prefix = cleanNumber.substring(5, 8);
+      const lineNumber = cleanNumber.substring(8, 12);
+      return `+${countryCode} ${areaCode}-${prefix}-${lineNumber}`;
+    }
+    
+    // If not exactly 12 digits, return as is with +91
+    return `+91 ${cleanNumber}`;
+  };
+
   if (isLoading) {
     return (
       <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}>
@@ -140,9 +194,9 @@ const AccountDetailsScreen = ({navigation}: any) => {
         {/* Page Title */}
         <View style={styles.titleSection}>
           <Text style={[styles.pageTitle, {color: colors.text}]}>{t('accountDetails.title')}</Text>
-          <Text style={[styles.pageSubtitle, {color: colors.textSecondary}]}>
+          {/* <Text style={[styles.pageSubtitle, {color: colors.textSecondary}]}>
             {authData ? `${authData.first_name} ${authData.last_name}` : 'Account Details'}
-          </Text>
+          </Text> */}
         </View>
 
         {/* Account Status Card */}
@@ -150,7 +204,7 @@ const AccountDetailsScreen = ({navigation}: any) => {
           <View style={styles.statusHeader}>
             <Text style={[styles.statusTitle, {color: colors.text}]}>Account Status</Text>
             <View style={[styles.statusBadge, {backgroundColor: authData?.user_status === 'active' ? colors.success : '#F44336'}]}>
-              <Text style={styles.statusText}>{authData?.user_status || 'Unknown'}</Text>
+              <Text style={styles.statusText}>{(authData?.user_status || 'Unknown').charAt(0).toUpperCase() + (authData?.user_status || 'Unknown').slice(1).toLowerCase()}</Text>
             </View>
           </View>
           <View style={styles.statusDetails}>
@@ -172,8 +226,10 @@ const AccountDetailsScreen = ({navigation}: any) => {
         </View>
 
         {/* Personal Information */}
-        {renderDetailCard('Personal Information', {
-          'Full Name': authData?.full_name || 'N/A',
+        {renderDetailCardWithIcons('Personal & Contact Information', {
+          'Name': authData?.full_name || 'N/A',
+          'Email': authData?.primary_email || 'N/A',
+          'Mobile': formatMobileNumber(authData?.primary_mobile),
           // 'First Name': authData?.first_name || 'N/A',
           // 'Middle Name': authData?.middle_name || 'N/A',
           // 'Last Name': authData?.last_name || 'N/A',
@@ -182,33 +238,51 @@ const AccountDetailsScreen = ({navigation}: any) => {
           // 'Marital Status': authData?.marital_status || 'N/A',
         })}
 
-        {/* Contact Information */}
+        {/* Contact Information
         {renderDetailCard('Contact Information', {
-          'Primary Email': authData?.primary_email || 'N/A',
-          'Primary Mobile': authData?.primary_mobile || 'N/A',
+          'Email': authData?.primary_email || 'N/A',
+          'Mobile': authData?.primary_mobile || 'N/A',
           // 'Landline Phone': authData?.landline_phone || 'N/A',
           // 'Alt Email': authData?.alt_email || 'N/A',
           // 'Alt Mobile': authData?.alt_mobile || 'N/A',
-        })}
+        })} */}
+
+         {/* Address Information */}
+         <View style={[styles.detailCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
+           <Text style={[styles.cardTitle, {color: colors.text}]}>Address</Text>
+           <Text style={[styles.addressText, {color: colors.text}]}>
+             {authData?.flat_no && `${authData.flat_no}, `}
+             {authData?.address1 || ''}
+             {authData?.address2 && `, ${authData.address2}`}
+             {authData?.area_name && `, ${authData.area_name}`}
+             {authData?.city_name && `, ${authData.city_name}`}
+             {authData?.pincode && ` - ${authData.pincode}`}
+             {authData?.state && `, ${authData.state}`}
+             {authData?.country && `, ${authData.country}`}
+             {(!authData?.flat_no && !authData?.address1 && !authData?.address2 && !authData?.area_name && !authData?.city_name && !authData?.pincode && !authData?.state && !authData?.country) && 'N/A'}
+           </Text>
+         </View>
 
         {/* Account Information */}
         {renderDetailCard('Account Information', {
-          'Account Number': authData?.account_no || 'N/A',
-          'Customer ID': authData?.id || 'N/A',
+          //'Account Number': authData?.account_no || 'N/A',
           'Username': authData?.username || 'N/A',
           //'Referral Code': authData?.referral_code || 'N/A',
-          'Registration Date': authData?.reg_date || 'N/A',
-          'Activation Date': authData?.activation_date || 'N/A',
+          'Registered Since': authData?.reg_date || 'N/A',
+          'First Activated On': authData?.activation_date || 'N/A',
           //'Renewal Count': authData?.renewal_count || '0',
           //'User Category': authData?.user_category || 'N/A',
           //'User Profile': authData?.user_profile || 'N/A',
         })}
-
+        
+        
         {/* Plan Information */}
         {renderDetailCard('Plan Information', {
           'Current Plan': authData?.current_plan || 'N/A',
-          'Download Speed': `${authData?.plan_download_speed || 0} Mbps`,
-          'Upload Speed': `${authData?.plan_upload_speed || 0} Mbps`,
+          'Renewed On': authData?.renew_date || 'N/A',
+          'Expiry Date': authData?.exp_date || 'N/A',
+          'Plan  Speed': `${authData?.plan_download_speed || 0} Mbps`,
+          //'Upload Speed': `${authData?.plan_upload_speed || 0} Mbps`,
           //'Connection Type': authData?.connection_type || 'N/A',
           //'User Auth Type': authData?.user_auth_type || 'N/A',
           // 'FUP Flag': authData?.fup_flag || 'N/A',
@@ -227,14 +301,7 @@ const AccountDetailsScreen = ({navigation}: any) => {
           'Days Remaining': `${parseInt(authData.usage_details[0].plan_days) - parseInt(authData.usage_details[0].days_used)} days`,
         })}
 
-        {/* Important Dates */}
-        {renderDetailCard('Important Dates', {
-          'Renew Date': authData?.renew_date || 'N/A',
-          'Expiry Date': authData?.exp_date || 'N/A',
-          'Next Renewal': authData?.next_renewal_date || 'N/A',
-          // 'Entry Date': authData?.entry_date || 'N/A',
-          // 'Last Update': authData?.last_update || 'N/A',
-        })}
+       
 
         {/* Billing Information
         {renderDetailCard('Billing Information', {
@@ -257,18 +324,7 @@ const AccountDetailsScreen = ({navigation}: any) => {
 
         
 
-        {/* Address Information */}
-        {renderDetailCard('Address Information', {
-          'Address Line 1': authData?.address1 || 'N/A',
-          'Address Line 2': authData?.address2 || 'N/A',
-          'Pincode': authData?.pincode || 'N/A',
-          'City': authData?.city_name || 'N/A',
-          'State': authData?.state || 'N/A',
-          'Country': authData?.country || 'N/A',
-          'Area': authData?.area_name || 'N/A',
-          'Location': authData?.location_name || 'N/A',
-          'Building': authData?.building_name || 'N/A',
-        })}
+       
 
         {/* Static IP Details */}
         {authData && authData.static_ip_details && authData.static_ip_details.length > 0 && 
@@ -422,6 +478,23 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
+  detailRowWithIcon: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  detailIconContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 40,
+    paddingLeft: 8,
+  },
+  detailIcon: {
+    fontSize: 20,
+  },
   detailLabel: {
     fontSize: 14,
     flex: 1,
@@ -534,6 +607,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'right',
     flex: 1,
+  },
+  addressText: {
+    fontSize: 16,
+    lineHeight: 24,
+    textAlign: 'left',
   },
 });
 

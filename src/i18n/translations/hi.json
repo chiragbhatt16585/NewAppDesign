@@ -65,7 +65,7 @@
     "paymentHistory": "भुगतान इतिहास"
   },
   "ledger": {
-    "title": "लेन-देन लेजर",
+    "title": "खाता लेजर",
     "subtitle": "अपना लेन-देन इतिहास और खाता सारांश देखें",
     "allTransactions": "सभी लेन-देन",
     "proforma": "प्रोफॉर्मा",
@@ -142,7 +142,7 @@
     "subtitle": "अपना इंटरनेट सत्र इतिहास देखें",
     "sessionHistory": "सत्र इतिहास",
     "sessionHistorySubtitle": "अपने दैनिक इंटरनेट उपयोग सत्र को ट्रैक करें",
-    "monthlySummary": "मासिक सारांश",
+    "monthlySummary": "उपयोग सारांश",
     "totalSessions": "कुल सत्र",
     "totalDuration": "कुल अवधि",
     "totalUpload": "कुल अपलोड",

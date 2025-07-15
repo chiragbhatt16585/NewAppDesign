@@ -11,6 +11,7 @@ import {
   Dimensions,
   FlatList,
   BackHandler,
+  ActivityIndicator,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useFocusEffect} from '@react-navigation/native';
@@ -43,16 +44,7 @@ const HomeScreen = ({navigation}: any) => {
   // Test if component is rendering
   console.warn('HomeScreen component is rendering');
 
-  // Mock user data - fallback if API fails
-  const userData = {
-    name: 'Chirag Bhatt',
-    planName: 'Premium Fiber 100 Mbps',
-    planPrice: '₹999/month',
-    dataUsage: '75 GB used of 100 GB',
-    validity: '15 days remaining',
-    billAmount: '₹999',
-    dueDate: '25th July 2024',
-  };
+
 
   // Mock advertisement data
   const advertisements = [
@@ -321,6 +313,14 @@ const HomeScreen = ({navigation}: any) => {
   const daysFill = authData?.usage_details?.[0]?.plan_days === 'Unlimited' ? 50 : 
     authData?.usage_details?.[0] ? (parseFloat(authData.usage_details[0].days_used) / parseFloat(authData.usage_details[0].plan_days) * 100) : 0;
 
+  // Loading spinner component
+  const LoadingSpinner = () => (
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color={colors.primary} />
+      <Text style={[styles.loadingText, {color: colors.textSecondary}]}>Loading account data...</Text>
+    </View>
+  );
+
   return (
     <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -356,10 +356,8 @@ const HomeScreen = ({navigation}: any) => {
         <View style={styles.welcomeSection}>
           <Text style={[styles.welcomeText, {color: colors.textSecondary}]}>{t('common.welcome')},</Text>
           <Text style={[styles.userName, {color: colors.text}]}>
-            {authData ? `${authData.first_name || ''} ${authData.last_name || ''}`.trim() || userData.name : userData.name}
+            {authData ? `${authData.first_name || ''} ${authData.last_name || ''}`.trim() || 'User' : 'User'}
           </Text>
-          
-          
         </View>
 
         {/* Account Summary Card */}
@@ -371,45 +369,43 @@ const HomeScreen = ({navigation}: any) => {
             </TouchableOpacity>
           </View>
           
-          <View style={styles.detailRow}>
-            <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>{t('home.currentPlan')}</Text>
-            <Text style={[styles.detailValue, {color: colors.text}]}>
-              {authData?.current_plan || userData.planName}
-            </Text>
-          </View>
-          
-         {/* Expiry Date
-         <View style={styles.detailRow}>
-            <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>Expiry Date</Text>
-            <Text style={[styles.detailValue, {color: colors.text}]}>
-              {authData?.exp_date || 'N/A'}
-            </Text>
-          </View> */}
-          
-          <View style={styles.detailRow}>
-            <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>{t('home.validity')}</Text>
-            <Text style={[styles.detailValue, {color: colors.text}]}>
-              {authData?.usage_details?.[0] ? 
-                `${authData.usage_details[0].days_used} used of ${authData.usage_details[0].plan_days} days` : 
-                userData.validity}
-            </Text>
-          </View>
+          {isLoading ? (
+            <LoadingSpinner />
+          ) : (
+            <>
+              <View style={styles.detailRow}>
+                <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>{t('home.currentPlan')}</Text>
+                <Text style={[styles.detailValue, {color: colors.text}]}>
+                  {authData?.current_plan || 'No Plan'}
+                </Text>
+              </View>
+              
+              <View style={styles.detailRow}>
+                <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>{t('home.validity')}</Text>
+                <Text style={[styles.detailValue, {color: colors.text}]}>
+                  {authData?.usage_details?.[0] ? 
+                    `${authData.usage_details[0].days_used} used of ${authData.usage_details[0].plan_days} days` : 
+                    'No data available'}
+                </Text>
+              </View>
 
-          {/* Account Status */}
-          <View style={styles.detailRow}>
-            <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>Account Status</Text>
-            <Text style={[styles.detailValue, {color: authData?.user_status === 'active' ? '#4CAF50' : '#F44336'}]}>
-              {authData?.user_status?.replace(/_+/g, ' ') || 'Active'}
-            </Text>
-          </View>
+              {/* Account Status */}
+              <View style={styles.detailRow}>
+                <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>Account Status</Text>
+                <Text style={[styles.detailValue, {color: authData?.user_status === 'active' ? '#4CAF50' : '#F44336'}]}>
+                  {authData?.user_status?.replace(/_+/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'Active'}
+                </Text>
+              </View>
 
-          {/* Login Status */}
-          <View style={styles.detailRow}>
-            <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>Login Status</Text>
-            <Text style={[styles.detailValue, {color: authData?.login_status === 'IN' ? '#4CAF50' : '#F44336'}]}>
-              {authData?.login_status === 'IN' ? 'Online' : 'Offline'}
-            </Text>
-          </View>
+              {/* Login Status */}
+              <View style={styles.detailRow}>
+                <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>Login Status</Text>
+                <Text style={[styles.detailValue, {color: authData?.login_status === 'IN' ? '#4CAF50' : '#F44336'}]}>
+                  {authData?.login_status === 'IN' ? 'Online' : 'Offline'}
+                </Text>
+              </View>
+            </>
+          )}
 
           
 
@@ -505,7 +501,7 @@ const HomeScreen = ({navigation}: any) => {
                 <Text style={styles.iconText}>💳</Text>
               </View>
               <Text style={[styles.actionTitle, {color: colors.text}]}>{t('home.payBill')}</Text>
-              <Text style={[styles.actionSubtitle, {color: colors.textSecondary}]}>{userData.billAmount}</Text>
+              <Text style={[styles.actionSubtitle, {color: colors.textSecondary}]}>₹{authData?.payment_dues || 0}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
@@ -533,37 +529,43 @@ const HomeScreen = ({navigation}: any) => {
         {/* Bill Information */}
         <View style={[styles.billCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
           <Text style={[styles.billTitle, {color: colors.text}]}>{t('account.billingInfo')}</Text>
-          <View style={styles.billDetails}>
-            <View style={styles.billRow}>
-              <Text style={[styles.billLabel, {color: colors.textSecondary}]}>Account Number</Text>
-              <Text style={[styles.billAmount, {color: colors.accent}]}>{authData?.account_no || 'N/A'}</Text>
-            </View>
-            <View style={styles.billRow}>
-              <Text style={[styles.billLabel, {color: colors.textSecondary}]}>Renewal Date</Text>
-              <Text style={[styles.billDate, {color: colors.text}]}>{authData?.renew_date || 'N/A'}</Text>
-            </View>
-            <View style={styles.billRow}>
-              <Text style={[styles.billLabel, {color: colors.textSecondary}]}>Expiry Date</Text>
-              <Text style={[styles.billDate, {color: colors.text}]}>{authData?.exp_date || 'N/A'}</Text>
-            </View>
-            <View style={styles.billRow}>
-              <Text style={[styles.billLabel, {color: colors.textSecondary}]}>Next Renewal</Text>
-              <Text style={[styles.billDate, {color: colors.text}]}>{authData?.next_renewal_date || 'N/A'}</Text>
-            </View>
-            <View style={styles.billRow}>
-              <Text style={[styles.billLabel, {color: colors.textSecondary}]}>Payment Dues</Text>
-              <Text style={[styles.billAmount, {color: authData?.payment_dues > 0 ? '#F44336' : '#4CAF50'}]}>
-                ₹{authData?.payment_dues || 0}
-              </Text>
-            </View>
-          </View>
-          {/* Only show Pay Now button if there are payment dues */}
-          {authData?.payment_dues > 0 && (
-            <TouchableOpacity 
-              style={[styles.payNowButton, {backgroundColor: colors.accent}]} 
-              onPress={handlePayBill}>
-              <Text style={styles.payNowText}>Pay Now</Text>
-            </TouchableOpacity>
+          {isLoading ? (
+            <LoadingSpinner />
+          ) : (
+            <>
+              <View style={styles.billDetails}>
+                <View style={styles.billRow}>
+                  <Text style={[styles.billLabel, {color: colors.textSecondary}]}>Account Number</Text>
+                  <Text style={[styles.billAmount, {color: colors.accent}]}>{authData?.account_no || 'N/A'}</Text>
+                </View>
+                <View style={styles.billRow}>
+                  <Text style={[styles.billLabel, {color: colors.textSecondary}]}>Renewal Date</Text>
+                  <Text style={[styles.billDate, {color: colors.text}]}>{authData?.renew_date || 'N/A'}</Text>
+                </View>
+                <View style={styles.billRow}>
+                  <Text style={[styles.billLabel, {color: colors.textSecondary}]}>Expiry Date</Text>
+                  <Text style={[styles.billDate, {color: colors.text}]}>{authData?.exp_date || 'N/A'}</Text>
+                </View>
+                <View style={styles.billRow}>
+                  <Text style={[styles.billLabel, {color: colors.textSecondary}]}>Next Renewal</Text>
+                  <Text style={[styles.billDate, {color: colors.text}]}>{authData?.next_renewal_date || 'N/A'}</Text>
+                </View>
+                <View style={styles.billRow}>
+                  <Text style={[styles.billLabel, {color: colors.textSecondary}]}>Payment Dues</Text>
+                  <Text style={[styles.billAmount, {color: authData?.payment_dues > 0 ? '#F44336' : '#4CAF50'}]}>
+                    ₹{authData?.payment_dues || 0}
+                  </Text>
+                </View>
+              </View>
+              {/* Only show Pay Now button if there are payment dues */}
+              {authData?.payment_dues > 0 && (
+                <TouchableOpacity 
+                  style={[styles.payNowButton, {backgroundColor: colors.accent}]} 
+                  onPress={handlePayBill}>
+                  <Text style={styles.payNowText}>Pay Now</Text>
+                </TouchableOpacity>
+              )}
+            </>
           )}
         </View>
 
@@ -586,54 +588,60 @@ const HomeScreen = ({navigation}: any) => {
             </View>
           </View>
           
-          {/* Data Usage Section */}
-          <View style={styles.dataUsageSection}>
-            <View style={styles.dataUsageHeader}>
-              <Text style={[styles.dataUsageLabel, {color: colors.textSecondary}]}>Data Usage</Text>
-              <Text style={[styles.dataUsageValue, {color: colors.text}]}>
-                {authData?.usage_details?.[0] ? 
-                  `${(parseFloat(authData.usage_details[0].data_used) / (1024 * 1024 * 1024)).toFixed(2)} GB` : 
-                  '0 GB'}
-              </Text>
-            </View>
-            <View style={[styles.dataUsageBar, {backgroundColor: colors.borderLight}]}>
-              <View style={[styles.dataUsageProgress, {width: `${dataFill}%`, backgroundColor: colors.primary}]} />
-            </View>
-            <Text style={[styles.dataUsageTotal, {color: colors.textSecondary}]}>
-              of {authData?.usage_details?.[0]?.plan_data || 'Unlimited'}
-            </Text>
-          </View>
-          
-          {/* Usage Stats Row */}
-          <View style={styles.usageStatsRow}>
-            <View style={styles.usageStat}>
-              <Text style={[styles.usageStatIcon, {color: colors.primary}]}>⏱️</Text>
-              <Text style={[styles.usageStatLabel, {color: colors.textSecondary}]}>Hours Used</Text>
-              <Text style={[styles.usageStatValue, {color: colors.text}]}>
-                {authData?.usage_details?.[0]?.hours_used || '0:00:00'}
-              </Text>
-            </View>
-            
-            <View style={styles.usageStat}>
-              <Text style={[styles.usageStatIcon, {color: colors.success}]}>📅</Text>
-              <Text style={[styles.usageStatLabel, {color: colors.textSecondary}]}>Days Remaining</Text>
-              <Text style={[styles.usageStatValue, {color: colors.text}]}>
-                {authData?.usage_details?.[0] ? 
-                  `${parseInt(authData.usage_details[0].plan_days) - parseInt(authData.usage_details[0].days_used)}` : 
-                  '0'}
-              </Text>
-            </View>
-            
-            {authData?.usage_details?.[0]?.plan_data !== 'Unlimited' && (
-              <View style={styles.usageStat}>
-                <Text style={[styles.usageStatIcon, {color: colors.accent}]}>📊</Text>
-                <Text style={[styles.usageStatLabel, {color: colors.textSecondary}]}>Usage %</Text>
-                <Text style={[styles.usageStatValue, {color: colors.text}]}>
-                  {Math.round(dataFill)}%
+          {isLoading ? (
+            <LoadingSpinner />
+          ) : (
+            <>
+              {/* Data Usage Section */}
+              <View style={styles.dataUsageSection}>
+                <View style={styles.dataUsageHeader}>
+                  <Text style={[styles.dataUsageLabel, {color: colors.textSecondary}]}>Data Usage</Text>
+                  <Text style={[styles.dataUsageValue, {color: colors.text}]}>
+                    {authData?.usage_details?.[0] ? 
+                      `${(parseFloat(authData.usage_details[0].data_used) / (1024 * 1024 * 1024)).toFixed(2)} GB` : 
+                      '0 GB'}
+                  </Text>
+                </View>
+                <View style={[styles.dataUsageBar, {backgroundColor: colors.borderLight}]}>
+                  <View style={[styles.dataUsageProgress, {width: `${dataFill}%`, backgroundColor: colors.primary}]} />
+                </View>
+                <Text style={[styles.dataUsageTotal, {color: colors.textSecondary}]}>
+                  of {authData?.usage_details?.[0]?.plan_data || 'Unlimited'}
                 </Text>
               </View>
-            )}
-          </View>
+              
+              {/* Usage Stats Row */}
+              <View style={styles.usageStatsRow}>
+                <View style={styles.usageStat}>
+                  <Text style={[styles.usageStatIcon, {color: colors.primary}]}>⏱️</Text>
+                  <Text style={[styles.usageStatLabel, {color: colors.textSecondary}]}>Hours Used</Text>
+                  <Text style={[styles.usageStatValue, {color: colors.text}]}>
+                    {authData?.usage_details[0]?.hours_used || '0:00:00'}
+                  </Text>
+                </View>
+                
+                <View style={styles.usageStat}>
+                  <Text style={[styles.usageStatIcon, {color: colors.success}]}>📅</Text>
+                  <Text style={[styles.usageStatLabel, {color: colors.textSecondary}]}>Days Remaining</Text>
+                  <Text style={[styles.usageStatValue, {color: colors.text}]}>
+                    {authData?.usage_details?.[0] ? 
+                      `${parseInt(authData.usage_details[0].plan_days) - parseInt(authData.usage_details[0].days_used)}` : 
+                      '0'}
+                  </Text>
+                </View>
+                
+                {authData?.usage_details?.[0]?.plan_data !== 'Unlimited' && (
+                  <View style={styles.usageStat}>
+                    <Text style={[styles.usageStatIcon, {color: colors.accent}]}>📊</Text>
+                    <Text style={[styles.usageStatLabel, {color: colors.textSecondary}]}>Usage %</Text>
+                    <Text style={[styles.usageStatValue, {color: colors.text}]}>
+                      {Math.round(dataFill)}%
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </>
+          )}
         </View>
 
         
@@ -1126,6 +1134,17 @@ const styles = StyleSheet.create({
   apiResponseText: {
     fontSize: 14,
     lineHeight: 20,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  loadingText: {
+    fontSize: 16,
+    marginTop: 12,
+    textAlign: 'center',
   },
 });
 

@@ -66,7 +66,7 @@
     "paymentHistory": "Payment History"
   },
   "ledger": {
-    "title": "Transaction Ledger",
+    "title": "Account Ledger",
     "subtitle": "View your transaction history and account summary",
     "allTransactions": "All Transactions",
     "proforma": "Proforma",
@@ -143,7 +143,7 @@
     "subtitle": "View your internet session history",
     "sessionHistory": "Session History",
     "sessionHistorySubtitle": "Track your daily internet usage sessions",
-    "monthlySummary": "Monthly Summary",
+    "monthlySummary": "Usage Summary",
     "totalSessions": "Total Sessions",
     "totalDuration": "Total Duration",
     "totalUpload": "Total Upload",
