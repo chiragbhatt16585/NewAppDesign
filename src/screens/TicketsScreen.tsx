@@ -46,8 +46,10 @@ const TicketsScreen = ({navigation}: any) => {
       // Format username to lowercase and trim (same as other API calls)
       const formattedUsername = username.toLowerCase().trim();
 
-      // Use default realm since we don't have realm management in session
-      const realm = 'default';
+      // Get current client configuration
+      const {getClientConfig} = require('../config/client-config');
+      const clientConfig = getClientConfig();
+      const realm = clientConfig.clientId;
       const ticketsData = await apiService.lastTenComplaints(realm);
       
       setTickets(ticketsData);

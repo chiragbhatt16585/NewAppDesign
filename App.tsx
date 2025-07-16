@@ -17,6 +17,11 @@ import {AuthProvider} from './src/utils/AuthContext';
 import biometricAuthService from './src/services/biometricAuth';
 import sessionManager from './src/services/sessionManager';
 import testCredentialStorage from './src/services/credentialStorageTest';
+import {testSessionValidation} from './src/services/sessionValidationTest';
+import {debugSessionStatus} from './src/services/sessionDebugTest';
+import {testSessionPersistence} from './src/services/sessionTest';
+import {testKYCFunctionality} from './src/services/kycTest';
+import {testClientConfiguration} from './src/services/clientConfigTest';
 import './src/i18n';
 
 function AppContent() {
@@ -26,7 +31,6 @@ function AppContent() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   // Add error boundary for AuthProvider
-  console.log('AppContent rendering, AuthProvider should be available');
 
   useEffect(() => {
     initializeApp();
@@ -35,33 +39,34 @@ function AppContent() {
   const initializeApp = async () => {
     try {
       // Test credential storage functionality
-      console.log('Testing credential storage...');
       await testCredentialStorage();
       
       // Initialize session manager first
       await sessionManager.initialize();
       
+      // Test session validation functionality
+      await testSessionValidation();
+      
+      // Debug session status
+      await debugSessionStatus();
+      
+      // Test session persistence
+      await testSessionPersistence();
+      
+      // Test client configuration
+      await testClientConfiguration();
+      
+      // Test KYC functionality
+      await testKYCFunctionality();
+      
       // Check if user is already logged in and session is valid
       const loggedIn = await sessionManager.isLoggedIn();
       
       if (loggedIn) {
-        // Additional check: verify session is still valid by checking activity
-        const session = await sessionManager.getCurrentSession();
-        if (session) {
-          const inactivityInfo = await sessionManager.getInactivityInfo();
-          if (inactivityInfo.isInactive) {
-            console.log('Session expired due to inactivity, clearing session');
-            await sessionManager.clearSession();
-            setIsLoggedIn(false);
-          } else {
-            console.log('User is already logged in, proceeding to app');
-            setIsLoggedIn(true);
-            setIsAuthInitialized(true);
-            return;
-          }
-        } else {
-          setIsLoggedIn(false);
-        }
+        // Session is valid - proceed to app (no automatic logout)
+        setIsLoggedIn(true);
+        setIsAuthInitialized(true);
+        return;
       }
 
       // If not logged in, check biometric auth

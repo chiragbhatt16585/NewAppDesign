@@ -19,6 +19,7 @@ import {useTranslation} from 'react-i18next';
 import {apiService} from '../services/api';
 import sessionManager from '../services/sessionManager';
 import {downloadService} from '../services/downloadService';
+import {useSessionValidation} from '../utils/useSessionValidation';
 
 const {width: screenWidth} = Dimensions.get('window');
 
@@ -28,6 +29,7 @@ const LedgerScreen = ({navigation}: any) => {
   const {isDark} = useTheme();
   const colors = getThemeColors(isDark);
   const {t} = useTranslation();
+  const {checkSessionAndHandle} = useSessionValidation();
   const [activeTab, setActiveTab] = useState(0);
   const [loading, setLoading] = useState(true);
   const [ledgerData, setLedgerData] = useState<any>(null);
@@ -46,23 +48,13 @@ const LedgerScreen = ({navigation}: any) => {
 
   const checkSessionAndLoadData = async () => {
     try {
-      const session = await sessionManager.getCurrentSession();
-      if (!session?.username) {
-        console.log('=== LEDGER SCREEN: No user session found, redirecting to Login ===');
-        Alert.alert(
-          'Authentication Required',
-          'Please login to view your ledger.',
-          [
-            {
-              text: 'OK',
-              onPress: () => navigation.navigate('Login')
-            }
-          ]
-        );
+      // Check session validity before loading data
+      const isSessionValid = await checkSessionAndHandle(navigation);
+      if (!isSessionValid) {
         return;
       }
       
-      // If session exists, load ledger data
+      // If session is valid, load ledger data
       loadLedgerData();
     } catch (error) {
       console.error('=== LEDGER SCREEN: Session check error ===', error);
@@ -81,20 +73,27 @@ const LedgerScreen = ({navigation}: any) => {
 
   const loadLedgerData = async () => {
     try {
-      // console.log('=== LEDGER SCREEN: Starting to load ledger data ===');
       setLoading(true);
       setError(null);
       
-      const session = await sessionManager.getCurrentSession();
-      // console.log('=== LEDGER SCREEN: Session data ===', session);
+      // Check session validity before making API call
+      const isSessionValid = await checkSessionAndHandle(navigation);
+      if (!isSessionValid) {
+        // Don't return immediately, let the API call handle token regeneration
+        console.log('Session validation failed, but continuing with API call');
+      }
       
+      const session = await sessionManager.getCurrentSession();
       if (!session?.username) {
-        // console.log('=== LEDGER SCREEN: No username found in session ===');
         throw new Error('No user session found');
       }
 
-      // console.log('=== LEDGER SCREEN: Calling API with username ===', session.username);
-      const data = await apiService.userLedger(session.username, 'default');
+      // Get current client configuration
+      const {getClientConfig} = require('../config/client-config');
+      const clientConfig = getClientConfig();
+      const realm = clientConfig.clientId;
+      
+      const data = await apiService.userLedger(session.username, realm);
       // console.log('=== LEDGER SCREEN: API response data ===', data);
       
       // Extract data from the response array

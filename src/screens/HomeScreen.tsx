@@ -22,6 +22,7 @@ import {useTranslation} from 'react-i18next';
 import {useAuth} from '../utils/AuthContext';
 import {apiService} from '../services/api';
 import sessionManager from '../services/sessionManager';
+import {useSessionValidation} from '../utils/useSessionValidation';
 //import ispLogo from '../assets/isp_logo.png';
 
 const {width: screenWidth} = Dimensions.get('window');
@@ -33,7 +34,9 @@ const HomeScreen = ({navigation}: any) => {
   const [currentAdIndex, setCurrentAdIndex] = useState(0);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const flatListRef = useRef<FlatList>(null);
+  const currentAdIndexRef = useRef(0); // Use ref to track current index without re-renders
   const {logout} = useAuth();
+  const {checkSessionAndHandle} = useSessionValidation();
 
   // State for API data
   const [authData, setAuthData] = useState<any>(null);
@@ -41,8 +44,7 @@ const HomeScreen = ({navigation}: any) => {
   const [isLoading, setIsLoading] = useState(true);
   const [apiResponse, setApiResponse] = useState<string>('');
 
-  // Test if component is rendering
-  console.warn('HomeScreen component is rendering');
+  // Component rendering indicator (removed to prevent spam)
 
 
 
@@ -107,39 +109,26 @@ const HomeScreen = ({navigation}: any) => {
   );
 
   const fetchAccountData = async () => {
-    //Alert.alert('Fetching account data...');
-    //console.warn('=== FETCH ACCOUNT DATA CALLED ===');
     try {
       setIsLoading(true);
-      //console.warn('Loading state set to true');
       
-      // Test session manager
-      //console.warn('Testing session manager...');
-      const isLoggedIn = await sessionManager.isLoggedIn();
-      //console.warn('Is logged in:', isLoggedIn);
-      //Alert.alert('Session Check', `Is logged in: ${isLoggedIn}`);
+      // Check session validity before making API call
+      const isSessionValid = await checkSessionAndHandle(navigation);
+      if (!isSessionValid) {
+        // Don't return immediately, let the API call handle token regeneration
+        // Session validation failed, but continuing with API call
+      }
       
       // Get current session data
-      //console.warn('Getting current session...');
       const session = await sessionManager.getCurrentSession();
-      //console.warn('Session result:', session);
-      
       if (!session) {
-          // console.warn('No active session found');
-          // console.warn('You need to login first');
-          // Alert.alert('No Session', 'No active session found. Please login first.');
         setIsLoading(false);
         return;
       }
 
       const { username, token } = session;
-        // console.warn('=== FETCHING ACCOUNT DATA ===');
-        // console.warn('Username:', username);
-        // console.warn('Token:', token ? 'Token exists' : 'No token');
-      //Alert.alert('Session Info', `Username: ${username}, Token: ${token ? 'Exists' : 'Missing'}`);
 
       // Call the authUser API to get user's account information
-      //console.warn('Calling apiService.authUser...');
       const authResponse = await apiService.authUser(username, token);
       
       // console.warn('=== AUTH USER API RESPONSE ===');
@@ -237,7 +226,9 @@ const HomeScreen = ({navigation}: any) => {
 
   const onAdViewableItemsChanged = ({viewableItems}: any) => {
     if (viewableItems.length > 0) {
-      setCurrentAdIndex(viewableItems[0].index);
+      const newIndex = viewableItems[0].index;
+      currentAdIndexRef.current = newIndex;
+      setCurrentAdIndex(newIndex);
     }
   };
 
@@ -249,17 +240,18 @@ const HomeScreen = ({navigation}: any) => {
   useEffect(() => {
     const interval = setInterval(() => {
       if (flatListRef.current) {
-        const nextIndex = (currentAdIndex + 1) % advertisements.length;
+        const nextIndex = (currentAdIndexRef.current + 1) % advertisements.length;
         flatListRef.current.scrollToIndex({
           index: nextIndex,
           animated: true,
         });
+        currentAdIndexRef.current = nextIndex;
         setCurrentAdIndex(nextIndex);
       }
     }, 3000); // Change every 3 seconds
 
     return () => clearInterval(interval);
-  }, [currentAdIndex, advertisements.length]);
+  }, []); // Empty dependency array to prevent infinite re-renders
 
   const handleRenew = () => {
     navigation.navigate('RenewPlan');
@@ -279,6 +271,11 @@ const HomeScreen = ({navigation}: any) => {
 
   const handleProfilePress = () => {
     setShowProfileMenu(!showProfileMenu);
+  };
+
+  const handleMoreOptions = () => {
+    setShowProfileMenu(false);
+    navigation.navigate('MoreOptions');
   };
 
   const handleContactUs = () => {
@@ -327,7 +324,10 @@ const HomeScreen = ({navigation}: any) => {
         {/* Header with Logo */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-                          <LogoImage type="header" />
+            <LogoImage type="header" />
+          </View>
+          <View style={styles.headerRight}>
+            
             <TouchableOpacity 
               style={[styles.profileButton, {backgroundColor: colors.accent}]} 
               onPress={handleProfilePress}>
@@ -341,12 +341,25 @@ const HomeScreen = ({navigation}: any) => {
         {/* Profile Dropdown Menu */}
         {showProfileMenu && (
           <View style={[styles.profileMenu, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
-            <TouchableOpacity style={styles.menuItem} onPress={handleContactUs}>
-              <Text style={styles.menuIcon}>📞</Text>
+            <TouchableOpacity 
+              style={[styles.menuItem, {backgroundColor: 'transparent'}]} 
+              onPress={handleMoreOptions}
+              activeOpacity={0.7}>
+              <Text style={[styles.menuIcon, {color: colors.textSecondary}]}>⋮</Text>
+              <Text style={[styles.menuText, {color: colors.text}]}>More Options</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.menuItem, {backgroundColor: 'transparent'}]} 
+              onPress={handleContactUs}
+              activeOpacity={0.7}>
+              <Text style={[styles.menuIcon, {color: colors.textSecondary}]}>📞</Text>
               <Text style={[styles.menuText, {color: colors.text}]}>{t('common.contactUs')}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
-              <Text style={styles.menuIcon}>🚪</Text>
+            <TouchableOpacity 
+              style={[styles.menuItem, {backgroundColor: 'transparent'}]} 
+              onPress={handleLogout}
+              activeOpacity={0.7}>
+              <Text style={[styles.menuIcon, {color: colors.textSecondary}]}>🚪</Text>
               <Text style={[styles.menuText, {color: colors.text}]}>{t('common.logout')}</Text>
             </TouchableOpacity>
           </View>
@@ -514,9 +527,11 @@ const HomeScreen = ({navigation}: any) => {
               <Text style={[styles.actionSubtitle, {color: colors.textSecondary}]}>Get help</Text>
             </TouchableOpacity>
 
+
+
             <TouchableOpacity 
               style={[styles.actionCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]} 
-              onPress={handleContactUs}>
+              onPress={() => navigation.navigate('ContactUs')}>
               <View style={[styles.actionIcon, {backgroundColor: colors.primaryLight}]}>
                 <Text style={styles.iconText}>📞</Text>
               </View>
@@ -569,7 +584,7 @@ const HomeScreen = ({navigation}: any) => {
           )}
         </View>
 
-        {/* More Options */}
+        {/* More Options
         <View style={styles.section}>
           <TouchableOpacity 
             style={[styles.moreButton, {backgroundColor: colors.card, shadowColor: colors.shadow}]} 
@@ -577,7 +592,7 @@ const HomeScreen = ({navigation}: any) => {
             <Text style={[styles.moreButtonText, {color: colors.text}]}>{t('more.title')}</Text>
             <Text style={[styles.arrowText, {color: colors.textSecondary}]}>›</Text>
           </TouchableOpacity>
-        </View>
+        </View> */}
 
         {/* Usage Statistics */}
         <View style={[styles.usageCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
@@ -672,6 +687,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+  moreButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  moreButtonText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
   headerActionButton: {
     width: 40,
     height: 40,
@@ -687,31 +714,35 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 80,
     right: 20,
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 8,
+    minWidth: 180,
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
     zIndex: 1000,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginVertical: 2,
   },
   menuIcon: {
-    fontSize: 18,
-    marginRight: 12,
+    fontSize: 20,
+    marginRight: 14,
+    width: 24,
+    textAlign: 'center',
   },
   menuText: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   logo: {
     marginRight: 12,
@@ -918,25 +949,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  moreButton: {
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  moreButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
+
   arrowText: {
     fontSize: 20,
   },

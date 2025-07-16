@@ -19,6 +19,7 @@ import {apiService} from '../services/api';
 import {useAuth} from '../utils/AuthContext';
 import sessionManager from '../services/sessionManager';
 import {useFocusEffect} from '@react-navigation/native';
+import {useSessionValidation} from '../utils/useSessionValidation';
 
 const {width: screenWidth} = Dimensions.get('window');
 
@@ -130,6 +131,7 @@ const SessionsScreen = ({navigation}: any) => {
   const colors = getThemeColors(isDark);
   const {t} = useTranslation();
   const {userData} = useAuth();
+  const {checkSessionAndHandle} = useSessionValidation();
   const [selectedSession, setSelectedSession] = useState<SessionData | null>(null);
   const [showSessionModal, setShowSessionModal] = useState(false);
   const [sessionsData, setSessionsData] = useState<SessionData[]>([]);
@@ -143,10 +145,11 @@ const SessionsScreen = ({navigation}: any) => {
         setLoading(true);
         setError(null);
         
-        // Always check if user is authenticated
-        const isLoggedIn = await sessionManager.isLoggedIn();
-        if (!isLoggedIn) {
-          throw new Error('User not authenticated');
+        // Check session validity before making API call
+        const isSessionValid = await checkSessionAndHandle(navigation);
+        if (!isSessionValid) {
+          // Don't return immediately, let the API call handle token regeneration
+          console.log('Session validation failed, but continuing with API call');
         }
 
         // Get fresh user data from session
@@ -156,7 +159,10 @@ const SessionsScreen = ({navigation}: any) => {
         }
 
         const username = currentSession.username;
-        const realm = username; // Use username as realm for now
+        // Get current client configuration
+        const {getClientConfig} = require('../config/client-config');
+        const clientConfig = getClientConfig();
+        const realm = clientConfig.clientId;
         const accountStatus = 'active';
         
         console.log('=== FETCHING SESSIONS FOR CURRENT USER ===');
@@ -208,10 +214,11 @@ const SessionsScreen = ({navigation}: any) => {
           setLoading(true);
           setError(null);
           
-          // Always check if user is authenticated
-          const isLoggedIn = await sessionManager.isLoggedIn();
-          if (!isLoggedIn) {
-            throw new Error('User not authenticated');
+          // Check session validity before making API call
+          const isSessionValid = await checkSessionAndHandle(navigation);
+          if (!isSessionValid) {
+            setLoading(false);
+            return;
           }
 
           // Get fresh user data from session
@@ -221,7 +228,10 @@ const SessionsScreen = ({navigation}: any) => {
           }
 
           const username = currentSession.username;
-          const realm = username;
+          // Get current client configuration
+          const {getClientConfig} = require('../config/client-config');
+          const clientConfig = getClientConfig();
+          const realm = clientConfig.clientId;
           const accountStatus = 'active';
           
           console.log('=== REFRESHING SESSIONS ON FOCUS ===');
@@ -262,12 +272,6 @@ const SessionsScreen = ({navigation}: any) => {
     return (
       <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}>
         <CommonHeader navigation={navigation} />
-        {/* <View style={styles.headingContainer}>
-          <Text style={[styles.pageHeading, {color: colors.text}]}>{t('sessions.title')}</Text>
-          <Text style={[styles.pageSubheading, {color: colors.textSecondary}]}>
-            {t('sessions.subtitle')}
-          </Text>
-        </View> */}
         <View style={styles.loadingContainer}>
           <Text style={[styles.loadingText, {color: colors.textSecondary}]}>Loading...</Text>
         </View>
@@ -307,7 +311,7 @@ const SessionsScreen = ({navigation}: any) => {
         onPress={() => handleSessionPress(item)}>
         <View style={styles.sessionHeader}>
           <Text style={[styles.sessionDate, {color: colors.text}]}>{item.date}</Text>
-          <View style={[styles.durationBadge, {backgroundColor: colors.primaryLight}]}>
+          <View style={[styles.durationBadge, {backgroundColor: colors.primary + '20'}]}>
             <Text style={[styles.durationText, {color: colors.primary}]}>{item.totalDuration}</Text>
           </View>
         </View>
@@ -315,8 +319,8 @@ const SessionsScreen = ({navigation}: any) => {
         <View style={styles.sessionDetails}>
           <View style={styles.detailRow}>
             <View style={styles.detailItem}>
-              <View style={styles.detailIconContainer}>
-                <Text style={styles.detailIcon}>↑</Text>
+              <View style={[styles.detailIconContainer, {backgroundColor: colors.primary + '15'}]}>
+                <Text style={[styles.detailIcon, {color: colors.primary}]}>↑</Text>
               </View>
               <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>
                 {t('sessions.upload')}
@@ -324,8 +328,8 @@ const SessionsScreen = ({navigation}: any) => {
               <Text style={[styles.detailValue, {color: colors.text}]}>{item.totalUpload}</Text>
             </View>
             <View style={styles.detailItem}>
-              <View style={styles.detailIconContainer}>
-                <Text style={styles.detailIcon}>↓</Text>
+              <View style={[styles.detailIconContainer, {backgroundColor: colors.success + '15'}]}>
+                <Text style={[styles.detailIcon, {color: colors.success}]}>↓</Text>
               </View>
               <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>
                 {t('sessions.download')}
@@ -450,8 +454,8 @@ const SessionsScreen = ({navigation}: any) => {
         
         <View style={styles.summaryGrid}>
           <View style={styles.summaryItem}>
-            <View style={styles.summaryIconContainer}>
-              <Text style={styles.summaryIcon}>📊</Text>
+            <View style={[styles.summaryIconContainer, {backgroundColor: colors.primary + '15'}]}>
+              <Text style={[styles.summaryIcon, {color: colors.primary}]}>📊</Text>
             </View>
             <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>
               {t('sessions.totalSessions')}
@@ -460,8 +464,8 @@ const SessionsScreen = ({navigation}: any) => {
           </View>
           
           <View style={styles.summaryItem}>
-            <View style={styles.summaryIconContainer}>
-              <Text style={styles.summaryIcon}>⏱️</Text>
+            <View style={[styles.summaryIconContainer, {backgroundColor: colors.accent + '15'}]}>
+              <Text style={[styles.summaryIcon, {color: colors.accent}]}>⏱️</Text>
             </View>
             <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>
               {t('sessions.totalDuration')}
@@ -470,8 +474,8 @@ const SessionsScreen = ({navigation}: any) => {
           </View>
           
           <View style={styles.summaryItem}>
-            <View style={styles.summaryIconContainer}>
-              <Text style={styles.summaryIcon}>↑</Text>
+            <View style={[styles.summaryIconContainer, {backgroundColor: colors.primary + '15'}]}>
+              <Text style={[styles.summaryIcon, {color: colors.primary}]}>↑</Text>
             </View>
             <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>
               {t('sessions.totalUpload')}
@@ -480,8 +484,8 @@ const SessionsScreen = ({navigation}: any) => {
           </View>
           
           <View style={styles.summaryItem}>
-            <View style={styles.summaryIconContainer}>
-              <Text style={styles.summaryIcon}>↓</Text>
+            <View style={[styles.summaryIconContainer, {backgroundColor: colors.success + '15'}]}>
+              <Text style={[styles.summaryIcon, {color: colors.success}]}>↓</Text>
             </View>
             <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>
               {t('sessions.totalDownload')}
@@ -541,8 +545,8 @@ const SessionsScreen = ({navigation}: any) => {
         animationType="slide"
         onRequestClose={() => setShowSessionModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, {backgroundColor: colors.card}]}> 
+        <View style={[styles.modalOverlay, {backgroundColor: isDark ? 'rgba(0, 0, 0, 0.8)' : 'rgba(0, 0, 0, 0.6)'}]}>
+          <View style={[styles.modalContent, {backgroundColor: colors.card, shadowColor: colors.shadow}]}> 
             <Text style={[styles.modalTitle, {color: colors.text}]}>{t('sessions.sessionDetails')}</Text>
             {selectedSession && (
               <>
@@ -694,7 +698,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(0, 122, 255, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
@@ -758,13 +761,13 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(0, 122, 255, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 6,
   },
   detailIcon: {
     fontSize: 16,
+    fontWeight: 'bold',
   },
   detailLabel: {
     fontSize: 12,
@@ -796,15 +799,23 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.3)',
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 20,
   },
   modalContent: {
-    width: '85%',
+    width: '100%',
+    maxWidth: 400,
     borderRadius: 16,
     padding: 24,
     alignItems: 'stretch',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   modalTitle: {
     fontSize: 20,

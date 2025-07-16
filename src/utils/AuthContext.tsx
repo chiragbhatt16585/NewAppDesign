@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { apiService } from '../services/api';
 import sessionManager from '../services/sessionManager';
-import sessionMonitor from '../services/sessionMonitor';
+// Session monitoring disabled for persistent login
+// import sessionMonitor from '../services/sessionMonitor';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -15,9 +16,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
-  console.log('useAuth hook called');
   const context = useContext(AuthContext);
-  console.log('AuthContext value:', context);
   if (!context) {
     console.error('AuthContext is undefined - useAuth must be used within an AuthProvider');
     throw new Error('useAuth must be used within an AuthProvider');
@@ -30,7 +29,6 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  console.log('AuthProvider initializing...');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userData, setUserData] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
@@ -51,12 +49,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             username: session.username,
             token: session.token,
           });
-          // Start session monitoring when user is authenticated
-          sessionMonitor.startMonitoring();
+          // Session monitoring disabled for persistent login
+          // sessionMonitor.startMonitoring();
         }
       } else {
-        // Stop session monitoring when user is not authenticated
-        sessionMonitor.stopMonitoring();
+        // Session monitoring disabled for persistent login
+        // sessionMonitor.stopMonitoring();
       }
     } catch (error) {
       console.error('Error checking auth status:', error);
@@ -77,8 +75,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           username,
           token: response.token,
         });
-        // Start session monitoring after successful login
-        sessionMonitor.startMonitoring();
+        // Session monitoring disabled for persistent login
+        // sessionMonitor.startMonitoring();
         return true;
       }
       return false;
@@ -102,8 +100,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           username: phoneNumber,
           token: response.token,
         });
-        // Start session monitoring after successful OTP login
-        sessionMonitor.startMonitoring();
+        // Session monitoring disabled for persistent login
+        // sessionMonitor.startMonitoring();
         return true;
       }
       return false;
@@ -122,15 +120,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await sessionManager.logout();
       setIsAuthenticated(false);
       setUserData(null);
-      // Stop session monitoring when user logs out
-      sessionMonitor.stopMonitoring();
+      // Session monitoring disabled for persistent login
+      // sessionMonitor.stopMonitoring();
     } catch (error) {
       console.error('Logout error:', error);
       // Even if API logout fails, clear local session
       await sessionManager.logout();
       setIsAuthenticated(false);
       setUserData(null);
-      sessionMonitor.stopMonitoring();
+      // sessionMonitor.stopMonitoring();
     } finally {
       setLoading(false);
     }

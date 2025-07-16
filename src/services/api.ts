@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import sessionManager from '../../src/services/sessionManager';
+import credentialStorage from '../../src/services/credentialStorage';
 
 // API Configuration
 export const domainUrl = "crm.dnainfotel.com";
@@ -217,37 +218,16 @@ class ApiService {
   }
 
   private async performTokenRegeneration() {
-    const session = await sessionManager.getCurrentSession();
-    if (!session) return false;
-
-    const { username } = session;
-    if (!username) return false;
-
-    const data = {
-      username: username.toLowerCase().trim(),
-      password: '', // We don't store password in session manager for security
-      login_from: 'app',
-      request_source: 'app',
-      request_app: 'user_app'
-    };
-
-    const options = {
-      method,
-      body: toFormData(data),
-      headers: new Headers({ ...fixedHeaders }),
-      timeout
-    };
-
     try {
-      const res = await fetch(`${url}/selfcareL2sUserLogin`, options);
-      const response = await res.json();
-      
-      if (response.status === 'ok') {
-        return response.data.token;
-      } else if (response.status === 'error') {
+      // Use credentialStorage to regenerate token with stored password
+      const newToken = await credentialStorage.regenerateToken();
+      if (newToken) {
+        console.log('Token regenerated successfully using stored credentials');
+        return newToken;
+      } else {
+        console.log('Failed to regenerate token - no stored credentials');
         return false;
       }
-      return false;
     } catch (error) {
       console.error('Token regeneration error:', error);
       return false;
@@ -985,6 +965,41 @@ class ApiService {
           throw new Error(networkErrorMsg);
         } else {
           throw new Error(e.message || 'Failed to create ticket');
+        }
+      }
+    });
+  }
+
+  async viewUserKyc(username: string, realm: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const data = {
+        username: username.toLowerCase().trim(),
+        request_source: 'app',
+        request_app: 'user_app' 
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+
+      try {
+        const res = await fetch(`${url}/selfcareViewUserKyc`, options);
+        const response = await res.json();
+        
+        if (response.status !== 'ok' && response.code !== 200) {
+          console.error('viewUserKyc error:', response);
+          throw new Error('Invalid username or password');
+        } else {
+          return response.data;
+        }
+      } catch (e: any) {
+        if (isNetworkError(e)) {
+          throw new Error(networkErrorMsg);
+        } else {
+          throw new Error(e.message || 'Failed to fetch KYC data');
         }
       }
     });

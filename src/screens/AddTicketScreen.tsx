@@ -46,7 +46,10 @@ const AddTicketScreen = ({visible, onClose, onTicketCreated}: AddTicketScreenPro
   const loadProblemOptions = async () => {
     try {
       setLoadingProblems(true);
-      const realm = 'default';
+      // Get current client configuration
+      const {getClientConfig} = require('../config/client-config');
+      const clientConfig = getClientConfig();
+      const realm = clientConfig.clientId;
       const options = await apiService.getComplaintProblems(realm);
       
       // Transform the data to match the expected format
@@ -86,7 +89,10 @@ const AddTicketScreen = ({visible, onClose, onTicketCreated}: AddTicketScreenPro
 
       // Format username to lowercase and trim
       const formattedUsername = username.toLowerCase().trim();
-      const realm = 'default';
+      // Get current client configuration
+      const {getClientConfig} = require('../config/client-config');
+      const clientConfig = getClientConfig();
+      const realm = clientConfig.clientId;
 
       // Call API to create ticket
       const response = await apiService.submitComplaint(
@@ -158,15 +164,15 @@ const AddTicketScreen = ({visible, onClose, onTicketCreated}: AddTicketScreenPro
       onRequestClose={handleCancel}
     >
       <KeyboardAvoidingView 
-        style={styles.modalOverlay}
+        style={[styles.modalOverlay, {backgroundColor: isDark ? 'rgba(0, 0, 0, 0.8)' : 'rgba(0, 0, 0, 0.6)'}]}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <View style={styles.modalContainer}>
-          <View style={[styles.modalContent, {backgroundColor: colors.card}]}>
+          <View style={[styles.modalContent, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
             {/* Header */}
-            <View style={styles.header}>
+            <View style={[styles.header, {borderBottomColor: colors.border}]}>
               <Text style={[styles.headerTitle, {color: colors.text}]}>📋 Create New Complaint</Text>
-              <TouchableOpacity onPress={handleCancel} style={styles.closeButton}>
+              <TouchableOpacity onPress={handleCancel} style={[styles.closeButton, {backgroundColor: colors.background}]}>
                 <Text style={[styles.closeButtonText, {color: colors.textSecondary}]}>✕</Text>
               </TouchableOpacity>
             </View>
@@ -177,7 +183,7 @@ const AddTicketScreen = ({visible, onClose, onTicketCreated}: AddTicketScreenPro
                 <Text style={[styles.inputLabel, {color: colors.text}]}>Problem Type</Text>
                 <View style={[styles.pickerContainer, {backgroundColor: colors.background, borderColor: selectedProblem ? colors.primary : colors.border}]}>
                   <TouchableOpacity
-                    style={[styles.pickerButton, {backgroundColor: selectedProblem ? colors.primary + '10' : 'transparent'}]}
+                    style={[styles.pickerButton, {backgroundColor: selectedProblem ? colors.primary + '15' : 'transparent'}]}
                     onPress={() => setShowProblemDropdown(!showProblemDropdown)}
                     disabled={loadingProblems}
                   >
@@ -198,7 +204,7 @@ const AddTicketScreen = ({visible, onClose, onTicketCreated}: AddTicketScreenPro
                             style={[
                               styles.pickerItem, 
                               {borderBottomColor: colors.border},
-                              selectedProblem?.value === option.value && {backgroundColor: colors.primary + '15'}
+                              selectedProblem?.value === option.value && {backgroundColor: colors.primary + '20'}
                             ]}
                             onPress={() => {
                               setSelectedProblem(option);
@@ -243,7 +249,7 @@ const AddTicketScreen = ({visible, onClose, onTicketCreated}: AddTicketScreenPro
             </ScrollView>
 
             {/* Action Buttons */}
-            <View style={styles.buttonContainer}>
+            <View style={[styles.buttonContainer, {borderTopColor: colors.border, backgroundColor: colors.card}]}>
               <TouchableOpacity
                 style={[styles.cancelButton, {backgroundColor: colors.background, borderColor: colors.border}]}
                 onPress={handleCancel}
@@ -258,7 +264,7 @@ const AddTicketScreen = ({visible, onClose, onTicketCreated}: AddTicketScreenPro
                 disabled={isSubmitting || !selectedProblem || !problemDescription.trim()}
               >
                 <Text style={styles.submitButtonText}>
-                  {isSubmitting ? 'Creating...' : 'Submit Complaint'}
+                  {isSubmitting ? 'Creating...' : 'Submit'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -272,7 +278,6 @@ const AddTicketScreen = ({visible, onClose, onTicketCreated}: AddTicketScreenPro
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
@@ -286,7 +291,6 @@ const styles = StyleSheet.create({
   modalContent: {
     borderRadius: 16,
     padding: 20,
-    backgroundColor: '#FFFFFF',
     shadowOffset: {
       width: 0,
       height: 4,
@@ -305,7 +309,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
   },
   headerTitle: {
     fontSize: 20,
@@ -341,7 +344,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 16,
     minHeight: 48,
-    backgroundColor: '#F8F9FA',
   },
   textArea: {
     borderWidth: 1,
@@ -351,7 +353,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     minHeight: 100,
     textAlignVertical: 'top',
-    backgroundColor: '#F8F9FA',
   },
   characterCount: {
     fontSize: 12,
@@ -366,8 +367,6 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 8,
     borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
-    backgroundColor: '#FFFFFF',
   },
   cancelButton: {
     flex: 1,
@@ -375,8 +374,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 14,
     alignItems: 'center',
-    backgroundColor: '#F8F9FA',
-    borderColor: '#DEE2E6',
   },
   cancelButtonText: {
     fontSize: 16,
@@ -387,7 +384,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 14,
     alignItems: 'center',
-    backgroundColor: '#007AFF',
   },
   submitButtonText: {
     fontSize: 16,

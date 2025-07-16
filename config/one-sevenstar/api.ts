@@ -269,13 +269,14 @@ class ApiService {
     }
   }
 
+  // Enhanced API call wrapper with automatic token regeneration
   async makeAuthenticatedRequest<T>(
     requestFn: (token: string) => Promise<T>,
     maxRetries: number = 1
   ): Promise<T> {
-    let retries = 0;
+    let lastError: Error | null = null;
 
-    while (retries <= maxRetries) {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
         const token = await sessionManager.getToken();
         if (!token) {
@@ -289,22 +290,36 @@ class ApiService {
 
         return await requestFn(token);
       } catch (error: any) {
-        console.error(`Request attempt ${retries + 1} failed:`, error);
-
-        if (isTokenExpiredError(error) && retries < maxRetries) {
-          console.log('Token expired, attempting regeneration...');
-          const tokenUpdated = await this.handleTokenUpdate();
-          if (tokenUpdated) {
-            retries++;
-            continue;
+        lastError = error;
+        
+        // Check if it's a token expiration error
+        if (isTokenExpiredError(error) && attempt < maxRetries) {
+          console.log('Token expired, attempting to regenerate...');
+          
+          try {
+            const newToken = await this.regenerateToken();
+            if (newToken) {
+              await sessionManager.updateToken(newToken);
+              console.log('Token regenerated successfully, retrying request...');
+              continue; // Retry the request with new token
+            } else {
+              console.log('Failed to regenerate token, clearing session');
+              await sessionManager.clearSession();
+              throw new Error('Authentication failed. Please login again.');
+            }
+          } catch (regenerationError) {
+            console.error('Token regeneration failed:', regenerationError);
+            await sessionManager.clearSession();
+            throw new Error('Authentication failed. Please login again.');
           }
+        } else {
+          // Not a token error or max retries reached
+          throw error;
         }
-
-        throw error;
       }
     }
 
-    throw new Error('Max retries exceeded');
+    throw lastError || new Error('Request failed after retries');
   }
 
   async checkAuthType(username: string): Promise<AuthTypeResponse> {
@@ -391,35 +406,37 @@ class ApiService {
   }
 
   async authUser(user_id: string, Authentication: string) {
-    const data = {
-      user_id,
-      request_source: 'app',
-      request_app: 'user_app'
-    };
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const data = {
+        user_id,
+        request_source: 'app',
+        request_app: 'user_app'
+      };
 
-    const options = {
-      method,
-      headers: new Headers({ Authentication, ...fixedHeaders }),
-      body: toFormData(data),
-      timeout
-    };
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
 
-    try {
-      const res = await fetch(`${url}/selfcareHelpdesk`, options);
-      const response = await res.json();
-      
-      if (response.status === 'ok') {
-        return response.data;
-      } else {
-        throw new Error(response.message || 'Failed to authenticate user');
+      try {
+        const res = await fetch(`${url}/selfcareHelpdesk`, options);
+        const response = await res.json();
+        
+        if (response.status === 'ok') {
+          return response.data;
+        } else {
+          throw new Error(response.message || 'Failed to authenticate user');
+        }
+      } catch (e: any) {
+        if (isNetworkError(e)) {
+          throw new Error(networkErrorMsg);
+        } else {
+          throw new Error(e.message);
+        }
       }
-    } catch (e: any) {
-      if (isNetworkError(e)) {
-        throw new Error(networkErrorMsg);
-      } else {
-        throw new Error(e.message);
-      }
-    }
+    });
   }
 
   async logout() {
@@ -803,6 +820,130 @@ class ApiService {
           throw new Error(networkErrorMsg);
         } else {
           throw new Error(e.message);
+        }
+      }
+    });
+  }
+
+  async getComplaintProblems(realm: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const username = await sessionManager.getUsername();
+      if (!username) {
+        throw new Error('No username found in session');
+      }
+
+      const data = {
+        username: username.toLowerCase().trim(),
+        combo_code: 'fetch_parent_complaints',
+        column: 'selfcare_display',
+        value: 'yes',
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+
+      try {
+        const res = await fetch(`${url}/selfcareDropdown`, options);
+        const response = await res.json();
+        
+        if (response.status !== 'ok' && response.code !== 200) {
+          throw new Error('Could not find complaint options. Please try again.');
+        } else {
+          return response.data;
+        }
+      } catch (e: any) {
+        if (isNetworkError(e)) {
+          throw new Error(networkErrorMsg);
+        } else {
+          throw new Error(e.message || 'Failed to fetch complaint problems');
+        }
+      }
+    });
+  }
+
+  async submitComplaint(username: string, problem: any, customMsg: string, realm: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const data: any = {
+        username,
+        problem_id: problem.value,
+        call_type: 'complaint',
+        current_ticket_status: 'open',
+        ticket_source: 'selfcare',
+        ticket_prio: 'medium',
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      if (customMsg && customMsg !== '') {
+        data.remarks = customMsg;
+      }
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+
+      try {
+        const res = await fetch(`${url}/selfcareCreateTicket`, options);
+        const response = await res.json();
+        
+        if (response.status !== 'ok' && response.code !== 200) {
+          let msg = 'You have already open complaint. So you can not create new complaint.';
+          let error = response.message === msg ?
+            'Sorry, we cannot accept a new complaint while an open ticket exists' :
+            response.message;
+          throw new Error(error);
+        } else {
+          return { success: true, message: response.message || 'Ticket created successfully' };
+        }
+      } catch (e: any) {
+        if (isNetworkError(e)) {
+          throw new Error(networkErrorMsg);
+        } else {
+          throw new Error(e.message || 'Failed to create ticket');
+        }
+      }
+    });
+  }
+
+  async viewUserKyc(username: string, realm: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const data = {
+        username: username.toLowerCase().trim(),
+        request_source: 'app',
+        request_app: 'user_app' 
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+
+      try {
+        const res = await fetch(`${url}/selfcareViewUserKyc`, options);
+        const response = await res.json();
+        
+        if (response.status !== 'ok' && response.code !== 200) {
+          console.error('viewUserKyc error:', response);
+          throw new Error('Invalid username or password');
+        } else {
+          return response.data;
+        }
+      } catch (e: any) {
+        if (isNetworkError(e)) {
+          throw new Error(networkErrorMsg);
+        } else {
+          throw new Error(e.message || 'Failed to fetch KYC data');
         }
       }
     });

@@ -38,20 +38,8 @@ export class SessionManager {
         // Check if session is still valid
         if (this.currentSession && this.isSessionValid()) {
           console.log('Valid session found, user is logged in');
-          
-          // Check if session is about to expire (within 24 hours)
-          if (this.isSessionExpiringSoon()) {
-            console.log('Session is expiring soon, user should be notified');
-          }
-
-          // Check for inactivity logout
-          if (this.shouldLogoutDueToInactivity()) {
-            console.log('User inactive for 7 days, logging out automatically');
-            await this.clearSession();
-            return;
-          }
         } else {
-          console.log('Session expired or invalid, clearing session');
+          console.log('Session invalid, clearing session');
           await this.clearSession();
         }
       }
@@ -68,8 +56,7 @@ export class SessionManager {
         username,
         token,
         lastLoginTime: Date.now(),
-        lastActivityTime: Date.now(), // Initialize activity time
-        sessionExpiry: Date.now() + (this.SESSION_EXPIRY_HOURS * 60 * 60 * 1000),
+        lastActivityTime: Date.now(), // Keep for tracking but don't use for logout
       };
 
       this.currentSession = session;
@@ -88,22 +75,24 @@ export class SessionManager {
   }
 
   async getCurrentSession(): Promise<UserSession | null> {
-    if (!this.currentSession) {
-      try {
-        const savedSession = await AsyncStorage.getItem(this.SESSION_KEY);
-        if (savedSession) {
-          this.currentSession = JSON.parse(savedSession);
-        }
-      } catch (error) {
-        console.error('Failed to get current session:', error);
+    try {
+      // Always try to get from AsyncStorage first
+      const savedSession = await AsyncStorage.getItem(this.SESSION_KEY);
+      if (savedSession) {
+        this.currentSession = JSON.parse(savedSession);
+        console.log('Session loaded from storage:', this.currentSession?.username);
       }
+      
+      // Return session if it exists and has required fields
+      if (this.currentSession && this.currentSession.username && this.currentSession.token) {
+        return this.currentSession;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Failed to get current session:', error);
+      return null;
     }
-
-    if (this.currentSession && this.isSessionValid()) {
-      return this.currentSession;
-    }
-
-    return null;
   }
 
   async isLoggedIn(): Promise<boolean> {
@@ -112,13 +101,25 @@ export class SessionManager {
   }
 
   async getToken(): Promise<string | null> {
-    const session = await this.getCurrentSession();
-    return session?.token || null;
+    try {
+      const session = await this.getCurrentSession();
+      console.log('Getting token from session:', session?.token ? 'Token exists' : 'No token');
+      return session?.token || null;
+    } catch (error) {
+      console.error('Failed to get token:', error);
+      return null;
+    }
   }
 
   async getUsername(): Promise<string | null> {
-    const session = await this.getCurrentSession();
-    return session?.username || null;
+    try {
+      const session = await this.getCurrentSession();
+      console.log('Getting username from session:', session?.username);
+      return session?.username || null;
+    } catch (error) {
+      console.error('Failed to get username:', error);
+      return null;
+    }
   }
 
   async clearSession(): Promise<void> {
@@ -151,7 +152,6 @@ export class SessionManager {
         if (this.currentSession) {
           this.currentSession.token = newToken;
           this.currentSession.lastActivityTime = Date.now();
-          this.currentSession.sessionExpiry = Date.now() + (this.SESSION_EXPIRY_HOURS * 60 * 60 * 1000);
           await AsyncStorage.setItem(this.SESSION_KEY, JSON.stringify(this.currentSession));
           console.log('Token regenerated and session updated');
         }
@@ -177,28 +177,14 @@ export class SessionManager {
     }
   }
 
-  // New method to check if user should be logged out due to inactivity
+  // Method kept for reference but not used for automatic logout
   private shouldLogoutDueToInactivity(): boolean {
-    if (!this.currentSession || !this.currentSession.lastActivityTime) return false;
-    
-    const inactivityThreshold = Date.now() - (this.INACTIVITY_LOGOUT_HOURS * 60 * 60 * 1000);
-    const shouldLogout = this.currentSession.lastActivityTime < inactivityThreshold;
-    
-    if (shouldLogout) {
-      console.log('User inactive for 7 days, should logout');
-    }
-    
-    return shouldLogout;
+    // Disabled automatic logout - sessions persist until manual logout
+    return false;
   }
 
   private isSessionValid(): boolean {
     if (!this.currentSession) return false;
-
-    // Check if session has expired
-    if (this.currentSession.sessionExpiry && Date.now() > this.currentSession.sessionExpiry) {
-      console.log('Session has expired');
-      return false;
-    }
 
     // Check if token exists
     if (!this.currentSession.token) {
@@ -206,20 +192,13 @@ export class SessionManager {
       return false;
     }
 
-    // Check for inactivity logout
-    if (this.shouldLogoutDueToInactivity()) {
-      console.log('Session invalid due to inactivity');
-      return false;
-    }
-
+    // Session is valid (no automatic logout)
     return true;
   }
 
   private isSessionExpiringSoon(): boolean {
-    if (!this.currentSession || !this.currentSession.sessionExpiry) return false;
-    
-    const warningTime = Date.now() + (24 * 60 * 60 * 1000); // 24 hours from now
-    return this.currentSession.sessionExpiry < warningTime;
+    // Disabled session expiry - sessions persist until manual logout
+    return false;
   }
 
   async refreshSession(): Promise<void> {
@@ -227,7 +206,6 @@ export class SessionManager {
       if (this.currentSession) {
         this.currentSession.lastLoginTime = Date.now();
         this.currentSession.lastActivityTime = Date.now(); // Update activity time on refresh
-        this.currentSession.sessionExpiry = Date.now() + (this.SESSION_EXPIRY_HOURS * 60 * 60 * 1000);
         await AsyncStorage.setItem(this.SESSION_KEY, JSON.stringify(this.currentSession));
         console.log('Session refreshed');
       }
@@ -241,7 +219,6 @@ export class SessionManager {
       if (this.currentSession) {
         this.currentSession.token = newToken;
         this.currentSession.lastActivityTime = Date.now();
-        this.currentSession.sessionExpiry = Date.now() + (this.SESSION_EXPIRY_HOURS * 60 * 60 * 1000);
         await AsyncStorage.setItem(this.SESSION_KEY, JSON.stringify(this.currentSession));
         console.log('Token updated successfully');
       }
@@ -258,15 +235,8 @@ export class SessionManager {
   }
 
   async getSessionExpiryInfo(): Promise<{ isExpiringSoon: boolean; hoursRemaining: number }> {
-    if (!this.currentSession || !this.currentSession.sessionExpiry) {
-      return { isExpiringSoon: false, hoursRemaining: 0 };
-    }
-    
-    const now = Date.now();
-    const hoursRemaining = Math.max(0, Math.floor((this.currentSession.sessionExpiry - now) / (60 * 60 * 1000)));
-    const isExpiringSoon = hoursRemaining <= 24;
-    
-    return { isExpiringSoon, hoursRemaining };
+    // Sessions don't expire automatically - they persist until manual logout
+    return { isExpiringSoon: false, hoursRemaining: 0 };
   }
 
   async getInactivityInfo(): Promise<{ isInactive: boolean; hoursSinceLastActivity: number }> {
@@ -276,7 +246,8 @@ export class SessionManager {
     
     const now = Date.now();
     const hoursSinceLastActivity = Math.floor((now - this.currentSession.lastActivityTime) / (60 * 60 * 1000));
-    const isInactive = hoursSinceLastActivity >= this.INACTIVITY_LOGOUT_HOURS;
+    // Sessions don't become inactive automatically - they persist until manual logout
+    const isInactive = false;
     
     return { isInactive, hoursSinceLastActivity };
   }
@@ -287,6 +258,44 @@ export class SessionManager {
     const now = Date.now();
     const daysSinceLastActivity = Math.floor((now - this.currentSession.lastActivityTime) / (24 * 60 * 60 * 1000));
     return daysSinceLastActivity;
+  }
+
+  // New method to check session validity before API calls
+  async checkSessionBeforeApiCall(): Promise<{ isValid: boolean; shouldRedirect: boolean; message: string }> {
+    try {
+      // First check if session exists
+      if (!this.currentSession) {
+        return {
+          isValid: false,
+          shouldRedirect: true,
+          message: 'No active session found. Please login again.'
+        };
+      }
+
+      // Check if token exists - but don't clear session immediately
+      if (!this.currentSession.token) {
+        console.log('No token in session, but keeping session for potential regeneration');
+        return {
+          isValid: false,
+          shouldRedirect: false, // Don't redirect, let API handle token regeneration
+          message: 'Authentication token missing. Please login again.'
+        };
+      }
+
+      // Session is valid (no automatic logout)
+      return {
+        isValid: true,
+        shouldRedirect: false,
+        message: ''
+      };
+    } catch (error) {
+      console.error('Error checking session before API call:', error);
+      return {
+        isValid: false,
+        shouldRedirect: true,
+        message: 'Session validation failed. Please login again.'
+      };
+    }
   }
 }
 

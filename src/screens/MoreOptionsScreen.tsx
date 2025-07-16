@@ -30,7 +30,7 @@ const MoreOptionsScreen = ({navigation}: any) => {
   };
 
   const handleKYC = () => {
-    Alert.alert('KYC', 'Opening KYC verification...');
+    navigation.navigate('KYC');
   };
 
   const handleUpgradePlan = () => {
