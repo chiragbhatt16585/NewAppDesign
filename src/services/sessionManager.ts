@@ -111,26 +111,18 @@ export class SessionManager {
 
   async getCurrentSession(): Promise<UserSession | null> {
     try {
-      console.log('=== GETTING CURRENT SESSION ===');
-      
       // Always try to get from AsyncStorage first
       const savedSession = await AsyncStorage.getItem(this.SESSION_KEY);
-      console.log('Saved session exists:', !!savedSession);
       
       if (savedSession) {
         this.currentSession = JSON.parse(savedSession);
-        console.log('Session loaded from storage:', this.currentSession?.username);
-        console.log('Session isLoggedIn:', this.currentSession?.isLoggedIn);
-        console.log('Session has token:', !!this.currentSession?.token);
       }
       
       // Return session if it exists and has required fields
       if (this.currentSession && this.currentSession.username && this.currentSession.isLoggedIn) {
-        console.log('✅ Valid session found');
         return this.currentSession;
       }
       
-      console.log('❌ No valid session found');
       return null;
     } catch (error) {
       console.error('Failed to get current session:', error);
@@ -141,17 +133,11 @@ export class SessionManager {
   async isLoggedIn(): Promise<boolean> {
     try {
       const session = await this.getCurrentSession();
-      console.log('=== CHECKING LOGIN STATUS ===');
-      console.log('Session exists:', !!session);
-      console.log('Session username:', session?.username);
-      console.log('Session isLoggedIn:', session?.isLoggedIn);
       
       if (session && session.username && session.isLoggedIn) {
-        console.log('✅ User is logged in');
         return true;
       }
       
-      console.log('❌ User is not logged in');
       return false;
     } catch (error) {
       console.error('Error checking login status:', error);
@@ -162,7 +148,6 @@ export class SessionManager {
   async getToken(): Promise<string | null> {
     try {
       const session = await this.getCurrentSession();
-      console.log('Getting token from session:', session?.token ? 'Token exists' : 'No token');
       return session?.token || null;
     } catch (error) {
       console.error('Failed to get token:', error);
@@ -173,7 +158,6 @@ export class SessionManager {
   async getUsername(): Promise<string | null> {
     try {
       const session = await this.getCurrentSession();
-      console.log('Getting username from session:', session?.username);
       return session?.username || null;
     } catch (error) {
       console.error('Failed to get username:', error);

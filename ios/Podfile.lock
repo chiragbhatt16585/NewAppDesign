@@ -1575,7 +1575,7 @@ PODS:
     - SocketRocket
   - react-native-biometrics (3.0.1):
     - React-Core
-  - react-native-safe-area-context (5.5.1):
+  - react-native-safe-area-context (5.5.2):
     - boost
     - DoubleConversion
     - fast_float
@@ -1593,8 +1593,8 @@ PODS:
     - React-ImageManager
     - React-jsc
     - React-jsi
-    - react-native-safe-area-context/common (= 5.5.1)
-    - react-native-safe-area-context/fabric (= 5.5.1)
+    - react-native-safe-area-context/common (= 5.5.2)
+    - react-native-safe-area-context/fabric (= 5.5.2)
     - React-NativeModulesApple
     - React-RCTFabric
     - React-renderercss
@@ -1605,7 +1605,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - react-native-safe-area-context/common (5.5.1):
+  - react-native-safe-area-context/common (5.5.2):
     - boost
     - DoubleConversion
     - fast_float
@@ -1633,7 +1633,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - react-native-safe-area-context/fabric (5.5.1):
+  - react-native-safe-area-context/fabric (5.5.2):
     - boost
     - DoubleConversion
     - fast_float
@@ -2217,7 +2217,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - RNLocalize (3.4.2):
+  - RNLocalize (3.5.1):
     - boost
     - DoubleConversion
     - fast_float
@@ -2389,7 +2389,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - RNScreens (4.11.1):
+  - RNScreens (4.13.1):
     - boost
     - DoubleConversion
     - fast_float
@@ -2416,10 +2416,10 @@ PODS:
     - ReactCodegen
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
-    - RNScreens/common (= 4.11.1)
+    - RNScreens/common (= 4.13.1)
     - SocketRocket
     - Yoga
-  - RNScreens/common (4.11.1):
+  - RNScreens/common (4.13.1):
     - boost
     - DoubleConversion
     - fast_float
@@ -2781,7 +2781,7 @@ SPEC CHECKSUMS:
   React-Mapbuffer: 9a7c65078c6851397c1999068989e4fc239d0c80
   React-microtasksnativemodule: df9aabcab28ceded524c9ad510a83c3457d8ec9f
   react-native-biometrics: 352e5a794bfffc46a0c86725ea7dc62deb085bdc
-  react-native-safe-area-context: fbbc106eb1ea1a1dd1bc7b7fafcbb3003233b4c6
+  react-native-safe-area-context: b0beb30b17951a99914cfb98fb6209e1cc43afa9
   react-native-webview: fd93c77a8928b6bc0d0ad7b32e97c1e41a6d9230
   React-NativeModulesApple: 1493fb61e1f8b1ecf9575a676aff1ea8b454d514
   React-oscompat: 114036cd8f064558c9c1a0c04fc9ae5e1453706a
@@ -2818,9 +2818,9 @@ SPEC CHECKSUMS:
   RNDeviceInfo: feea80a690d2bde1fe51461cf548039258bd03f2
   RNGestureHandler: 8b46b6de4b8e585138bad6893a55f3401a517ca3
   RNKeychain: ebaf7ad59646b775956a1dae584275ae4d7f72cb
-  RNLocalize: 146c8373e6dae556a1ec6d39699b64323ef7d81a
+  RNLocalize: d281aabce999095c2e0993e016385c9e9d05e871
   RNReanimated: 72372be56c1c58a3a9ad134eb9fbfb3c74e50aa6
-  RNScreens: 038a3a3f4993ffb74ef5385694d8508342d08404
+  RNScreens: 600da4c3e0fd327f15c2a78a95f93a4eb98751c9
   RNVectorIcons: 2426fc194b5b82ecc278d0f1bbf72596f3cb3b6c
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   Yoga: daa1e4de4b971b977b23bc842aaa3e135324f1f3

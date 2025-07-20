@@ -84,6 +84,78 @@ export interface Ticket {
   index?: number;
 }
 
+// Plan class based on old app structure
+export class Plan {
+  id: string;
+  name: string;
+  amt: number;
+  FinalAmount: number;
+  CGSTAmount: number;
+  SGSTAmount: number;
+  UTGSTAmount: number;
+  downloadSpeed: string;
+  uploadSpeed: string;
+  days: number;
+  limit: string;
+  content_providers?: any[];
+  fup_details?: any;
+  tbq_details?: any;
+  index: number;
+  isExpanded?: boolean;
+
+  constructor(planObj: any, index: number) {
+    this.id = planObj.id || `plan_${index}`;
+    this.name = planObj.planname || planObj.name || 'Unknown Plan';
+    this.amt = parseFloat(planObj.base_price) || 0;
+    this.FinalAmount = parseFloat(planObj.user_mrp) || 0;
+    this.CGSTAmount = parseFloat(planObj.cgst_value) || 0;
+    this.SGSTAmount = parseFloat(planObj.sgst_value) || 0;
+    this.UTGSTAmount = parseFloat(planObj.utgst_value) || 0;
+    this.downloadSpeed = planObj.download_speed_mb || '0 Mbps';
+    this.uploadSpeed = planObj.upload_speed_mb || '0 Mbps';
+    this.days = parseInt(planObj.validity) || 30;
+    this.limit = planObj.data_xfer || 'Unlimited';
+    this.content_providers = planObj.content_providers ? (typeof planObj.content_providers === 'string' ? [] : planObj.content_providers) : [];
+    this.fup_details = planObj.plan_fup && planObj.plan_fup.length > 0 ? planObj.plan_fup[0] : null;
+    this.tbq_details = planObj.plan_tbq && planObj.plan_tbq.length > 0 ? planObj.plan_tbq[0] : null;
+    this.index = index;
+  }
+
+  isfupBriefDetailsAvailable() {
+    return {
+      result: this.fup_details && this.fup_details.limit && this.fup_details.download_speed
+    };
+  }
+
+  fupBriefDetails() {
+    if (this.isfupBriefDetailsAvailable().result) {
+      return {
+        limit: this.fup_details.limit,
+        downloadSpeed: this.fup_details.download_speed,
+        uploadSpeed: this.fup_details.upload_speed
+      };
+    }
+    return null;
+  }
+
+  isTBQPlan() {
+    return this.tbq_details && this.tbq_details.days && this.tbq_details.start && this.tbq_details.stop;
+  }
+
+  tbqBriefDetails() {
+    if (this.isTBQPlan()) {
+      return {
+        days: this.tbq_details.days,
+        start: this.tbq_details.start,
+        stop: this.tbq_details.stop,
+        downloadSpeed: this.tbq_details.download_speed,
+        uploadSpeed: this.tbq_details.upload_speed
+      };
+    }
+    return null;
+  }
+}
+
 // Utility function to convert object to FormData
 const toFormData = (data: any): FormData => {
   const formData = new FormData();
@@ -282,7 +354,6 @@ class ApiService {
       try {
         const token = await sessionManager.getToken();
         if (!token) {
-          console.log('No token available, redirecting to login');
           await sessionManager.clearSession();
           throw new Error('Authentication required. Please login again.');
         }
@@ -435,7 +506,7 @@ class ApiService {
     }
   }
 
-  async authUser(user_id: string, Authentication: string) {
+  async authUser(user_id: string) {
     return this.makeAuthenticatedRequest(async (token: string) => {
       const data = {
         username: user_id.toLowerCase().trim(),
@@ -1020,6 +1091,167 @@ class ApiService {
           throw new Error(networkErrorMsg);
         } else {
           throw new Error(e.message || 'Failed to fetch KYC data');
+        }
+      }
+    });
+  }
+
+  async planList(adminname: string, username: string, currentplan: string, isShowAllPlan: boolean, is_dashboard: boolean, realm: string): Promise<Plan[]> {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const data: any = {
+        admin_login_id: adminname,
+        username: username.toLowerCase().trim(),
+        planname: currentplan,
+        is_dashboard: is_dashboard ? is_dashboard : false,
+        online_renewal: 'yes',
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      if (isShowAllPlan) {
+        data.online_renewal_plan_list = 'yes';
+      }
+
+      console.log('=== API SERVICE: Plan list data ===', data);
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+
+      try {
+        const res = await fetch(`${url}/selfcareGetPlanAmount`, options);
+        const response = await res.json();
+
+        //Alert.alert('Plan list response:', JSON.stringify(response));
+        
+        if (response.status !== 'ok' && response.code !== 200) {
+          throw new Error('Plan list not found. Please try again.');
+        } else if (response.status === 'ok' && response.code !== 200) {
+          return [];
+        } else {
+          return response.data.map((planObj: any, index: number) => new Plan(planObj, index));
+        }
+      } catch (e: any) {
+        if (isNetworkError(e)) {
+          throw new Error(networkErrorMsg);
+        } else {
+          throw new Error(e.message || 'Failed to fetch plan list');
+        }
+      }
+    });
+  }
+
+  async userPaymentDues(username: string, realm: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const data = {
+        username: username.toLowerCase().trim(),
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+
+      try {
+        const res = await fetch(`${url}/selfcareGetUserPaymentDues`, options);
+        const response = await res.json();
+        
+        console.log('=== Payment dues API response ===', response);
+        
+        if (response.status !== 'ok' && response.code !== 200) {
+          return '0'; // Return '0' instead of throwing error, as per old implementation
+        } else {
+          return response.data;
+        }
+      } catch (e: any) {
+        if (isNetworkError(e)) {
+          throw new Error(networkErrorMsg);
+        } else {
+          throw new Error(e.message || 'Failed to fetch payment dues');
+        }
+      }
+    });
+  }
+
+  async getAdminTaxInfo(adminname: string, realm: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const username = await sessionManager.getUsername();
+      if (!username) {
+        throw new Error('No username found in session');
+      }
+
+      const data = {
+        username: username.toLowerCase().trim(),
+        admin_login_id: adminname,
+        action: 'settings,tax_info',
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+
+      try {
+        const res = await fetch(`${url}/selfcareGetAdminDetails`, options);
+        const response = await res.json();
+        
+        console.log('=== Tax info API response ===', response);
+        
+        if (response.status !== 'ok' && response.code !== 200) {
+          throw new Error('Tax info not found. Please try again.');
+        } else {
+          return response.data;
+        }
+      } catch (e: any) {
+        if (isNetworkError(e)) {
+          throw new Error(networkErrorMsg);
+        } else {
+          throw new Error(e.message || 'Failed to fetch admin tax info');
+        }
+      }
+    });
+  }
+
+  async paymentGatewayOptions(adminname: string, realm: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const data = {
+        admin_login_id: adminname,
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+
+      try {
+        const res = await fetch(`${url}/selfcarePaymentGatewayOptions`, options);
+        const response = await res.json();
+        
+        if (response.status !== 'ok' && response.code !== 200) {
+          throw new Error(response.message || 'Failed to fetch payment gateway options');
+        } else {
+          return response.data;
+        }
+      } catch (e: any) {
+        if (isNetworkError(e)) {
+          throw new Error(networkErrorMsg);
+        } else {
+          throw new Error(e.message || 'Failed to fetch payment gateway options');
         }
       }
     });
