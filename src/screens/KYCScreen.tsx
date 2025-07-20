@@ -19,6 +19,7 @@ import {useTranslation} from 'react-i18next';
 import {apiService} from '../services/api';
 import sessionManager from '../services/sessionManager';
 import {useSessionValidation} from '../utils/useSessionValidation';
+import Feather from 'react-native-vector-icons/Feather';
 
 const {width: screenWidth} = Dimensions.get('window');
 
@@ -57,7 +58,6 @@ const KYCScreen = ({navigation}: any) => {
   const {t} = useTranslation();
   const [loading, setLoading] = useState(true);
   const [kycData, setKycData] = useState<KYCItem[]>([]);
-  const [error, setError] = useState<string | null>(null);
   const [imageViewerVisible, setImageViewerVisible] = useState(false);
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
   const {checkSessionAndHandle} = useSessionValidation();
@@ -69,7 +69,6 @@ const KYCScreen = ({navigation}: any) => {
   const loadKYCData = async () => {
     try {
       setLoading(true);
-      setError(null);
       
       // Get username from session manager
       const username = await sessionManager.getUsername();
@@ -90,7 +89,7 @@ const KYCScreen = ({navigation}: any) => {
       // Call the viewUserKyc API to get KYC information
       const kycResponse = await apiService.viewUserKyc(username, realm);
       
-      if (kycResponse && Array.isArray(kycResponse)) {
+      if (kycResponse && Array.isArray(kycResponse) && kycResponse.length > 0) {
         console.log('KYC Data received:', JSON.stringify(kycResponse, null, 2));
         
         // Transform API data to KYCItem format
@@ -113,7 +112,7 @@ const KYCScreen = ({navigation}: any) => {
           const getDocSubtitle = (docType: string, docId: string, status: string) => {
             // If document is uploaded/verified/rejected, show document number
             if (status !== 'pending') {
-              return `Document ID: ${docId}`;
+              return `ID No. : ${docId}`;
             }
             
             // Otherwise show generic description
@@ -151,11 +150,91 @@ const KYCScreen = ({navigation}: any) => {
 
         setKycData(transformedData);
       } else {
-        throw new Error('No KYC data received');
+        console.log('No KYC data received, showing static sample data');
+        // Show static sample data when no KYC data is available
+        const staticKYCData: KYCItem[] = [
+          {
+            id: '1',
+            title: 'Identity Proof',
+            subtitle: 'Aadhaar card, PAN card, or driving license',
+            icon: '🆔',
+            status: 'pending',
+          },
+          {
+            id: '2',
+            title: 'Address Proof',
+            subtitle: 'Utility bill, rental agreement, or bank statement',
+            icon: '🏠',
+            status: 'pending',
+          },
+          {
+            id: '3',
+            title: 'User Photo',
+            subtitle: 'Recent passport size photograph',
+            icon: '📸',
+            status: 'pending',
+          },
+          {
+            id: '4',
+            title: 'User Signature',
+            subtitle: 'Digital signature or handwritten signature',
+            icon: '✍️',
+            status: 'pending',
+          },
+          {
+            id: '5',
+            title: 'Additional Documents',
+            subtitle: 'Additional supporting documents',
+            icon: '📄',
+            status: 'pending',
+          },
+        ];
+        
+        setKycData(staticKYCData);
       }
     } catch (error: any) {
       console.error('Error loading KYC data:', error);
-      setError(error.message || 'Failed to load KYC data');
+      // Show static sample data even when API fails
+      console.log('API failed, showing static sample data');
+      const staticKYCData: KYCItem[] = [
+        {
+          id: '1',
+          title: 'Identity Proof',
+          subtitle: 'Aadhaar card, PAN card, or driving license',
+          icon: '🆔',
+          status: 'pending',
+        },
+        {
+          id: '2',
+          title: 'Address Proof',
+          subtitle: 'Utility bill, rental agreement, or bank statement',
+          icon: '🏠',
+          status: 'pending',
+        },
+        {
+          id: '3',
+          title: 'User Photo',
+          subtitle: 'Recent passport size photograph',
+          icon: '📸',
+          status: 'pending',
+        },
+        {
+          id: '4',
+          title: 'User Signature',
+          subtitle: 'Digital signature or handwritten signature',
+          icon: '✍️',
+          status: 'pending',
+        },
+        {
+          id: '5',
+          title: 'Additional Documents',
+          subtitle: 'Additional supporting documents',
+          icon: '📄',
+          status: 'pending',
+        },
+      ];
+      
+      setKycData(staticKYCData);
     } finally {
       setLoading(false);
     }
@@ -171,7 +250,7 @@ const KYCScreen = ({navigation}: any) => {
         return '#EF4444';
       case 'pending':
       default:
-        return '#6B7280';
+        return '#F59E0B';
     }
   };
 
@@ -185,7 +264,7 @@ const KYCScreen = ({navigation}: any) => {
         return 'Rejected';
       case 'pending':
       default:
-        return 'Pending';
+        return 'Upload';
     }
   };
 
@@ -199,7 +278,7 @@ const KYCScreen = ({navigation}: any) => {
         return '✕';
       case 'pending':
       default:
-        return '⋯';
+        return null; // We'll use a MaterialIcon for upload
     }
   };
 
@@ -256,50 +335,88 @@ const KYCScreen = ({navigation}: any) => {
     }
   };
 
-  const renderKYCItem = (item: KYCItem) => (
-    <TouchableOpacity
-      key={item.id}
-      style={[styles.kycCard, {backgroundColor: colors.card}]}
-      onPress={() => handleKYCPress(item)}
-      activeOpacity={0.8}>
-      <View style={styles.kycCardContent}>
-        <View style={styles.kycCardLeft}>
-          <View style={[styles.kycIconContainer, {backgroundColor: getStatusColor(item.status) + '15'}]}>
-            <Text style={styles.kycIcon}>{item.icon}</Text>
+  const handleUploadDocument = (item: KYCItem) => {
+    console.log('handleUploadDocument called for:', item.title);
+    
+    // Navigate to Address Proof screen for all documents (for testing)
+    console.log('Navigating to AddressProof screen');
+    try {
+      navigation.navigate('AddressProof', { documentType: item.title });
+      console.log('Navigation call completed');
+    } catch (error) {
+      console.error('Navigation error:', error);
+      Alert.alert('Navigation Error', 'Failed to navigate to Address Proof screen');
+    }
+  };
+
+
+
+
+
+  const renderKYCItem = (item: KYCItem) => {
+    const isUpload = item.status === 'pending';
+    return (
+      <View
+        key={item.id}
+        style={[styles.kycCard, {backgroundColor: colors.card}]}>
+        <View style={styles.kycCardContent}>
+          <View style={styles.kycCardLeft}>
+            <View style={[styles.kycIconContainer, {backgroundColor: getStatusColor(item.status) + '15'}]}>
+              <Text style={styles.kycIcon}>{item.icon}</Text>
+            </View>
+            <View style={styles.kycTextContainer}>
+              <Text style={[styles.kycTitle, {color: colors.text}]}>{item.title}</Text>
+              <Text style={[styles.kycSubtitle, {color: colors.textSecondary}]}>{item.subtitle}</Text>
+            </View>
           </View>
-          <View style={styles.kycTextContainer}>
-            <Text style={[styles.kycTitle, {color: colors.text}]}>{item.title}</Text>
-            <Text style={[styles.kycSubtitle, {color: colors.textSecondary}]}>{item.subtitle}</Text>
-          </View>
+          <TouchableOpacity
+            style={[
+              styles.statusContainer,
+              {backgroundColor: isUpload ? '#FEF3C7' : getStatusColor(item.status) + '15'},
+              isUpload && {borderWidth: 1, borderColor: '#F59E0B'}
+            ]}
+            onPress={isUpload ? () => handleUploadDocument(item) : undefined}
+            disabled={!isUpload}
+          >
+            {isUpload ? (
+              <Text style={[styles.statusIcon, {color: getStatusColor(item.status), fontSize: 16, fontWeight: 'bold'}]}>
+                ⬆️
+              </Text>
+            ) : (
+              <Text style={[styles.statusIcon, {color: getStatusColor(item.status)}]}>
+                {getStatusIcon(item.status)}
+              </Text>
+            )}
+            <Text style={[styles.statusText, {color: getStatusColor(item.status)}]}>
+              {getStatusText(item.status)}
+            </Text>
+          </TouchableOpacity>
         </View>
         
-        <View style={[styles.statusContainer, {backgroundColor: getStatusColor(item.status) + '15'}]}>
-          <Text style={[styles.statusIcon, {color: getStatusColor(item.status)}]}>
-            {getStatusIcon(item.status)}
-          </Text>
-          <Text style={[styles.statusText, {color: getStatusColor(item.status)}]}>
-            {getStatusText(item.status)}
-          </Text>
-        </View>
+
+        
+        {/* Document info for uploaded/verified/rejected documents */}
+        {(item.status === 'uploaded' || item.status === 'verified' || item.status === 'rejected') && (
+          <View style={[styles.documentInfoRow, {borderTopColor: colors.borderLight}]}> 
+            <View style={styles.dateContainer}>
+              <Text style={styles.dateIcon}>📅</Text>
+              <Text style={[styles.uploadedDate, {color: colors.textSecondary}]}> 
+                {item.uploadedDate} 
+              </Text> 
+            </View> 
+            {item.documentName && ( 
+              <TouchableOpacity  
+                style={styles.viewDocumentButton} 
+                onPress={() => handleViewDocument(item)}> 
+                <Text style={styles.viewIcon}>👁️</Text> 
+                <Text style={[styles.viewText, {color: colors.primary}]}>View</Text> 
+              </TouchableOpacity> 
+            )} 
+          </View> 
+        )}
       </View>
-      
-             {(item.status === 'uploaded' || item.status === 'verified' || item.status === 'rejected') && (
-         <View style={[styles.documentInfo, {borderTopColor: colors.borderLight}]}>
-           <Text style={[styles.uploadedDate, {color: colors.textSecondary}]}>
-             Uploaded: {item.uploadedDate}
-           </Text>
-           {item.documentName && (
-             <TouchableOpacity 
-               style={styles.viewDocumentButton}
-               onPress={() => handleViewDocument(item)}>
-               <Text style={styles.viewIcon}>👁️</Text>
-               <Text style={[styles.viewText, {color: colors.primary}]}>View Document</Text>
-             </TouchableOpacity>
-           )}
-         </View>
-       )}
-    </TouchableOpacity>
-  );
+    );
+  };
 
   if (loading) {
     return (
@@ -315,21 +432,7 @@ const KYCScreen = ({navigation}: any) => {
     );
   }
 
-  if (error) {
-    return (
-      <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}>
-        <CommonHeader navigation={navigation} />
-        <View style={styles.errorContainer}>
-          <Text style={[styles.errorText, {color: colors.error}]}>{error}</Text>
-          <TouchableOpacity
-            style={[styles.retryButton, {backgroundColor: colors.primary}]}
-            onPress={loadKYCData}>
-            <Text style={styles.retryButtonText}>Retry</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
+
 
   const verifiedCount = kycData.filter(item => item.status === 'verified').length;
   const totalCount = kycData.length;
@@ -343,35 +446,35 @@ const KYCScreen = ({navigation}: any) => {
         {/* Modern Header */}
         <View style={styles.header}>
           <View style={styles.headerContent}>
-            <Text style={[styles.headerTitle, {color: colors.text}]}>KYC Verification</Text>
-            <Text style={[styles.headerSubtitle, {color: colors.textSecondary}]}>
-              Complete your identity verification
-            </Text>
+            <Text style={[styles.headerTitle, {color: colors.text}]}>View Your KYC</Text>
+            <Text style={[styles.headerSubtitle, {color: colors.textSecondary}]}>See your submitted KYC documents and their status.</Text>
           </View>
         </View>
 
-        {/* Modern Progress Card */}
-        <View style={[styles.progressCard, {backgroundColor: colors.card}]}>
-          <View style={styles.progressHeader}>
-            <Text style={[styles.progressTitle, {color: colors.text}]}>Verification Progress</Text>
-            <Text style={[styles.progressCount, {color: colors.primary}]}>
-              {verifiedCount}/{totalCount}
+        {/* Modern Progress Card - Only show when there are uploaded documents */}
+        {verifiedCount > 0 && (
+          <View style={[styles.progressCard, {backgroundColor: colors.card}]}>
+            <View style={styles.progressHeader}>
+              <Text style={[styles.progressTitle, {color: colors.text}]}>Verification Status</Text>
+              <Text style={[styles.progressCount, {color: colors.primary}]}>
+                {verifiedCount}/{totalCount}
+              </Text>
+            </View>
+            
+            <View style={[styles.progressBar, {backgroundColor: colors.borderLight}]}>
+              <View 
+                style={[
+                  styles.progressFill, 
+                  {backgroundColor: colors.primary, width: `${progressPercentage}%`}
+                ]} 
+              />
+            </View>
+            
+            <Text style={[styles.progressText, {color: colors.textSecondary}]}>
+              {verifiedCount} of {totalCount} documents verified
             </Text>
           </View>
-          
-          <View style={[styles.progressBar, {backgroundColor: colors.borderLight}]}>
-            <View 
-              style={[
-                styles.progressFill, 
-                {backgroundColor: colors.primary, width: `${progressPercentage}%`}
-              ]} 
-            />
-          </View>
-          
-          <Text style={[styles.progressText, {color: colors.textSecondary}]}>
-            {verifiedCount} of {totalCount} documents verified
-          </Text>
-        </View>
+        )}
 
         {/* KYC Items */}
         <View style={styles.kycSection}>
@@ -380,6 +483,8 @@ const KYCScreen = ({navigation}: any) => {
             {kycData.map(renderKYCItem)}
           </View>
         </View>
+
+
 
         {/* Modern Info Card */}
         <View style={[styles.infoCard, {backgroundColor: colors.card}]}>
@@ -395,13 +500,13 @@ const KYCScreen = ({navigation}: any) => {
               • Verification may take 24-48 hours
             </Text>
           </View>
-                 </View>
+        </View>
        </ScrollView>
        
        {/* Image Viewer Modal */}
        {currentImageUrl && (
          <ImageViewing
-           images={[{ uri: currentImageUrl }]}
+           images={[{ uri: currentImageUrl || '' }]}
            imageIndex={0}
            visible={imageViewerVisible}
            onRequestClose={() => setImageViewerVisible(false)}
@@ -570,6 +675,15 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     opacity: 0.8,
   },
+  documentInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 8,
+    paddingBottom: 12,
+    paddingHorizontal: 20,
+    borderTopWidth: 1,
+  },
   infoCard: {
     marginHorizontal: 24,
     marginBottom: 24,
@@ -614,40 +728,71 @@ const styles = StyleSheet.create({
     marginTop: 16,
     textAlign: 'center',
   },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  errorText: {
-    fontSize: 16,
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  retryButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+
   viewDocumentButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
   },
   viewIcon: {
     fontSize: 16,
-    marginRight: 6,
+    marginRight: 4,
   },
   viewText: {
     fontSize: 14,
     fontWeight: '600',
   },
+  dateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dateIcon: {
+    fontSize: 14,
+    marginRight: 6,
+  },
+  uploadCard: {
+    marginHorizontal: 24,
+    marginBottom: 24,
+    borderRadius: 20,
+    padding: 24,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  uploadHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  uploadIcon: {
+    fontSize: 24,
+    marginRight: 12,
+  },
+  uploadTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  uploadSubtitle: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  uploadButton: {
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  uploadButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+
+
 });
 
 export default KYCScreen; 

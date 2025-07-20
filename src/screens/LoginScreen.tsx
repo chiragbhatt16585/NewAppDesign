@@ -19,6 +19,7 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import LogoImage from '../components/LogoImage';
 import {useTheme} from '../utils/ThemeContext';
 import {getThemeColors} from '../utils/themeStyles';
+import { useAuth } from '../utils/AuthContext';
 import DeviceInfo from 'react-native-device-info';
 import {apiService} from '../services/api';
 import sessionManager from '../services/sessionManager';
@@ -31,6 +32,7 @@ const LoginScreen = ({navigation}: any) => {
   const {isDark, setThemeMode, themeMode} = useTheme();
   const colors = getThemeColors(isDark);
   const { currentLanguage, changeLanguage, availableLanguages } = useLanguage();
+  const { login, loginWithOtp } = useAuth();
   
   // Animation refs
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -45,6 +47,11 @@ const LoginScreen = ({navigation}: any) => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [resendCountdown, setResendCountdown] = useState(0);
+  
+  // Validation states
+  const [usernameError, setUsernameError] = useState(false);
+  const [passwordError, setPasswordError] = useState(false);
+  const [otpError, setOtpError] = useState(false);
   
   // Auth flow states
   const [authType, setAuthType] = useState<'none' | 'password' | 'otp' | 'both'>('none');
@@ -66,6 +73,9 @@ const LoginScreen = ({navigation}: any) => {
       setAuthType('none');
       setPassword('');
       setOtp('');
+      setUsernameError(false);
+      setPasswordError(false);
+      setOtpError(false);
     }
   }, [username]);
 
@@ -114,9 +124,12 @@ const LoginScreen = ({navigation}: any) => {
 
   const checkAuthType = async () => {
     if (!username || username.trim() === '') {
+      setUsernameError(true);
       Alert.alert('Error', 'Please enter your username');
       return;
     }
+    
+    setUsernameError(false);
 
     setIsLoading(true);
     
@@ -171,10 +184,13 @@ const LoginScreen = ({navigation}: any) => {
   };
 
   const sendOtp = async () => {
-    if (!username) {
+    if (!username || username.trim() === '') {
+      setUsernameError(true);
       Alert.alert('Error', 'Please enter your username');
       return;
     }
+    
+    setUsernameError(false);
     
     setIsLoading(true);
     
@@ -208,25 +224,82 @@ const LoginScreen = ({navigation}: any) => {
     }
   };
 
+  const validateForm = () => {
+    let isValid = true;
+    
+    // Validate username
+    if (!username || username.trim() === '') {
+      setUsernameError(true);
+      isValid = false;
+    } else {
+      setUsernameError(false);
+    }
+    
+    // Validate password if password auth is active
+    if (authType === 'password') {
+      if (!password || password.trim() === '') {
+        setPasswordError(true);
+        isValid = false;
+      } else {
+        setPasswordError(false);
+      }
+    }
+    
+    // Validate OTP if OTP auth is active
+    if (authType === 'otp') {
+      if (!otp || otp.trim() === '') {
+        setOtpError(true);
+        isValid = false;
+      } else {
+        setOtpError(false);
+      }
+    }
+    
+    // For both auth type, check if at least one field is filled
+    if (currentStep === 'both') {
+      if ((!password || password.trim() === '') && (!otp || otp.trim() === '')) {
+        setPasswordError(true);
+        setOtpError(true);
+        isValid = false;
+      } else {
+        setPasswordError(false);
+        setOtpError(false);
+      }
+    }
+    
+    return isValid;
+  };
+
   const handleLogin = async () => {
+    // Validate form before proceeding
+    if (!validateForm()) {
+      Alert.alert('Error', 'Please fill in all required fields');
+      return;
+    }
+    
     setIsLoading(true);
     
     try {
       if (currentStep === 'both') {
         // Handle both password and OTP login
         if (!password && !otp) {
+          setPasswordError(true);
+          setOtpError(true);
           Alert.alert('Error', 'Please enter either password or OTP');
           setIsLoading(false);
           return;
         }
         
+        // Clear errors when user starts typing
+        if (password) setPasswordError(false);
+        if (otp) setOtpError(false);
+        
         if (password) {
           // Password login
           console.log('=== PASSWORD LOGIN ATTEMPT ===');
-          const response = await apiService.authenticate(username, password);
+          const success = await login(username, password);
           
-          if (response && response.token) {
-            await sessionManager.createSession(username, response.token, password);
+          if (success) {
             Alert.alert('Success', 'Login successful!');
             navigation.navigate('Home');
             return;
@@ -236,10 +309,9 @@ const LoginScreen = ({navigation}: any) => {
         if (otp) {
           // OTP login
           console.log('=== OTP LOGIN ATTEMPT ===');
-          const response = await apiService.authenticate(username, '', otp, 'no', username);
+          const success = await loginWithOtp(username, otp);
           
-          if (response && response.token) {
-            await sessionManager.createSession(username, response.token);
+          if (success) {
             Alert.alert('Success', 'Login successful!');
             navigation.navigate('Home');
             return;
@@ -250,42 +322,43 @@ const LoginScreen = ({navigation}: any) => {
       } else {
         // Single auth type login
         if (authType === 'password') {
-          if (!password) {
+          if (!password || password.trim() === '') {
+            setPasswordError(true);
             Alert.alert('Error', 'Please enter your password');
             setIsLoading(false);
             return;
           }
           
+          setPasswordError(false);
+          
           console.log('=== PASSWORD LOGIN ATTEMPT ===');
           console.log('Username:', username);
           console.log('Password length:', password.length);
           
-          const response = await apiService.authenticate(username, password);
-          console.log('=== LOGIN RESPONSE ===');
-          console.log('Response:', response);
+          const success = await login(username, password);
           
-          if (response && response.token) {
-            console.log('=== CREATING SESSION ===');
-            await sessionManager.createSession(username, response.token, password);
-            console.log('=== SESSION CREATED ===');
+          if (success) {
+            console.log('=== LOGIN SUCCESS ===');
             Alert.alert('Success', 'Login successful!');
             navigation.navigate('Home');
           } else {
-            console.log('=== LOGIN FAILED - NO TOKEN ===');
+            console.log('=== LOGIN FAILED ===');
             Alert.alert('Error', 'Login failed. Please check your credentials.');
           }
         } else if (authType === 'otp') {
-          if (!otp) {
+          if (!otp || otp.trim() === '') {
+            setOtpError(true);
             Alert.alert('Error', 'Please enter OTP');
             setIsLoading(false);
             return;
           }
           
-          console.log('=== OTP LOGIN ATTEMPT ===');
-          const response = await apiService.authenticate(username, '', otp, 'no', username);
+          setOtpError(false);
           
-          if (response && response.token) {
-            await sessionManager.createSession(username, response.token);
+          console.log('=== OTP LOGIN ATTEMPT ===');
+          const success = await loginWithOtp(username, otp);
+          
+          if (success) {
             Alert.alert('Success', 'Login successful!');
             navigation.navigate('Home');
           } else {
@@ -343,16 +416,14 @@ const LoginScreen = ({navigation}: any) => {
   };
 
   return (
-    <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}>
+    <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}> 
       <StatusBar 
         barStyle={isDark ? 'light-content' : 'dark-content'} 
         backgroundColor={colors.background} 
       />
-      
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}>
-        
         <View style={styles.mainContainer}>
           {/* Header Section */}
           <Animated.View 
@@ -363,10 +434,10 @@ const LoginScreen = ({navigation}: any) => {
                 transform: [{translateY: slideAnim}],
               },
             ]}>
-                            <View style={styles.logoSection}>
-                  <LogoImage type="login" />
-                </View>
-                                                      <Text style={[styles.title, {color: colors.text}]}>{clientStrings.company_name}</Text>
+            <View style={styles.logoSection}>
+              <LogoImage type="login" />
+            </View>
+            <Text style={[styles.title, {color: colors.text}]}>{clientStrings.company_name}</Text>
           </Animated.View>
 
           {/* Login Interface */}
@@ -380,17 +451,13 @@ const LoginScreen = ({navigation}: any) => {
                 transform: [{translateY: slideAnim}],
               },
             ]}>
-            
             {/* Username Input - Always shown first */}
             <View style={styles.formSection}>
               <View style={styles.inputField}>
-                {/* <Text style={[styles.fieldLabel, {color: colors.text}]}>
-                  Username
-                </Text> */}
                 <View style={styles.inputContainer}>
                   <TextInput
                     style={[styles.textInput, {
-                      borderColor: colors.border,
+                      borderColor: usernameError ? '#EF4444' : colors.border,
                       backgroundColor: colors.surface,
                       color: colors.text,
                       flex: 1,
@@ -398,7 +465,10 @@ const LoginScreen = ({navigation}: any) => {
                     placeholder="Enter your username"
                     placeholderTextColor={colors.textTertiary}
                     value={username}
-                    onChangeText={setUsername}
+                    onChangeText={(text) => {
+                      setUsername(text);
+                      if (text.trim()) setUsernameError(false);
+                    }}
                     autoComplete="off"
                     importantForAutofill="no"
                     autoCorrect={false}
@@ -406,26 +476,33 @@ const LoginScreen = ({navigation}: any) => {
                   />
                   {currentStep === 'username' && (
                     <TouchableOpacity
-                      style={[styles.checkButton, {backgroundColor: colors.primary}]}
+                      style={[
+                        styles.checkButton, 
+                        {
+                          backgroundColor: username.trim() ? colors.primary : colors.textTertiary
+                        }
+                      ]}
                       onPress={checkAuthType}
-                      disabled={isLoading || !username.trim()}>
+                      disabled={isLoading}>
                       <Text style={styles.checkButtonText}>▶</Text>
                     </TouchableOpacity>
                   )}
                 </View>
+                {usernameError && (
+                  <Text style={[styles.errorText, {color: '#EF4444'}]}>
+                    Please enter your username
+                  </Text>
+                )}
               </View>
 
               {/* Password Input - Show when auth type is password */}
               {showPasswordInput && currentStep !== 'username' && (
                 <View style={styles.inputField}>
-                  {/* <Text style={[styles.fieldLabel, {color: colors.text}]}>
-                    Password
-                  </Text> */}
                   <View style={styles.inputContainer}>
                     <View style={{flex: 1, position: 'relative', height: 60}}>
                       <TextInput
                         style={[styles.passwordInput, {
-                          borderColor: colors.border,
+                          borderColor: passwordError ? '#EF4444' : colors.border,
                           backgroundColor: colors.surface,
                           color: colors.text,
                         }]}
@@ -433,30 +510,33 @@ const LoginScreen = ({navigation}: any) => {
                         placeholderTextColor={colors.textTertiary}
                         secureTextEntry={!showPassword}
                         value={password}
-                        onChangeText={setPassword}
+                        onChangeText={(text) => {
+                          setPassword(text);
+                          if (text.trim()) setPasswordError(false);
+                        }}
                       />
                       <TouchableOpacity
                         style={styles.eyeButton}
                         onPress={() => setShowPassword(!showPassword)}>
-                        <Text style={[styles.eyeIcon, {color: colors.textSecondary}]}>
-                          {showPassword ? '👁️' : '👁️‍🗨️'}
-                        </Text>
+                        <Text style={[styles.eyeIcon, {color: colors.textSecondary}]}> {showPassword ? '👁️' : '👁️‍🗨️'} </Text>
                       </TouchableOpacity>
                     </View>
                   </View>
+                  {passwordError && (
+                    <Text style={[styles.errorText, {color: '#EF4444'}]}>
+                      Please enter your password
+                    </Text>
+                  )}
                 </View>
               )}
 
               {/* OTP Input - Show when auth type is OTP */}
               {showOtpSection && currentStep !== 'username' && (
                 <View style={styles.inputField}>
-                  {/* <Text style={[styles.fieldLabel, {color: colors.text}]}>
-                    OTP
-                  </Text> */}
                   <View style={styles.inputContainer}>
                     <TextInput
                       style={[styles.textInput, {
-                        borderColor: colors.border,
+                        borderColor: otpError ? '#EF4444' : colors.border,
                         backgroundColor: colors.surface,
                         color: colors.text,
                         flex: 1,
@@ -465,7 +545,10 @@ const LoginScreen = ({navigation}: any) => {
                       placeholderTextColor={colors.textTertiary}
                       keyboardType="number-pad"
                       value={otp}
-                      onChangeText={setOtp}
+                      onChangeText={(text) => {
+                        setOtp(text);
+                        if (text.trim()) setOtpError(false);
+                      }}
                     />
                   </View>
                   <TouchableOpacity
@@ -483,6 +566,11 @@ const LoginScreen = ({navigation}: any) => {
                       {resendCountdown > 0 ? `${resendCountdown}s` : 'Resend OTP'}
                     </Text>
                   </TouchableOpacity>
+                  {otpError && (
+                    <Text style={[styles.errorText, {color: '#EF4444'}]}>
+                      Please enter OTP
+                    </Text>
+                  )}
                 </View>
               )}
 
@@ -533,14 +621,12 @@ const LoginScreen = ({navigation}: any) => {
 
                   {authType === 'password' && (
                     <View style={styles.inputField}>
-                      <Text style={[styles.fieldLabel, {color: colors.text}]}>
-                        Password
-                      </Text>
+                      <Text style={[styles.fieldLabel, {color: colors.text}]}>Password</Text>
                       <View style={styles.inputContainer}>
                         <View style={{flex: 1, position: 'relative', height: 60}}>
                           <TextInput
                             style={[styles.passwordInput, {
-                              borderColor: colors.border,
+                              borderColor: passwordError ? '#EF4444' : colors.border,
                               backgroundColor: colors.surface,
                               color: colors.text,
                             }]}
@@ -548,29 +634,32 @@ const LoginScreen = ({navigation}: any) => {
                             placeholderTextColor={colors.textTertiary}
                             secureTextEntry={!showPassword}
                             value={password}
-                            onChangeText={setPassword}
+                            onChangeText={(text) => {
+                              setPassword(text);
+                              if (text.trim()) setPasswordError(false);
+                            }}
                           />
                           <TouchableOpacity
                             style={styles.eyeButton}
                             onPress={() => setShowPassword(!showPassword)}>
-                            <Text style={[styles.eyeIcon, {color: colors.textSecondary}]}>
-                              {showPassword ? '👁️' : '👁️‍🗨️'}
-                            </Text>
+                            <Text style={[styles.eyeIcon, {color: colors.textSecondary}]}> {showPassword ? '👁️' : '👁️‍🗨️'} </Text>
                           </TouchableOpacity>
                         </View>
                       </View>
+                      {passwordError && (
+                        <Text style={[styles.errorText, {color: '#EF4444'}]}>
+                          Please enter your password
+                        </Text>
+                      )}
                     </View>
                   )}
 
                   {authType === 'otp' && (
                     <View style={styles.inputField}>
-                      {/* <Text style={[styles.fieldLabel, {color: colors.text}]}>
-                        OTP
-                      </Text> */}
                       <View style={styles.inputContainer}>
                         <TextInput
                           style={[styles.textInput, {
-                            borderColor: colors.border,
+                            borderColor: otpError ? '#EF4444' : colors.border,
                             backgroundColor: colors.surface,
                             color: colors.text,
                             flex: 1,
@@ -579,7 +668,10 @@ const LoginScreen = ({navigation}: any) => {
                           placeholderTextColor={colors.textTertiary}
                           keyboardType="number-pad"
                           value={otp}
-                          onChangeText={setOtp}
+                          onChangeText={(text) => {
+                            setOtp(text);
+                            if (text.trim()) setOtpError(false);
+                          }}
                         />
                       </View>
                       <TouchableOpacity
@@ -597,6 +689,11 @@ const LoginScreen = ({navigation}: any) => {
                           {resendCountdown > 0 ? `${resendCountdown}s` : 'Resend OTP'}
                         </Text>
                       </TouchableOpacity>
+                      {otpError && (
+                        <Text style={[styles.errorText, {color: '#EF4444'}]}>
+                          Please enter OTP
+                        </Text>
+                      )}
                     </View>
                   )}
                 </View>
@@ -604,49 +701,47 @@ const LoginScreen = ({navigation}: any) => {
 
               {/* Login Button - Show when auth type is determined */}
               {(showPasswordInput || showOtpSection || currentStep === 'both') && currentStep !== 'username' && (
-                <>
-                  <TouchableOpacity
-                    style={[styles.loginButton, {backgroundColor: colors.primary}]}
-                    onPress={handleLogin}
-                    disabled={isLoading}>
-                    {isLoading ? (
-                      renderLoadingSpinner()
-                    ) : (
-                      <Text style={styles.loginButtonText}>
-                        Login
-                      </Text>
-                    )}
-                  </TouchableOpacity>
-                </>
+                <TouchableOpacity
+                  style={[styles.loginButton, {backgroundColor: colors.primary}]}
+                  onPress={handleLogin}
+                  disabled={isLoading}>
+                  {isLoading ? (
+                    renderLoadingSpinner()
+                  ) : (
+                    <Text style={styles.loginButtonText}>
+                      Login
+                    </Text>
+                  )}
+                </TouchableOpacity>
               )}
             </View>
           </Animated.View>
-          
+
           {/* Features Display - Compact Style */}
           <View style={styles.featuresContainer}>
-            <View style={[styles.featureCard, {backgroundColor: colors.card, borderColor: colors.border}]}>
-              <View style={[styles.featureIcon, {backgroundColor: isDark ? 'rgba(255, 0, 128, 0.2)' : '#f0f9ff'}]}>
-                <Text style={styles.featureEmoji}>⚡</Text>
-              </View>
-              <Text style={[styles.featureText, {color: colors.text}]}>High Speed</Text>
+            <View style={[styles.featureCard, {backgroundColor: colors.card, borderColor: colors.border}]}> 
+              <View style={[styles.featureIcon, {backgroundColor: isDark ? 'rgba(255, 0, 128, 0.2)' : '#f0f9ff'}]}> 
+                <Text style={styles.featureEmoji}>⚡</Text> 
+              </View> 
+              <Text style={[styles.featureText, {color: colors.text}]}>High Speed</Text> 
             </View>
-            <View style={[styles.featureCard, {backgroundColor: colors.card, borderColor: colors.border}]}>
-              <View style={[styles.featureIcon, {backgroundColor: isDark ? 'rgba(255, 0, 128, 0.2)' : '#f0f9ff'}]}>
-                <Text style={styles.featureEmoji}>🛡️</Text>
-              </View>
-              <Text style={[styles.featureText, {color: colors.text}]}>Secure</Text>
+            <View style={[styles.featureCard, {backgroundColor: colors.card, borderColor: colors.border}]}> 
+              <View style={[styles.featureIcon, {backgroundColor: isDark ? 'rgba(255, 0, 128, 0.2)' : '#f0f9ff'}]}> 
+                <Text style={styles.featureEmoji}>🛡️</Text> 
+              </View> 
+              <Text style={[styles.featureText, {color: colors.text}]}>Secure</Text> 
             </View>
-            <View style={[styles.featureCard, {backgroundColor: colors.card, borderColor: colors.border}]}>
-              <View style={[styles.featureIcon, {backgroundColor: isDark ? 'rgba(255, 0, 128, 0.2)' : '#f0f9ff'}]}>
-                <Text style={styles.featureEmoji}>📞</Text>
-              </View>
-              <Text style={[styles.featureText, {color: colors.text}]}>Support</Text>
+            <View style={[styles.featureCard, {backgroundColor: colors.card, borderColor: colors.border}]}> 
+              <View style={[styles.featureIcon, {backgroundColor: isDark ? 'rgba(255, 0, 128, 0.2)' : '#f0f9ff'}]}> 
+                <Text style={styles.featureEmoji}>📞</Text> 
+              </View> 
+              <Text style={[styles.featureText, {color: colors.text}]}>Support</Text> 
             </View>
-            <View style={[styles.featureCard, {backgroundColor: colors.card, borderColor: colors.border}]}>
-              <View style={[styles.featureIcon, {backgroundColor: isDark ? 'rgba(255, 0, 128, 0.2)' : '#f0f9ff'}]}>
-                <Text style={styles.featureEmoji}>🌐</Text>
-              </View>
-              <Text style={[styles.featureText, {color: colors.text}]}>Reliable</Text>
+            <View style={[styles.featureCard, {backgroundColor: colors.card, borderColor: colors.border}]}> 
+              <View style={[styles.featureIcon, {backgroundColor: isDark ? 'rgba(255, 0, 128, 0.2)' : '#f0f9ff'}]}> 
+                <Text style={styles.featureEmoji}>🌐</Text> 
+              </View> 
+              <Text style={[styles.featureText, {color: colors.text}]}>Reliable</Text> 
             </View>
           </View>
 
@@ -663,22 +758,20 @@ const LoginScreen = ({navigation}: any) => {
           </View>
 
           {/* Powered By Info */}
-          <Text style={[styles.poweredByText, {color: colors.textSecondary}]}>
-            Powered By{'\n'}
-            <Text 
-              style={[styles.companyLink, {color: colors.primary}]}
-              onPress={handleSpacecomWebsite}
-            >
-              Spacecom Software LLP
-            </Text>
+          <Text style={[styles.poweredByText, {color: colors.textSecondary}]}> 
+            Powered By{"\n"}
+            <Text  
+              style={[styles.companyLink, {color: colors.primary}]} 
+              onPress={handleSpacecomWebsite} 
+            > 
+              Spacecom Software LLP 
+            </Text> 
           </Text>
-          
           {/* Version Info */}
-          <Text style={[styles.versionText, {color: colors.textSecondary}]}>
-            Version {appVersion} ({buildNumber})
+          <Text style={[styles.versionText, {color: colors.textSecondary}]}> 
+            Version {appVersion} ({buildNumber}) 
           </Text>
         </View>
-        
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -915,6 +1008,11 @@ const styles = StyleSheet.create({
   versionText: {
     fontSize: 12,
     marginTop: 5,
+  },
+  errorText: {
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 4,
   },
 });
 

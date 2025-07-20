@@ -20,6 +20,7 @@ import {useAuth} from '../utils/AuthContext';
 import sessionManager from '../services/sessionManager';
 import {useFocusEffect} from '@react-navigation/native';
 import {useSessionValidation} from '../utils/useSessionValidation';
+import {useScreenDataReload} from '../utils/useAutoDataReload';
 
 const {width: screenWidth} = Dimensions.get('window');
 
@@ -138,65 +139,75 @@ const SessionsScreen = ({navigation}: any) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch sessions data
-  useEffect(() => {
-    const fetchSessions = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        // Check session validity before making API call
-        const isSessionValid = await checkSessionAndHandle(navigation);
-        if (!isSessionValid) {
-          // Don't return immediately, let the API call handle token regeneration
-          console.log('Session validation failed, but continuing with API call');
-        }
-
-        // Get fresh user data from session
-        const currentSession = await sessionManager.getCurrentSession();
-        if (!currentSession || !currentSession.username) {
-          throw new Error('No valid user session found');
-        }
-
-        const username = currentSession.username;
-        // Get current client configuration
-        const {getClientConfig} = require('../config/client-config');
-        const clientConfig = getClientConfig();
-        const realm = clientConfig.clientId;
-        const accountStatus = 'active';
-        
-        console.log('=== FETCHING SESSIONS FOR CURRENT USER ===');
-        console.log('Current username:', username);
-        console.log('Realm:', realm);
-        console.log('User data from context:', userData);
-        
-        const apiSessions = await apiService.lastTenSessions(username, accountStatus, realm);
-        console.log('Sessions received:', apiSessions.length);
-        console.log('=== RAW API SESSIONS DATA ===');
-        apiSessions.forEach((session: Session, index: number) => {
-          console.log(`Session ${index + 1}:`, JSON.stringify(session, null, 2));
-        });
-        console.log('=== END RAW API DATA ===');
-        
-        const convertedSessions = apiSessions.map(convertApiSessionToUIData);
-        
-        // Filter out empty sessions
-        const validSessions = convertedSessions.filter((session: SessionData) => 
-          session.totalDuration !== "0h 0m" && session.date !== ""
-        );
-        
-        console.log('Valid sessions:', validSessions.length);
-        setSessionsData(validSessions);
-        
-      } catch (err: any) {
-        console.error('Error fetching sessions:', err);
-        setError(err.message || 'Failed to fetch sessions');
-        Alert.alert('Error', err.message || 'Failed to fetch sessions');
-      } finally {
-        setLoading(false);
+  // Fetch sessions data function
+  const fetchSessions = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Check session validity before making API call
+      const isSessionValid = await checkSessionAndHandle(navigation);
+      if (!isSessionValid) {
+        // Don't return immediately, let the API call handle token regeneration
+        console.log('Session validation failed, but continuing with API call');
       }
-    };
 
+      // Get fresh user data from session
+      const currentSession = await sessionManager.getCurrentSession();
+      if (!currentSession || !currentSession.username) {
+        throw new Error('No valid user session found');
+      }
+
+      const username = currentSession.username;
+      // Get current client configuration
+      const {getClientConfig} = require('../config/client-config');
+      const clientConfig = getClientConfig();
+      const realm = clientConfig.clientId;
+      const accountStatus = 'active';
+      
+      console.log('=== FETCHING SESSIONS FOR CURRENT USER ===');
+      console.log('Current username:', username);
+      console.log('Realm:', realm);
+      console.log('User data from context:', userData);
+      
+      const apiSessions = await apiService.lastTenSessions(username, accountStatus, realm);
+      console.log('Sessions received:', apiSessions.length);
+      console.log('=== RAW API SESSIONS DATA ===');
+      apiSessions.forEach((session: Session, index: number) => {
+        console.log(`Session ${index + 1}:`, JSON.stringify(session, null, 2));
+      });
+      console.log('=== END RAW API DATA ===');
+      
+      const convertedSessions = apiSessions.map(convertApiSessionToUIData);
+      
+      // Filter out empty sessions
+      const validSessions = convertedSessions.filter((session: SessionData) => 
+        session.totalDuration !== "0h 0m" && session.date !== ""
+      );
+      
+      console.log('Valid sessions:', validSessions.length);
+      setSessionsData(validSessions);
+      
+    } catch (err: any) {
+      console.error('Error fetching sessions:', err);
+      setError(err.message || 'Failed to fetch sessions');
+      Alert.alert('Error', err.message || 'Failed to fetch sessions');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const {reloadOnFocus} = useScreenDataReload({
+    onReloadStart: () => console.log('Auto reload starting in SessionsScreen...'),
+    onReloadSuccess: (data) => {
+      console.log('Auto reload successful in SessionsScreen, refreshing data');
+      fetchSessions();
+    },
+    onReloadError: (error) => console.log('Auto reload failed in SessionsScreen:', error)
+  });
+
+    // Fetch sessions data
+  useEffect(() => {
     // Fetch sessions immediately when component mounts
     fetchSessions();
     
@@ -206,65 +217,11 @@ const SessionsScreen = ({navigation}: any) => {
     }
   }, [userData?.username]);
 
-  // Refresh data when screen comes into focus (for when app is reopened)
+  // Auto reload data when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
-      const refreshSessions = async () => {
-        try {
-          setLoading(true);
-          setError(null);
-          
-          // Check session validity before making API call
-          const isSessionValid = await checkSessionAndHandle(navigation);
-          if (!isSessionValid) {
-            setLoading(false);
-            return;
-          }
-
-          // Get fresh user data from session
-          const currentSession = await sessionManager.getCurrentSession();
-          if (!currentSession || !currentSession.username) {
-            throw new Error('No valid user session found');
-          }
-
-          const username = currentSession.username;
-          // Get current client configuration
-          const {getClientConfig} = require('../config/client-config');
-          const clientConfig = getClientConfig();
-          const realm = clientConfig.clientId;
-          const accountStatus = 'active';
-          
-          console.log('=== REFRESHING SESSIONS ON FOCUS ===');
-          console.log('Current username:', username);
-          
-          const apiSessions = await apiService.lastTenSessions(username, accountStatus, realm);
-          console.log('Sessions received on focus:', apiSessions.length);
-          console.log('=== RAW API SESSIONS DATA (ON FOCUS) ===');
-          apiSessions.forEach((session: Session, index: number) => {
-            console.log(`Session ${index + 1}:`, JSON.stringify(session, null, 2));
-          });
-          console.log('=== END RAW API DATA (ON FOCUS) ===');
-          
-          const convertedSessions = apiSessions.map(convertApiSessionToUIData);
-          
-          // Filter out empty sessions
-          const validSessions = convertedSessions.filter((session: SessionData) => 
-            session.totalDuration !== "0h 0m" && session.date !== ""
-          );
-          
-          console.log('Valid sessions on focus:', validSessions.length);
-          setSessionsData(validSessions);
-          
-        } catch (err: any) {
-          console.error('Error refreshing sessions:', err);
-          setError(err.message || 'Failed to refresh sessions');
-        } finally {
-          setLoading(false);
-        }
-      };
-
-      refreshSessions();
-    }, [])
+      reloadOnFocus();
+    }, [reloadOnFocus])
   );
 
   // Loading state

@@ -2,7 +2,7 @@ import { Platform, PermissionsAndroid, Alert } from 'react-native';
 import RNFetchBlob from 'rn-fetch-blob';
 import { domainUrl } from './api';
 import sessionManager from './sessionManager';
-import apiService from './api';
+import { apiService } from './api';
 
 export interface DownloadOptions {
   id: string;

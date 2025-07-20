@@ -67,30 +67,93 @@ const AccountDetailsScreen = ({navigation}: any) => {
     try {
       setIsLoading(true);
       
+      // First, diagnose session issues
+      console.log('=== DIAGNOSING SESSION BEFORE API CALL ===');
+      const sessionDiagnosis = await sessionManager.diagnoseAndFixSession();
+      
+      if (sessionDiagnosis.needsReset) {
+        console.log('Session issues detected:', sessionDiagnosis.issues);
+        console.log('Resetting session and redirecting to login...');
+        
+        // Reset the session
+        await sessionManager.resetSession();
+        
+        // Show alert to user
+        Alert.alert(
+          'Session Issue Detected',
+          'Your session has expired or is corrupted. Please login again.',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                // Navigate to login screen
+                navigation.navigate('Login');
+              }
+            }
+          ]
+        );
+        
+        setIsLoading(false);
+        return;
+      }
+      
       const session = await sessionManager.getCurrentSession();
       if (!session) {
+        console.log('No valid session found after diagnosis');
         setIsLoading(false);
         return;
       }
 
-      const { username, token } = session;
-      const authResponse = await apiService.authUser(username, token);
+      const { username } = session;
+      console.log('Using session with username:', username);
+      
+      // Use the enhanced API service with automatic token regeneration
+      const authResponse = await apiService.makeAuthenticatedRequest(async (token) => {
+        return await apiService.authUser(username, token);
+      });
       
       if (authResponse) {
-        // console.log('=== ACCOUNT DETAILS API RESPONSE ===');
-        // console.log('Full Response:', JSON.stringify(authResponse, null, 2));
-        // console.log('Response Type:', typeof authResponse);
-        // console.log('Is Array:', Array.isArray(authResponse));
-        // console.log('Keys:', authResponse ? Object.keys(authResponse) : 'No response');
+        console.log('=== ACCOUNT DETAILS API RESPONSE ===');
+        console.log('Full Response:', JSON.stringify(authResponse, null, 2));
+        console.log('Response Type:', typeof authResponse);
+        console.log('Is Array:', Array.isArray(authResponse));
+        console.log('Keys:', authResponse ? Object.keys(authResponse) : 'No response');
         
-        // // Check for static IP data specifically
-        // console.log('authData._obj:', authResponse._obj);
-        // console.log('authData._obj?.static_ip_details:', authResponse._obj?.static_ip_details);
+        // Check for static IP data specifically
+        console.log('authData._obj:', authResponse._obj);
+        console.log('authData._obj?.static_ip_details:', authResponse._obj?.static_ip_details);
         
         setAuthData(authResponse);
       }
     } catch (error: any) {
       console.error('Error fetching account data:', error);
+      
+      // Check if it's an authentication error
+      if (error.message && (
+        error.message.includes('invalid username or password') ||
+        error.message.includes('Authentication required') ||
+        error.message.includes('Authentication failed')
+      )) {
+        console.log('Authentication error detected, resetting session...');
+        
+        // Reset session and redirect to login
+        await sessionManager.resetSession();
+        
+        Alert.alert(
+          'Authentication Error',
+          'Your session has expired. Please login again.',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                navigation.navigate('Login');
+              }
+            }
+          ]
+        );
+      } else {
+        Alert.alert('Error', 'Failed to fetch account data. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -106,6 +169,54 @@ const AccountDetailsScreen = ({navigation}: any) => {
 
   const handleChangePassword = () => {
     Alert.alert('Change Password', 'Opening password change form...');
+  };
+
+  const handleResetSession = async () => {
+    try {
+      console.log('=== MANUAL SESSION RESET ===');
+      await sessionManager.resetSession();
+      
+      Alert.alert(
+        'Session Reset',
+        'Session has been reset. Please login again.',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              navigation.navigate('Login');
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('Error resetting session:', error);
+      Alert.alert('Error', 'Failed to reset session');
+    }
+  };
+
+  const handleDebugSession = async () => {
+    try {
+      console.log('=== DEBUGGING SESSION ===');
+      const diagnosis = await sessionManager.diagnoseAndFixSession();
+      
+      Alert.alert(
+        'Session Debug Info',
+        `Session Issues: ${diagnosis.issues.join(', ') || 'None'}\n\nNeeds Reset: ${diagnosis.needsReset ? 'Yes' : 'No'}`,
+        [
+          {
+            text: 'Reset Session',
+            onPress: handleResetSession
+          },
+          {
+            text: 'OK',
+            style: 'cancel'
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('Error debugging session:', error);
+      Alert.alert('Error', 'Failed to debug session');
+    }
   };
 
   const renderDetailCard = (title: string, details: any) => (
@@ -199,6 +310,18 @@ const AccountDetailsScreen = ({navigation}: any) => {
           </Text> */}
         </View>
 
+        {/* Account Information */}
+        {renderDetailCard('Account Information', {
+          //'Account Number': authData?.account_no || 'N/A',
+          'Username': authData?.username || 'N/A',
+          //'Referral Code': authData?.referral_code || 'N/A',
+          'Registered Since': authData?.reg_date || 'N/A',
+          'First Activated On': authData?.activation_date || 'N/A',
+          //'Renewal Count': authData?.renewal_count || '0',
+          //'User Category': authData?.user_category || 'N/A',
+          //'User Profile': authData?.user_profile || 'N/A',
+        })}
+        
         {/* Account Status Card */}
         <View style={[styles.statusCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
           <View style={styles.statusHeader}>
@@ -263,17 +386,7 @@ const AccountDetailsScreen = ({navigation}: any) => {
            </Text>
          </View>
 
-        {/* Account Information */}
-        {renderDetailCard('Account Information', {
-          //'Account Number': authData?.account_no || 'N/A',
-          'Username': authData?.username || 'N/A',
-          //'Referral Code': authData?.referral_code || 'N/A',
-          'Registered Since': authData?.reg_date || 'N/A',
-          'First Activated On': authData?.activation_date || 'N/A',
-          //'Renewal Count': authData?.renewal_count || '0',
-          //'User Category': authData?.user_category || 'N/A',
-          //'User Profile': authData?.user_profile || 'N/A',
-        })}
+        
         
         
         {/* Plan Information */}
@@ -355,15 +468,15 @@ const AccountDetailsScreen = ({navigation}: any) => {
         })} */}
 
         {/* Action Buttons */}
-        {/* <View style={styles.actionSection}>
-          <TouchableOpacity style={[styles.actionButton, {backgroundColor: colors.primary}]} onPress={handleChangePassword}>
-            <Text style={styles.actionButtonText}>{t('accountDetails.changePassword')}</Text>
+        <View style={styles.actionSection}>
+          <TouchableOpacity style={[styles.actionButton, {backgroundColor: colors.primary}]} onPress={handleDebugSession}>
+            <Text style={styles.actionButtonText}>Debug Session</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity style={[styles.actionButton, {backgroundColor: colors.primary}]} onPress={handleEditProfile}>
-            <Text style={styles.actionButtonText}>{t('accountDetails.updateProfile')}</Text>
+          <TouchableOpacity style={[styles.actionButton, {backgroundColor: '#EF4444'}]} onPress={handleResetSession}>
+            <Text style={styles.actionButtonText}>Reset Session</Text>
           </TouchableOpacity>
-        </View> */}
+        </View>
 
         {/* Additional Info */}
         {/* <View style={[styles.infoCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>

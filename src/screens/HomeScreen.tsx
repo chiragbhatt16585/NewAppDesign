@@ -23,6 +23,7 @@ import {useAuth} from '../utils/AuthContext';
 import {apiService} from '../services/api';
 import sessionManager from '../services/sessionManager';
 import {useSessionValidation} from '../utils/useSessionValidation';
+import {useScreenDataReload} from '../utils/useAutoDataReload';
 //import ispLogo from '../assets/isp_logo.png';
 
 const {width: screenWidth} = Dimensions.get('window');
@@ -37,6 +38,14 @@ const HomeScreen = ({navigation}: any) => {
   const currentAdIndexRef = useRef(0); // Use ref to track current index without re-renders
   const {logout} = useAuth();
   const {checkSessionAndHandle} = useSessionValidation();
+  const {reloadOnFocus} = useScreenDataReload({
+    onReloadStart: () => console.log('Auto reload starting...'),
+    onReloadSuccess: (data) => {
+      console.log('Auto reload successful, refreshing screen data');
+      fetchAccountData();
+    },
+    onReloadError: (error) => console.log('Auto reload failed:', error)
+  });
 
   // State for API data
   const [authData, setAuthData] = useState<any>(null);
@@ -79,6 +88,13 @@ const HomeScreen = ({navigation}: any) => {
     //Alert.alert('HomeScreen', 'Component mounted');
     fetchAccountData();
   }, []);
+
+  // Auto reload data when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      reloadOnFocus();
+    }, [reloadOnFocus])
+  );
 
   // Handle back button press - exit app instead of going back to login
   useFocusEffect(
@@ -126,10 +142,12 @@ const HomeScreen = ({navigation}: any) => {
         return;
       }
 
-      const { username, token } = session;
+      const { username } = session;
 
-      // Call the authUser API to get user's account information
-      const authResponse = await apiService.authUser(username, token);
+      // Use the enhanced API service with automatic token regeneration
+      const authResponse = await apiService.makeAuthenticatedRequest(async (token) => {
+        return await apiService.authUser(username, token);
+      });
       
       // console.warn('=== AUTH USER API RESPONSE ===');
       // console.warn('Full Response:', JSON.stringify(authResponse, null, 2));
@@ -549,10 +567,7 @@ const HomeScreen = ({navigation}: any) => {
           ) : (
             <>
               <View style={styles.billDetails}>
-                <View style={styles.billRow}>
-                  <Text style={[styles.billLabel, {color: colors.textSecondary}]}>Account Number</Text>
-                  <Text style={[styles.billAmount, {color: colors.accent}]}>{authData?.account_no || 'N/A'}</Text>
-                </View>
+                
                 <View style={styles.billRow}>
                   <Text style={[styles.billLabel, {color: colors.textSecondary}]}>Renewal Date</Text>
                   <Text style={[styles.billDate, {color: colors.text}]}>{authData?.renew_date || 'N/A'}</Text>

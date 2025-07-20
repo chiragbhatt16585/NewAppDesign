@@ -44,4 +44,7 @@ declare module 'rn-fetch-blob' {
 
   const RNFetchBlob: RNFetchBlobStatic;
   export default RNFetchBlob;
-} 
+}
+
+declare module 'react-native-vector-icons/MaterialIcons';
+declare module 'react-native-vector-icons/Feather'; 

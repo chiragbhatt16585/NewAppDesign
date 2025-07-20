@@ -16,10 +16,11 @@ import {LanguageProvider} from './src/utils/LanguageContext';
 import {AuthProvider} from './src/utils/AuthContext';
 import biometricAuthService from './src/services/biometricAuth';
 import sessionManager from './src/services/sessionManager';
+import autoDataReloader from './src/services/autoDataReloader';
 import testCredentialStorage from './src/services/credentialStorageTest';
 import {testSessionValidation} from './src/services/sessionValidationTest';
 import {debugSessionStatus} from './src/services/sessionDebugTest';
-import {testSessionPersistence} from './src/services/sessionTest';
+import {testSessionPersistence} from './src/services/sessionPersistenceTest';
 import {testKYCFunctionality} from './src/services/kycTest';
 import {testClientConfiguration} from './src/services/clientConfigTest';
 import './src/i18n';
@@ -38,44 +39,49 @@ function AppContent() {
 
   const initializeApp = async () => {
     try {
-      // Test credential storage functionality
-      await testCredentialStorage();
+      console.log('=== INITIALIZING APP ===');
       
       // Initialize session manager first
       await sessionManager.initialize();
       
-      // Test session validation functionality
-      await testSessionValidation();
-      
-      // Debug session status
-      await debugSessionStatus();
+      // Initialize auto data reloader (this sets up app state listeners)
+      console.log('Initializing auto data reloader...');
+      // The autoDataReloader is already initialized as a singleton
       
       // Test session persistence
       await testSessionPersistence();
       
-      // Test client configuration
-      await testClientConfiguration();
-      
-      // Test KYC functionality
-      await testKYCFunctionality();
-      
       // Check if user is already logged in and session is valid
       const loggedIn = await sessionManager.isLoggedIn();
+      console.log('App initialization - user logged in:', loggedIn);
       
       if (loggedIn) {
         // Session is valid - proceed to app (no automatic logout)
+        console.log('✅ User is logged in, proceeding to app');
+        
+        // Trigger initial auto reload if needed
+        const shouldReload = await autoDataReloader.shouldAutoReload();
+        if (shouldReload) {
+          console.log('Initial auto reload needed, triggering...');
+          await autoDataReloader.autoReloadUserData();
+        }
+        
         setIsLoggedIn(true);
         setIsAuthInitialized(true);
         return;
       }
 
+      console.log('❌ User is not logged in, checking biometric auth...');
+      
       // If not logged in, check biometric auth
       await biometricAuthService.initialize();
       const isBiometricEnabled = await biometricAuthService.isAuthEnabled();
       
       if (isBiometricEnabled) {
+        console.log('Biometric auth enabled, showing biometric screen');
         setShowBiometricAuth(true);
       } else {
+        console.log('No biometric auth, user will go to login screen');
         // No biometric auth, user will go to login screen
         setIsLoggedIn(false);
       }

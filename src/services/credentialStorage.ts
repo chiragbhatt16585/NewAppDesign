@@ -55,6 +55,10 @@ export const credentialStorage = {
     try {
       const { username, password } = credentials;
       
+      // Get current client configuration to determine API endpoint
+      const clientConfig = await this.getCurrentClientConfig();
+      const apiUrl = clientConfig.apiUrl;
+      
       const data = {
         username: username.toLowerCase().trim(),
         password: password,
@@ -73,7 +77,7 @@ export const credentialStorage = {
         timeout: 6000
       };
 
-      const response = await fetch('https://crm.dnainfotel.com/l2s/api/selfcareL2sUserLogin', options);
+      const response = await fetch(`${apiUrl}/l2s/api/selfcareL2sUserLogin`, options);
       const result = await response.json();
 
       if (result.status === 'ok' && result.data && result.data.token) {
@@ -86,6 +90,39 @@ export const credentialStorage = {
     } catch (error) {
       console.error('Error regenerating token:', error);
       return false;
+    }
+  },
+
+  // Get current client configuration
+  async getCurrentClientConfig(): Promise<{ apiUrl: string }> {
+    try {
+      // Try to get the stored API URL first
+      const storedApiUrl = await AsyncStorage.getItem('current_api_url');
+      
+      if (storedApiUrl) {
+        return { apiUrl: storedApiUrl };
+      }
+      
+      // Fallback to client detection
+      const currentClient = await AsyncStorage.getItem('current_client');
+      
+      // Client configurations
+      const clientConfigs: Record<string, { apiUrl: string }> = {
+        'microscan': { apiUrl: 'https://mydesk.microscan.co.in' },
+        'dna-infotel': { apiUrl: 'https://crm.dnainfotel.com' },
+        'one-sevenstar': { apiUrl: 'https://one.7stardigitalnetwork.com' }
+      };
+      
+      if (currentClient && clientConfigs[currentClient]) {
+        return clientConfigs[currentClient];
+      }
+      
+      // Default to DNA Infotel if no client is specified
+      return { apiUrl: 'https://crm.dnainfotel.com' };
+    } catch (error) {
+      console.error('Error getting client config:', error);
+      // Fallback to DNA Infotel
+      return { apiUrl: 'https://crm.dnainfotel.com' };
     }
   },
 

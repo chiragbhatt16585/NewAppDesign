@@ -39,25 +39,74 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const checkAuthStatus = async () => {
     try {
+      console.log('=== CHECKING AUTH STATUS ===');
+      
+      // First check if user is logged in
       const isLoggedIn = await sessionManager.isLoggedIn();
-      setIsAuthenticated(isLoggedIn);
+      console.log('Is logged in:', isLoggedIn);
       
       if (isLoggedIn) {
         const session = await sessionManager.getCurrentSession();
         if (session) {
+          console.log('Valid session found:', session.username);
+          
+          // Check if session needs auto refresh (after long periods of inactivity)
+          const shouldRefresh = await sessionManager.shouldAutoRefresh();
+          if (shouldRefresh) {
+            console.log('Session needs auto refresh, refreshing...');
+            const refreshResult = await sessionManager.autoRefreshSession();
+            
+            if (refreshResult.success) {
+              console.log('✅ Session auto-refreshed successfully:', refreshResult.message);
+              // Get updated session after refresh
+              const updatedSession = await sessionManager.getCurrentSession();
+              if (updatedSession) {
+                setIsAuthenticated(true);
+                setUserData({
+                  username: updatedSession.username,
+                  token: updatedSession.token,
+                });
+                setLoading(false);
+                return;
+              }
+            } else {
+              console.log('❌ Session auto-refresh failed:', refreshResult.message);
+              // Continue with existing session if refresh failed
+            }
+          }
+          
+          // Use existing session
+          setIsAuthenticated(true);
           setUserData({
             username: session.username,
             token: session.token,
           });
-          // Session monitoring disabled for persistent login
-          // sessionMonitor.startMonitoring();
+          setLoading(false);
+          return;
         }
-      } else {
-        // Session monitoring disabled for persistent login
-        // sessionMonitor.stopMonitoring();
       }
+      
+      // Only diagnose session issues if user is not logged in
+      console.log('User not logged in, checking for session issues...');
+      const sessionDiagnosis = await sessionManager.diagnoseAndFixSession();
+      
+      if (sessionDiagnosis.needsReset) {
+        console.log('Session issues detected during auth check:', sessionDiagnosis.issues);
+        console.log('Resetting session...');
+        
+        // Reset the session
+        await sessionManager.resetSession();
+      }
+      
+      // Set as not authenticated
+      setIsAuthenticated(false);
+      setUserData(null);
+      
     } catch (error) {
       console.error('Error checking auth status:', error);
+      // On error, assume not authenticated
+      setIsAuthenticated(false);
+      setUserData(null);
     } finally {
       setLoading(false);
     }
