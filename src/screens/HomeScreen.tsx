@@ -24,6 +24,7 @@ import {apiService} from '../services/api';
 import sessionManager from '../services/sessionManager';
 import {useSessionValidation} from '../utils/useSessionValidation';
 import {useScreenDataReload} from '../utils/useAutoDataReload';
+import { getClientConfig } from '../config/client-config';
 //import ispLogo from '../assets/isp_logo.png';
 
 const {width: screenWidth} = Dimensions.get('window');
@@ -52,41 +53,58 @@ const HomeScreen = ({navigation}: any) => {
   const [planDetails, setPlanDetails] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [apiResponse, setApiResponse] = useState<string>('');
+  const [banners, setBanners] = useState<any[]>([]);
+  const [loadingBanners, setLoadingBanners] = useState(true);
 
   // Component rendering indicator (removed to prevent spam)
 
 
 
   // Mock advertisement data
-  const advertisements = [
-    {
-      id: '1',
-      image: require('../assets/1st-slide-desk.webp'),
-      // title: 'First time in GOA',
-      // subtitle: 'Experience blazing fast connectivity',
-      backgroundColor: 'rgba(26, 115, 232, 0.8)',
-    },
-    {
-      id: '2',
-      image: require('../assets/DNA3.jpg'),
-      // title: 'Advanced Technology',
-      // subtitle: 'Cutting-edge network solutions',
-      backgroundColor: 'rgba(220, 53, 69, 0.8)',
-    },
-    {
-      id: '3',
-      image: require('../assets/Group-60974.webp'),
-      // title: 'Premium Service',
-      // subtitle: 'Unmatched quality and reliability',
-      backgroundColor: 'rgba(40, 167, 69, 0.8)',
-    },
-  ];
+  // const advertisements = [
+  //   {
+  //     id: '1',
+  //     image: require('../assets/1st-slide-desk.webp'),
+  //     // title: 'First time in GOA',
+  //     // subtitle: 'Experience blazing fast connectivity',
+  //     backgroundColor: 'rgba(26, 115, 232, 0.8)',
+  //   },
+  //   {
+  //     id: '2',
+  //     image: require('../assets/DNA3.jpg'),
+  //     // title: 'Advanced Technology',
+  //     // subtitle: 'Cutting-edge network solutions',
+  //     backgroundColor: 'rgba(220, 53, 69, 0.8)',
+  //   },
+  //   {
+  //     id: '3',
+  //     image: require('../assets/Group-60974.webp'),
+  //     // title: 'Premium Service',
+  //     // subtitle: 'Unmatched quality and reliability',
+  //     backgroundColor: 'rgba(40, 167, 69, 0.8)',
+  //   },
+  // ];
 
   // API call to fetch account summary and usage data
   useEffect(() => {
     //console.warn('=== HOMESCREEN MOUNTED ===');
     //Alert.alert('HomeScreen', 'Component mounted');
     fetchAccountData();
+  }, []);
+
+  useEffect(() => {
+    const fetchBanners = async () => {
+      try {
+        const realm = getClientConfig().clientId;
+        const bannerData = await apiService.bannerDisplay(realm);
+        setBanners(bannerData);
+      } catch (e) {
+        setBanners([]);
+      } finally {
+        setLoadingBanners(false);
+      }
+    };
+    fetchBanners();
   }, []);
 
   // Auto reload data when screen comes into focus
@@ -145,9 +163,7 @@ const HomeScreen = ({navigation}: any) => {
       const { username } = session;
 
       // Use the enhanced API service with automatic token regeneration
-      const authResponse = await apiService.makeAuthenticatedRequest(async (token) => {
-        return await apiService.authUser(username, token);
-      });
+      const authResponse = await apiService.authUser(username);
       
       // console.warn('=== AUTH USER API RESPONSE ===');
       // console.warn('Full Response:', JSON.stringify(authResponse, null, 2));
@@ -217,16 +233,54 @@ const HomeScreen = ({navigation}: any) => {
     //Alert.alert('Advertisement', `Opening ${ad.title}...`);
   };
 
+  // Replace static advertisements with banners
+  // const advertisements = [
+  //   {
+  //     id: '1',
+  //     image: require('../assets/1st-slide-desk.webp'),
+  //     // title: 'First time in GOA',
+  //     // subtitle: 'Experience blazing fast connectivity',
+  //     backgroundColor: 'rgba(26, 115, 232, 0.8)',
+  //   },
+  //   {
+  //     id: '2',
+  //     image: require('../assets/DNA3.jpg'),
+  //     // title: 'Advanced Technology',
+  //     // subtitle: 'Cutting-edge network solutions',
+  //     backgroundColor: 'rgba(220, 53, 69, 0.8)',
+  //   },
+  //   {
+  //     id: '3',
+  //     image: require('../assets/Group-60974.webp'),
+  //     // title: 'Premium Service',
+  //     // subtitle: 'Unmatched quality and reliability',
+  //     backgroundColor: 'rgba(40, 167, 69, 0.8)',
+  //   },
+  // ];
+
+  // Adjust renderAdItem to use banner data
   const renderAdItem = ({item}: {item: any}) => (
     <TouchableOpacity
       style={styles.adCard}
-      onPress={() => handleAdPress(item)}
-      activeOpacity={0.8}>
-      <Image source={item.image} style={styles.adImage} />
-      {(item.title || item.subtitle) && (
-        <View style={[styles.adOverlay, {backgroundColor: item.backgroundColor}]}>
-          {item.title && <Text style={styles.adTitle}>{item.title}</Text>}
-          {item.subtitle && <Text style={styles.adSubtitle}>{item.subtitle}</Text>}
+      onPress={() => {
+        if (item.target_url) {
+          Linking.openURL(item.target_url);
+        }
+      }}
+      activeOpacity={0.8}
+      disabled={!item.target_url}
+    >
+      <View style={styles.adImageContainer}>
+        <Image
+          source={{ uri: encodeURI(item.banner_full_path) }}
+          style={styles.adImage}
+          resizeMode="cover"
+          accessibilityLabel={item.alt_text || item.banner_title || 'Banner'}
+        />
+      </View>
+      {(item.banner_title || item.title_text) && (
+        <View style={[styles.adOverlay, {backgroundColor: 'rgba(26, 115, 232, 0.5)'}]}>
+          <Text style={styles.adTitle}>{item.banner_title || item.title_text}</Text>
         </View>
       )}
     </TouchableOpacity>
@@ -258,7 +312,7 @@ const HomeScreen = ({navigation}: any) => {
   useEffect(() => {
     const interval = setInterval(() => {
       if (flatListRef.current) {
-        const nextIndex = (currentAdIndexRef.current + 1) % advertisements.length;
+        const nextIndex = (currentAdIndexRef.current + 1) % banners.length;
         flatListRef.current.scrollToIndex({
           index: nextIndex,
           animated: true,
@@ -269,7 +323,7 @@ const HomeScreen = ({navigation}: any) => {
     }, 3000); // Change every 3 seconds
 
     return () => clearInterval(interval);
-  }, []); // Empty dependency array to prevent infinite re-renders
+  }, [banners.length]); // Empty dependency array to prevent infinite re-renders
 
   const handleRenew = () => {
     navigation.navigate('RenewPlan');
@@ -465,23 +519,25 @@ const HomeScreen = ({navigation}: any) => {
           </View> */}
         </View>
 
-        {/* Advertisement Carousel */}
-        <View style={styles.adCarouselSection}>
-          <FlatList
-            ref={flatListRef}
-            data={advertisements}
-            renderItem={renderAdItem}
-            keyExtractor={item => item.id}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onViewableItemsChanged={onAdViewableItemsChanged}
-            viewabilityConfig={viewabilityConfig}
-          />
-          <View style={styles.adDots}>
-            {advertisements.map((_, index) => renderAdDot(index))}
+        {/* Advertisement Carousel - only if banners exist */}
+        {!loadingBanners && banners.length > 0 && (
+          <View style={styles.adCarouselSection}>
+            <FlatList
+              ref={flatListRef}
+              data={banners}
+              renderItem={renderAdItem}
+              keyExtractor={item => item.id?.toString() || item.banner_id?.toString() || Math.random().toString()}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onViewableItemsChanged={onAdViewableItemsChanged}
+              viewabilityConfig={viewabilityConfig}
+            />
+            <View style={styles.adDots}>
+              {banners.map((_, index) => renderAdDot(index))}
+            </View>
           </View>
-        </View>
+        )}
 
         {/* Quick Menu Section */}
         <View style={styles.section}>
@@ -836,10 +892,15 @@ const styles = StyleSheet.create({
     height: '100%',
     position: 'relative',
   },
-  adImage: {
+  adImageContainer: {
     width: '100%',
     height: '100%',
     borderRadius: 16,
+    overflow: 'hidden',
+  },
+  adImage: {
+    width: '100%',
+    height: '100%',
   },
   adOverlay: {
     position: 'absolute',

@@ -1256,6 +1256,72 @@ class ApiService {
       }
     });
   }
+
+  async addDeviceDetails(fcm_token: string, mac_addr: string, hostname: string, device_info: any, realm: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const username = await sessionManager.getUsername();
+      if (!username) {
+        throw new Error('No username found in session');
+      }
+      const data = {
+        username: username.toLowerCase().trim(),
+        fcm_token,
+        mac_addr,
+        hostname,
+        device_info: JSON.stringify(device_info),
+        token_for: 'end_user_app',
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+      try {
+        const res = await fetch(`${url}/selfcareAddDeviceInfo`, options);
+        const response = await res.json();
+        if (response.status !== 'ok' && response.code !== 200) {
+          throw new Error('Invalid username or password');
+        } else {
+          return response;
+        }
+      } catch (e: any) {
+        let msg = isNetworkError(e) ? networkErrorMsg : e.message;
+        throw new Error(msg);
+      }
+    });
+  }
+
+  async bannerDisplay(realm: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const username = await sessionManager.getUsername();
+      if (!username) throw new Error('No username found in session');
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData({ username }),
+        timeout
+      };
+      try {
+        const res = await fetch(`${url}/selfcareDisplayBanner`, options);
+        const response = await res.json();
+        if (response.status !== 'ok' && response.code !== 200) {
+          if (response.message === 'No Content') {
+            return [];
+          } else {
+            throw new Error(response.message);
+          }
+        } else {
+          return response.data || [];
+        }
+      } catch (e: any) {
+        let msg = isNetworkError(e) ? networkErrorMsg : e.message;
+        throw new Error(msg);
+      }
+    });
+  }
 }
 
 // Export singleton instance
