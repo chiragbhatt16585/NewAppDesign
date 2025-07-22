@@ -286,9 +286,28 @@ const RenewPlanScreen = ({navigation}: any) => {
     }
 
     const totalAmount = payDues > 0 ? selectedPlan.FinalAmount + payDues : selectedPlan.FinalAmount;
-    
+
+    // Map the selected plan to the expected structure for confirmation screen
+    const planForConfirmation = {
+      id: selectedPlan.id,
+      name: selectedPlan.name,
+      speed: selectedPlan.downloadSpeed || '-',
+      upload: selectedPlan.uploadSpeed || '-',
+      download: selectedPlan.downloadSpeed || '-',
+      validity: selectedPlan.days ? `${selectedPlan.days} Days` : '-',
+      price: selectedPlan.FinalAmount,
+      baseAmount: selectedPlan.amt,
+      cgst: selectedPlan.CGSTAmount,
+      sgst: selectedPlan.SGSTAmount,
+      mrp: selectedPlan.FinalAmount,
+      dues: !payDues || isNaN(payDues) ? 0 : payDues,
+      gbLimit: selectedPlan.limit === 'Unlimited' ? -1 : selectedPlan.limit,
+      isCurrentPlan: selectedPlan.name === authData?.current_plan || selectedPlan.name === authData?.current_plan1,
+      ottServices: selectedPlan.content_providers ? selectedPlan.content_providers : [],
+    };
+
     navigation.navigate('PlanConfirmation', {
-      selectedPlan: selectedPlan,
+      selectedPlan: planForConfirmation,
       totalAmount: totalAmount,
       payDues: payDues,
     });
@@ -382,6 +401,8 @@ const RenewPlanScreen = ({navigation}: any) => {
               </View>
             </View>
           </View>
+          
+          
         </View>
         <View style={styles.planPriceContainer}>
           <View style={[styles.priceBadge, {backgroundColor: colors.primaryLight}]}>
@@ -402,16 +423,12 @@ const RenewPlanScreen = ({navigation}: any) => {
         <View style={styles.planDetails}>
           <View style={styles.detailRow}>
             <Text style={styles.detailIcon}>⬆️</Text>
-            <Text style={[styles.detailValue, {color: colors.text}]}>{item.uploadSpeed}</Text>
-            <Text style={styles.detailSeparator}>•</Text>
+            <Text style={styles.detailValue}>{item.uploadSpeed}</Text>
             <Text style={styles.detailIcon}>⬇️</Text>
-            <Text style={[styles.detailValue, {color: colors.text}]}>{item.downloadSpeed}</Text>
-          </View>
-          <View style={styles.detailRow}>
+            <Text style={styles.detailValue}>{item.downloadSpeed}</Text>
             <Text style={styles.detailIcon}>💾</Text>
-            <Text style={[styles.detailValue, {color: colors.text}]}>
-              {item.limit === 'Unlimited' ? 'Unlimited' : `${item.limit} GB`}
-            </Text>
+            <Text style={styles.detailValue}>{item.limit === 'Unlimited' ? 'Unlimited' : `${item.limit} GB`}</Text>
+            
           </View>
 
           {/* OTT Services */}
@@ -867,7 +884,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: 5,
   },
   planInfo: {
     flex: 1,
@@ -1041,10 +1058,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 16,
-    marginHorizontal: -16,
-    paddingTop: 16,
-    paddingHorizontal: 16,
+    marginTop: 4,
+    marginHorizontal: 0,
+    paddingTop: 4,
+    paddingHorizontal: 0,
     gap: 25,
   },
   compactDetailRow: {
@@ -1342,6 +1359,16 @@ const styles = StyleSheet.create({
     bottom: 20,
     left: 20,
     right: 20,
+  },
+  expandedRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 4,
+    marginHorizontal: 0,
+    paddingTop: 4,
+    paddingHorizontal: 0,
+    gap: 25,
   },
 });
 

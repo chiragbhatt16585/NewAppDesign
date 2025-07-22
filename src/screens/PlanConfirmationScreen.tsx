@@ -8,6 +8,7 @@ import {
   Alert,
   Modal,
   TouchableWithoutFeedback,
+  Image,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useTheme} from '../utils/ThemeContext';
@@ -85,6 +86,23 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
     );
   };
 
+  // Add this helper function for OTT icons, similar to RenewPlanScreen
+  const renderOTTIcon = (provider: any) => {
+    if (provider && provider.full_path_app_logo_file) {
+      return (
+        <Image
+          source={{ uri: provider.full_path_app_logo_file }}
+          style={{ width: 24, height: 24, marginBottom: 4 }}
+          resizeMode="contain"
+        />
+      );
+    }
+    return null;
+  };
+
+  // Debug: log OTT services data
+  console.log('PlanConfirmationScreen ottServices:', selectedPlan.ottServices);
+
   return (
     <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}>
       {/* Header */}
@@ -128,15 +146,13 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
             <View style={styles.planDetails}>
               <View style={styles.detailRow}>
                 <Text style={styles.detailIcon}>⚡</Text>
-                <Text style={[styles.detailValue, {color: colors.text}]}>{selectedPlan.speed}</Text>
-                <Text style={styles.detailSeparator}>•</Text>
+                <Text style={[styles.detailValue, {color: colors.text, marginRight: 100}]}>{selectedPlan.speed}</Text>
                 <Text style={styles.detailIcon}>⏰</Text>
                 <Text style={[styles.detailValue, {color: colors.text}]}>{selectedPlan.validity}</Text>
               </View>
               <View style={styles.detailRow}>
                 <Text style={styles.detailIcon}>⬆️</Text>
-                <Text style={[styles.detailValue, {color: colors.text}]}>{selectedPlan.upload}</Text>
-                <Text style={styles.detailSeparator}>•</Text>
+                <Text style={[styles.detailValue, {color: colors.text, marginRight: 100}]}>{selectedPlan.upload}</Text>
                 <Text style={styles.detailIcon}>⬇️</Text>
                 <Text style={[styles.detailValue, {color: colors.text}]}>{selectedPlan.download}</Text>
               </View>
@@ -153,10 +169,12 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
               <View style={styles.ottSection}>
                 <Text style={[styles.ottTitle, {color: colors.textSecondary}]}>🎬 {t('planConfirmation.ottServices')}</Text>
                 <View style={styles.ottIcons}>
-                  {selectedPlan.ottServices.map((service: string, index: number) => (
+                  {selectedPlan.ottServices.map((service: any, index: number) => (
                     <View key={index} style={styles.ottIcon}>
-                      <Text style={styles.ottIconText}>{getOTTIcon(service)}</Text>
-                      <Text style={[styles.ottServiceName, {color: colors.textSecondary}]}>{service}</Text>
+                      {renderOTTIcon(service)}
+                      <Text style={[styles.ottServiceName, {color: colors.textSecondary}]}>
+                        {service.content_provider}
+                      </Text>
                     </View>
                   ))}
                 </View>
@@ -303,7 +321,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   planName: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '600',
     marginBottom: 4,
   },
@@ -357,16 +375,18 @@ const styles = StyleSheet.create({
   ottTitle: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 12,
+    marginBottom: 24,
   },
   ottIcons: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 16,
+    gap: 0,
+    marginTop: 8,
   },
   ottIcon: {
     alignItems: 'center',
-    minWidth: 60,
+    width: '25%',
+    marginBottom: 16,
   },
   ottIconText: {
     fontSize: 24,
