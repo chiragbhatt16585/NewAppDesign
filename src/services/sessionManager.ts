@@ -170,14 +170,12 @@ export class SessionManager {
     try {
       this.currentSession = null;
       await AsyncStorage.removeItem(this.SESSION_KEY);
-      
       // Clear credentials from AsyncStorage
-      await credentialStorage.deleteCredentials();
-      
+      console.log('[SessionManager] Clearing credentials from AsyncStorage');
+      await credentialStorage.clearCredentials();
       // Clear navigation state to prevent redirecting to protected screens
       await AsyncStorage.removeItem('navigationState');
-      
-      console.log('Session cleared successfully');
+      console.log('[SessionManager] Session cleared successfully');
     } catch (error) {
       console.error('Failed to clear session:', error);
     }
@@ -190,10 +188,11 @@ export class SessionManager {
   // New method to regenerate token using stored password
   async regenerateToken(): Promise<string | false> {
     try {
+      console.log('[SessionManager] Attempting to regenerate token...');
       // Get stored credentials
       const creds = await credentialStorage.getCredentials();
       if (!creds) {
-        console.error('No stored credentials for token regeneration');
+        console.error('[SessionManager] No stored credentials for token regeneration');
         return false;
       }
       const { username, password } = creds;
@@ -204,13 +203,14 @@ export class SessionManager {
           this.currentSession.token = loginResponse.token;
           this.currentSession.lastActivityTime = Date.now();
           await AsyncStorage.setItem(this.SESSION_KEY, JSON.stringify(this.currentSession));
-          console.log('Token regenerated and session updated');
+          console.log('[SessionManager] Token regenerated and session updated');
         }
         return loginResponse.token;
       }
+      console.error('[SessionManager] Token regeneration failed');
       return false;
     } catch (error) {
-      console.error('Failed to regenerate token:', error);
+      console.error('[SessionManager] Failed to regenerate token:', error);
       return false;
     }
   }

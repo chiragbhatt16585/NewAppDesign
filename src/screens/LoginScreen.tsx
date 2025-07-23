@@ -16,6 +16,7 @@ import {
   Linking,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import LogoImage from '../components/LogoImage';
 import {useTheme} from '../utils/ThemeContext';
 import {getThemeColors} from '../utils/themeStyles';
@@ -26,10 +27,12 @@ import sessionManager from '../services/sessionManager';
 import { useLanguage } from '../utils/LanguageContext';
 import clientStrings from '../config/client-strings.json';
 import { credentialStorage } from '../services/credentialStorage';
+import { pinStorage } from '../services/pinStorage';
+import biometricAuthService from '../services/biometricAuth';
 
 const {width, height} = Dimensions.get('window');
 
-const LoginScreen = ({navigation}: any) => {
+const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
   const {isDark, setThemeMode, themeMode} = useTheme();
   const colors = getThemeColors(isDark);
   const { currentLanguage, changeLanguage, availableLanguages } = useLanguage();
@@ -82,6 +85,15 @@ const LoginScreen = ({navigation}: any) => {
 
   const checkExistingSession = async () => {
     try {
+      // Check if session check should be disabled
+      const disableCheck = await AsyncStorage.getItem('disableSessionCheck');
+      if (disableCheck === 'true' || disableSessionCheck) {
+        console.log('Session check disabled, allowing login screen to show');
+        // Clear the flag after using it
+        await AsyncStorage.removeItem('disableSessionCheck');
+        return;
+      }
+      
       const isLoggedIn = await sessionManager.isLoggedIn();
       if (isLoggedIn) {
         console.log('User is already logged in, navigating to Home');
@@ -303,8 +315,21 @@ const LoginScreen = ({navigation}: any) => {
           if (success) {
             // Save credentials for session regeneration
             await credentialStorage.saveCredentials(username, password);
+            // Check if user has set up any authentication
+            const pin = await pinStorage.getPin();
+            const biometricEnabled = await biometricAuthService.isAuthEnabled();
+            console.log('[DEBUG] PIN from storage:', pin);
+            console.log('[DEBUG] Biometric enabled:', biometricEnabled);
+            
+            if (!pin && !biometricEnabled) {
+              // No authentication set up, show setup screen
+              navigation.replace('AuthSetupScreen');
+            } else {
+              // Authentication is set up, set flag to show biometric auth and navigate to home
+              await AsyncStorage.setItem('showBiometricAfterLogin', 'true');
+              navigation.replace('Home');
+            }
             Alert.alert('Success', 'Login successful!');
-            navigation.navigate('Home');
             return;
           }
         }
@@ -315,8 +340,20 @@ const LoginScreen = ({navigation}: any) => {
           const success = await loginWithOtp(username, otp);
           
           if (success) {
+            // Check if user has set up any authentication
+            const pin = await pinStorage.getPin();
+            const biometricEnabled = await biometricAuthService.isAuthEnabled();
+            console.log('[DEBUG] PIN from storage:', pin);
+            console.log('[DEBUG] Biometric enabled:', biometricEnabled);
+            
+            if (!pin && !biometricEnabled) {
+              // No authentication set up, show setup screen
+              navigation.replace('AuthSetupScreen');
+            } else {
+              // Authentication is set up, navigate to home (biometric will be handled by App.tsx)
+              navigation.replace('Home');
+            }
             Alert.alert('Success', 'Login successful!');
-            navigation.navigate('Home');
             return;
           }
         }
@@ -344,8 +381,20 @@ const LoginScreen = ({navigation}: any) => {
             console.log('=== LOGIN SUCCESS ===');
             // Save credentials for session regeneration
             await credentialStorage.saveCredentials(username, password);
+            // Check if user has set up any authentication
+            const pin = await pinStorage.getPin();
+            const biometricEnabled = await biometricAuthService.isAuthEnabled();
+            console.log('[DEBUG] PIN from storage:', pin);
+            console.log('[DEBUG] Biometric enabled:', biometricEnabled);
+            
+            if (!pin && !biometricEnabled) {
+              // No authentication set up, show setup screen
+              navigation.replace('AuthSetupScreen');
+            } else {
+              // Authentication is set up, navigate to home (biometric will be handled by App.tsx)
+              navigation.replace('Home');
+            }
             Alert.alert('Success', 'Login successful!');
-            navigation.navigate('Home');
           } else {
             console.log('=== LOGIN FAILED ===');
             Alert.alert('Error', 'Login failed. Please check your credentials.');
@@ -364,8 +413,20 @@ const LoginScreen = ({navigation}: any) => {
           const success = await loginWithOtp(username, otp);
           
           if (success) {
+            // Check if user has set up any authentication
+            const pin = await pinStorage.getPin();
+            const biometricEnabled = await biometricAuthService.isAuthEnabled();
+            console.log('[DEBUG] PIN from storage:', pin);
+            console.log('[DEBUG] Biometric enabled:', biometricEnabled);
+            
+            if (!pin && !biometricEnabled) {
+              // No authentication set up, show setup screen
+              navigation.replace('AuthSetupScreen');
+            } else {
+              // Authentication is set up, navigate to home (biometric will be handled by App.tsx)
+              navigation.replace('Home');
+            }
             Alert.alert('Success', 'Login successful!');
-            navigation.navigate('Home');
           } else {
             Alert.alert('Error', 'Invalid OTP. Please try again.');
           }

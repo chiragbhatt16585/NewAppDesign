@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, Platform, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import CommonHeader from '../components/CommonHeader';
@@ -91,29 +91,94 @@ const UsageDetailsScreen = ({ navigation }: any) => {
             </TouchableOpacity>
           </View>
           {showFromPicker && (
-            <DateTimePicker
-              value={fromDate}
-              mode="date"
-              display={Platform.OS === 'ios' ? 'inline' : 'default'}
-              maximumDate={toDate}
-              onChange={(event: any, date?: Date) => {
-                setShowFromPicker(false);
-                if (date) setFromDate(date);
-              }}
-            />
+            Platform.OS === 'ios' ? (
+              <Modal
+                transparent={true}
+                visible={showFromPicker}
+                animationType="slide"
+              >
+                <View style={styles.modalOverlay}>
+                  <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+                    <View style={styles.modalHeader}>
+                      <Text style={[styles.modalTitle, { color: colors.text }]}>Select From Date</Text>
+                      <TouchableOpacity
+                        onPress={() => setShowFromPicker(false)}
+                        style={styles.modalCloseButton}
+                      >
+                        <Text style={[styles.modalCloseText, { color: colors.primary }]}>Done</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <DateTimePicker
+                      value={fromDate}
+                      mode="date"
+                      display="inline"
+                      maximumDate={toDate}
+                      onChange={(event: any, date?: Date) => {
+                        if (date) setFromDate(date);
+                      }}
+                      style={styles.datePicker}
+                    />
+                  </View>
+                </View>
+              </Modal>
+            ) : (
+              <DateTimePicker
+                value={fromDate}
+                mode="date"
+                display="default"
+                maximumDate={toDate}
+                onChange={(event: any, date?: Date) => {
+                  setShowFromPicker(false);
+                  if (date) setFromDate(date);
+                }}
+              />
+            )
           )}
           {showToPicker && (
-            <DateTimePicker
-              value={toDate}
-              mode="date"
-              display={Platform.OS === 'ios' ? 'inline' : 'default'}
-              minimumDate={fromDate}
-              maximumDate={new Date()}
-              onChange={(event: any, date?: Date) => {
-                setShowToPicker(false);
-                if (date) setToDate(date);
-              }}
-            />
+            Platform.OS === 'ios' ? (
+              <Modal
+                transparent={true}
+                visible={showToPicker}
+                animationType="slide"
+              >
+                <View style={styles.modalOverlay}>
+                  <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+                    <View style={styles.modalHeader}>
+                      <Text style={[styles.modalTitle, { color: colors.text }]}>Select To Date</Text>
+                      <TouchableOpacity
+                        onPress={() => setShowToPicker(false)}
+                        style={styles.modalCloseButton}
+                      >
+                        <Text style={[styles.modalCloseText, { color: colors.primary }]}>Done</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <DateTimePicker
+                      value={toDate}
+                      mode="date"
+                      display="inline"
+                      minimumDate={fromDate}
+                      maximumDate={new Date()}
+                      onChange={(event: any, date?: Date) => {
+                        if (date) setToDate(date);
+                      }}
+                      style={styles.datePicker}
+                    />
+                  </View>
+                </View>
+              </Modal>
+            ) : (
+              <DateTimePicker
+                value={toDate}
+                mode="date"
+                display="default"
+                minimumDate={fromDate}
+                maximumDate={new Date()}
+                onChange={(event: any, date?: Date) => {
+                  setShowToPicker(false);
+                  if (date) setToDate(date);
+                }}
+              />
+            )
           )}
           <TouchableOpacity
             style={[styles.button, { backgroundColor: colors.primary, shadowColor: colors.primary }, isLoading && styles.buttonDisabled]}
@@ -339,6 +404,47 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#3498db',
     borderRadius: 4,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '90%',
+    maxWidth: 400,
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e1e4e8',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  modalCloseButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  modalCloseText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  datePicker: {
+    width: '100%',
   },
 });
 

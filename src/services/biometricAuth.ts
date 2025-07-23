@@ -63,7 +63,7 @@ export class BiometricAuthService {
       const { available, biometryType } = await rnBiometrics.isSensorAvailable();
       
       if (!available) {
-        Alert.alert('Biometric Not Available', 'Biometric authentication is not available on this device.');
+        console.log('Biometric not available on this device');
         return false;
       }
 
@@ -82,7 +82,27 @@ export class BiometricAuthService {
       return false;
     } catch (error) {
       console.error('Biometric setup failed:', error);
-      Alert.alert('Setup Failed', 'Failed to setup biometric authentication.');
+      return false;
+    }
+  }
+
+  async enableBiometricAuth(): Promise<boolean> {
+    try {
+      const { available, biometryType } = await rnBiometrics.isSensorAvailable();
+      
+      if (!available) {
+        console.log('Biometric not available on this device');
+        return false;
+      }
+
+      // Enable biometric auth without requiring user confirmation
+      this.config.isEnabled = true;
+      this.config.type = 'biometric';
+      await this.saveConfig();
+      console.log('Biometric auth enabled successfully');
+      return true;
+    } catch (error) {
+      console.error('Failed to enable biometric auth:', error);
       return false;
     }
   }

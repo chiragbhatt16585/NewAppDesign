@@ -18,6 +18,8 @@ import KYCScreen from '../screens/KYCScreen';
 import UsageDetailsScreen from '../screens/UsageDetailsScreen';
 import WebViewScreen from '../screens/WebViewScreen';
 import ReferFriendScreen from '../screens/ReferFriendScreen';
+import SetPinScreen from '../screens/SetPinScreen';
+import AuthSetupScreen from '../screens/AuthSetupScreen';
 
 const Stack = createStackNavigator();
 
@@ -106,6 +108,8 @@ const AppNavigator: React.FC<AppNavigatorProps> = ({ initialRoute }) => {
         }}>
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Home" component={HomeScreen} />
+        <Stack.Screen name="SetPinScreen" component={SetPinScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="AuthSetupScreen" component={AuthSetupScreen} options={{ headerShown: false }} />
         <Stack.Screen name="MoreOptions" component={MoreOptionsScreen} />
         <Stack.Screen name="AccountDetails" component={AccountDetailsScreen} />
         <Stack.Screen name="Ledger" component={LedgerScreen} />

@@ -179,6 +179,7 @@ const isTokenExpiredError = (error: any): boolean => {
          errorMessage.includes('unauthorized') || 
          errorMessage.includes('invalid token') ||
          errorMessage.includes('authentication failed') ||
+         errorMessage.includes('invalid username or password') ||
          errorMessage.includes('please check your internet connection') ||
          errorMessage.includes('network request failed');
 };
@@ -355,6 +356,7 @@ class ApiService {
         const token = await sessionManager.getToken();
         if (!token) {
           await sessionManager.clearSession();
+          console.error('[ApiService] No token found, user will be logged out.');
           throw new Error('Authentication required. Please login again.');
         }
 
@@ -367,21 +369,21 @@ class ApiService {
         
         // Check if it's a token expiration error
         if (isTokenExpiredError(error) && attempt < maxRetries) {
-          console.log('Token expired, attempting to regenerate...');
+          console.warn('[ApiService] Token expired, attempting to regenerate...');
           
           try {
             const newToken = await this.regenerateToken();
             if (newToken) {
               await sessionManager.updateToken(newToken);
-              console.log('Token regenerated successfully, retrying request...');
+              console.log('[ApiService] Token regenerated successfully, retrying request...');
               continue; // Retry the request with new token
             } else {
-              console.log('Failed to regenerate token, clearing session');
+              console.error('[ApiService] Failed to regenerate token, user will be logged out.');
               await sessionManager.clearSession();
               throw new Error('Authentication failed. Please login again.');
             }
           } catch (regenerationError) {
-            console.error('Token regeneration failed:', regenerationError);
+            console.error('[ApiService] Token regeneration failed:', regenerationError);
             await sessionManager.clearSession();
             throw new Error('Authentication failed. Please login again.');
           }

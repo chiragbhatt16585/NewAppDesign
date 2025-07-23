@@ -107,6 +107,7 @@ const isTokenExpiredError = (error: any): boolean => {
          errorMessage.includes('unauthorized') || 
          errorMessage.includes('invalid token') ||
          errorMessage.includes('authentication failed') ||
+         errorMessage.includes('invalid username or password') ||
          errorMessage.includes('please check your internet connection') ||
          errorMessage.includes('network request failed');
 };

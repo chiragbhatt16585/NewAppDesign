@@ -33,6 +33,14 @@
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string></string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>This app uses Face ID for secure authentication and quick access.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>This app needs access to camera for scanning QR codes and taking photos.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app needs access to photo library for uploading documents and images.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This app needs access to microphone for voice features.</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

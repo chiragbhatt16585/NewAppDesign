@@ -14,6 +14,8 @@ import {getThemeColors} from '../utils/themeStyles';
 import CommonHeader from '../components/CommonHeader';
 import {useTranslation} from 'react-i18next';
 import {useAuth} from '../utils/AuthContext';
+import biometricAuthService from '../services/biometricAuth';
+import { pinStorage } from '../services/pinStorage';
 
 const MoreOptionsScreen = ({navigation}: any) => {
   const {isDark, themeMode, setThemeMode} = useTheme();
@@ -79,6 +81,86 @@ const MoreOptionsScreen = ({navigation}: any) => {
         },
       ],
     );
+  };
+
+  const handleBiometricSettings = async () => {
+    try {
+      const isBiometricAvailable = await biometricAuthService.isBiometricAvailable();
+      const isBiometricEnabled = await biometricAuthService.isAuthEnabled();
+      const biometricType = await biometricAuthService.getBiometricType();
+      const pin = await pinStorage.getPin();
+
+      let message = '';
+      let options: any[] = [];
+
+      if (isBiometricAvailable) {
+        if (isBiometricEnabled) {
+          message = `${biometricType} is currently enabled. What would you like to do?`;
+          options = [
+            {
+              text: 'Disable Biometric',
+              style: 'destructive' as const,
+              onPress: async () => {
+                await biometricAuthService.disableAuth();
+                Alert.alert('Success', 'Biometric authentication has been disabled.');
+              }
+            },
+            {
+              text: 'Test Biometric',
+              onPress: async () => {
+                const success = await biometricAuthService.authenticate();
+                Alert.alert(
+                  success ? 'Success' : 'Failed',
+                  success ? 'Biometric authentication works correctly!' : 'Biometric authentication failed.'
+                );
+              }
+            },
+            {
+              text: 'Cancel',
+              style: 'cancel' as const
+            }
+          ];
+        } else {
+          message = `${biometricType} is available but not enabled. Would you like to set it up?`;
+          options = [
+            {
+              text: 'Set up Biometric',
+              onPress: async () => {
+                const success = await biometricAuthService.setupBiometricAuth();
+                if (success) {
+                  Alert.alert('Success', `${biometricType} has been set up successfully!`);
+                } else {
+                  // Check if biometric is not available
+                  const isAvailable = await biometricAuthService.isBiometricAvailable();
+                  if (!isAvailable) {
+                    Alert.alert('Biometric Not Available', 'Biometric authentication is not available on this device.');
+                  } else {
+                    Alert.alert('Setup Cancelled', 'Biometric setup was not completed.');
+                  }
+                }
+              }
+            },
+            {
+              text: 'Cancel',
+              style: 'cancel' as const
+            }
+          ];
+        }
+      } else {
+        message = 'Biometric authentication is not available on this device.';
+        options = [
+          {
+            text: 'OK',
+            style: 'cancel' as const
+          }
+        ];
+      }
+
+      Alert.alert('Biometric Settings', message, options);
+    } catch (error) {
+      console.error('Error handling biometric settings:', error);
+      Alert.alert('Error', 'Failed to access biometric settings.');
+    }
   };
 
   const handleLogout = async () => {
@@ -195,6 +277,13 @@ const MoreOptionsScreen = ({navigation}: any) => {
       subtitle: getThemeDisplayText(),
       icon: isDark ? '🌙' : '☀️',
       onPress: handleThemeSettings,
+    },
+    {
+      id: 'biometric',
+      title: 'Biometric Auth',
+      subtitle: 'Face ID / Touch ID settings',
+      icon: '🔐',
+      onPress: handleBiometricSettings,
     },
     {
       id: 'logout',
