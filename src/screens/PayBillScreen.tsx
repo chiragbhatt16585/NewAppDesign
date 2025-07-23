@@ -8,23 +8,15 @@ import {
   Alert,
   Modal,
   TouchableWithoutFeedback,
+  ActivityIndicator,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useTheme} from '../utils/ThemeContext';
 import {getThemeColors} from '../utils/themeStyles';
 import CommonHeader from '../components/CommonHeader';
 import {useTranslation} from 'react-i18next';
-
-interface AccountData {
-  openingBalance: number;
-  billAmount: number;
-  amountPaid: number;
-  proformaInvoiceAmount: number;
-  currentBalance: number;
-  existingDues: number;
-  renewDate: string;
-  expDate: string;
-}
+import sessionManager from '../services/sessionManager';
+import {apiService} from '../services/api';
 
 const paymentGateways = [
   { key: 'atom', label: 'ATOM' },
@@ -37,21 +29,40 @@ const PayBillScreen = ({navigation}: any) => {
   const {isDark} = useTheme();
   const colors = getThemeColors(isDark);
   const {t} = useTranslation();
-  
   const [showPaymentModal, setShowPaymentModal] = React.useState(false);
   const [selectedGateway, setSelectedGateway] = React.useState('');
+  const [authData, setAuthData] = React.useState<any>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const [summary, setSummary] = React.useState<any>(null);
 
-  // Mock account data
-  const accountData: AccountData = {
-    openingBalance: 1500,
-    billAmount: 999,
-    amountPaid: 500,
-    proformaInvoiceAmount: 1499,
-    currentBalance: 999,
-    existingDues: 250,
-    renewDate: '15 Dec 2024',
-    expDate: '15 Jan 2025',
-  };
+  React.useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const session = await sessionManager.getCurrentSession();
+        if (!session?.username) {
+          setError('No user session found. Please login again.');
+          setIsLoading(false);
+          return;
+        }
+        const data = await apiService.authUser(session.username);
+        setAuthData(data);
+        // Fetch account summary from userLedger (like LedgerScreen)
+        const {getClientConfig} = require('../config/client-config');
+        const clientConfig = getClientConfig();
+        const realm = clientConfig.clientId;
+        const ledgerData = await apiService.userLedger(session.username, realm);
+        setSummary(ledgerData[3] || {});
+      } catch (e: any) {
+        setError(e.message || 'Failed to fetch account data.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   const handlePayDues = () => {
     setShowPaymentModal(true);
@@ -71,97 +82,128 @@ const PayBillScreen = ({navigation}: any) => {
     );
   };
 
+  if (isLoading) {
+    return (
+      <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}> 
+        <CommonHeader navigation={navigation} />
+        <View style={{flex:1, justifyContent:'center', alignItems:'center'}}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={{marginTop:16, color: colors.textSecondary}}>Loading account data...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}> 
+        <CommonHeader navigation={navigation} />
+        <View style={{flex:1, justifyContent:'center', alignItems:'center'}}>
+          <Text style={{color: colors.error, fontSize: 16, marginBottom: 12}}>Error</Text>
+          <Text style={{color: colors.textSecondary}}>{error}</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Fallbacks for missing data
+  const planName = authData?.current_plan || 'N/A';
+  const planSpeed = authData?.plan_download_speed ? `${authData.plan_download_speed} Mbps` : 'N/A';
+  const renewDate = authData?.renew_date || 'N/A';
+  const expDate = authData?.exp_date || 'N/A';
+  // Account summary from ledger
+  const openingBalance = summary?.openingBalance || 0;
+  const proformaInvoiceAmount = summary?.proforma_invoice || 0;
+  const billAmount = summary?.billAmount || 0;
+  const amountPaid = summary?.paidAmount || 0;
+  const currentBalance = summary?.balance || 0;
+  const existingDues = authData?.payment_dues || 0;
+
   return (
-    <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}>
+    <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}> 
       {/* Header */}
       <CommonHeader navigation={navigation} />
 
       {/* Page Heading */}
       <View style={styles.headingContainer}>
-        <Text style={[styles.pageHeading, {color: colors.text}]}>
-          {t('payBill.title')}
-        </Text>
-        <Text style={[styles.pageSubheading, {color: colors.textSecondary}]}>
-          {t('payBill.subtitle')}
-        </Text>
+        <Text style={[styles.pageHeading, {color: colors.text}]}> {t('payBill.title')} </Text>
+        <Text style={[styles.pageSubheading, {color: colors.textSecondary}]}> {t('payBill.subtitle')} </Text>
       </View>
 
       {/* Content */}
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
           {/* Active Plan Details */}
-          <View style={[styles.sectionCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
+          <View style={[styles.sectionCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}> 
             <Text style={[styles.sectionTitle, {color: colors.text}]}>{t('payBill.activePlan')}</Text>
-            
             <View style={styles.planDetails}>
               <View style={styles.planDetailRow}>
                 <Text style={styles.detailIcon}>🚀</Text>
                 <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>{t('payBill.planName')}</Text>
-                <Text style={[styles.detailValue, {color: colors.text}]}>Premium Plan</Text>
+                <Text style={[styles.detailValue, {color: colors.text}]}>{planName}</Text>
               </View>
               <View style={styles.planDetailRow}>
                 <Text style={styles.detailIcon}>⚡</Text>
                 <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>{t('payBill.speed')}</Text>
-                <Text style={[styles.detailValue, {color: colors.text}]}>500 Mbps</Text>
+                <Text style={[styles.detailValue, {color: colors.text}]}>{planSpeed}</Text>
               </View>
               <View style={styles.planDetailRow}>
                 <Text style={styles.detailIcon}>⏰</Text>
                 <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>{t('payBill.renewDate')}</Text>
-                <Text style={[styles.detailValue, {color: colors.text}]}>{accountData.renewDate}</Text>
+                <Text style={[styles.detailValue, {color: colors.text}]}>{renewDate}</Text>
               </View>
               <View style={styles.planDetailRow}>
                 <Text style={styles.detailIcon}>📅</Text>
                 <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>{t('payBill.expDate')}</Text>
-                <Text style={[styles.detailValue, {color: colors.text}]}>{accountData.expDate}</Text>
+                <Text style={[styles.detailValue, {color: colors.text}]}>{expDate}</Text>
               </View>
             </View>
           </View>
 
           {/* Account Summary */}
-          <View style={[styles.sectionCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
+          <View style={[styles.sectionCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}> 
             <Text style={[styles.sectionTitle, {color: colors.text}]}>{t('payBill.accountSummary')}</Text>
-            
             <View style={styles.summaryDetails}>
               <View style={styles.summaryRow}>
                 <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('payBill.openingBalance')}</Text>
-                <Text style={[styles.summaryValue, {color: colors.text}]}>₹{accountData.openingBalance}</Text>
+                <Text style={[styles.summaryValue, {color: colors.text}]}>₹{openingBalance}</Text>
               </View>
               <View style={styles.summaryRow}>
                 <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('payBill.billAmount')}</Text>
-                <Text style={[styles.summaryValue, {color: colors.text}]}>₹{accountData.billAmount}</Text>
+                <Text style={[styles.summaryValue, {color: colors.text}]}>₹{billAmount}</Text>
               </View>
               <View style={styles.summaryRow}>
                 <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('payBill.amountPaid')}</Text>
-                <Text style={[styles.summaryValue, {color: colors.text}]}>₹{accountData.amountPaid}</Text>
+                <Text style={[styles.summaryValue, {color: colors.text}]}>₹{amountPaid}</Text>
               </View>
               <View style={styles.summaryRow}>
                 <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('payBill.proformaInvoiceAmount')}</Text>
-                <Text style={[styles.summaryValue, {color: colors.text}]}>₹{accountData.proformaInvoiceAmount}</Text>
+                <Text style={[styles.summaryValue, {color: colors.text}]}>₹{proformaInvoiceAmount}</Text>
               </View>
               <View style={[styles.summaryRow, styles.totalRow]}>
                 <Text style={[styles.summaryLabel, styles.totalLabel, {color: colors.text}]}>{t('payBill.currentBalance')}</Text>
-                <Text style={[styles.summaryValue, styles.totalValue, {color: colors.accent}]}>₹{accountData.currentBalance}</Text>
+                <Text style={[styles.summaryValue, styles.totalValue, {color: colors.accent}]}>₹{currentBalance}</Text>
               </View>
             </View>
           </View>
 
           {/* Existing Dues */}
-          <View style={[styles.sectionCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
+          <View style={[styles.sectionCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}> 
             <Text style={[styles.sectionTitle, {color: colors.text}]}>{t('payBill.existingDues')}</Text>
-            
             <View style={styles.duesSection}>
               <View style={styles.duesRow}>
                 <Text style={[styles.duesLabel, {color: colors.textSecondary}]}>{t('payBill.duesAmount')}</Text>
-                <Text style={[styles.duesValue, {color: colors.accent}]}>₹{accountData.existingDues}</Text>
+                <Text style={[styles.duesValue, {color: colors.accent}]}>₹{existingDues}</Text>
               </View>
-              
-              <TouchableOpacity
-                style={[styles.payDuesButton, {backgroundColor: colors.primary}]}
-                onPress={handlePayDues}>
-                <Text style={styles.payDuesButtonText}>
-                  {t('payBill.payDues')} - ₹{accountData.existingDues}
-                </Text>
-              </TouchableOpacity>
+              {existingDues > 0 && (
+                <TouchableOpacity
+                  style={[styles.payDuesButton, {backgroundColor: colors.primary}]}
+                  onPress={handlePayDues}>
+                  <Text style={styles.payDuesButtonText}>
+                    {t('payBill.payDues')} - ₹{existingDues}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </View>
@@ -191,7 +233,7 @@ const PayBillScreen = ({navigation}: any) => {
             style={[styles.paymentGatewayButton, {backgroundColor: selectedGateway ? colors.primary : colors.border}]}
             disabled={!selectedGateway}
             onPress={handleGatewayPay}>
-            <Text style={[styles.paymentGatewayButtonText, {color: selectedGateway ? '#fff' : colors.textSecondary}]}>
+            <Text style={[styles.paymentGatewayButtonText, {color: selectedGateway ? '#fff' : colors.textSecondary}]}> 
               {t('payBill.payWith')} {selectedGateway ? paymentGateways.find(g => g.key === selectedGateway)?.label : ''}
             </Text>
           </TouchableOpacity>

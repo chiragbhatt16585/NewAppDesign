@@ -6,8 +6,14 @@ import CommonHeader from '../components/CommonHeader';
 import { apiService } from '../services/api';
 import sessionManager from '../services/sessionManager';
 import { getClientConfig } from '../config/client-config';
+import { useTranslation } from 'react-i18next';
+import { useTheme } from '../utils/ThemeContext';
+import { getThemeColors } from '../utils/themeStyles';
 
 const UsageDetailsScreen = ({ navigation }: any) => {
+  const { t } = useTranslation();
+  const { isDark } = useTheme();
+  const colors = getThemeColors(isDark);
   const [fromDate, setFromDate] = useState(new Date());
   const [toDate, setToDate] = useState(new Date());
   const [showFromPicker, setShowFromPicker] = useState(false);
@@ -57,31 +63,31 @@ const UsageDetailsScreen = ({ navigation }: any) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <CommonHeader navigation={navigation} />
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <Text style={styles.title}>📊 Usage Details</Text>
-          <Text style={styles.subtitle}>Monitor your data consumption</Text>
+          <Text style={[styles.title, { color: colors.text }]}>{t('usageDetails.title')}</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{t('usageDetails.subtitle')}</Text>
         </View>
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>📅 Select Date Range</Text>
-          <Text style={styles.cardSubtitle}>Choose the period to fetch usage statistics</Text>
+        <View style={[styles.card, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>{t('usageDetails.selectDateRange')}</Text>
+          <Text style={[styles.cardSubtitle, { color: colors.textSecondary }]}>{t('usageDetails.selectDateSubtitle')}</Text>
           <View style={styles.dateRow}>
             <TouchableOpacity
-              style={styles.dateButton}
+              style={[styles.dateButton, { backgroundColor: colors.background, borderColor: colors.border }]}
               onPress={() => setShowFromPicker(true)}
             >
-              <Text style={styles.dateLabel}>From</Text>
-              <Text style={styles.dateValue}>{formatDate(fromDate)}</Text>
+              <Text style={[styles.dateLabel, { color: colors.textSecondary }]}>{t('usageDetails.from')}</Text>
+              <Text style={[styles.dateValue, { color: colors.text }]}>{formatDate(fromDate)}</Text>
             </TouchableOpacity>
             <View style={styles.dateDivider} />
             <TouchableOpacity
-              style={styles.dateButton}
+              style={[styles.dateButton, { backgroundColor: colors.background, borderColor: colors.border }]}
               onPress={() => setShowToPicker(true)}
             >
-              <Text style={styles.dateLabel}>To</Text>
-              <Text style={styles.dateValue}>{formatDate(toDate)}</Text>
+              <Text style={[styles.dateLabel, { color: colors.textSecondary }]}>{t('usageDetails.to')}</Text>
+              <Text style={[styles.dateValue, { color: colors.text }]}>{formatDate(toDate)}</Text>
             </TouchableOpacity>
           </View>
           {showFromPicker && (
@@ -110,38 +116,38 @@ const UsageDetailsScreen = ({ navigation }: any) => {
             />
           )}
           <TouchableOpacity
-            style={[styles.button, isLoading && styles.buttonDisabled]}
+            style={[styles.button, { backgroundColor: colors.primary, shadowColor: colors.primary }, isLoading && styles.buttonDisabled]}
             onPress={handleFetch}
             disabled={isLoading}
           >
             <Text style={styles.buttonText}>
-              {isLoading ? '⏳ Loading...' : '📊 Fetch Usage'}
+              {isLoading ? t('common.loading') : t('usageDetails.fetchUsage')}
             </Text>
           </TouchableOpacity>
         </View>
         {usageData && (
-          <View style={styles.dataCard}>
-            <Text style={styles.dataTitle}>📈 Usage Statistics</Text>
+          <View style={[styles.dataCard, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
+            <Text style={[styles.dataTitle, { color: colors.text }]}>{t('usageDetails.usageStatistics')}</Text>
             <View style={styles.statsGrid}>
-              <View style={styles.statItem}>
-                <Text style={styles.statArrowIcon}>↓</Text>
-                <Text style={styles.statLabel}>Download</Text>
-                <Text style={styles.statValue}>{usageData.download}</Text>
+              <View style={[styles.statItem, { backgroundColor: colors.background }]}>
+                <Text style={[styles.statArrowIcon, { color: colors.primary }]}>↓</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('usageDetails.download')}</Text>
+                <Text style={[styles.statValue, { color: colors.text }]}>{usageData.download}</Text>
               </View>
-              <View style={styles.statItem}>
-                <Text style={styles.statArrowIcon}>↑</Text>
-                <Text style={styles.statLabel}>Upload</Text>
-                <Text style={styles.statValue}>{usageData.upload}</Text>
+              <View style={[styles.statItem, { backgroundColor: colors.background }]}>
+                <Text style={[styles.statArrowIcon, { color: colors.primary }]}>↑</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('usageDetails.upload')}</Text>
+                <Text style={[styles.statValue, { color: colors.text }]}>{usageData.upload}</Text>
               </View>
-              <View style={styles.statItem}>
+              <View style={[styles.statItem, { backgroundColor: colors.background }]}>
                 <Text style={styles.statIcon}>📊</Text>
-                <Text style={styles.statLabel}>Total</Text>
-                <Text style={styles.statValue}>{usageData.total}</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('usageDetails.total')}</Text>
+                <Text style={[styles.statValue, { color: colors.text }]}>{usageData.total}</Text>
               </View>
-              <View style={styles.statItem}>
+              <View style={[styles.statItem, { backgroundColor: colors.background }]}>
                 <Text style={styles.statIcon}>⏰</Text>
-                <Text style={styles.statLabel}>Hours</Text>
-                <Text style={styles.statValue}>{usageData.hours} h</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('usageDetails.hours')}</Text>
+                <Text style={[styles.statValue, { color: colors.text }]}>{usageData.hours} h</Text>
               </View>
             </View>
             {/* <View style={styles.progressContainer}>

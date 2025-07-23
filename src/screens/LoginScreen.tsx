@@ -25,6 +25,7 @@ import {apiService} from '../services/api';
 import sessionManager from '../services/sessionManager';
 import { useLanguage } from '../utils/LanguageContext';
 import clientStrings from '../config/client-strings.json';
+import { credentialStorage } from '../services/credentialStorage';
 
 const {width, height} = Dimensions.get('window');
 
@@ -300,6 +301,8 @@ const LoginScreen = ({navigation}: any) => {
           const success = await login(username, password);
           
           if (success) {
+            // Save credentials for session regeneration
+            await credentialStorage.saveCredentials(username, password);
             Alert.alert('Success', 'Login successful!');
             navigation.navigate('Home');
             return;
@@ -339,6 +342,8 @@ const LoginScreen = ({navigation}: any) => {
           
           if (success) {
             console.log('=== LOGIN SUCCESS ===');
+            // Save credentials for session regeneration
+            await credentialStorage.saveCredentials(username, password);
             Alert.alert('Success', 'Login successful!');
             navigation.navigate('Home');
           } else {

@@ -1388,6 +1388,169 @@ class ApiService {
       });
     });
   }
+
+  async getAllBuildings(realm: string) {
+    const session = await sessionManager.getCurrentSession();
+    if (!session?.username) throw new Error('No user session found');
+    const Authentication = session.token;
+    const data = {
+      username: session.username,
+      combo_code: 'all_buildings',
+      column: '',
+      value: '',
+      request_source: 'app',
+      request_app: 'user_app',
+    };
+    const options = {
+      method,
+      body: toFormData(data),
+      headers: headers(Authentication),
+      timeout
+    };
+    return fetch(`${url}/selfcareDropdown`, options).then(res => {
+      setTimeout(() => null, 0);
+      return res.json().then(res => {
+        setTimeout(() => null, 0);
+        if (res.status != 'ok' && res.code != 200) {
+          throw new Error('Could not find Buildings. Please try again.');
+        } else {
+          return res.data;
+        }
+      });
+    }).catch(e => {
+      let msg = (
+        isNetworkError(e) ? networkErrorMsg : e.message
+      );
+      throw new Error(msg);
+    });
+  }
+
+  async getAllCities(realm: string) {
+    const session = await sessionManager.getCurrentSession();
+    if (!session?.username) throw new Error('No user session found');
+    const Authentication = session.token;
+    const data = {
+      username: session.username,
+      combo_code: 'distinct_city',
+      column: '',
+      value: '',
+      request_source: 'app',
+      request_app: 'user_app',
+    };
+    const options = {
+      method,
+      body: toFormData(data),
+      headers: headers(Authentication),
+      timeout
+    };
+    return fetch(`${url}/selfcareDropdown`, options).then(res => {
+      setTimeout(() => null, 0);
+      return res.json().then(res => {
+        setTimeout(() => null, 0);
+        if (res.status != 'ok' && res.code != 200) {
+          throw new Error('Could not find City. Please try again.');
+        } else {
+          return res.data;
+        }
+      });
+    }).catch(e => {
+      let msg = (
+        isNetworkError(e) ? networkErrorMsg : e.message
+      );
+      throw new Error(msg);
+    });
+  }
+
+  async getAllSalesPersons(realm: string) {
+    const session = await sessionManager.getCurrentSession();
+    if (!session?.username) throw new Error('No user session found');
+    const Authentication = session.token;
+    const data = {
+      username: session.username,
+      combo_code: 'fetch_sales_executive',
+      column: '',
+      value: '',
+      request_source: 'app',
+      request_app: 'user_app',
+    };
+    const options = {
+      method,
+      body: toFormData(data),
+      headers: headers(Authentication),
+      timeout
+    };
+    return fetch(`${url}/selfcareDropdown`, options).then(res => {
+      setTimeout(() => null, 0);
+      return res.json().then(res => {
+        setTimeout(() => null, 0);
+        if (res.status != 'ok' && res.code != 200) {
+          throw new Error('Could not find Sales Person. Please try again.');
+        } else {
+          return res.data;
+        }
+      });
+    }).catch(e => {
+      let msg = (
+        isNetworkError(e) ? networkErrorMsg : e.message
+      );
+      throw new Error(msg);
+    });
+  }
+
+  async addNewInquiry(username: string, formData: any, realm: string) {
+    const session = await sessionManager.getCurrentSession();
+    if (!session?.token) throw new Error('No user session found');
+    const Authentication = session.token;
+    const data = {
+      username: username,
+      user_login_id: username,
+      first_name: formData.firstName,
+      middle_name: formData.middleName,
+      last_name: formData.lastName,
+      mobile: formData.mobileNumber,
+      alt_mobile: formData.alternateMobile,
+      email: formData.email,
+      address_line1: formData.address1,
+      address_line2: formData.address2,
+      building_id: formData.building_id,
+      building_name: formData.building_name,
+      area_name: formData.area,
+      location_name: formData.location,
+      pin_code: formData.pincode,
+      city_id: formData.city,
+      remarks: formData.remarks,
+      customer_type: 'broadband',
+      nationality: 'indian',
+      lead_source: 'customer_referral/friends',
+      request_source: 'app',
+      request_app: 'user_app',
+    };
+    const options = {
+      method,
+      headers: headers(Authentication),
+      body: toFormData(data),
+      timeout
+    };
+    return fetch(`${url}/selfcareAddNewInquiry`, options).then(res => {
+      setTimeout(() => null, 0);
+      return res.json().then(res => {
+        setTimeout(() => null, 0);
+        if (res.status != 'ok' && res.code != 200) {
+          if (res.message == 'Lead Created Successfully...') {
+            throw new Error('Inquiry Created Successfully.');
+          }
+          throw new Error('OTP not generated.');
+        } else {
+          return res;
+        }
+      });
+    }).catch((e) => {
+      let msg = (
+        isNetworkError(e) ? networkErrorMsg : e.message
+      );
+      throw new Error(msg);
+    });
+  }
 }
 
 // Export singleton instance

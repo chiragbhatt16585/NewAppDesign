@@ -53,7 +53,7 @@ const MoreOptionsScreen = ({navigation}: any) => {
   };
 
   const handleReferFriend = () => {
-    Alert.alert('Refer Friend', 'Opening referral program...');
+    navigation.navigate('ReferFriend');
   };
 
   const handleThemeSettings = () => {

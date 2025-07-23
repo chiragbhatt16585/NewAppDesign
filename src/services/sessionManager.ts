@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import credentialStorage from './credentialStorage';
+import { credentialStorage } from './credentialStorage';
+import { apiService } from './api';
 
 export interface UserSession {
   isLoggedIn: boolean;
@@ -189,16 +190,23 @@ export class SessionManager {
   // New method to regenerate token using stored password
   async regenerateToken(): Promise<string | false> {
     try {
-      const newToken = await credentialStorage.regenerateToken();
-      if (newToken) {
-        // Update session with new token
+      // Get stored credentials
+      const creds = await credentialStorage.getCredentials();
+      if (!creds) {
+        console.error('No stored credentials for token regeneration');
+        return false;
+      }
+      const { username, password } = creds;
+      // Perform login to get new token
+      const loginResponse = await apiService.authenticate(username, password);
+      if (loginResponse && loginResponse.token) {
         if (this.currentSession) {
-          this.currentSession.token = newToken;
+          this.currentSession.token = loginResponse.token;
           this.currentSession.lastActivityTime = Date.now();
           await AsyncStorage.setItem(this.SESSION_KEY, JSON.stringify(this.currentSession));
           console.log('Token regenerated and session updated');
         }
-        return newToken;
+        return loginResponse.token;
       }
       return false;
     } catch (error) {

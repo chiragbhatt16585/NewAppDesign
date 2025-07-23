@@ -17,6 +17,7 @@ import LanguageScreen from '../screens/LanguageScreen';
 import KYCScreen from '../screens/KYCScreen';
 import UsageDetailsScreen from '../screens/UsageDetailsScreen';
 import WebViewScreen from '../screens/WebViewScreen';
+import ReferFriendScreen from '../screens/ReferFriendScreen';
 
 const Stack = createStackNavigator();
 
@@ -118,6 +119,7 @@ const AppNavigator: React.FC<AppNavigatorProps> = ({ initialRoute }) => {
         <Stack.Screen name="KYC" component={KYCScreen} />
         <Stack.Screen name="UsageDetails" component={UsageDetailsScreen} />
         <Stack.Screen name="WebView" component={WebViewScreen} />
+        <Stack.Screen name="ReferFriend" component={ReferFriendScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );
