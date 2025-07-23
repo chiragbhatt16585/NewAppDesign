@@ -468,7 +468,7 @@ const AccountDetailsScreen = ({navigation}: any) => {
         })} */}
 
         {/* Action Buttons */}
-        <View style={styles.actionSection}>
+        {/* <View style={styles.actionSection}>
           <TouchableOpacity style={[styles.actionButton, {backgroundColor: colors.primary}]} onPress={handleDebugSession}>
             <Text style={styles.actionButtonText}>Debug Session</Text>
           </TouchableOpacity>
@@ -476,7 +476,7 @@ const AccountDetailsScreen = ({navigation}: any) => {
           <TouchableOpacity style={[styles.actionButton, {backgroundColor: '#EF4444'}]} onPress={handleResetSession}>
             <Text style={styles.actionButtonText}>Reset Session</Text>
           </TouchableOpacity>
-        </View>
+        </View> */}
 
         {/* Additional Info */}
         {/* <View style={[styles.infoCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>

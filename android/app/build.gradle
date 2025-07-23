@@ -87,23 +87,17 @@ android {
     }
     
     signingConfigs {
-        debug {
-            storeFile file('debug.keystore')
-            storePassword 'android'
-            keyAlias 'androiddebugkey'
-            keyPassword 'android'
-        }
         release {
             storeFile file('Log2spaceDNAInfotelAppKey.jks')
-            storePassword 'log2space'
-            keyAlias 'log2space'
-            keyPassword 'log2space'
+            storePassword 'dnasubscriber'
+            keyAlias 'dnasubscriber'
+            keyPassword 'dnasubscriber'
         }
     }
     
     buildTypes {
         debug {
-            signingConfig signingConfigs.debug
+            // Use default debug keystore
         }
         release {
             signingConfig signingConfigs.release

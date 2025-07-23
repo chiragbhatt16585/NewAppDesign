@@ -38,7 +38,7 @@ const MoreOptionsScreen = ({navigation}: any) => {
   };
 
   const handleUsageDetails = () => {
-    Alert.alert('Usage Details', 'Opening detailed usage statistics...');
+    navigation.navigate('UsageDetails');
   };
 
   const handleRenewPlan = () => {
@@ -138,19 +138,20 @@ const MoreOptionsScreen = ({navigation}: any) => {
       icon: '⬆️',
       onPress: handleUpgradePlan,
     },
-    {
-      id: 'usage',
-      title: t('more.usageDetails'),
-      subtitle: 'Detailed statistics',
-      icon: '📈',
-      onPress: handleUsageDetails,
-    },
+    
     {
       id: 'ledger',
       title: t('navigation.ledger'),
       subtitle: 'Transaction history',
       icon: '📊',
       onPress: handleLedger,
+    },
+    {
+      id: 'usage',
+      title: t('more.usageDetails'),
+      subtitle: 'Detailed statistics',
+      icon: '📈',
+      onPress: handleUsageDetails,
     },
     {
       id: 'sessions',

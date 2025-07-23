@@ -796,13 +796,13 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 16,
   },
   logoSection: {
-    marginBottom: 2,
+    marginBottom: 0,
   },
   logo: {
-    marginBottom: 8,
+    marginBottom: 0,
   },
   title: {
     fontSize: 18,

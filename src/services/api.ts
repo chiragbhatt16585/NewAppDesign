@@ -1295,31 +1295,97 @@ class ApiService {
   }
 
   async bannerDisplay(realm: string) {
-    return this.makeAuthenticatedRequest(async (token: string) => {
-      const username = await sessionManager.getUsername();
-      if (!username) throw new Error('No username found in session');
+    try {
+      const { Authentication } = await this.getCredentials(realm);
+      const data = {
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+      
       const options = {
         method,
-        headers: new Headers({ Authentication: token, ...fixedHeaders }),
-        body: toFormData({ username }),
+        headers: headers(Authentication),
+        body: toFormData(data),
         timeout
       };
-      try {
-        const res = await fetch(`${url}/selfcareDisplayBanner`, options);
-        const response = await res.json();
-        if (response.status !== 'ok' && response.code !== 200) {
-          if (response.message === 'No Content') {
-            return [];
+      
+      return fetch(`${url}/bannerDisplay`, options).then(res => {
+        setTimeout(() => null, 0);
+        return res.json().then(res => {
+          setTimeout(() => null, 0);
+          if (res.status != 'ok' && res.code != 200) {
+            throw new Error(res.message);
           } else {
-            throw new Error(response.message);
+            return res.data || [];
           }
-        } else {
-          return response.data || [];
-        }
-      } catch (e: any) {
-        let msg = isNetworkError(e) ? networkErrorMsg : e.message;
+        });
+      }).catch(e => {
+        let msg = (
+          isNetworkError(e) ? networkErrorMsg : e.message
+        );
         throw new Error(msg);
-      }
+      });
+    } catch (error: any) {
+      console.error('Banner display error:', error);
+      throw error;
+    }
+  }
+
+  async usageRecords(username: string, accountStatus: string, fromDate: Date, toDate: Date = new Date(), realm: string) {
+    // Use makeAuthenticatedRequest to ensure token auto-regeneration
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      // Format dates to YYYY-MM-DD
+      const formatDate = (date: Date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+      const data = {
+        username,
+        start_date: formatDate(fromDate),
+        end_date: formatDate(toDate),
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+      console.log('Usage records data:', data);
+      const options = {
+        method,
+        headers: headers(token),
+        body: toFormData(data),
+        timeout
+      };
+      return fetch(`${url}/selfcareUsageSummary`, options).then(res => {
+        setTimeout(() => null, 0);
+        return res.json().then(res => {
+          setTimeout(() => null, 0);
+          if (res.status != 'ok' && res.code != 200) {
+            throw new Error(res.message);
+          } else {
+            if (res.message == "No Content") {
+              let download = 0;
+              let upload = 0;
+              let hrsUsed = 0;
+              return { download, upload, hrsUsed };
+            } else {
+              if (res.data[0].total_download == null) {
+                return null;
+              } else {
+                let data = res.data[0];
+                let download = Math.round(Number(data.total_download) / (1024 * 1024 * 1024) * 100) / 100;
+                let upload = Math.round(Number(data.total_upload) / (1024 * 1024 * 1024) * 100) / 100;
+                let hrsUsed = Number(data.online_time.split(':')[0]);
+                return { download, upload, hrsUsed };
+              }
+            }
+          }
+        });
+      }).catch(e => {
+        let msg = (
+          isNetworkError(e) ? networkErrorMsg : e.message
+        );
+        throw new Error(msg);
+      });
     });
   }
 }
