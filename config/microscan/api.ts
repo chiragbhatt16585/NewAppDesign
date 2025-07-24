@@ -1025,6 +1025,479 @@ class ApiService {
       }
     });
   }
+
+  async planList(adminname: string, username: string, currentplan: string, isShowAllPlan: boolean, is_dashboard: boolean, realm: string): Promise<any[]> {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const data: any = {
+        admin_login_id: adminname,
+        username: username.toLowerCase().trim(),
+        planname: currentplan,
+        is_dashboard: is_dashboard ? is_dashboard : false,
+        online_renewal: 'yes',
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      if (isShowAllPlan) {
+        data.online_renewal_plan_list = 'yes';
+      }
+
+      console.log('=== API SERVICE: Plan list data ===', data);
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+
+      try {
+        const res = await fetch(`${url}/selfcareGetPlanAmount`, options);
+        const response = await res.json();
+
+        //Alert.alert('Plan list response:', JSON.stringify(response));
+        
+        if (response.status !== 'ok' && response.code !== 200) {
+          throw new Error('Plan list not found. Please try again.');
+        } else if (response.status === 'ok' && response.code !== 200) {
+          return [];
+        } else {
+          return response.data.map((planObj: any, index: number) => ({
+            id: planObj.id || index.toString(),
+            name: planObj.name || planObj.planname || '',
+            speed: planObj.speed || '',
+            upload: planObj.upload || '',
+            download: planObj.download || planObj.download_speed || '',
+            validity: planObj.validity || planObj.days || '',
+            price: parseFloat(planObj.price) || parseFloat(planObj.FinalAmount) || 0,
+            baseAmount: parseFloat(planObj.baseAmount) || parseFloat(planObj.Amount) || 0,
+            cgst: parseFloat(planObj.cgst) || 0,
+            sgst: parseFloat(planObj.sgst) || 0,
+            mrp: parseFloat(planObj.mrp) || parseFloat(planObj.Amount) || 0,
+            dues: parseFloat(planObj.dues) || 0,
+            gbLimit: parseFloat(planObj.gbLimit) || parseFloat(planObj.limit) || 0,
+            isCurrentPlan: planObj.isCurrentPlan || false,
+            ottServices: planObj.ottServices || [],
+            isExpanded: false
+          }));
+        }
+      } catch (e: any) {
+        if (isNetworkError(e)) {
+          throw new Error(networkErrorMsg);
+        } else {
+          throw new Error(e.message || 'Failed to fetch plan list');
+        }
+      }
+    });
+  }
+
+  async userPaymentDues(username: string, realm: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const data = {
+        username: username.toLowerCase().trim(),
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+
+      try {
+        const res = await fetch(`${url}/selfcareGetUserPaymentDues`, options);
+        const response = await res.json();
+        
+        console.log('=== Payment dues API response ===', response);
+        
+        if (response.status !== 'ok' && response.code !== 200) {
+          return '0'; // Return '0' instead of throwing error, as per old implementation
+        } else {
+          return response.data;
+        }
+      } catch (e: any) {
+        if (isNetworkError(e)) {
+          throw new Error(networkErrorMsg);
+        } else {
+          throw new Error(e.message || 'Failed to fetch payment dues');
+        }
+      }
+    });
+  }
+
+  async getAdminTaxInfo(adminname: string, realm: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const username = await sessionManager.getUsername();
+      if (!username) {
+        throw new Error('No username found in session');
+      }
+
+      const data = {
+        username: username.toLowerCase().trim(),
+        admin_login_id: adminname,
+        action: 'settings,tax_info',
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+
+      try {
+        const res = await fetch(`${url}/selfcareGetAdminDetails`, options);
+        const response = await res.json();
+        
+        console.log('=== Tax info API response ===', response);
+        
+        if (response.status !== 'ok' && response.code !== 200) {
+          throw new Error('Tax info not found. Please try again.');
+        } else {
+          return response.data;
+        }
+      } catch (e: any) {
+        if (isNetworkError(e)) {
+          throw new Error(networkErrorMsg);
+        } else {
+          throw new Error(e.message || 'Failed to fetch admin tax info');
+        }
+      }
+    });
+  }
+
+  async paymentGatewayOptions(adminname: string, realm: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const data = {
+        admin_login_id: adminname,
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+
+      try {
+        const res = await fetch(`${url}/selfcarePaymentGatewayOptions`, options);
+        const response = await res.json();
+        
+        if (response.status !== 'ok' && response.code !== 200) {
+          throw new Error(response.message || 'Failed to fetch payment gateway options');
+        } else {
+          return response.data;
+        }
+      } catch (e: any) {
+        if (isNetworkError(e)) {
+          throw new Error(networkErrorMsg);
+        } else {
+          throw new Error(e.message || 'Failed to fetch payment gateway options');
+        }
+      }
+    });
+  }
+
+  async addDeviceDetails(fcm_token: string, mac_addr: string, hostname: string, device_info: any, realm: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const username = await sessionManager.getUsername();
+      if (!username) {
+        throw new Error('No username found in session');
+      }
+      const data = {
+        username: username.toLowerCase().trim(),
+        fcm_token,
+        mac_addr,
+        hostname,
+        device_info: JSON.stringify(device_info),
+        token_for: 'end_user_app',
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+      try {
+        const res = await fetch(`${url}/selfcareAddDeviceInfo`, options);
+        const response = await res.json();
+        if (response.status !== 'ok' && response.code !== 200) {
+          throw new Error('Invalid username or password');
+        } else {
+          return response;
+        }
+      } catch (e: any) {
+        let msg = isNetworkError(e) ? networkErrorMsg : e.message;
+        throw new Error(msg);
+      }
+    });
+  }
+
+  async bannerDisplay(realm: string) {
+    try {
+      const { Authentication } = await this.getCredentials(realm);
+      const data = {
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+      
+      const options = {
+        method,
+        headers: headers(Authentication),
+        body: toFormData(data),
+        timeout
+      };
+      
+      return fetch(`${url}/bannerDisplay`, options).then(res => {
+        setTimeout(() => null, 0);
+        return res.json().then(res => {
+          setTimeout(() => null, 0);
+          if (res.status != 'ok' && res.code != 200) {
+            throw new Error(res.message);
+          } else {
+            return res.data || [];
+          }
+        });
+      }).catch(e => {
+        let msg = (
+          isNetworkError(e) ? networkErrorMsg : e.message
+        );
+        throw new Error(msg);
+      });
+    } catch (error: any) {
+      console.error('Banner display error:', error);
+      throw error;
+    }
+  }
+
+  async usageRecords(username: string, accountStatus: string, fromDate: Date, toDate: Date = new Date(), realm: string) {
+    // Use makeAuthenticatedRequest to ensure token auto-regeneration
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      // Format dates to YYYY-MM-DD
+      const formatDate = (date: Date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+      const data = {
+        username,
+        start_date: formatDate(fromDate),
+        end_date: formatDate(toDate),
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+      console.log('Usage records data:', data);
+      const options = {
+        method,
+        headers: headers(token),
+        body: toFormData(data),
+        timeout
+      };
+      return fetch(`${url}/selfcareUsageSummary`, options).then(res => {
+        setTimeout(() => null, 0);
+        return res.json().then(res => {
+          setTimeout(() => null, 0);
+          if (res.status != 'ok' && res.code != 200) {
+            throw new Error(res.message);
+          } else {
+            if (res.message == "No Content") {
+              let download = 0;
+              let upload = 0;
+              let hrsUsed = 0;
+              return { download, upload, hrsUsed };
+            } else {
+              if (res.data[0].total_download == null) {
+                return null;
+              } else {
+                let data = res.data[0];
+                let download = Math.round(Number(data.total_download) / (1024 * 1024 * 1024) * 100) / 100;
+                let upload = Math.round(Number(data.total_upload) / (1024 * 1024 * 1024) * 100) / 100;
+                let hrsUsed = Number(data.online_time.split(':')[0]);
+                return { download, upload, hrsUsed };
+              }
+            }
+          }
+        });
+      }).catch(e => {
+        let msg = (
+          isNetworkError(e) ? networkErrorMsg : e.message
+        );
+        throw new Error(msg);
+      });
+    });
+  }
+
+  async getAllBuildings(realm: string) {
+    const session = await sessionManager.getCurrentSession();
+    if (!session?.username) throw new Error('No user session found');
+    const Authentication = session.token;
+    const data = {
+      username: session.username,
+      combo_code: 'all_buildings',
+      column: '',
+      value: '',
+      request_source: 'app',
+      request_app: 'user_app',
+    };
+    const options = {
+      method,
+      body: toFormData(data),
+      headers: headers(Authentication),
+      timeout
+    };
+    return fetch(`${url}/selfcareDropdown`, options).then(res => {
+      setTimeout(() => null, 0);
+      return res.json().then(res => {
+        setTimeout(() => null, 0);
+        if (res.status != 'ok' && res.code != 200) {
+          throw new Error('Could not find Buildings. Please try again.');
+        } else {
+          return res.data;
+        }
+      });
+    }).catch(e => {
+      let msg = (
+        isNetworkError(e) ? networkErrorMsg : e.message
+      );
+      throw new Error(msg);
+    });
+  }
+
+  async getAllCities(realm: string) {
+    const session = await sessionManager.getCurrentSession();
+    if (!session?.username) throw new Error('No user session found');
+    const Authentication = session.token;
+    const data = {
+      username: session.username,
+      combo_code: 'distinct_city',
+      column: '',
+      value: '',
+      request_source: 'app',
+      request_app: 'user_app',
+    };
+    const options = {
+      method,
+      body: toFormData(data),
+      headers: headers(Authentication),
+      timeout
+    };
+    return fetch(`${url}/selfcareDropdown`, options).then(res => {
+      setTimeout(() => null, 0);
+      return res.json().then(res => {
+        setTimeout(() => null, 0);
+        if (res.status != 'ok' && res.code != 200) {
+          throw new Error('Could not find City. Please try again.');
+        } else {
+          return res.data;
+        }
+      });
+    }).catch(e => {
+      let msg = (
+        isNetworkError(e) ? networkErrorMsg : e.message
+      );
+      throw new Error(msg);
+    });
+  }
+
+  async getAllSalesPersons(realm: string) {
+    const session = await sessionManager.getCurrentSession();
+    if (!session?.username) throw new Error('No user session found');
+    const Authentication = session.token;
+    const data = {
+      username: session.username,
+      combo_code: 'fetch_sales_executive',
+      column: '',
+      value: '',
+      request_source: 'app',
+      request_app: 'user_app',
+    };
+    const options = {
+      method,
+      body: toFormData(data),
+      headers: headers(Authentication),
+      timeout
+    };
+    return fetch(`${url}/selfcareDropdown`, options).then(res => {
+      setTimeout(() => null, 0);
+      return res.json().then(res => {
+        setTimeout(() => null, 0);
+        if (res.status != 'ok' && res.code != 200) {
+          throw new Error('Could not find Sales Person. Please try again.');
+        } else {
+          return res.data;
+        }
+      });
+    }).catch(e => {
+      let msg = (
+        isNetworkError(e) ? networkErrorMsg : e.message
+      );
+      throw new Error(msg);
+    });
+  }
+
+  async addNewInquiry(username: string, formData: any, realm: string) {
+    const session = await sessionManager.getCurrentSession();
+    if (!session?.token) throw new Error('No user session found');
+    const Authentication = session.token;
+    const data = {
+      username: username,
+      user_login_id: username,
+      first_name: formData.firstName,
+      middle_name: formData.middleName,
+      last_name: formData.lastName,
+      mobile: formData.mobileNumber,
+      alt_mobile: formData.alternateMobile,
+      email: formData.email,
+      address_line1: formData.address1,
+      address_line2: formData.address2,
+      building_id: formData.building_id,
+      building_name: formData.building_name,
+      area_name: formData.area,
+      location_name: formData.location,
+      pin_code: formData.pincode,
+      city_id: formData.city,
+      remarks: formData.remarks,
+      customer_type: 'broadband',
+      nationality: 'indian',
+      lead_source: 'customer_referral/friends',
+      request_source: 'app',
+      request_app: 'user_app',
+    };
+    const options = {
+      method,
+      headers: headers(Authentication),
+      body: toFormData(data),
+      timeout
+    };
+    return fetch(`${url}/selfcareAddNewInquiry`, options).then(res => {
+      setTimeout(() => null, 0);
+      return res.json().then(res => {
+        setTimeout(() => null, 0);
+        if (res.status != 'ok' && res.code != 200) {
+          if (res.message == 'Lead Created Successfully...') {
+            throw new Error('Inquiry Created Successfully.');
+          }
+          throw new Error('OTP not generated.');
+        } else {
+          return res;
+        }
+      });
+    }).catch((e) => {
+      let msg = (
+        isNetworkError(e) ? networkErrorMsg : e.message
+      );
+      throw new Error(msg);
+    });
+  }
 }
 
 // Export singleton instance

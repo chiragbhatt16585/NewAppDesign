@@ -1,4 +1,5 @@
 import React, {useState, useEffect} from 'react';
+import {useFocusEffect} from '@react-navigation/native';
 import {
   View,
   Text,
@@ -16,26 +17,26 @@ import {useTheme} from '../utils/ThemeContext';
 import {getThemeColors} from '../utils/themeStyles';
 import CommonHeader from '../components/CommonHeader';
 import {useTranslation} from 'react-i18next';
-import {apiService, Plan} from '../services/api';
+import {apiService} from '../services/api';
 import sessionManager from '../services/sessionManager';
 import dataCache from '../services/dataCache';
 
-interface PlanData {
+interface Plan {
   id: string;
   name: string;
-  speed: string;
-  upload: string;
-  download: string;
-  validity: string;
-  price: number;
-  baseAmount: number;
-  cgst: number;
-  sgst: number;
-  mrp: number;
-  dues: number;
-  gbLimit: number;
-  isCurrentPlan: boolean;
-  ottServices?: string[];
+  downloadSpeed: string;
+  uploadSpeed: string;
+  days: number;
+  FinalAmount: number;
+  amt: number;
+  CGSTAmount: number;
+  SGSTAmount: number;
+  limit: string;
+  content_providers?: Array<{
+    content_provider: string;
+    app_logo_file: string;
+    full_path_app_logo_file: string;
+  }>;
   isExpanded?: boolean;
 }
 
@@ -61,12 +62,29 @@ const RenewPlanScreen = ({navigation}: any) => {
   });
 
   useEffect(() => {
-    loadPlanData();
+    // Clear cache and load fresh data when component mounts
+    const initializeData = async () => {
+      await dataCache.clearAllCache();
+      loadPlanData();
+    };
+    initializeData();
   }, []);
+
+  // Refresh data when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      const refreshData = async () => {
+        await dataCache.clearAllCache();
+        loadPlanData();
+      };
+      refreshData();
+    }, [])
+  );
 
   const loadPlanData = async (forceRefresh = false) => {
     try {
       setIsLoading(true);
+      //Alert.alert('Loading plan data...');
       
       // Get current session
       const session = await sessionManager.getCurrentSession();
@@ -78,30 +96,13 @@ const RenewPlanScreen = ({navigation}: any) => {
 
       const {username} = session;
       
-      // Try to get cached data first (unless force refresh)
-      if (!forceRefresh) {
-        const cachedUserData = await dataCache.getUserData();
-        if (cachedUserData) {
-          console.log('Using cached user data');
-          setAuthData(cachedUserData.authData);
-          setPlansData(cachedUserData.plansData);
-          setPayDues(cachedUserData.payDues);
-          
-          // Set current plan as selected by default
-          const currentPlan = cachedUserData.plansData.find(plan => plan.name === cachedUserData.authData.current_plan || plan.name === cachedUserData.authData.current_plan1);
-          if (currentPlan) {
-            setSelectedPlan(currentPlan);
-          }
-          
-          setIsLoading(false);
-          return;
-        }
-      }
-      
+      // Always fetch fresh data for RenewPlanScreen
       console.log('Fetching fresh data from API');
       
       // Get user authentication data
-      const authResponse = await apiService.authUser(username);
+      const authResponse = await apiService.makeAuthenticatedRequest(async (token) => {
+        return await apiService.authUser(username, token);
+      });
       setAuthData(authResponse);
 
       // Get admin tax info
@@ -114,17 +115,53 @@ const RenewPlanScreen = ({navigation}: any) => {
 
       // Get plan list
       const isShowAllPlan = taxInfo?.isShowAllPlan || false;
+      //Alert.alert('isShowAllPlan', isShowAllPlan.toString());
       
-      const planList = await apiService.planList(
-        authResponse.admin_login_id,
-        username,
-        authResponse.current_plan1,
-        isShowAllPlan,
-        false, // is_dashboard
-        'default'
-      );
-
-      setPlansData(planList);
+      // console.log('=== PLAN API CALL DEBUG ===');
+      // console.log('Admin ID:', authResponse.admin_login_id);
+      // console.log('Username:', username);
+      // console.log('Current Plan:', authResponse.current_plan1);
+      // console.log('Show All Plans:', isShowAllPlan);
+      // console.log('Is Dashboard:', false);
+      // console.log('Realm:', 'default');
+      // console.log('Auth Response Keys:', Object.keys(authResponse));
+      // console.log('Full Auth Response:', authResponse);
+      
+      let planList: any[] = [];
+      try {
+        planList = await apiService.planList(
+          authResponse.admin_login_id,
+          username,
+          authResponse.current_plan1,
+          isShowAllPlan,
+          false, // is_dashboard
+          'default'
+        );
+        
+        console.log('=== PLAN API RESPONSE SUCCESS ===');
+        console.log('Plan Count:', planList?.length || 0);
+        if (planList?.[0]) {
+          console.log('First Plan Name:', planList[0].name);
+          console.log('First Plan Speed:', planList[0].downloadSpeed);
+          console.log('First Plan Price:', planList[0].FinalAmount);
+          console.log('First Plan Validity:', planList[0].days);
+          console.log('First Plan Data Limit:', planList[0].limit);
+          console.log('First Plan OTT Count:', planList[0].content_providers?.length || 0);
+        }
+        console.log('=== END PLAN API RESPONSE ===');
+        
+        setPlansData(planList);
+      } catch (planError: any) {
+        console.error('=== PLAN API ERROR ===');
+        console.error('Error:', planError);
+        console.error('Error Message:', planError.message);
+        console.error('Error Stack:', planError.stack);
+        console.error('=== END PLAN API ERROR ===');
+        
+        // Set empty array if API fails
+        setPlansData([]);
+        return; // Exit early if plan API fails
+      }
 
       // Cache the data
       await dataCache.setUserData({
@@ -136,7 +173,7 @@ const RenewPlanScreen = ({navigation}: any) => {
       });
 
       // Set current plan as selected by default
-      const currentPlan = planList.find(plan => plan.name === authResponse.current_plan || plan.name === authResponse.current_plan1);
+      const currentPlan = planList.find((plan: any) => plan.name === authResponse.current_plan || plan.name === authResponse.current_plan1);
       if (currentPlan) {
         setSelectedPlan(currentPlan);
       }
@@ -145,7 +182,8 @@ const RenewPlanScreen = ({navigation}: any) => {
       console.error('Load plan data error:', error);
       
       // Handle specific authentication errors
-      if (error.message?.includes('Authentication required') || 
+      if (error.message?.includes('Session expired') || 
+          error.message?.includes('Authentication required') || 
           error.message?.includes('Authentication failed') ||
           error.message?.includes('login again')) {
         Alert.alert(
@@ -184,9 +222,9 @@ const RenewPlanScreen = ({navigation}: any) => {
   };
 
   const handleRefresh = async () => {
-    // Clear cache and force refresh
+    console.log('Manual refresh triggered');
     await dataCache.clearAllCache();
-    await loadPlanData(true);
+    await loadPlanData();
   };
 
   const getFilteredAndSortedPlans = () => {
@@ -242,11 +280,11 @@ const RenewPlanScreen = ({navigation}: any) => {
 
     // Sort plans based on selected sort option
     filteredPlans.sort((a, b) => {
-      console.log('Auth data current plan fields:', {
-        current_plan: authData?.current_plan,
-        current_plan1: authData?.current_plan1,
-        plan_name: a.name
-      });
+      // console.log('Auth data current plan fields:', {
+      //   current_plan: authData?.current_plan,
+      //   current_plan1: authData?.current_plan1,
+      //   plan_name: a.name
+      // });
       const aIsCurrent = a.name === authData?.current_plan || a.name === authData?.current_plan1;
       const bIsCurrent = b.name === authData?.current_plan || b.name === authData?.current_plan1;
       
@@ -268,8 +306,8 @@ const RenewPlanScreen = ({navigation}: any) => {
         case '':
         default:
           // Default: Put current plan first, then sort by price low to high
-          console.log('Default sorting - Current plan:', authData?.current_plan);
-          console.log('Comparing plans:', { a: a.name, b: b.name, aIsCurrent, bIsCurrent });
+          // console.log('Default sorting - Current plan:', authData?.current_plan);
+          // console.log('Comparing plans:', { a: a.name, b: b.name, aIsCurrent, bIsCurrent });
           if (aIsCurrent && !bIsCurrent) return -1;
           if (!aIsCurrent && bIsCurrent) return 1;
           return a.FinalAmount - b.FinalAmount;

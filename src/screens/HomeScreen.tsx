@@ -25,6 +25,7 @@ import sessionManager from '../services/sessionManager';
 import {useSessionValidation} from '../utils/useSessionValidation';
 import {useScreenDataReload} from '../utils/useAutoDataReload';
 import { getClientConfig } from '../config/client-config';
+import AIUsageInsights from '../components/AIUsageInsights';
 //import ispLogo from '../assets/isp_logo.png';
 
 const {width: screenWidth} = Dimensions.get('window');
@@ -163,7 +164,9 @@ const HomeScreen = ({navigation}: any) => {
       const { username } = session;
 
       // Use the enhanced API service with automatic token regeneration
-      const authResponse = await apiService.authUser(username);
+      const authResponse = await apiService.makeAuthenticatedRequest(async (token) => {
+        return await apiService.authUser(username, token);
+      });
       
       // console.warn('=== AUTH USER API RESPONSE ===');
       // console.warn('Full Response:', JSON.stringify(authResponse, null, 2));
@@ -729,6 +732,9 @@ const HomeScreen = ({navigation}: any) => {
             </>
           )}
         </View>
+
+        {/* AI Usage Insights */}
+        <AIUsageInsights navigation={navigation} />
 
         
       </ScrollView>

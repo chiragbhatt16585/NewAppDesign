@@ -60,6 +60,10 @@ const MoreOptionsScreen = ({navigation}: any) => {
     navigation.navigate('Settings');
   };
 
+  const handleAIDemo = () => {
+    navigation.navigate('AIDemo');
+  };
+
   const handleLogout = async () => {
     Alert.alert(
       t('common.logout'),
@@ -150,13 +154,20 @@ const MoreOptionsScreen = ({navigation}: any) => {
       icon: '⚡',
       onPress: handleSpeedTest,
     },
-    {
-      id: 'settings',
-      title: 'Settings',
-      subtitle: 'Language, Theme & Security',
-      icon: '⚙️',
-      onPress: handleSettings,
-    },
+            {
+          id: 'settings',
+          title: 'Settings',
+          subtitle: 'Language, Theme & Security',
+          icon: '⚙️',
+          onPress: handleSettings,
+        },
+        {
+          id: 'ai-demo',
+          title: 'AI Features Demo',
+          subtitle: 'Experience smart automation',
+          icon: '🤖',
+          onPress: handleAIDemo,
+        },
     {
       id: 'logout',
       title: t('common.logout'),

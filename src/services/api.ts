@@ -1,11 +1,42 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import sessionManager from '../../src/services/sessionManager';
 
-// API Configuration
-export const domainUrl = "crm.dnainfotel.com";
+// Dynamic client detection
+const getCurrentClient = (): string => {
+  // This should match the client configuration
+  // For now, we'll use a simple approach - you can enhance this
+  return 'dna-infotel'; // Default to dna-infotel since that's what the main api.ts was configured for
+};
+
+// Dynamic API configuration based on client
+const getApiConfig = () => {
+  const client = getCurrentClient();
+  
+  switch (client) {
+    case 'microscan':
+      return {
+        domainUrl: "mydesk.microscan.co.in",
+        ispName: 'Microscan'
+      };
+    case 'one-sevenstar':
+      return {
+        domainUrl: "one.7stardigitalnetwork.com", 
+        ispName: 'One Seven Star'
+      };
+    case 'dna-infotel':
+    default:
+      return {
+        domainUrl: "crm.dnainfotel.com",
+        ispName: 'DNA Infotel'
+      };
+  }
+};
+
+const apiConfig = getApiConfig();
+export const domainUrl = apiConfig.domainUrl;
 export const domain = `https://${domainUrl}`;
 const url = `${domain}/l2s/api`;
-export const ispName = 'DNA Infotel';
+export const ispName = apiConfig.ispName;
 
 const method = 'POST';
 const fixedHeaders = {
@@ -297,24 +328,9 @@ class ApiService {
         
         // Check if it's a token expiration error
         if (isTokenExpiredError(error) && attempt < maxRetries) {
-          console.log('Token expired, attempting to regenerate...');
-          
-          try {
-            const newToken = await this.regenerateToken();
-            if (newToken) {
-              await sessionManager.updateToken(newToken);
-              console.log('Token regenerated successfully, retrying request...');
-              continue; // Retry the request with new token
-            } else {
-              console.log('Failed to regenerate token, clearing session');
-              await sessionManager.clearSession();
-              throw new Error('Authentication failed. Please login again.');
-            }
-          } catch (regenerationError) {
-            console.error('Token regeneration failed:', regenerationError);
-            await sessionManager.clearSession();
-            throw new Error('Authentication failed. Please login again.');
-          }
+          console.log('Token expired, redirecting to login...');
+          await sessionManager.clearSession();
+          throw new Error('Session expired. Please login again.');
         } else {
           // Not a token error or max retries reached
           throw error;
@@ -1023,6 +1039,502 @@ class ApiService {
           throw new Error(e.message || 'Failed to fetch KYC data');
         }
       }
+    });
+  }
+
+  async planList(adminname: string, username: string, currentplan: string, isShowAllPlan: boolean, is_dashboard: boolean, realm: string): Promise<any[]> {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const data: any = {
+        admin_login_id: adminname,
+        username: username.toLowerCase().trim(),
+        planname: currentplan,
+        is_dashboard: is_dashboard ? is_dashboard : false,
+        online_renewal: 'yes',
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      if (isShowAllPlan) {
+        data.online_renewal_plan_list = 'yes';
+      }
+
+      console.log('=== API SERVICE: Plan list data ===', data);
+      console.log('=== API SERVICE: Making request to ===', `${url}/selfcareGetPlanAmount`);
+      console.log('=== API SERVICE: Token available ===', !!token);
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+
+      try {
+        const res = await fetch(`${url}/selfcareGetPlanAmount`, options);
+        console.log('=== API SERVICE: Response status ===', res.status);
+        const response = await res.json();
+        console.log('=== API SERVICE: Response body ===', response);
+
+        //Alert.alert('Plan list response:', JSON.stringify(response));
+        
+        if (response.status !== 'ok' && response.code !== 200) {
+          console.log('=== API SERVICE: Error response ===', response);
+          throw new Error('Plan list not found. Please try again.');
+        } else if (response.status === 'ok' && response.code !== 200) {
+          console.log('=== API SERVICE: Empty response ===');
+          return [];
+        } else {
+          console.log('=== API SERVICE: Mapping response data ===', response.data);
+          if (response.data?.[0]) {
+            console.log('=== API SERVICE: Raw plan data sample ===');
+            console.log('planname:', response.data[0].planname);
+            console.log('download_speed_mb:', response.data[0].download_speed_mb);
+            console.log('amount:', response.data[0].amount);
+            console.log('validity:', response.data[0].validity);
+            console.log('data_xfer:', response.data[0].data_xfer);
+            console.log('content_providers count:', response.data[0].content_providers?.length || 0);
+          }
+                const mappedPlans = response.data.map((planObj: any, index: number) => ({
+        id: planObj.id || index.toString(),
+        name: planObj.planname || planObj.name || '',
+        downloadSpeed: planObj.download_speed_mb || planObj.download || '',
+        uploadSpeed: planObj.upload_speed_mb || planObj.upload || '',
+        days: parseInt(planObj.validity) || parseInt(planObj.days) || 30,
+        FinalAmount: parseFloat(planObj.amount) || parseFloat(planObj.FinalAmount) || 0,
+        amt: parseFloat(planObj.base_price) || parseFloat(planObj.amt) || 0,
+        CGSTAmount: parseFloat(planObj.cgst_value) || parseFloat(planObj.CGSTAmount) || 0,
+        SGSTAmount: parseFloat(planObj.sgst_value) || parseFloat(planObj.SGSTAmount) || 0,
+        limit: planObj.data_xfer || 'Unlimited',
+        content_providers: planObj.content_providers || [],
+        isExpanded: false
+      }));
+          console.log('=== API SERVICE: Mapped plans ===', mappedPlans);
+          if (mappedPlans?.[0]) {
+            console.log('=== API SERVICE: Mapped plan sample ===');
+            console.log('Mapped Name:', mappedPlans[0].name);
+            console.log('Mapped Speed:', mappedPlans[0].downloadSpeed);
+            console.log('Mapped Price:', mappedPlans[0].FinalAmount);
+            console.log('Mapped Validity:', mappedPlans[0].days);
+            console.log('Mapped Data Limit:', mappedPlans[0].limit);
+            console.log('Mapped OTT Count:', mappedPlans[0].content_providers?.length || 0);
+          }
+          return mappedPlans;
+        }
+      } catch (e: any) {
+        if (isNetworkError(e)) {
+          throw new Error(networkErrorMsg);
+        } else {
+          throw new Error(e.message || 'Failed to fetch plan list');
+        }
+      }
+    });
+  }
+
+  async userPaymentDues(username: string, realm: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const data = {
+        username: username.toLowerCase().trim(),
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+
+      try {
+        const res = await fetch(`${url}/selfcareGetUserPaymentDues`, options);
+        const response = await res.json();
+        
+        console.log('=== Payment dues API response ===', response);
+        
+        if (response.status !== 'ok' && response.code !== 200) {
+          return '0'; // Return '0' instead of throwing error, as per old implementation
+        } else {
+          return response.data;
+        }
+      } catch (e: any) {
+        if (isNetworkError(e)) {
+          throw new Error(networkErrorMsg);
+        } else {
+          throw new Error(e.message || 'Failed to fetch payment dues');
+        }
+      }
+    });
+  }
+
+  async getAdminTaxInfo(adminname: string, realm: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const username = await sessionManager.getUsername();
+      if (!username) {
+        throw new Error('No username found in session');
+      }
+
+      const data = {
+        username: username.toLowerCase().trim(),
+        admin_login_id: adminname,
+        action: 'settings,tax_info',
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+
+      try {
+        const res = await fetch(`${url}/selfcareGetAdminDetails`, options);
+        const response = await res.json();
+        
+        console.log('=== Tax info API response ===', response);
+        
+        if (response.status !== 'ok' && response.code !== 200) {
+          throw new Error('Tax info not found. Please try again.');
+        } else {
+          return response.data;
+        }
+      } catch (e: any) {
+        if (isNetworkError(e)) {
+          throw new Error(networkErrorMsg);
+        } else {
+          throw new Error(e.message || 'Failed to fetch admin tax info');
+        }
+      }
+    });
+  }
+
+  async paymentGatewayOptions(adminname: string, realm: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const data = {
+        admin_login_id: adminname,
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+
+      try {
+        const res = await fetch(`${url}/selfcarePaymentGatewayOptions`, options);
+        const response = await res.json();
+        
+        if (response.status !== 'ok' && response.code !== 200) {
+          throw new Error(response.message || 'Failed to fetch payment gateway options');
+        } else {
+          return response.data;
+        }
+      } catch (e: any) {
+        if (isNetworkError(e)) {
+          throw new Error(networkErrorMsg);
+        } else {
+          throw new Error(e.message || 'Failed to fetch payment gateway options');
+        }
+      }
+    });
+  }
+
+  async addDeviceDetails(fcm_token: string, mac_addr: string, hostname: string, device_info: any, realm: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const username = await sessionManager.getUsername();
+      if (!username) {
+        throw new Error('No username found in session');
+      }
+      const data = {
+        username: username.toLowerCase().trim(),
+        fcm_token,
+        mac_addr,
+        hostname,
+        device_info: JSON.stringify(device_info),
+        token_for: 'end_user_app',
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+      try {
+        const res = await fetch(`${url}/selfcareAddDeviceInfo`, options);
+        const response = await res.json();
+        if (response.status !== 'ok' && response.code !== 200) {
+          throw new Error('Invalid username or password');
+        } else {
+          return response;
+        }
+      } catch (e: any) {
+        let msg = isNetworkError(e) ? networkErrorMsg : e.message;
+        throw new Error(msg);
+      }
+    });
+  }
+
+  async bannerDisplay(realm: string) {
+    try {
+      const { Authentication } = await this.getCredentials(realm);
+      const data = {
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+      
+      const options = {
+        method,
+        headers: headers(Authentication),
+        body: toFormData(data),
+        timeout
+      };
+      
+      return fetch(`${url}/bannerDisplay`, options).then(res => {
+        setTimeout(() => null, 0);
+        return res.json().then(res => {
+          setTimeout(() => null, 0);
+          if (res.status != 'ok' && res.code != 200) {
+            throw new Error(res.message);
+          } else {
+            return res.data || [];
+          }
+        });
+      }).catch(e => {
+        let msg = (
+          isNetworkError(e) ? networkErrorMsg : e.message
+        );
+        throw new Error(msg);
+      });
+    } catch (error: any) {
+      console.error('Banner display error:', error);
+      throw error;
+    }
+  }
+
+  async usageRecords(username: string, accountStatus: string, fromDate: Date, toDate: Date = new Date(), realm: string) {
+    // Use makeAuthenticatedRequest to ensure token auto-regeneration
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      // Format dates to YYYY-MM-DD
+      const formatDate = (date: Date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+      const data = {
+        username,
+        start_date: formatDate(fromDate),
+        end_date: formatDate(toDate),
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+      console.log('Usage records data:', data);
+      const options = {
+        method,
+        headers: headers(token),
+        body: toFormData(data),
+        timeout
+      };
+      return fetch(`${url}/selfcareUsageSummary`, options).then(res => {
+        setTimeout(() => null, 0);
+        return res.json().then(res => {
+          setTimeout(() => null, 0);
+          if (res.status != 'ok' && res.code != 200) {
+            throw new Error(res.message);
+          } else {
+            if (res.message == "No Content") {
+              let download = 0;
+              let upload = 0;
+              let hrsUsed = 0;
+              return { download, upload, hrsUsed };
+            } else {
+              if (res.data[0].total_download == null) {
+                return null;
+              } else {
+                let data = res.data[0];
+                let download = Math.round(Number(data.total_download) / (1024 * 1024 * 1024) * 100) / 100;
+                let upload = Math.round(Number(data.total_upload) / (1024 * 1024 * 1024) * 100) / 100;
+                let hrsUsed = Number(data.online_time.split(':')[0]);
+                return { download, upload, hrsUsed };
+              }
+            }
+          }
+        });
+      }).catch(e => {
+        let msg = (
+          isNetworkError(e) ? networkErrorMsg : e.message
+        );
+        throw new Error(msg);
+      });
+    });
+  }
+
+  async getAllBuildings(realm: string) {
+    const session = await sessionManager.getCurrentSession();
+    if (!session?.username) throw new Error('No user session found');
+    const Authentication = session.token;
+    const data = {
+      username: session.username,
+      combo_code: 'all_buildings',
+      column: '',
+      value: '',
+      request_source: 'app',
+      request_app: 'user_app',
+    };
+    const options = {
+      method,
+      body: toFormData(data),
+      headers: headers(Authentication),
+      timeout
+    };
+    return fetch(`${url}/selfcareDropdown`, options).then(res => {
+      setTimeout(() => null, 0);
+      return res.json().then(res => {
+        setTimeout(() => null, 0);
+        if (res.status != 'ok' && res.code != 200) {
+          throw new Error('Could not find Buildings. Please try again.');
+        } else {
+          return res.data;
+        }
+      });
+    }).catch(e => {
+      let msg = (
+        isNetworkError(e) ? networkErrorMsg : e.message
+      );
+      throw new Error(msg);
+    });
+  }
+
+  async getAllCities(realm: string) {
+    const session = await sessionManager.getCurrentSession();
+    if (!session?.username) throw new Error('No user session found');
+    const Authentication = session.token;
+    const data = {
+      username: session.username,
+      combo_code: 'distinct_city',
+      column: '',
+      value: '',
+      request_source: 'app',
+      request_app: 'user_app',
+    };
+    const options = {
+      method,
+      body: toFormData(data),
+      headers: headers(Authentication),
+      timeout
+    };
+    return fetch(`${url}/selfcareDropdown`, options).then(res => {
+      setTimeout(() => null, 0);
+      return res.json().then(res => {
+        setTimeout(() => null, 0);
+        if (res.status != 'ok' && res.code != 200) {
+          throw new Error('Could not find City. Please try again.');
+        } else {
+          return res.data;
+        }
+      });
+    }).catch(e => {
+      let msg = (
+        isNetworkError(e) ? networkErrorMsg : e.message
+      );
+      throw new Error(msg);
+    });
+  }
+
+  async getAllSalesPersons(realm: string) {
+    const session = await sessionManager.getCurrentSession();
+    if (!session?.username) throw new Error('No user session found');
+    const Authentication = session.token;
+    const data = {
+      username: session.username,
+      combo_code: 'fetch_sales_executive',
+      column: '',
+      value: '',
+      request_source: 'app',
+      request_app: 'user_app',
+    };
+    const options = {
+      method,
+      body: toFormData(data),
+      headers: headers(Authentication),
+      timeout
+    };
+    return fetch(`${url}/selfcareDropdown`, options).then(res => {
+      setTimeout(() => null, 0);
+      return res.json().then(res => {
+        setTimeout(() => null, 0);
+        if (res.status != 'ok' && res.code != 200) {
+          throw new Error('Could not find Sales Person. Please try again.');
+        } else {
+          return res.data;
+        }
+      });
+    }).catch(e => {
+      let msg = (
+        isNetworkError(e) ? networkErrorMsg : e.message
+      );
+      throw new Error(msg);
+    });
+  }
+
+  async addNewInquiry(username: string, formData: any, realm: string) {
+    const session = await sessionManager.getCurrentSession();
+    if (!session?.token) throw new Error('No user session found');
+    const Authentication = session.token;
+    const data = {
+      username: username,
+      user_login_id: username,
+      first_name: formData.firstName,
+      middle_name: formData.middleName,
+      last_name: formData.lastName,
+      mobile: formData.mobileNumber,
+      alt_mobile: formData.alternateMobile,
+      email: formData.email,
+      address_line1: formData.address1,
+      address_line2: formData.address2,
+      building_id: formData.building_id,
+      building_name: formData.building_name,
+      area_name: formData.area,
+      location_name: formData.location,
+      pin_code: formData.pincode,
+      city_id: formData.city,
+      remarks: formData.remarks,
+      customer_type: 'broadband',
+      nationality: 'indian',
+      lead_source: 'customer_referral/friends',
+      request_source: 'app',
+      request_app: 'user_app',
+    };
+    const options = {
+      method,
+      headers: headers(Authentication),
+      body: toFormData(data),
+      timeout
+    };
+    return fetch(`${url}/selfcareAddNewInquiry`, options).then(res => {
+      setTimeout(() => null, 0);
+      return res.json().then(res => {
+        setTimeout(() => null, 0);
+        if (res.status != 'ok' && res.code != 200) {
+          if (res.message == 'Lead Created Successfully...') {
+            throw new Error('Inquiry Created Successfully.');
+          }
+          throw new Error('OTP not generated.');
+        } else {
+          return res;
+        }
+      });
+    }).catch((e) => {
+      let msg = (
+        isNetworkError(e) ? networkErrorMsg : e.message
+      );
+      throw new Error(msg);
     });
   }
 }
