@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiService } from '../services/api';
 import sessionManager from '../services/sessionManager';
 // Session monitoring disabled for persistent login
@@ -115,10 +116,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
       setLoading(true);
+      
+      // Get current client from storage
+      const clientName = await AsyncStorage.getItem('current_client') || 'dna-infotel';
+      console.log('Using client for login:', clientName);
+      
       const response = await apiService.authenticate(username, password);
       
       if (response && response.token) {
-        await sessionManager.createSession(username, response.token, password);
+        await sessionManager.createSession(username, response.token, password, clientName);
         setIsAuthenticated(true);
         setUserData({
           username,
@@ -140,10 +146,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const loginWithOtp = async (phoneNumber: string, otp: string): Promise<boolean> => {
     try {
       setLoading(true);
+      
+      // Get current client from storage
+      const clientName = await AsyncStorage.getItem('current_client') || 'dna-infotel';
+      console.log('Using client for OTP login:', clientName);
+      
       const response = await apiService.authenticate('', '', otp, 'none', phoneNumber);
       
       if (response && response.token) {
-        await sessionManager.createSession(phoneNumber, response.token);
+        await sessionManager.createSession(phoneNumber, response.token, undefined, clientName);
         setIsAuthenticated(true);
         setUserData({
           username: phoneNumber,

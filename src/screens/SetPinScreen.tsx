@@ -1,71 +1,134 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { pinStorage } from '../services/pinStorage';
 import { useTheme } from '../utils/ThemeContext';
 import { getThemeColors } from '../utils/themeStyles';
+import { useTranslation } from 'react-i18next';
+import CommonHeader from '../components/CommonHeader';
 
 export default function SetPinScreen({ navigation }: any) {
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
   const [error, setError] = useState('');
+  const [isChangingPin, setIsChangingPin] = useState(false);
   const { isDark } = useTheme();
   const colors = getThemeColors(isDark);
+  const { t } = useTranslation();
+
+  // Check if PIN already exists
+  useEffect(() => {
+    const checkExistingPin = async () => {
+      const existingPin = await pinStorage.getPin();
+      setIsChangingPin(!!existingPin);
+    };
+    checkExistingPin();
+  }, []);
 
   const handleSetPin = async () => {
     setError('');
     if (pin.length < 4) {
-      setError('PIN must be at least 4 digits');
+      setError(t('security.pinMinLength'));
       return;
     }
     if (pin !== confirmPin) {
-      setError('PINs do not match');
+      setError(t('security.pinMismatch'));
       return;
     }
     await pinStorage.savePin(pin);
-    Alert.alert('PIN set successfully!');
-    navigation.replace('Home');
+    Alert.alert(
+      isChangingPin ? t('security.pinChangedSuccess') : t('security.pinSetSuccess'),
+      isChangingPin ? t('security.pinChangedMessage') : t('security.pinSetMessage'),
+      [
+        {
+          text: 'OK',
+          onPress: () => {
+            // If changing PIN, go back to SecuritySettingsScreen
+            // If first time setup, go to Home screen
+            if (isChangingPin) {
+              navigation.navigate('SecuritySettingsScreen');
+            } else {
+              navigation.replace('Home');
+            }
+          }
+        }
+      ]
+    );
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}> 
-      <View style={styles.card}>
-        <Text style={[styles.title, { color: colors.primary }]}>Set Your PIN</Text>
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>For quick and secure access</Text>
-        <TextInput
-          value={pin}
-          onChangeText={setPin}
-          placeholder="Enter PIN"
-          keyboardType="number-pad"
-          secureTextEntry
-          maxLength={6}
-          style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]}
-          placeholderTextColor={colors.textSecondary}
-        />
-        <TextInput
-          value={confirmPin}
-          onChangeText={setConfirmPin}
-          placeholder="Confirm PIN"
-          keyboardType="number-pad"
-          secureTextEntry
-          maxLength={6}
-          style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]}
-          placeholderTextColor={colors.textSecondary}
-        />
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-        <TouchableOpacity style={[styles.button, { backgroundColor: colors.primary, shadowColor: colors.primary }]} onPress={handleSetPin}>
-          <Text style={styles.buttonText}>Set PIN</Text>
-        </TouchableOpacity>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Header */}
+      <CommonHeader navigation={navigation} />
+
+      {/* Page Heading */}
+      <View style={styles.headingContainer}>
+        <Text style={[styles.pageHeading, { color: colors.text }]}>
+          {isChangingPin ? t('security.changePin') : t('security.setPin')}
+        </Text>
+        <Text style={[styles.pageSubheading, { color: colors.textSecondary }]}>
+          {isChangingPin ? t('security.pinChangeSubtitle') : t('security.pinSetupSubtitle')}
+        </Text>
       </View>
-    </View>
+
+      {/* Content */}
+      <View style={styles.content}>
+        <View style={styles.card}>
+          <TextInput
+            value={pin}
+            onChangeText={setPin}
+            placeholder="Enter PIN"
+            keyboardType="number-pad"
+            secureTextEntry
+            maxLength={6}
+            style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]}
+            placeholderTextColor={colors.textSecondary}
+          />
+          <TextInput
+            value={confirmPin}
+            onChangeText={setConfirmPin}
+            placeholder="Confirm PIN"
+            keyboardType="number-pad"
+            secureTextEntry
+            maxLength={6}
+            style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]}
+            placeholderTextColor={colors.textSecondary}
+          />
+          {error ? <Text style={[styles.error, { color: colors.error }]}>{error}</Text> : null}
+          <TouchableOpacity style={[styles.button, { backgroundColor: colors.primary, shadowColor: colors.primary }]} onPress={handleSetPin}>
+            <Text style={styles.buttonText}>
+              {isChangingPin ? t('security.changePin') : t('security.setPin')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
+  },
+  headingContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
+  },
+  pageHeading: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  pageSubheading: {
+    fontSize: 16,
+    lineHeight: 22,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    paddingTop: 20,
   },
   card: {
     width: '100%',
@@ -78,15 +141,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
     alignItems: 'center',
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 15,
-    marginBottom: 18,
+    alignSelf: 'center',
   },
   input: {
     width: '100%',

@@ -83,6 +83,10 @@ const MoreOptionsScreen = ({navigation}: any) => {
     );
   };
 
+  const handleSecuritySettings = () => {
+    navigation.navigate('SecuritySettingsScreen');
+  };
+
   const handleBiometricSettings = async () => {
     try {
       const isBiometricAvailable = await biometricAuthService.isBiometricAvailable();
@@ -279,11 +283,11 @@ const MoreOptionsScreen = ({navigation}: any) => {
       onPress: handleThemeSettings,
     },
     {
-      id: 'biometric',
-      title: 'Biometric Auth',
-      subtitle: 'Face ID / Touch ID settings',
-      icon: '🔐',
-      onPress: handleBiometricSettings,
+      id: 'security',
+      title: t('more.securitySettings'),
+      subtitle: t('more.securitySettingsSubtitle'),
+      icon: '🔒',
+      onPress: handleSecuritySettings,
     },
     {
       id: 'logout',

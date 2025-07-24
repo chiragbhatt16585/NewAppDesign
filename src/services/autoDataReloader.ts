@@ -143,9 +143,7 @@ export class AutoDataReloader {
       const session = await sessionManager.getCurrentSession();
       if (!session) return null;
 
-      const accountData = await apiService.makeAuthenticatedRequest(async (token) => {
-        return await apiService.authUser(session.username, token);
-      });
+      const accountData = await apiService.authUser(session.username);
 
       console.log('✅ Account data reloaded');
       return accountData;

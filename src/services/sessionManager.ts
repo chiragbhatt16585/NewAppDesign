@@ -9,6 +9,7 @@ export interface UserSession {
   lastLoginTime: number;
   lastActivityTime: number; // Track when user last used the app
   sessionExpiry?: number;
+  clientName?: string; // Store which client this session belongs to
 }
 
 export class SessionManager {
@@ -39,10 +40,13 @@ export class SessionManager {
         this.currentSession = JSON.parse(savedSession);
         console.log('Session loaded:', this.currentSession?.username);
         console.log('Session isLoggedIn:', this.currentSession?.isLoggedIn);
+        console.log('Session client:', this.currentSession?.clientName);
         
         // Check if session is still valid
         if (this.currentSession && this.isSessionValid()) {
           console.log('✅ Valid session found, user is logged in');
+          
+          // Note: API configuration is handled by build scripts, no dynamic update needed
         } else {
           console.log('❌ Session invalid, clearing session');
           await this.clearSession();
@@ -58,7 +62,7 @@ export class SessionManager {
     }
   }
 
-  async createSession(username: string, token: string, password?: string): Promise<void> {
+  async createSession(username: string, token: string, password?: string, clientName?: string): Promise<void> {
     try {
       const session: UserSession = {
         isLoggedIn: true,
@@ -66,6 +70,7 @@ export class SessionManager {
         token,
         lastLoginTime: Date.now(),
         lastActivityTime: Date.now(), // Keep for tracking but don't use for logout
+        clientName: clientName || 'dna-infotel', // Default to dna-infotel if not specified
       };
 
       this.currentSession = session;
@@ -79,7 +84,9 @@ export class SessionManager {
       // Store current client for token regeneration
       await this.storeCurrentClient();
       
-      console.log('Session created successfully');
+      // Note: API configuration is handled by build scripts, no dynamic update needed
+      
+      console.log('Session created successfully for client:', clientName);
     } catch (error) {
       console.error('Failed to create session:', error);
       throw error;
@@ -101,6 +108,18 @@ export class SessionManager {
         } else if (currentUrl.includes('7stardigitalnetwork.com')) {
           clientName = 'one-sevenstar';
         }
+      } else {
+        // If no stored URL, try to detect from current API configuration
+        const { domainUrl } = await import('./api');
+        if (domainUrl.includes('microscan.co.in')) {
+          clientName = 'microscan';
+        } else if (domainUrl.includes('dnainfotel.com')) {
+          clientName = 'dna-infotel';
+        } else if (domainUrl.includes('7stardigitalnetwork.com')) {
+          clientName = 'one-sevenstar';
+        }
+        
+        await AsyncStorage.setItem('current_api_url', `https://${domainUrl}`);
       }
       
       await AsyncStorage.setItem('current_client', clientName);

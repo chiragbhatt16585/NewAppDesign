@@ -12,11 +12,13 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../utils/ThemeContext';
 import { getThemeColors } from '../utils/themeStyles';
 import biometricAuthService from '../services/biometricAuth';
 import { pinStorage } from '../services/pinStorage';
 import { useTranslation } from 'react-i18next';
+import CommonHeader from '../components/CommonHeader';
 
 const { width, height } = Dimensions.get('window');
 
@@ -222,34 +224,41 @@ const BiometricAuthScreen = ({ navigation, onAuthSuccess, onLoginRedirect }: any
 
   if (isAuthenticating) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <CommonHeader navigation={navigation} showBackButton={false} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={[styles.loadingText, { color: colors.text }]}>
-            Authenticating...
+            {t('common.loading')}
           </Text>
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Header */}
+      <CommonHeader navigation={navigation} showBackButton={false} />
+
+      {/* Page Heading */}
+      <View style={styles.headingContainer}>
+        <Text style={[styles.pageHeading, { color: colors.text }]}>
+          {t('security.welcomeBack')}
+        </Text>
+        <Text style={[styles.pageSubheading, { color: colors.textSecondary }]}>
+          {biometricType === 'none' ? 
+            t('security.pinAccessMessage') : 
+            t('security.biometricAccessMessage')
+          }
+        </Text>
+      </View>
+
+      {/* Content */}
       <View style={styles.content}>
         <View style={styles.iconContainer}>
           <Text style={styles.biometricIcon}>{getBiometricIcon()}</Text>
         </View>
-        
-        <Text style={[styles.title, { color: colors.text }]}>
-          Welcome Back
-        </Text>
-        
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-          {biometricType === 'none' ? 
-            'Enter your PIN to access your account' : 
-            `Use ${getBiometricText()} to quickly access your account`
-          }
-        </Text>
 
         {!showPinOption ? (
           <TouchableOpacity
@@ -323,7 +332,7 @@ const BiometricAuthScreen = ({ navigation, onAuthSuccess, onLoginRedirect }: any
         </TouchableOpacity> */}
 
         {/* Test app resume simulation */}
-        <TouchableOpacity
+        {/* <TouchableOpacity
           style={[styles.debugButton, { marginTop: 10 }]}
           onPress={() => {
             // Simulate app going to background and coming back
@@ -336,10 +345,10 @@ const BiometricAuthScreen = ({ navigation, onAuthSuccess, onLoginRedirect }: any
           <Text style={[styles.debugButtonText, { color: colors.textSecondary }]}>
             🔄 Debug: Simulate App Resume
           </Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
 
         {/* Reset auth state for testing */}
-        <TouchableOpacity
+        {/* <TouchableOpacity
           style={[styles.debugButton, { marginTop: 10 }]}
           onPress={() => {
             console.log('Resetting auth state for testing...');
@@ -350,7 +359,7 @@ const BiometricAuthScreen = ({ navigation, onAuthSuccess, onLoginRedirect }: any
           <Text style={[styles.debugButtonText, { color: colors.textSecondary }]}>
             🔄 Debug: Reset Auth State
           </Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
 
       {/* PIN Input Modal */}
@@ -436,18 +445,33 @@ const BiometricAuthScreen = ({ navigation, onAuthSuccess, onLoginRedirect }: any
           </KeyboardAvoidingView>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+  },
+  headingContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
+  },
+  pageHeading: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  pageSubheading: {
+    fontSize: 16,
+    lineHeight: 22,
   },
   content: {
-    width: width * 0.8,
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    justifyContent: 'center',
     alignItems: 'center',
   },
   iconContainer: {
@@ -455,18 +479,6 @@ const styles = StyleSheet.create({
   },
   biometricIcon: {
     fontSize: 80,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 16,
-    textAlign: 'center',
-    marginBottom: 40,
-    lineHeight: 24,
   },
   authButton: {
     width: '100%',

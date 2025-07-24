@@ -12,10 +12,16 @@ export const credentialStorage = {
   async getCredentials(): Promise<{ username: string; password: string } | null> {
     const username = await AsyncStorage.getItem(USERNAME_KEY);
     const password = await AsyncStorage.getItem(PASSWORD_KEY);
-    console.log('[CredentialStorage] Getting credentials:', { usernameExists: !!username, passwordExists: !!password });
+    console.log('[CredentialStorage] Getting credentials:', { 
+      usernameExists: !!username, 
+      passwordExists: !!password,
+      username: username ? username.substring(0, 3) + '***' : null,
+      passwordLength: password ? password.length : 0
+    });
     if (username && password) {
       return { username, password };
     }
+    console.log('[CredentialStorage] No credentials found');
     return null;
   },
   async clearCredentials() {
