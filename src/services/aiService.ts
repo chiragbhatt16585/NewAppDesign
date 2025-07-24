@@ -47,7 +47,7 @@ class AIService {
 
       const { username } = session;
       const authResponse = await apiService.makeAuthenticatedRequest(async (token) => {
-        return await apiService.authUser(username, token);
+        return await apiService.authUser(username);
       });
 
       this.userData = authResponse;

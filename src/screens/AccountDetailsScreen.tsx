@@ -109,7 +109,7 @@ const AccountDetailsScreen = ({navigation}: any) => {
       
       // Use the enhanced API service with automatic token regeneration
       const authResponse = await apiService.makeAuthenticatedRequest(async (token) => {
-        return await apiService.authUser(username, token);
+        return await apiService.authUser(username);
       });
       
       if (authResponse) {

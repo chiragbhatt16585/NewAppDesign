@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -52,16 +52,9 @@ const AIUsageInsights = ({ navigation }: { navigation?: any }) => {
 
   useEffect(() => {
     fetchAccountData();
-  }, []);
+  }, []); // Empty dependency array - only run once on mount
 
-  useEffect(() => {
-    if (authData) {
-      processUsageData();
-      generateAIInsights();
-    }
-  }, [authData]);
-
-  const fetchAccountData = async () => {
+  const fetchAccountData = useCallback(async () => {
     try {
       setIsLoading(true);
       
@@ -74,7 +67,7 @@ const AIUsageInsights = ({ navigation }: { navigation?: any }) => {
 
       const { username } = session;
       const authResponse = await apiService.makeAuthenticatedRequest(async (token) => {
-        return await apiService.authUser(username, token);
+        return await apiService.authUser(username);
       });
       
       if (authResponse) {
@@ -85,9 +78,9 @@ const AIUsageInsights = ({ navigation }: { navigation?: any }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const processUsageData = () => {
+  const processUsageData = useCallback(() => {
     if (!authData) return;
 
     // Extract data from the actual API response structure
@@ -113,17 +106,6 @@ const AIUsageInsights = ({ navigation }: { navigation?: any }) => {
     const averageDailyUsage = daysUsed > 0 ? dataUsedGB / daysUsed : 0;
     const predictedUsage = averageDailyUsage * planDays;
 
-    console.log('AI Usage Data:', {
-      dataUsedGB,
-      planDataGB,
-      daysUsed,
-      daysRemaining,
-      averageDailyUsage,
-      predictedUsage,
-      isUnlimited,
-      usagePercentage: (dataUsedGB / planDataGB) * 100
-    });
-
     setUsageData({
       currentUsage: dataUsedGB,
       totalData: planDataGB,
@@ -133,9 +115,9 @@ const AIUsageInsights = ({ navigation }: { navigation?: any }) => {
       predictedUsage,
       isUnlimited,
     });
-  };
+  }, [authData]);
 
-  const generateAIInsights = () => {
+  const generateAIInsights = useCallback(() => {
     if (!usageData || !authData) {
       console.log('generateAIInsights: Missing data', { usageData: !!usageData, authData: !!authData });
       return;
@@ -145,18 +127,10 @@ const AIUsageInsights = ({ navigation }: { navigation?: any }) => {
     const currentPlan = authData.current_plan || 'Current Plan';
     const planPrice = authData.plan_price || '₹999';
 
-    console.log('Generating AI insights with:', {
-      isUnlimited: usageData.isUnlimited,
-      currentUsage: usageData.currentUsage,
-      totalData: usageData.totalData,
-      usagePercentage: (usageData.currentUsage / usageData.totalData) * 100,
-      averageDailyUsage: usageData.averageDailyUsage,
-      daysUsed: usageData.daysUsed
-    });
+
 
     // High usage warning (only for limited plans) - Made more lenient (60% instead of 80%)
     if (!usageData.isUnlimited && usageData.currentUsage / usageData.totalData > 0.6) {
-      console.log('Adding high usage warning');
       newInsights.push({
         type: 'warning',
         title: 'High Data Usage Alert',
@@ -179,7 +153,6 @@ const AIUsageInsights = ({ navigation }: { navigation?: any }) => {
 
     // Speed upgrade recommendation for unlimited plans - Made more lenient (3GB instead of 6GB)
     if (usageData.isUnlimited && usageData.averageDailyUsage > 3) {
-      console.log('Adding speed upgrade recommendation');
       newInsights.push({
         type: 'recommendation',
         title: 'Speed Upgrade Recommended',
@@ -276,7 +249,6 @@ const AIUsageInsights = ({ navigation }: { navigation?: any }) => {
 
     // Fallback insight to ensure something always shows
     if (newInsights.length === 0) {
-      console.log('Adding fallback insight');
       newInsights.push({
         type: 'info',
         title: 'AI Usage Analysis',
@@ -297,30 +269,17 @@ const AIUsageInsights = ({ navigation }: { navigation?: any }) => {
       });
     }
 
-    // Force add a test insight for debugging
-    console.log('Adding test insight for debugging');
-    newInsights.push({
-      type: 'recommendation',
-      title: 'Speed Upgrade Recommended',
-      message: 'Based on your usage patterns, we recommend upgrading to higher speeds for better performance.',
-      action: 'View Speed Plans',
-      onAction: () => {
-        if (navigation) {
-          navigation.navigate('RenewPlan', { 
-            recommendedPlan: '200Mbps',
-            reason: 'speed_upgrade',
-            currentUsage: 5.5,
-            planType: 'speed'
-          });
-        }
-      },
-      icon: '⚡',
-      color: '#2196F3',
-    });
 
-    console.log('Final insights count:', newInsights.length);
+
     setInsights(newInsights);
-  };
+  }, [usageData, authData, navigation]);
+
+  useEffect(() => {
+    if (authData) {
+      processUsageData();
+      generateAIInsights();
+    }
+  }, [authData, processUsageData, generateAIInsights]);
 
   const getInsightIcon = (type: string) => {
     switch (type) {
@@ -342,18 +301,10 @@ const AIUsageInsights = ({ navigation }: { navigation?: any }) => {
     }
   };
 
-  console.log('AIUsageInsights rendering:', { 
-    isLoading, 
-    insightsCount: insights.length, 
-    hasUsageData: !!usageData,
-    hasAuthData: !!authData 
-  });
+
 
   return (
     <View style={[styles.container, { backgroundColor: colors.card }]}>
-      <Text style={{ color: 'red', fontSize: 16, fontWeight: 'bold', textAlign: 'center', marginBottom: 10 }}>
-        🔍 AI COMPONENT IS RENDERING - {insights.length} insights found
-      </Text>
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>
           🤖 AI Insights
@@ -461,8 +412,6 @@ const styles = StyleSheet.create({
     margin: 16,
     borderRadius: 16,
     padding: 20,
-    borderWidth: 2,
-    borderColor: '#FF0000', // Red border for debugging
     shadowColor: '#000',
     shadowOffset: {
       width: 0,

@@ -49,7 +49,7 @@ const AISmartNotifications = ({ navigation }: { navigation?: any }) => {
 
       const { username } = session;
       const authResponse = await apiService.makeAuthenticatedRequest(async (token) => {
-        return await apiService.authUser(username, token);
+        return await apiService.authUser(username);
       });
       
       if (authResponse) {

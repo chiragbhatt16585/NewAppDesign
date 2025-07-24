@@ -118,16 +118,30 @@ export class AutoDataReloader {
       // Reload user data
       const userData = await this.reloadUserData();
 
-      console.log('✅ Auto reload completed successfully');
+      // Check if at least one data reload was successful
+      const hasAccountData = accountData !== null;
+      const hasUserData = userData !== null;
       
-      return {
-        success: true,
-        message: 'Data reloaded successfully',
-        data: {
-          account: accountData,
-          user: userData
-        }
-      };
+      if (hasAccountData || hasUserData) {
+        console.log('✅ Auto reload completed successfully');
+        console.log('Account data loaded:', hasAccountData);
+        console.log('User data loaded:', hasUserData);
+        
+        return {
+          success: true,
+          message: 'Data reloaded successfully',
+          data: {
+            account: accountData,
+            user: userData
+          }
+        };
+      } else {
+        console.log('❌ Auto reload failed - no data could be loaded');
+        return {
+          success: false,
+          message: 'Failed to reload any data'
+        };
+      }
 
     } catch (error) {
       console.error('Error during auto reload:', error);
@@ -141,14 +155,25 @@ export class AutoDataReloader {
       console.log('Reloading account data...');
       
       const session = await sessionManager.getCurrentSession();
-      if (!session) return null;
+      if (!session) {
+        console.log('No session found for account data reload');
+        return null;
+      }
 
+      console.log('Reloading account data for user:', session.username);
       const accountData = await apiService.authUser(session.username);
 
-      console.log('✅ Account data reloaded');
+      console.log('✅ Account data reloaded successfully');
       return accountData;
-    } catch (error) {
-      console.error('Error reloading account data:', error);
+    } catch (error: any) {
+      console.error('Error reloading account data:', error.message || error);
+      
+      // Check if it's a session expiration error
+      if (error.message && error.message.includes('Session expired')) {
+        console.log('Session expired during account data reload, attempting to continue...');
+        // Don't return null immediately, let the process continue
+      }
+      
       return null;
     }
   }
@@ -160,10 +185,17 @@ export class AutoDataReloader {
       
       const userData = await apiService.getUserData();
       
-      console.log('✅ User data reloaded');
+      console.log('✅ User data reloaded successfully');
       return userData;
-    } catch (error) {
-      console.error('Error reloading user data:', error);
+    } catch (error: any) {
+      console.error('Error reloading user data:', error.message || error);
+      
+      // Check if it's a session expiration error
+      if (error.message && error.message.includes('Session expired')) {
+        console.log('Session expired during user data reload, attempting to continue...');
+        // Don't return null immediately, let the process continue
+      }
+      
       return null;
     }
   }

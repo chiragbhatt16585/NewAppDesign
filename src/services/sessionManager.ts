@@ -208,28 +208,43 @@ export class SessionManager {
   async regenerateToken(): Promise<string | false> {
     try {
       console.log('[SessionManager] Attempting to regenerate token...');
+      
+      // Check if we have a current session
+      if (!this.currentSession) {
+        console.error('[SessionManager] No current session for token regeneration');
+        return false;
+      }
+      
       // Get stored credentials
       const creds = await credentialStorage.getCredentials();
       if (!creds) {
         console.error('[SessionManager] No stored credentials for token regeneration');
         return false;
       }
+      
       const { username, password } = creds;
+      console.log('[SessionManager] Found stored credentials for user:', username);
+      
       // Perform login to get new token
+      console.log('[SessionManager] Attempting authentication...');
       const loginResponse = await apiService.authenticate(username, password);
+      
       if (loginResponse && loginResponse.token) {
+        console.log('[SessionManager] Authentication successful, updating session...');
+        
         if (this.currentSession) {
           this.currentSession.token = loginResponse.token;
           this.currentSession.lastActivityTime = Date.now();
           await AsyncStorage.setItem(this.SESSION_KEY, JSON.stringify(this.currentSession));
-          console.log('[SessionManager] Token regenerated and session updated');
+          console.log('[SessionManager] Token regenerated and session updated successfully');
         }
         return loginResponse.token;
+      } else {
+        console.error('[SessionManager] Authentication failed - no token received');
+        return false;
       }
-      console.error('[SessionManager] Token regeneration failed');
-      return false;
-    } catch (error) {
-      console.error('[SessionManager] Failed to regenerate token:', error);
+    } catch (error: any) {
+      console.error('[SessionManager] Failed to regenerate token:', error.message || error);
       return false;
     }
   }

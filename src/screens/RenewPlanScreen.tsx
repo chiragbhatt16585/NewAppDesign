@@ -101,7 +101,7 @@ const RenewPlanScreen = ({navigation}: any) => {
       
       // Get user authentication data
       const authResponse = await apiService.makeAuthenticatedRequest(async (token) => {
-        return await apiService.authUser(username, token);
+        return await apiService.authUser(username);
       });
       setAuthData(authResponse);
 

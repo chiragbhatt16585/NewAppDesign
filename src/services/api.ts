@@ -312,32 +312,57 @@ class ApiService {
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
+        console.log(`[API] Attempt ${attempt + 1}/${maxRetries + 1} - Getting token...`);
         const token = await sessionManager.getToken();
+        
         if (!token) {
-          console.log('No token available, redirecting to login');
-          await sessionManager.clearSession();
-          throw new Error('Authentication required. Please login again.');
+          console.log('[API] No token available, attempting token regeneration...');
+          
+          // Try to regenerate token before giving up
+          const regeneratedToken = await sessionManager.regenerateToken();
+          if (regeneratedToken) {
+            console.log('[API] Token regenerated successfully, retrying request...');
+            await sessionManager.updateActivityTime();
+            return await requestFn(regeneratedToken);
+          } else {
+            console.log('[API] Token regeneration failed, redirecting to login');
+            await sessionManager.clearSession();
+            throw new Error('Authentication required. Please login again.');
+          }
         }
 
+        console.log(`[API] Using existing token for attempt ${attempt + 1}`);
         // Update activity time on every API call
         await sessionManager.updateActivityTime();
 
         return await requestFn(token);
       } catch (error: any) {
         lastError = error;
+        console.log(`[API] Attempt ${attempt + 1} failed:`, error.message || error);
         
         // Check if it's a token expiration error
         if (isTokenExpiredError(error) && attempt < maxRetries) {
-          console.log('Token expired, redirecting to login...');
-          await sessionManager.clearSession();
-          throw new Error('Session expired. Please login again.');
+          console.log('[API] Token expired, attempting regeneration...');
+          
+          // Try to regenerate token
+          const regeneratedToken = await sessionManager.regenerateToken();
+          if (regeneratedToken) {
+            console.log('[API] Token regenerated successfully, retrying request...');
+            continue; // Retry with new token
+          } else {
+            console.log('[API] Token regeneration failed, redirecting to login...');
+            await sessionManager.clearSession();
+            throw new Error('Session expired. Please login again.');
+          }
         } else {
           // Not a token error or max retries reached
+          console.log('[API] Not a token error or max retries reached, throwing error');
           throw error;
         }
       }
     }
 
+    console.log('[API] All attempts failed');
     throw lastError || new Error('Request failed after retries');
   }
 
@@ -452,7 +477,7 @@ class ApiService {
     }
   }
 
-  async authUser(user_id: string, Authentication: string) {
+  async authUser(user_id: string) {
     return this.makeAuthenticatedRequest(async (token: string) => {
       const data = {
         username: user_id.toLowerCase().trim(),

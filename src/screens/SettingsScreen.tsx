@@ -161,38 +161,38 @@ const SettingsScreen = ({ navigation }: any) => {
           icon: '🔒',
           onPress: handleSecuritySettings,
         },
-        {
-          id: 'pin-status',
-          title: 'PIN Status',
-          subtitle: pinStatus,
-          icon: '🔢',
-          onPress: () => navigation.navigate('SecuritySettingsScreen'),
-          statusColor: getStatusColor(pinStatus),
-          statusIcon: getStatusIcon(pinStatus),
-        },
-        {
-          id: 'biometric-status',
-          title: 'Biometric Status',
-          subtitle: biometricType ? `${biometricType} - ${biometricStatus}` : biometricStatus,
-          icon: '👆',
-          onPress: () => navigation.navigate('SecuritySettingsScreen'),
-          statusColor: getStatusColor(biometricStatus),
-          statusIcon: getStatusIcon(biometricStatus),
-        },
+        // {
+        //   id: 'pin-status',
+        //   title: 'PIN Status',
+        //   subtitle: pinStatus,
+        //   icon: '🔢',
+        //   onPress: () => navigation.navigate('SecuritySettingsScreen'),
+        //   statusColor: getStatusColor(pinStatus),
+        //   statusIcon: getStatusIcon(pinStatus),
+        // },
+        // {
+        //   id: 'biometric-status',
+        //   title: 'Biometric Status',
+        //   subtitle: biometricType ? `${biometricType} - ${biometricStatus}` : biometricStatus,
+        //   icon: '👆',
+        //   onPress: () => navigation.navigate('SecuritySettingsScreen'),
+        //   statusColor: getStatusColor(biometricStatus),
+        //   statusIcon: getStatusIcon(biometricStatus),
+        // },
       ],
     },
-    {
-      title: 'Notes',
-      items: [
-        {
-          id: 'notes',
-          title: 'Status Color Guide',
-          subtitle: '🟢 Green = Active/Set\n\n🟠 Orange = Available\n\n🔴 Red = Not Set',
-          icon: '📝',
-          onPress: () => {}, // No action needed
-        },
-      ],
-    },
+    // {
+    //   title: 'Notes',
+    //   items: [
+    //     {
+    //       id: 'notes',
+    //       title: 'Status Color Guide',
+    //       subtitle: '🟢 Green = Active/Set\n\n🟠 Orange = Available\n\n🔴 Red = Not Set',
+    //       icon: '📝',
+    //       onPress: () => {}, // No action needed
+    //     },
+    //   ],
+    // },
   ];
 
   return (

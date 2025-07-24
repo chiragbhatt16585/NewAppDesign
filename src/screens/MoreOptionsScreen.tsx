@@ -161,13 +161,13 @@ const MoreOptionsScreen = ({navigation}: any) => {
           icon: '⚙️',
           onPress: handleSettings,
         },
-        {
-          id: 'ai-demo',
-          title: 'AI Features Demo',
-          subtitle: 'Experience smart automation',
-          icon: '🤖',
-          onPress: handleAIDemo,
-        },
+        // {
+        //   id: 'ai-demo',
+        //   title: 'AI Features Demo',
+        //   subtitle: 'Experience smart automation',
+        //   icon: '🤖',
+        //   onPress: handleAIDemo,
+        // },
     {
       id: 'logout',
       title: t('common.logout'),
