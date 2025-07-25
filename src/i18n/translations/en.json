@@ -221,25 +221,28 @@
   },
   "payBill": {
     "title": "Pay Bill",
-    "subtitle": "View your account details and pay existing dues",
-    "activePlan": "Active Plan Details",
-    "planName": "Plan Name",
-    "speed": "Speed",
-    "renewDate": "Renew Date",
-    "expDate": "Expiry Date",
-    "accountSummary": "Account Summary",
-    "openingBalance": "Opening Balance",
-    "billAmount": "Bill Amount",
-    "amountPaid": "Amount Paid",
-    "proformaInvoiceAmount": "Proforma Invoice Amount",
+    "subtitle": "Pay your outstanding dues",
     "currentBalance": "Current Balance",
-    "existingDues": "Existing Dues",
-    "duesAmount": "Dues Amount",
-    "payDues": "Pay Dues",
-    "selectPaymentGateway": "Select Payment Gateway",
-    "payWith": "Pay with",
+    "dueAmount": "Due Amount",
+    "payNow": "Pay Now",
     "paymentSuccess": "Payment Successful",
-    "paymentSuccessMessage": "Your dues have been paid successfully! You will receive a confirmation email shortly."
+    "paymentSuccessMessage": "Your payment has been processed successfully! You will receive a confirmation email shortly."
+  },
+  "paymentLink": {
+    "title": "Payment Gateway",
+    "loading": "Loading payment gateway...",
+    "error": "Payment Error",
+    "errorMessage": "Failed to load payment page. Please try again."
+  },
+  "paymentResponse": {
+    "successTitle": "Payment Successful",
+    "successMessage": "Your payment was processed successfully.",
+    "failureTitle": "Payment Failed",
+    "failureMessage": "There was a problem processing your payment.",
+    "cancelledTitle": "Payment Cancelled",
+    "cancelledMessage": "Your payment was cancelled.",
+    "goHome": "Go to Home",
+    "checkStatus": "Check Status"
   },
   "contactUs": {
     "title": "Contact Us",

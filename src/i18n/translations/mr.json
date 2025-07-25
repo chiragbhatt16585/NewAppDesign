@@ -233,25 +233,28 @@
   },
   "payBill": {
     "title": "बिल भरा",
-    "subtitle": "तुमच्या खात्याचे तपशील पहा आणि सध्याचे बाकी भरा",
-    "activePlan": "सक्रिय योजना तपशील",
-    "planName": "योजना नाव",
-    "speed": "वेग",
-    "renewDate": "नूतनीकरण तारीख",
-    "expDate": "समाप्ती तारीख",
-    "accountSummary": "खाते सारांश",
-    "openingBalance": "प्रारंभिक शिल्लक",
-    "billAmount": "बिल रक्कम",
-    "amountPaid": "भरलेली रक्कम",
-    "proformaInvoiceAmount": "प्रोफॉर्मा चालन रक्कम",
-    "currentBalance": "सध्याचे शिल्लक",
-    "existingDues": "सध्याचे बाकी",
-    "duesAmount": "बाकी रक्कम",
-    "payDues": "बाकी भरा",
-    "selectPaymentGateway": "पेमेंट गेटवे निवडा",
-    "payWith": "सोबत भरा",
+    "subtitle": "तुमचे बकाया बिल भरा",
+    "currentBalance": "सध्याचे बॅलन्स",
+    "dueAmount": "बकाया रक्कम",
+    "payNow": "आता भरा",
     "paymentSuccess": "पेमेंट यशस्वी",
-    "paymentSuccessMessage": "तुमचे बाकी यशस्वीरित्या भरले गेले आहेत! तुम्हाला लवकरच पुष्टी ईमेल मिळेल."
+    "paymentSuccessMessage": "तुमचे पेमेंट यशस्वीरित्या प्रोसेस झाले आहे! तुम्हाला लवकरच पुष्टी ईमेल मिळेल."
+  },
+  "paymentLink": {
+    "title": "पेमेंट गेटवे",
+    "loading": "पेमेंट गेटवे लोड होत आहे...",
+    "error": "पेमेंट त्रुटी",
+    "errorMessage": "पेमेंट पेज लोड करण्यात अयशस्वी. कृपया पुन्हा प्रयत्न करा."
+  },
+  "paymentResponse": {
+    "successTitle": "पेमेंट यशस्वी",
+    "successMessage": "तुमचे पेमेंट यशस्वीरित्या प्रक्रिया केले गेले.",
+    "failureTitle": "पेमेंट अयशस्वी",
+    "failureMessage": "तुमचे पेमेंट प्रक्रिया करताना समस्या आली.",
+    "cancelledTitle": "पेमेंट रद्द",
+    "cancelledMessage": "तुमचे पेमेंट रद्द केले गेले.",
+    "goHome": "होम वर जा",
+    "checkStatus": "स्थिती तपासा"
   },
   "contactUs": {
     "title": "संपर्क साधा",

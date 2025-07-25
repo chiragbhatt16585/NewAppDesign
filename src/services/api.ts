@@ -171,38 +171,44 @@ class ApiService {
   }
 
   async checkAuthTokenValidity() {
-    const token = await sessionManager.getToken();
-    if (!token) return false;
-
-    const username = await sessionManager.getUsername();
-    if (!username) return false;
-
-    const data = {
-      username: username.toLowerCase().trim(),
-      fetch_company_details: 'yes',
-      request_source: 'app',
-      request_app: 'user_app' 
-    };
-
-    const options = {
-      method,
-      headers: new Headers({ Authentication: token, ...fixedHeaders }),
-      body: toFormData(data),
-      timeout
-    };
-
+    console.log('=== CHECK AUTH TOKEN VALIDITY DEBUG ===');
     try {
-      const res = await fetch(`${url}/selfcareHelpdesk`, options);
-      const response = await res.json();
+      const token = await sessionManager.getToken();
+      console.log('Token from session manager:', token ? 'exists' : 'missing');
       
-      if (response.status === 'ok') {
-        return true;
-      } else if (response.status === 'error') {
+      if (!token) {
+        console.log('No token found, returning false');
         return false;
       }
-      return false;
-    } catch (error) {
-      console.error('Token validity check error:', error);
+
+      const data = {
+        username: await sessionManager.getUsername(),
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+      console.log('Username for validation:', data.username);
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+
+      console.log('Making token validation request...');
+      const res = await fetch(`${url}/selfcareCheckTokenValidity`, options);
+      const response = await res.json();
+      console.log('Token validation response:', response);
+      
+      if (response.status === 'ok' && response.code === 200) {
+        console.log('Token is valid');
+        return true;
+      } else {
+        console.log('Token validation failed:', response.message);
+        return false;
+      }
+    } catch (e: any) {
+      console.error('Token validation error:', e);
       return false;
     }
   }
@@ -287,16 +293,23 @@ class ApiService {
   }
 
   async handleTokenUpdate() {
+    console.log('=== HANDLE TOKEN UPDATE DEBUG ===');
     const isValid = await this.checkAuthTokenValidity();
+    console.log('Token validity check result:', isValid);
 
     if (isValid) {
+      console.log('Token is valid, returning true');
       return true;
     } else {
+      console.log('Token is invalid, attempting regeneration...');
       const newToken = await this.regenerateToken();
+      console.log('Token regeneration result:', newToken ? 'success' : 'failed');
       if (newToken) {
         await sessionManager.updateToken(newToken);
+        console.log('Token updated in session manager');
         return true;
       } else {
+        console.log('Token regeneration failed, clearing session');
         await sessionManager.clearSession();
         return false;
       }
@@ -1236,11 +1249,21 @@ class ApiService {
 
   async paymentGatewayOptions(adminname: string, realm: string) {
     return this.makeAuthenticatedRequest(async (token: string) => {
+      const username = await sessionManager.getUsername();
+      if (!username) {
+        throw new Error('No username found in session');
+      }
+
       const data = {
+        username: username.toLowerCase().trim(),
         admin_login_id: adminname,
+        gw_for: 'end_user',
+        tp_gateway_type: 'online_payment',
+        user_application: 'user_app',
         request_source: 'app',
         request_app: 'user_app'
       };
+      //console.log('Payment Gateway API data:', data);
 
       const options = {
         method,
@@ -1250,12 +1273,13 @@ class ApiService {
       };
 
       try {
-        const res = await fetch(`${url}/selfcarePaymentGatewayOptions`, options);
+        const res = await fetch(`${url}/selfcareAdminWisePaymentGateway`, options);
         const response = await res.json();
-        
+        console.log('Payment Gateway API response:', response);
         if (response.status !== 'ok' && response.code !== 200) {
-          throw new Error(response.message || 'Failed to fetch payment gateway options');
+          throw new Error(response.message || 'Could not fetch payment methods. Please try again in some time.');
         } else {
+          console.log('Payment Gateway API data:', response.data);
           return response.data;
         }
       } catch (e: any) {
@@ -1264,6 +1288,65 @@ class ApiService {
         } else {
           throw new Error(e.message || 'Failed to fetch payment gateway options');
         }
+      }
+    });
+  }
+
+  async paymentRequestDetails(
+    {
+      amount,
+      adminname,
+      username,
+      planname,
+      selectedPGType,
+      payActionType,
+      proforma_invoice,
+      refund_amount,
+      old_pin_serial
+    }: {
+      amount: number,
+      adminname: string,
+      username: string,
+      planname?: string,
+      selectedPGType: any[],
+      payActionType: string,
+      proforma_invoice?: string,
+      refund_amount?: number,
+      old_pin_serial?: string
+    },
+    realm: string
+  ) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const data: any = {
+        amount,
+        admin_login_id: adminname,
+        username,
+        tp_gateway_admin_setting_id: selectedPGType && selectedPGType[0].value,
+        gw_for: 'end_user',
+        payment_purpose: payActionType,
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+      if (refund_amount !== undefined) data.refund_amount = refund_amount;
+      if (old_pin_serial !== undefined) data.old_pin_serial = old_pin_serial;
+      if (proforma_invoice) data.proforma_invoice = proforma_invoice;
+      if (planname !== undefined) data.planname = planname;
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+      try {
+        const res = await fetch(`${url}/selfcareMerchantPaymentRequest`, options);
+        const response = await res.json();
+        if (response.status !== 'ok' && response.code !== 200) {
+          throw new Error(response.message);
+        }
+        return response;
+      } catch (e: any) {
+        const msg = isNetworkError(e) ? networkErrorMsg : e.message;
+        throw new Error(msg);
       }
     });
   }
@@ -1560,6 +1643,94 @@ class ApiService {
         isNetworkError(e) ? networkErrorMsg : e.message
       );
       throw new Error(msg);
+    });
+  }
+
+  async getPaymentStatus(username: string, merTxnId: string, realm: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const data = {
+        username: username.toLowerCase().trim(),
+        mer_txn_ref: merTxnId,
+        gw_for: 'end_user',
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+
+      try {
+        console.log('=== PAYMENT STATUS CHECK ===');
+        console.log('Username:', username);
+        console.log('Merchant Txn Ref:', merTxnId);
+        console.log('Realm:', realm);
+        
+        const res = await fetch(`${url}/selfcareGetTransactionDetails`, options);
+        const response = await res.json();
+        
+        console.log('Payment status API response:', response);
+        
+        if (response.status !== 'ok' && response.code !== 200) {
+          console.log('Payment status API error:', response.message);
+          throw new Error(response.message || 'Failed to get payment status');
+        } else {
+          const txnStatus = response.data[0]?.txn_status;
+          console.log('Transaction status:', txnStatus);
+          return txnStatus;
+        }
+      } catch (e: any) {
+        console.error('Payment status check error:', e);
+        const msg = isNetworkError(e) ? networkErrorMsg : e.message;
+        throw new Error(msg);
+      }
+    });
+  }
+
+  async verifyPaymentStatus(username: string, merTxnId: string, realm: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const data = {
+        username: username.toLowerCase().trim(),
+        mer_txn_ref: merTxnId,
+        gw_for: 'end_user',
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+
+      try {
+        console.log('=== VERIFY PAYMENT STATUS ===');
+        console.log('Username:', username);
+        console.log('Merchant Txn Ref:', merTxnId);
+        console.log('Realm:', realm);
+        
+        const res = await fetch(`${url}/selfcareGetTransactionDetails`, options);
+        const response = await res.json();
+        
+        console.log('Verify payment status API response:', response);
+        
+        if (response.status !== 'ok' && response.code !== 200) {
+          console.log('Verify payment status API error:', response.message);
+          throw new Error(response.message || 'Failed to verify payment status');
+        } else {
+          const txnStatus = response.data[0]?.txn_status;
+          console.log('Verified transaction status:', txnStatus);
+          return txnStatus;
+        }
+      } catch (e: any) {
+        console.error('Verify payment status error:', e);
+        const msg = isNetworkError(e) ? networkErrorMsg : e.message;
+        throw new Error(msg);
+      }
     });
   }
 }

@@ -11,6 +11,8 @@ import TicketsScreen from '../screens/TicketsScreen';
 import SessionsScreen from '../screens/SessionsScreen';
 import RenewPlanScreen from '../screens/RenewPlanScreen';
 import PlanConfirmationScreen from '../screens/PlanConfirmationScreen';
+import PaymentLinkScreen from '../screens/PaymentLinkScreen';
+import PaymentResponseScreen from '../screens/PaymentResponseScreen';
 import PayBillScreen from '../screens/PayBillScreen';
 import ContactUsScreen from '../screens/ContactUsScreen';
 import LanguageScreen from '../screens/LanguageScreen';
@@ -130,6 +132,8 @@ const AppNavigator: React.FC<AppNavigatorProps> = ({ initialRoute }) => {
         <Stack.Screen name="UsageDetails" component={UsageDetailsScreen} />
         <Stack.Screen name="WebView" component={WebViewScreen} />
         <Stack.Screen name="ReferFriend" component={ReferFriendScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="PaymentLink" component={PaymentLinkScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="PaymentResponse" component={PaymentResponseScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

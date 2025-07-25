@@ -18,4 +18,15 @@ buildscript {
     }
 }
 
+allprojects {
+    repositories {
+        mavenLocal()
+        maven {
+            url "https://artifactory.paytm.in/libs-release-local"
+        }
+        google()
+        mavenCentral()
+    }
+}
+
 apply plugin: "com.facebook.react.rootproject"

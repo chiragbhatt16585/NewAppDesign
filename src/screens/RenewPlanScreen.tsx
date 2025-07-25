@@ -348,6 +348,7 @@ const RenewPlanScreen = ({navigation}: any) => {
       selectedPlan: planForConfirmation,
       totalAmount: totalAmount,
       payDues: payDues,
+      admin_login_id: authData?.admin_login_id,
     });
   };
 

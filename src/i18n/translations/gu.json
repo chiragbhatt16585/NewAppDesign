@@ -281,25 +281,28 @@
   },
   "payBill": {
     "title": "બિલ ચુકવો",
-    "subtitle": "તમારા એકાઉન્ટની વિગતો જુઓ અને હાલના બાકી ચુકવો",
-    "activePlan": "સક્રિય પ્લાન વિગતો",
-    "planName": "પ્લાનનું નામ",
-    "speed": "ઝડપ",
-    "renewDate": "નવીકરણ તારીખ",
-    "expDate": "સમાપ્તિ તારીખ",
-    "accountSummary": "એકાઉન્ટ સારાંશ",
-    "openingBalance": "પ્રારંભિક બેલેન્સ",
-    "billAmount": "બિલ રકમ",
-    "amountPaid": "ચુકવેલી રકમ",
-    "proformaInvoiceAmount": "પ્રોફોર્મા ઇન્વોઇસ રકમ",
+    "subtitle": "તમારા બાકીના બિલ ચુકવો",
     "currentBalance": "વર્તમાન બેલેન્સ",
-    "existingDues": "હાલના બાકી",
-    "duesAmount": "બાકી રકમ",
-    "payDues": "બાકી ચુકવો",
-    "selectPaymentGateway": "ચુકવણી ગેટવે પસંદ કરો",
-    "payWith": "સાથે ચુકવો",
+    "dueAmount": "બાકી રકમ",
+    "payNow": "હવે ચૂકવો",
     "paymentSuccess": "ચુકવણી સફળ",
-    "paymentSuccessMessage": "તમારા બાકી સફળતાપૂર્વક ચુકવાયા છે! તમને ટૂંક સમયમાં પુષ્ટિ ઇમેઇલ મળશે."
+    "paymentSuccessMessage": "તમારી ચુકવણી સફળતાપૂર્વક પ્રોસેસ થઈ છે! તમને ટૂંક સમયમાં પુષ્ટિ ઈમેલ મળશે."
+  },
+  "paymentLink": {
+    "title": "ચુકવણી ગેટવે",
+    "loading": "ચુકવણી ગેટવે લોડ થઈ રહ્યું છે...",
+    "error": "ચુકવણી ભૂલ",
+    "errorMessage": "ચુકવણી પેજ લોડ કરવામાં નિષ્ફળ. કૃપા કરીને ફરીથી પ્રયાસ કરો."
+  },
+  "paymentResponse": {
+    "successTitle": "ચુકવણી સફળ",
+    "successMessage": "તમારી ચુકવણી સફળતાપૂર્વક પ્રક્રિયા કરવામાં આવી.",
+    "failureTitle": "ચુકવણી નિષ્ફળ",
+    "failureMessage": "તમારી ચુકવણી પ્રક્રિયા કરવામાં સમસ્યા આવી.",
+    "cancelledTitle": "ચુકવણી રદ",
+    "cancelledMessage": "તમારી ચુકવણી રદ કરવામાં આવી.",
+    "goHome": "હોમ પર જાઓ",
+    "checkStatus": "સ્થિતિ તપાસો"
   },
   "contactUs": {
     "title": "સંપર્ક કરો",
