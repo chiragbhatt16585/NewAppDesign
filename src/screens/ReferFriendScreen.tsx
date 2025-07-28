@@ -6,6 +6,7 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
+  TouchableHighlight,
   ActivityIndicator,
   Platform,
   Modal,
@@ -39,7 +40,6 @@ const ReferFriendScreen = ({ navigation }: any) => {
   const [filteredBuildings, setFilteredBuildings] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     firstName: '',
-    middleName: '',
     lastName: '',
     mobileNumber: '',
     alternateMobile: '',
@@ -61,6 +61,7 @@ const ReferFriendScreen = ({ navigation }: any) => {
   const [showCityDropdown, setShowCityDropdown] = useState(false);
   const [justSelectedBuilding, setJustSelectedBuilding] = useState(false);
   const [selectedBuilding, setSelectedBuilding] = useState<any>(null);
+  const [showBuildingDropdown, setShowBuildingDropdown] = useState(false);
   // Remove isSelectingBuilding state
 
   // Fetch initial data
@@ -79,6 +80,8 @@ const ReferFriendScreen = ({ navigation }: any) => {
           apiService.getAllBuildings(realm),
           apiService.getAllCities(realm),
         ]);
+        console.log('Buildings data:', buildingsData);
+        console.log('Cities data:', citiesData);
         setBuildings(buildingsData);
         setCities(citiesData);
         // Check if sales exec selection is needed
@@ -102,13 +105,18 @@ const ReferFriendScreen = ({ navigation }: any) => {
   // Building search
   useEffect(() => {
     if (searchText.length >= 3) {
-      setFilteredBuildings(
-        buildings.filter(b => b.label.toLowerCase().includes(searchText.toLowerCase()))
-      );
+      const filtered = buildings.filter(b => b.label.toLowerCase().includes(searchText.toLowerCase()));
+      console.log('Filtered buildings:', filtered);
+      setFilteredBuildings(filtered);
     } else {
       setFilteredBuildings([]);
     }
   }, [searchText, buildings]);
+
+  // Debug form data changes
+  useEffect(() => {
+    console.log('Form data changed:', formData);
+  }, [formData]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev: any) => ({ ...prev, [field]: value }));
@@ -122,15 +130,8 @@ const ReferFriendScreen = ({ navigation }: any) => {
     if (!formData.lastName.trim()) { newErrors.lastName = 'Last name is required'; isValid = false; }
     if (!formData.mobileNumber.trim()) { newErrors.mobileNumber = 'Mobile number is required'; isValid = false; }
     else if (!/^\d{10}$/.test(formData.mobileNumber)) { newErrors.mobileNumber = 'Invalid mobile number'; isValid = false; }
-    if (!formData.email.trim()) { newErrors.email = 'Email is required'; isValid = false; }
-    else if (!/\S+@\S+\.\S+/.test(formData.email)) { newErrors.email = 'Invalid email format'; isValid = false; }
-    if (!formData.address1.trim()) { newErrors.address1 = 'Address is required'; isValid = false; }
-    if (!formData.building) { newErrors.building = 'Building is required'; isValid = false; }
-    if (!formData.city) { newErrors.city = 'City is required'; isValid = false; }
-    if (!formData.area.trim()) { newErrors.area = 'Area is required'; isValid = false; }
-    if (!formData.location.trim()) { newErrors.location = 'Location is required'; isValid = false; }
-    if (!formData.pincode.trim()) { newErrors.pincode = 'Pincode is required'; isValid = false; }
-    else if (!/^\d{6}$/.test(formData.pincode)) { newErrors.pincode = 'Invalid pincode'; isValid = false; }
+    if (formData.email.trim() && !/\S+@\S+\.\S+/.test(formData.email)) { newErrors.email = 'Invalid email format'; isValid = false; }
+    if (formData.pincode.trim() && !/^\d{6}$/.test(formData.pincode)) { newErrors.pincode = 'Invalid pincode'; isValid = false; }
     setErrors(newErrors);
     return isValid;
   };
@@ -158,7 +159,7 @@ const ReferFriendScreen = ({ navigation }: any) => {
       };
       await apiService.addNewInquiry(session.username, payload, realm);
       setFormData({
-        firstName: '', middleName: '', lastName: '', mobileNumber: '', alternateMobile: '', email: '', address1: '', address2: '', building: '', building_id: '', building_name: '', area: '', location: '', pincode: '', city: '', city_name: '', remarks: '', salesPerson: '',
+        firstName: '', lastName: '', mobileNumber: '', alternateMobile: '', email: '', address1: '', address2: '', building: '', building_id: '', building_name: '', area: '', location: '', pincode: '', city: '', city_name: '', remarks: '', salesPerson: '',
       });
       Toast.show({ type: 'success', text1: 'Your Inquiry submitted successfully' });
     } catch (e: any) {
@@ -170,20 +171,145 @@ const ReferFriendScreen = ({ navigation }: any) => {
 
   // Building selector modal
   const handleBuildingSelection = (building: any) => {
+    console.log('Building selected:', building);
+    
     Keyboard.dismiss();
     setSelectedBuilding(building);
-    setSearchText(building.label); // Set the input to the selected building label
-    handleInputChange('building', building.value);
-    handleInputChange('building_id', building.building_id);
-    handleInputChange('building_name', building.label);
-    handleInputChange('area', building.area_name || '');
-    handleInputChange('location', building.location_name || '');
-    handleInputChange('city', building.city_id || '');
+    setSearchText(building.label);
+    setShowBuildingDropdown(false);
+    
+    // Find the city name
     const cityObj = cities.find(c => c.value === building.city_id);
-    handleInputChange('city_name', cityObj ? cityObj.label : '');
-    handleInputChange('pincode', building.pincode || '');
-    setTimeout(() => {
-    }, 100);
+    const cityName = cityObj ? cityObj.label : '';
+    
+    // Update form data
+    setFormData((prev: any) => ({
+      ...prev,
+      building: building.value || building.building_id,
+      building_id: building.building_id,
+      building_name: building.label,
+      area: building.area_name || '',
+      location: building.location_name || '',
+      city: building.city_id || '',
+      city_name: cityName,
+      pincode: building.pincode || ''
+    }));
+    
+    // Clear errors
+    setErrors((prev: any) => ({
+      ...prev,
+      building: '',
+      area: '',
+      location: '',
+      city: '',
+      pincode: ''
+    }));
+  };
+
+  // Building Selector Component
+  const BuildingSelector = () => {
+    const [showDropdown, setShowDropdown] = useState(false);
+    const [searchText, setSearchText] = useState('');
+    const inputRef = useRef<TextInput>(null);
+
+    useEffect(() => {
+      if (formData.building) {
+        const selectedBuilding = buildings.find(b => b.value === formData.building);
+        if (selectedBuilding) {
+          setSearchText(selectedBuilding.label);
+        }
+      }
+    }, [formData.building]);
+
+    const filteredBuildings = useMemo(() => {
+      if (!searchText || searchText.length < 3) return [];
+      
+      return buildings.filter(building => 
+        building.label && 
+        building.label.toLowerCase().includes(searchText.toLowerCase())
+      ).slice(0, 5);
+    }, [searchText, buildings]);
+
+    const handleBuildingSelect = (building: any) => {
+      setSearchText(building.label);
+      setShowDropdown(false);
+      
+      // Find the city name from the cities array
+      const cityObj = cities.find(c => c.value === building.city_id);
+      const cityName = cityObj ? cityObj.label : '';
+      
+      handleInputChange('building', building.value);
+      handleInputChange('building_id', building.building_id);
+      handleInputChange('building_name', building.label);
+      handleInputChange('area', building.area_name || '');
+      handleInputChange('location', building.location_name || '');
+      handleInputChange('city', building.city_id || '');
+      handleInputChange('city_name', cityName);
+      handleInputChange('pincode', building.pincode || '');
+    };
+
+    const renderBuildingItem = (building: any) => (
+      <TouchableHighlight
+        key={building.value}
+        onPress={() => {
+          handleBuildingSelect(building);
+          inputRef.current?.blur?.();
+        }}
+        underlayColor="#f0f0f0"
+      >
+        <View style={[styles.dropdownItem, { borderBottomColor: colors.border }]}>
+          <Text style={[styles.buildingName, { color: colors.text }]}>{building.label}</Text>
+          <View style={styles.buildingDetails}>
+            <Text style={[styles.buildingSubText, { color: colors.textSecondary }]}>
+              {building.area_name && `${building.area_name}`}
+              {building.area_name && building.location_name && ' • '}
+              {building.location_name && `${building.location_name}`}
+            </Text>
+          </View>
+        </View>
+      </TouchableHighlight>
+    );
+
+    return (
+      <View style={styles.inputContainer}>
+        <View style={[styles.autocompleteContainer, errors.building ? styles.inputError : null]}>
+          <TextInput
+            ref={inputRef}
+            placeholder={t('referFriend.building')}
+            value={searchText}
+            onChangeText={(text) => {
+              setSearchText(text);
+              setShowDropdown(text.length >= 3);
+              if (formData.building) {
+                handleInputChange('building', '');
+                handleInputChange('building_name', '');
+                handleInputChange('area', '');
+                handleInputChange('location', '');
+                handleInputChange('city', '');
+                handleInputChange('city_name', '');
+                handleInputChange('pincode', '');
+              }
+            }}
+            style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
+            onFocus={() => {
+              if (searchText.length >= 3) {
+                setShowDropdown(true);
+              }
+            }}
+            placeholderTextColor={colors.textSecondary}
+            autoCorrect={false}
+            autoCapitalize="none"
+          />
+          {showDropdown && filteredBuildings.length > 0 && (
+            <TouchableWithoutFeedback>
+              <View style={[styles.dropdownContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                {filteredBuildings.map(renderBuildingItem)}
+              </View>
+            </TouchableWithoutFeedback>
+          )}
+        </View>
+      </View>
+    );
   };
 
   // Use SafeAreaView + ScrollView for a full page
@@ -201,7 +327,6 @@ const ReferFriendScreen = ({ navigation }: any) => {
           <Text style={[styles.sectionTitle, { color: colors.primary }]}>{t('referFriend.personalDetails')}</Text>
           <View style={styles.inputRow}>
             <TextInput style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }, errors.firstName && styles.inputError]} placeholder={t('referFriend.firstName')} value={formData.firstName} onChangeText={t => handleInputChange('firstName', t)} placeholderTextColor={colors.textSecondary} />
-            <TextInput style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]} placeholder={t('referFriend.middleName')} value={formData.middleName} onChangeText={t => handleInputChange('middleName', t)} placeholderTextColor={colors.textSecondary} />
             <TextInput style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }, errors.lastName && styles.inputError]} placeholder={t('referFriend.lastName')} value={formData.lastName} onChangeText={t => handleInputChange('lastName', t)} placeholderTextColor={colors.textSecondary} />
           </View>
           <View style={styles.errorRow}>
@@ -215,126 +340,72 @@ const ReferFriendScreen = ({ navigation }: any) => {
           {errors.email && <Text style={styles.errorText}>{t('referFriend.emailRequired')}</Text>}
 
           <Text style={[styles.sectionTitle, { color: colors.primary }]}>{t('referFriend.addressDetails')}</Text>
-          <TextInput style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }, errors.address1 && styles.inputError]} placeholder={t('referFriend.address1')} value={formData.address1} onChangeText={t => handleInputChange('address1', t)} placeholderTextColor={colors.textSecondary} />
-          {errors.address1 && <Text style={styles.errorText}>{t('referFriend.address1Required')}</Text>}
+          <TextInput style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]} placeholder={t('referFriend.address1')} value={formData.address1} onChangeText={t => handleInputChange('address1', t)} placeholderTextColor={colors.textSecondary} />
           <TextInput style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]} placeholder={t('referFriend.address2')} value={formData.address2} onChangeText={t => handleInputChange('address2', t)} placeholderTextColor={colors.textSecondary} />
           <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>{t('referFriend.building')}</Text>
-          <View style={{ position: 'relative' }}>
-            <TextInput
-              style={[
-                styles.input,
-                { backgroundColor: colors.background, borderColor: colors.border, color: colors.text },
-                errors.building && styles.inputError
-              ]}
-              placeholder={t('referFriend.building')}
-              value={searchText}
-              onChangeText={text => {
-                if (selectedBuilding) {
-                  setSelectedBuilding(null);
-                  setSearchText(text);
-                  setTimeout(() => {
-                  }, 100);
-                  return;
-                }
-                setSearchText(text);
-                handleInputChange('building_name', '');
-                handleInputChange('building', '');
-                handleInputChange('building_id', '');
-                handleInputChange('area', '');
-                handleInputChange('location', '');
-                handleInputChange('city', '');
-                handleInputChange('city_name', '');
-                handleInputChange('pincode', '');
-                setTimeout(() => {
-                }, 100);
-              }}
-              onBlur={() => {
-                if (!formData.building_name) setSearchText('');
-              }}
-              placeholderTextColor={colors.textSecondary}
-              autoCorrect={false}
-              autoCapitalize="none"
-            />
-            {searchText.length >= 3 && filteredBuildings.length > 0 && !formData.building_name && (
-              <View style={[styles.pickerDropdown, { backgroundColor: colors.card, borderColor: colors.border, position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 9999, elevation: 20 }]}> 
-                <ScrollView style={styles.pickerScroll} keyboardShouldPersistTaps="always">
-                  {filteredBuildings.map((building) => (
-                    <TouchableOpacity
-                      key={building.building_id || building.value}
-                      style={[
-                        styles.pickerItem,
-                        { borderBottomColor: colors.border }
-                      ]}
-                      onPress={() => {
-                        handleBuildingSelection(building);
-                      }}
-                    >
-                      <Text style={[styles.pickerItemText, { color: colors.text }]}>{building.label}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
-          </View>
-          {errors.building && <Text style={styles.errorText}>{t('referFriend.buildingRequired')}</Text>}
-          <TextInput style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }, errors.area && styles.inputError]} placeholder={t('referFriend.area')} value={formData.area} onChangeText={t => handleInputChange('area', t)} placeholderTextColor={colors.textSecondary} />
-          {errors.area && <Text style={styles.errorText}>{t('referFriend.areaRequired')}</Text>}
-          <TextInput style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }, errors.location && styles.inputError]} placeholder={t('referFriend.location')} value={formData.location} onChangeText={t => handleInputChange('location', t)} placeholderTextColor={colors.textSecondary} />
-          {errors.location && <Text style={styles.errorText}>{t('referFriend.locationRequired')}</Text>}
+          <BuildingSelector />
+          <TextInput style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]} placeholder={t('referFriend.area')} value={formData.area} onChangeText={t => handleInputChange('area', t)} placeholderTextColor={colors.textSecondary} />
+          <TextInput style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]} placeholder={t('referFriend.location')} value={formData.location} onChangeText={t => handleInputChange('location', t)} placeholderTextColor={colors.textSecondary} />
           <TextInput style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }, errors.pincode && styles.inputError]} placeholder={t('referFriend.pincode')} value={formData.pincode} onChangeText={t => handleInputChange('pincode', t)} keyboardType="numeric" placeholderTextColor={colors.textSecondary} />
           {errors.pincode && <Text style={styles.errorText}>{t('referFriend.pincodeRequired')}</Text>}
           <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>{t('referFriend.city')}</Text>
-          <View style={[styles.pickerContainer, { backgroundColor: colors.background, borderColor: formData.city ? colors.primary : colors.border }]}> 
+          <View style={[styles.cityPickerContainer, { backgroundColor: colors.background, borderColor: colors.border }]}> 
             <TouchableOpacity
-              style={[styles.pickerButton]}
+              style={[styles.cityPickerButton]}
               onPress={() => setShowCityDropdown(!showCityDropdown)}
+              activeOpacity={0.7}
             >
-              <Text style={[styles.pickerButtonText, { color: formData.city ? colors.primary : colors.textSecondary }]}> 
+              <Text style={[styles.cityPickerButtonText, { color: formData.city ? colors.primary : colors.textSecondary }]}> 
                 {formData.city_name || t('referFriend.selectCity')}
               </Text>
-              <Text style={[styles.pickerArrow, { color: formData.city ? colors.primary : colors.textSecondary }]}> {showCityDropdown ? '▲' : '▼'} </Text>
+              <Text style={[styles.cityPickerArrow, { color: formData.city ? colors.primary : colors.textSecondary }]}> 
+                {showCityDropdown ? '▲' : '▼'} 
+              </Text>
             </TouchableOpacity>
             {showCityDropdown && (
-              <View style={[styles.pickerDropdown, { backgroundColor: colors.card, borderColor: colors.border }]}> 
-                <ScrollView style={styles.pickerScroll} showsVerticalScrollIndicator={false}>
+              <View style={[styles.cityDropdownContainer, { backgroundColor: colors.card, borderColor: colors.border }]}> 
+                <View style={{ paddingVertical: 8 }}>
                   {cities.map(city => (
-                    <TouchableOpacity
+                    <TouchableHighlight
                       key={city.value}
                       style={[
-                        styles.pickerItem,
+                        styles.cityDropdownItem,
                         { borderBottomColor: colors.border },
-                        formData.city === city.value && { backgroundColor: colors.primary + '20' }
+                        formData.city === city.value && { backgroundColor: colors.primary + '15' }
                       ]}
                       onPress={() => {
                         handleInputChange('city', city.value);
                         handleInputChange('city_name', city.label);
                         setShowCityDropdown(false);
                       }}
+                      underlayColor="#f8f9fa"
                     >
-                      <Text style={[
-                        styles.pickerItemText,
-                        { color: formData.city === city.value ? colors.primary : colors.text }
-                      ]}>
-                        {city.label}
-                      </Text>
-                      {formData.city === city.value && (
-                        <Text style={[styles.pickerCheckmark, { color: colors.primary }]}>✓</Text>
-                      )}
-                    </TouchableOpacity>
+                      <View style={styles.cityItemContent}>
+                        <Text style={[
+                          styles.cityItemText,
+                          { color: formData.city === city.value ? colors.primary : colors.text }
+                        ]}>
+                          {city.label}
+                        </Text>
+                        {formData.city === city.value && (
+                          <Text style={[styles.cityCheckmark, { color: colors.primary }]}>✓</Text>
+                        )}
+                      </View>
+                    </TouchableHighlight>
                   ))}
-                </ScrollView>
+                </View>
               </View>
             )}
           </View>
-          {errors.city && <Text style={styles.errorText}>{t('referFriend.cityRequired')}</Text>}
+
           {showSalesExec && (
             <>
               <Text style={[styles.sectionTitle, { color: colors.primary }]}>{t('referFriend.salesExecutive')}</Text>
-              <View style={[styles.pickerContainer, { backgroundColor: colors.background, borderColor: formData.salesPerson ? colors.primary : colors.border }]}> 
+              <View style={[styles.salesPickerContainer, { backgroundColor: colors.background, borderColor: colors.border }]}> 
                 <Picker
                   selectedValue={formData.salesPerson}
                   onValueChange={v => handleInputChange('salesPerson', v)}
-                  style={[styles.picker, { color: colors.text }]}
+                  style={[styles.salesPicker, { color: colors.text }]}
                 >
                   <Picker.Item label={t('referFriend.selectSalesExecutive')} value="" />
                   {salesPersons.map(person => (
@@ -422,6 +493,140 @@ const styles = StyleSheet.create({
   pickerItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 15, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
   pickerItemText: { fontSize: 16, flex: 1 },
   pickerCheckmark: { fontSize: 20, marginLeft: 10 },
+  buildingItemText: { fontSize: 16 },
+  closeButtonText: { fontSize: 16, fontWeight: '600' },
+  autocompleteContainer: { 
+    position: 'relative', 
+    zIndex: 1000,
+    marginBottom: 10,
+    borderRadius: 8
+  },
+  dropdownContainer: { 
+    position: 'absolute', 
+    top: '100%', 
+    left: 0, 
+    right: 0, 
+    backgroundColor: 'white', 
+    borderWidth: 1, 
+    borderColor: '#e1e4e8', 
+    borderRadius: 8, 
+    maxHeight: 200, 
+    zIndex: 1001, 
+    elevation: 10, 
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 2 }, 
+    shadowOpacity: 0.1, 
+    shadowRadius: 6,
+    marginTop: 2
+  },
+  dropdownItem: { 
+    padding: 12, 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#f5f5f5',
+    minHeight: 50
+  },
+  buildingItemContent: {
+    flex: 1
+  },
+  buildingName: { 
+    fontSize: 15, 
+    fontWeight: '600',
+    color: '#333', 
+    marginBottom: 4 
+  },
+  buildingDetails: { 
+    flexDirection: 'row', 
+    alignItems: 'center' 
+  },
+  buildingSubText: { 
+    fontSize: 12, 
+    color: '#666',
+    lineHeight: 16
+  },
+  cityPickerContainer: { 
+    borderRadius: 12, 
+    borderWidth: 1, 
+    borderColor: '#e1e4e8', 
+    marginBottom: 10,
+    overflow: 'hidden'
+  },
+  cityPickerButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    minHeight: 52,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e1e4e8',
+    marginBottom: 0,
+  },
+  cityPickerButtonText: { 
+    fontSize: 16, 
+    flex: 1,
+    fontWeight: '500'
+  },
+  cityPickerArrow: { 
+    fontSize: 18,
+    marginLeft: 8
+  },
+  cityDropdownContainer: { 
+    position: 'absolute', 
+    top: '100%', 
+    left: 0, 
+    right: 0, 
+    backgroundColor: 'white', 
+    borderWidth: 1, 
+    borderColor: '#e1e4e8', 
+    borderRadius: 12, 
+    maxHeight: 250, 
+    zIndex: 1001, 
+    elevation: 8, 
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 4 }, 
+    shadowOpacity: 0.15, 
+    shadowRadius: 8,
+    marginTop: 4
+  },
+  cityDropdownItem: { 
+    padding: 16, 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#f5f5f5',
+    minHeight: 60
+  },
+  cityItemContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  cityItemText: { 
+    fontSize: 16, 
+    fontWeight: '500',
+    flex: 1
+  },
+  cityCheckmark: { 
+    fontSize: 20, 
+    marginLeft: 10,
+    fontWeight: 'bold'
+  },
+  salesPickerContainer: { 
+    borderRadius: 12, 
+    borderWidth: 1, 
+    borderColor: '#e1e4e8', 
+    marginBottom: 10,
+    overflow: 'hidden'
+  },
+  salesPicker: { 
+    backgroundColor: '#f8f9fa', 
+    borderRadius: 12, 
+    paddingHorizontal: 16, 
+    paddingVertical: 12,
+    height: 52
+  },
+  inputContainer: {
+    marginBottom: 10,
+  },
 });
 
 export default ReferFriendScreen; 
