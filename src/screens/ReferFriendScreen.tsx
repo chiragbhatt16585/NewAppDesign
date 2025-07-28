@@ -42,7 +42,6 @@ const ReferFriendScreen = ({ navigation }: any) => {
     firstName: '',
     lastName: '',
     mobileNumber: '',
-    alternateMobile: '',
     email: '',
     address1: '',
     address2: '',
@@ -159,9 +158,20 @@ const ReferFriendScreen = ({ navigation }: any) => {
       };
       await apiService.addNewInquiry(session.username, payload, realm);
       setFormData({
-        firstName: '', lastName: '', mobileNumber: '', alternateMobile: '', email: '', address1: '', address2: '', building: '', building_id: '', building_name: '', area: '', location: '', pincode: '', city: '', city_name: '', remarks: '', salesPerson: '',
+        firstName: '', lastName: '', mobileNumber: '', email: '', address1: '', address2: '', building: '', building_id: '', building_name: '', area: '', location: '', pincode: '', city: '', city_name: '', remarks: '', salesPerson: '',
       });
-      Toast.show({ type: 'success', text1: 'Your Inquiry submitted successfully' });
+      Alert.alert(
+        'Success', 
+        'Your Inquiry submitted successfully!',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              // Form is already reset above
+            }
+          }
+        ]
+      );
     } catch (e: any) {
       Toast.show({ type: 'error', text1: e.message || 'Something went wrong' });
     } finally {
@@ -335,7 +345,6 @@ const ReferFriendScreen = ({ navigation }: any) => {
           </View>
           <TextInput style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }, errors.mobileNumber && styles.inputError]} placeholder={t('referFriend.mobileNumber')} value={formData.mobileNumber} onChangeText={t => handleInputChange('mobileNumber', t)} keyboardType="phone-pad" placeholderTextColor={colors.textSecondary} />
           {errors.mobileNumber && <Text style={styles.errorText}>{t('referFriend.mobileNumberRequired')}</Text>}
-          <TextInput style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]} placeholder={t('referFriend.alternateMobile')} value={formData.alternateMobile} onChangeText={t => handleInputChange('alternateMobile', t)} keyboardType="phone-pad" placeholderTextColor={colors.textSecondary} />
           <TextInput style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }, errors.email && styles.inputError]} placeholder={t('referFriend.email')} value={formData.email} onChangeText={t => handleInputChange('email', t)} keyboardType="email-address" placeholderTextColor={colors.textSecondary} />
           {errors.email && <Text style={styles.errorText}>{t('referFriend.emailRequired')}</Text>}
 

@@ -396,7 +396,6 @@
     "lastNameRequired": "Last name is required",
     "mobileNumber": "Mobile Number*",
     "mobileNumberRequired": "Mobile number is required",
-    "alternateMobile": "Alternate Mobile",
     "email": "Email",
     "emailRequired": "Invalid email format",
     "addressDetails": "Address Details",

@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { useTheme } from '../utils/ThemeContext';
 import { getThemeColors } from '../utils/themeStyles';
 import { useTranslation } from 'react-i18next';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { apiService } from '../services/api';
 import { getClientConfig } from '../config/client-config';
@@ -492,11 +491,9 @@ const PaymentResponseScreen = ({ route, navigation }: any) => {
         <View style={styles.iconContainer}>
           {/* Modern icon with background circle */}
           <View style={[styles.iconBackground, { backgroundColor: info.color + '20' }]}>
-            <Icon 
-              name={info.icon} 
-              size={80} 
-              color={info.color}
-            />
+            <Text style={[styles.iconText, { color: info.color }]}>
+              {info.emoji}
+            </Text>
           </View>
         </View>
         <Text style={[styles.title, { color: colors.text }]}>{info.title}</Text>
@@ -645,6 +642,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 8,
+  },
+  iconText: {
+    fontSize: 60,
+    textAlign: 'center',
   },
   buttonContainer: {
     flexDirection: 'row',

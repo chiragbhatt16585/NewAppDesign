@@ -1455,7 +1455,6 @@ class ApiService {
       middle_name: formData.middleName,
       last_name: formData.lastName,
       mobile: formData.mobileNumber,
-      alt_mobile: formData.alternateMobile,
       email: formData.email,
       address_line1: formData.address1,
       address_line2: formData.address2,

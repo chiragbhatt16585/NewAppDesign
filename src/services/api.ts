@@ -1,34 +1,31 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import sessionManager from '../../src/services/sessionManager';
-
-// Dynamic client detection
-const getCurrentClient = (): string => {
-  // This should match the client configuration
-  // For now, we'll use a simple approach - you can enhance this
-  return 'dna-infotel'; // Default to dna-infotel since that's what the main api.ts was configured for
-};
+import { getClientConfig } from '../config/client-config';
 
 // Dynamic API configuration based on client
 const getApiConfig = () => {
-  const client = getCurrentClient();
-  
-  switch (client) {
-    case 'microscan':
-      return {
-        domainUrl: "mydesk.microscan.co.in",
-        ispName: 'Microscan'
-      };
-    case 'one-sevenstar':
-      return {
-        domainUrl: "one.7stardigitalnetwork.com", 
-        ispName: 'One Seven Star'
-      };
-    case 'dna-infotel':
-    default:
-      return {
-        domainUrl: "crm.dnainfotel.com",
-        ispName: 'DNA Infotel'
-      };
+  try {
+    const clientConfig = getClientConfig();
+    const baseURL = clientConfig.api.baseURL;
+    
+    // Extract domain from baseURL
+    let domainUrl: string;
+    if (baseURL.startsWith('https://')) {
+      domainUrl = baseURL.replace('https://', '').replace('/l2s/api', '');
+    } else {
+      domainUrl = baseURL.replace('/l2s/api', '');
+    }
+    
+    return {
+      domainUrl: domainUrl,
+      ispName: clientConfig.clientName
+    };
+  } catch (error) {
+    console.error('Error getting client config, falling back to dna-infotel:', error);
+    return {
+      domainUrl: "crm.dnainfotel.com",
+      ispName: 'DNA Infotel'
+    };
   }
 };
 
@@ -1602,7 +1599,6 @@ class ApiService {
       middle_name: formData.middleName,
       last_name: formData.lastName,
       mobile: formData.mobileNumber,
-      alt_mobile: formData.alternateMobile,
       email: formData.email,
       address_line1: formData.address1,
       address_line2: formData.address2,
