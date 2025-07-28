@@ -84,11 +84,11 @@ export function handlePayment(params: any, payActionType: string, navigation: an
         urlScheme
       )
         .then((result: any) => {
-          navigation.navigate('PaymentResponse', { txnRef, source, pgInfo, amount });
+          navigation.navigate('PaymentResponse', { txnRef, source, pgInfo, amount, status: 'success' });
           // TODO: Optionally call activateUser and toPaymentFeedback if needed
         })
         .catch((err: any) => {
-          navigation.navigate('PaymentResponse', { txnRef, source, pgInfo, amount });
+          navigation.navigate('PaymentResponse', { txnRef, source, pgInfo, amount, status: 'failed' });
         });
       */
     } else if (pgInfo === 'RAZORPAY') {
@@ -112,11 +112,11 @@ export function handlePayment(params: any, payActionType: string, navigation: an
       };
       RazorpayCheckout.open(options)
         .then((result: any) => {
-          navigation.navigate('PaymentResponse', { txnRef: txnInfo.merTxnId, source, pgInfo, amount: params.amount });
+          navigation.navigate('PaymentResponse', { txnRef: txnInfo.merTxnId, source, pgInfo, amount: params.amount, status: 'success' });
           // TODO: Optionally call activateUser and toPaymentFeedback if needed
         })
         .catch((error: any) => {
-          navigation.navigate('PaymentResponse', { txnRef: txnInfo.merTxnId, source, pgInfo, amount: params.amount });
+          navigation.navigate('PaymentResponse', { txnRef: txnInfo.merTxnId, source, pgInfo, amount: params.amount, status: 'failed' });
         });
     } else if (pgInfo) {
       txnInfo.merTxnId = res.data.txn_ref_no;

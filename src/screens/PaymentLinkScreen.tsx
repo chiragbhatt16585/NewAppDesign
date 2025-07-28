@@ -61,6 +61,32 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
     // Check if payment is completed (response.php endpoint)
     if (eventURL.pathname.includes('/tp/pg/response.php')) {
       console.log('Payment response endpoint detected');
+      console.log('Response URL:', eventURL.href);
+      console.log('Response URL search params:', eventURL.search);
+      
+      // Check if there's any response data in the URL
+      const urlParams = new URLSearchParams(eventURL.search);
+      const responseData = urlParams.get('response') || urlParams.get('data') || urlParams.get('result');
+      
+      if (responseData) {
+        console.log('Found response data in URL:', responseData);
+        try {
+          const parsedResponse = JSON.parse(responseData);
+          console.log('Parsed response data:', parsedResponse);
+          
+          // Check if it's an EASEBUZZ response
+          if (parsedResponse.program === 'Admin Payment Response' || parsedResponse.program === 'Get Transaction Detail') {
+            console.log('EASEBUZZ response detected in URL params');
+            if (!isPaymentProcessed) {
+              paymentResponse(parsedResponse);
+            }
+            return;
+          }
+        } catch (e) {
+          console.log('Failed to parse response data from URL:', e);
+        }
+      }
+      
       if (!isPaymentProcessed) {
         runPayments();
       }
@@ -114,8 +140,50 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
       const realm = clientConfig.clientId;
       console.log('Client realm:', realm);
 
-      // Use the sophisticated payment status checking logic from old implementation
-      await checkPaymentStatusWithRetry(session.username, merTxnId, realm);
+      // For EASEBUZZ, try to get the response data first
+      if (pgInfo === 'EASEBUZZ') {
+        console.log('EASEBUZZ detected, checking for response data...');
+        
+        // Wait a bit for the page to load completely
+        setTimeout(async () => {
+          // Check payment status once to get the response data
+          try {
+            const paymentStatus = await apiService.getPaymentStatus(session.username, merTxnId, realm);
+            console.log('EASEBUZZ payment status check result:', paymentStatus);
+            
+            // If we get a response with data, use it
+            if (typeof paymentStatus === 'object' && paymentStatus.data) {
+              console.log('EASEBUZZ response data found:', paymentStatus);
+              paymentResponse(paymentStatus);
+              return;
+            }
+            
+            // If we get a status string, create a response object
+            if (typeof paymentStatus === 'string') {
+              const responseData = {
+                program: 'Get Transaction Detail',
+                data: [{
+                  txn_id: merTxnId,
+                  amount: amount,
+                  txn_status: paymentStatus,
+                  pg_info: 'EASEBUZZ'
+                }]
+              };
+              console.log('Created EASEBUZZ response from status:', responseData);
+              paymentResponse(responseData);
+              return;
+            }
+          } catch (error) {
+            console.log('Error getting EASEBUZZ response data:', error);
+          }
+          
+          // Fallback to retry logic
+          await checkPaymentStatusWithRetry(session.username, merTxnId, realm);
+        }, 2000);
+      } else {
+        // Use the sophisticated payment status checking logic from old implementation
+        await checkPaymentStatusWithRetry(session.username, merTxnId, realm);
+      }
     } catch (error: any) {
       console.error('Error checking payment status:', error);
       console.log('Defaulting to failed payment due to error');
@@ -249,14 +317,29 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
 
     let status = 'failed';
     let isSuccess = false;
+    let extractedTxnRef = merTxnId;
+    let extractedAmount = amount;
 
+    // Handle Easebuzz response format first
+    if (typeof response === 'object' && response !== null && response.data && response.data.txn_status) {
+      console.log('Processing Easebuzz response:', response);
+      status = response.data.txn_status;
+      extractedTxnRef = response.data.txn_id || merTxnId;
+      extractedAmount = response.data.amount || amount;
+      
+      if (status === 'success') {
+        isSuccess = true;
+      }
+    }
     // Handle different response formats
-    if (typeof response === 'string') {
+    else if (typeof response === 'string') {
       console.log('Processing string response:', response);
       if (response === 'in_progress') {
         status = 'cancelled';
-      } else if (response === 'fail' || response === 'new' || response === 'pg_pending') {
+      } else if (response === 'fail' || response === 'new') {
         status = 'failed';
+      } else if (response === 'pg_pending') {
+        status = 'pg_pending';
       } else if (response === 'success') {
         status = 'success';
         isSuccess = true;
@@ -269,6 +352,8 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
         isSuccess = true;
       } else if (response.status === 'cancelled' || response.payment_status === 'cancelled') {
         status = 'cancelled';
+      } else if (response.status === 'pg_pending' || response.payment_status === 'pg_pending') {
+        status = 'pg_pending';
       } else {
         status = 'failed';
       }
@@ -276,15 +361,17 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
 
     console.log('Final processed status:', status);
     console.log('Is success:', isSuccess);
+    console.log('Extracted txnRef:', extractedTxnRef);
+    console.log('Extracted amount:', extractedAmount);
 
     setIsPaymentProcessed(true);
     
     // Navigate to payment response screen
     navigation.navigate('PaymentResponse', {
-      txnRef: merTxnId,
+      txnRef: extractedTxnRef,
       source: source,
       pgInfo: pgInfo,
-      amount: amount,
+      amount: extractedAmount,
       status: status
     });
   };
@@ -297,6 +384,51 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
 
   const handleWebViewLoadEnd = () => {
     setLoading(false);
+    
+    // If we're on the response.php page, try to extract response data from the page content
+    if (webViewRef.current) {
+      webViewRef.current.injectJavaScript(`
+        (function() {
+          try {
+            // Check if there's any JSON data in the page
+            const scripts = document.querySelectorAll('script');
+            for (let script of scripts) {
+              if (script.textContent && (script.textContent.includes('"program":"Admin Payment Response"') || script.textContent.includes('"program":"Get Transaction Detail"'))) {
+                console.log('Found EASEBUZZ response in script tag');
+                window.ReactNativeWebView.postMessage(script.textContent);
+                return;
+              }
+            }
+            
+            // Check if there's any JSON in the page body
+            const bodyText = document.body.innerText;
+            if (bodyText && (bodyText.includes('"program":"Admin Payment Response"') || bodyText.includes('"program":"Get Transaction Detail"'))) {
+              console.log('Found EASEBUZZ response in body text');
+              // Try to extract JSON from the body text
+              const jsonMatch = bodyText.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/);
+              if (jsonMatch) {
+                window.ReactNativeWebView.postMessage(jsonMatch[0]);
+                return;
+              }
+            }
+            
+            // Check if there's any pre tag with JSON
+            const preTags = document.querySelectorAll('pre');
+            for (let pre of preTags) {
+              if (pre.textContent && (pre.textContent.includes('"program":"Admin Payment Response"') || pre.textContent.includes('"program":"Get Transaction Detail"'))) {
+                console.log('Found EASEBUZZ response in pre tag');
+                window.ReactNativeWebView.postMessage(pre.textContent);
+                return;
+              }
+            }
+            
+            console.log('No EASEBUZZ response found in page content');
+          } catch (e) {
+            console.log('Error extracting response data:', e);
+          }
+        })();
+      `);
+    }
   };
 
   if (error) {
@@ -350,17 +482,48 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
           onLoadEnd={handleWebViewLoadEnd}
           onMessage={(event) => {
             console.log('WebView message:', event.nativeEvent.data);
+            console.log('WebView message type:', typeof event.nativeEvent.data);
+            
             // Handle any messages from the payment gateway
             try {
               const data = JSON.parse(event.nativeEvent.data);
-              if (data.status || data.payment_status) {
+              console.log('Parsed WebView message data:', data);
+              
+              // Check for EASEBUZZ specific response format
+              if (data.program === 'Admin Payment Response' || data.program === 'Get Transaction Detail') {
+                console.log('EASEBUZZ response detected in WebView message:', data);
+                if (!isPaymentProcessed) {
+                  paymentResponse(data);
+                }
+                return;
+              }
+              
+              if (data.status || data.payment_status || (data.data && data.data.txn_status)) {
                 console.log('Payment status message received:', data);
                 if (!isPaymentProcessed) {
-                  paymentResponse(data.status || data.payment_status);
+                  paymentResponse(data);
                 }
               }
             } catch (e) {
-              // Not JSON, ignore
+              console.log('WebView message is not JSON:', e);
+              // Check if it's a direct navigation command
+              if (event.nativeEvent.data.includes('navigate') || event.nativeEvent.data.includes('PaymentResponse')) {
+                console.log('Direct navigation command detected in WebView message');
+              }
+              
+              // Check if it's an EASEBUZZ response that might be malformed
+              if (event.nativeEvent.data.includes('"program":"Admin Payment Response"') || 
+                  event.nativeEvent.data.includes('"program":"Get Transaction Detail"')) {
+                console.log('EASEBUZZ response detected in raw message data');
+                try {
+                  const easebuzzData = JSON.parse(event.nativeEvent.data);
+                  if (!isPaymentProcessed) {
+                    paymentResponse(easebuzzData);
+                  }
+                } catch (parseError) {
+                  console.log('Failed to parse EASEBUZZ response from raw data:', parseError);
+                }
+              }
             }
           }}
           scalesPageToFit={true}
@@ -368,7 +531,51 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
           userAgent="Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1"
           onShouldStartLoadWithRequest={(request) => {
             console.log('WebView should start load:', request.url);
-            // Allow all requests but log them for debugging
+            
+            // Check for custom URL schemes that might navigate to PaymentResponse
+            if (request.url.startsWith('paymentresponse://') || 
+                request.url.startsWith('isp://paymentresponse') ||
+                request.url.includes('paymentresponse') ||
+                request.url.includes('admin') ||
+                request.url.includes('response.php')) {
+              console.log('Custom payment response URL detected:', request.url);
+              
+              // Try to extract JSON from URL parameters
+              try {
+                const url = new URL(request.url);
+                const jsonParam = url.searchParams.get('data') || url.searchParams.get('response') || url.searchParams.get('json') || url.searchParams.get('result');
+                if (jsonParam) {
+                  const parsedData = JSON.parse(decodeURIComponent(jsonParam));
+                  console.log('JSON data found in URL:', parsedData);
+                  if (!isPaymentProcessed) {
+                    paymentResponse(parsedData);
+                  }
+                  return false; // Prevent WebView from loading this URL
+                }
+              } catch (e) {
+                console.log('Failed to parse JSON from URL:', e);
+              }
+              
+              // Check if the URL itself contains JSON data
+              if (request.url.includes('"program":"Admin Payment Response"') || request.url.includes('"program":"Get Transaction Detail"')) {
+                console.log('EASEBUZZ Payment Response JSON found in URL');
+                try {
+                  const jsonStart = request.url.indexOf('{');
+                  const jsonEnd = request.url.lastIndexOf('}') + 1;
+                  const jsonString = request.url.substring(jsonStart, jsonEnd);
+                  const parsedData = JSON.parse(jsonString);
+                  console.log('EASEBUZZ JSON extracted from URL:', parsedData);
+                  if (!isPaymentProcessed) {
+                    paymentResponse(parsedData);
+                  }
+                  return false;
+                } catch (e) {
+                  console.log('Failed to extract EASEBUZZ JSON from URL:', e);
+                }
+              }
+            }
+            
+            // Allow all other requests
             return true;
           }}
         />

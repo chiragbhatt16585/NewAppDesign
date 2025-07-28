@@ -7,8 +7,6 @@ PODS:
   - FBLazyVector (0.80.1)
   - fmt (11.0.2)
   - glog (0.3.5)
-  - paytm_allinone_react-native (1.2.3):
-    - React
   - razorpay-pod (1.4.3)
   - RCT-Folly (2024.11.18.00):
     - boost
@@ -2549,7 +2547,6 @@ DEPENDENCIES:
   - FBLazyVector (from `../node_modules/react-native/Libraries/FBLazyVector`)
   - fmt (from `../node_modules/react-native/third-party-podspecs/fmt.podspec`)
   - glog (from `../node_modules/react-native/third-party-podspecs/glog.podspec`)
-  - paytm_allinone_react-native (from `../node_modules/paytm_allinone_react-native`)
   - RCT-Folly (from `../node_modules/react-native/third-party-podspecs/RCT-Folly.podspec`)
   - RCTDeprecation (from `../node_modules/react-native/ReactApple/Libraries/RCTFoundation/RCTDeprecation`)
   - RCTRequired (from `../node_modules/react-native/Libraries/Required`)
@@ -2653,8 +2650,6 @@ EXTERNAL SOURCES:
     :podspec: "../node_modules/react-native/third-party-podspecs/fmt.podspec"
   glog:
     :podspec: "../node_modules/react-native/third-party-podspecs/glog.podspec"
-  paytm_allinone_react-native:
-    :path: "../node_modules/paytm_allinone_react-native"
   RCT-Folly:
     :podspec: "../node_modules/react-native/third-party-podspecs/RCT-Folly.podspec"
   RCTDeprecation:
@@ -2822,7 +2817,6 @@ SPEC CHECKSUMS:
   FBLazyVector: 09f03e4b6f42f955734b64a118f86509cc719427
   fmt: a40bb5bd0294ea969aaaba240a927bd33d878cdd
   glog: 5683914934d5b6e4240e497e0f4a3b42d1854183
-  paytm_allinone_react-native: 6672463fdd8869e5bf3b6303df274008bde5800f
   razorpay-pod: af9d52abe715ed5cc3eed9fdf6fd74340443d0b9
   RCT-Folly: 59ec0ac1f2f39672a0c6e6cecdd39383b764646f
   RCTDeprecation: efa5010912100e944a7ac9a93a157e1def1988fe

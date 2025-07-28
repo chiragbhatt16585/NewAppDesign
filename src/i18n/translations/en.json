@@ -11,7 +11,8 @@
     "loading": "Loading...",
     "error": "Error",
     "success": "Success",
-    "selectLanguage": "Select your preferred language"
+    "selectLanguage": "Select your preferred language",
+    "retry": "Retry"
   },
   "home": {
     "accountSummary": "Account Summary",
@@ -222,7 +223,23 @@
   "payBill": {
     "title": "Pay Bill",
     "subtitle": "Pay your outstanding dues",
+    "activePlan": "Active Plan",
+    "planName": "Plan Name",
+    "speed": "Speed",
+    "renewDate": "Renew Date",
+    "expDate": "Expiry Date",
+    "accountSummary": "Account Summary",
+    "openingBalance": "Opening Balance",
+    "billAmount": "Bill Amount",
+    "amountPaid": "Amount Paid",
+    "proformaInvoiceAmount": "Proforma Invoice Amount",
     "currentBalance": "Current Balance",
+    "existingDues": "Existing Dues",
+    "duesAmount": "Dues Amount",
+    "payDues": "Pay Dues",
+    "selectPaymentGateway": "Select Payment Gateway",
+    "payWith": "Pay with",
+    "noGateways": "No payment gateways available",
     "dueAmount": "Due Amount",
     "payNow": "Pay Now",
     "paymentSuccess": "Payment Successful",
@@ -241,6 +258,8 @@
     "failureMessage": "There was a problem processing your payment.",
     "cancelledTitle": "Payment Cancelled",
     "cancelledMessage": "Your payment was cancelled.",
+    "pendingTitle": "Payment Pending",
+    "pendingMessage": "Your payment is being processed. Please wait.",
     "goHome": "Go to Home",
     "checkStatus": "Check Status"
   },

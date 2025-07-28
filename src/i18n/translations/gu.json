@@ -1,8 +1,8 @@
 {
   "common": {
-    "welcome": "પાછા આપનું સ્વાગત છે",
+    "welcome": "પાછા આવવા માટે સ્વાગત છે",
     "viewDetails": "વિગતો જુઓ",
-    "contactUs": "અમારો સંપર્ક કરો",
+    "contactUs": "સંપર્ક કરો",
     "logout": "લૉગઆઉટ",
     "cancel": "રદ કરો",
     "ok": "બરાબર",
@@ -10,7 +10,9 @@
     "no": "ના",
     "loading": "લોડ થઈ રહ્યું છે...",
     "error": "ભૂલ",
-    "success": "સફળ"
+    "success": "સફળતા",
+    "selectLanguage": "તમારી પસંદગીની ભાષા પસંદ કરો",
+    "retry": "ફરીથી પ્રયાસ કરો"
   },
   "home": {
     "accountSummary": "એકાઉન્ટ સારાંશ",
@@ -280,9 +282,25 @@
     "paymentSuccessMessage": "તમારો પ્લાન સફળતાપૂર્વક નવીકરણ થયો છે! તમને ટૂંક સમયમાં પુષ્ટિ ઈમેલ મળશે."
   },
   "payBill": {
-    "title": "બિલ ચુકવો",
-    "subtitle": "તમારા બાકીના બિલ ચુકવો",
+    "title": "બિલ ચૂકવો",
+    "subtitle": "તમારા બાકીના બિલનું ભુગતાન કરો",
+    "activePlan": "સક્રિય યોજના",
+    "planName": "યોજનાનું નામ",
+    "speed": "ઝડપ",
+    "renewDate": "નવીકરણ તારીખ",
+    "expDate": "સમાપ્તિ તારીખ",
+    "accountSummary": "એકાઉન્ટ સારાંશ",
+    "openingBalance": "પ્રારંભિક બેલેન્સ",
+    "billAmount": "બિલ રકમ",
+    "amountPaid": "ચૂકવેલી રકમ",
+    "proformaInvoiceAmount": "પ્રોફોર્મા ઇન્વોઇસ રકમ",
     "currentBalance": "વર્તમાન બેલેન્સ",
+    "existingDues": "હાલનું બાકી",
+    "duesAmount": "બાકી રકમ",
+    "payDues": "બાકી ચૂકવો",
+    "selectPaymentGateway": "ચુકવણી ગેટવે પસંદ કરો",
+    "payWith": "થી ચૂકવો",
+    "noGateways": "કોઈ ચુકવણી ગેટવે ઉપલબ્ધ નથી",
     "dueAmount": "બાકી રકમ",
     "payNow": "હવે ચૂકવો",
     "paymentSuccess": "ચુકવણી સફળ",
@@ -301,6 +319,8 @@
     "failureMessage": "તમારી ચુકવણી પ્રક્રિયા કરવામાં સમસ્યા આવી.",
     "cancelledTitle": "ચુકવણી રદ",
     "cancelledMessage": "તમારી ચુકવણી રદ કરવામાં આવી.",
+    "pendingTitle": "ચુકવણી બાકી",
+    "pendingMessage": "તમારી ચુકવણી પ્રક્રિયા કરવામાં આવી રહી છે. કૃપા કરીને રાહ જુઓ.",
     "goHome": "હોમ પર જાઓ",
     "checkStatus": "સ્થિતિ તપાસો"
   },

@@ -1,6 +1,6 @@
 {
   "common": {
-    "welcome": "वापस आपका स्वागत है",
+    "welcome": "वापस आने पर स्वागत है",
     "viewDetails": "विवरण देखें",
     "contactUs": "संपर्क करें",
     "logout": "लॉगआउट",
@@ -10,7 +10,9 @@
     "no": "नहीं",
     "loading": "लोड हो रहा है...",
     "error": "त्रुटि",
-    "success": "सफल"
+    "success": "सफलता",
+    "selectLanguage": "अपनी पसंदीदा भाषा चुनें",
+    "retry": "पुनः प्रयास करें"
   },
   "home": {
     "accountSummary": "खाता सारांश",
@@ -280,13 +282,29 @@
     "paymentSuccessMessage": "आपकी योजना सफलतापूर्वक नवीनीकरण हो गई है! आपको शीघ्र ही एक पुष्टि ईमेल प्राप्त होगा।"
   },
   "payBill": {
-    "title": "बिल भुगतान करें",
+    "title": "बिल भुगतान",
     "subtitle": "अपने बकाया बिल का भुगतान करें",
-    "currentBalance": "वर्तमान बैलेंस",
+    "activePlan": "सक्रिय योजना",
+    "planName": "योजना का नाम",
+    "speed": "गति",
+    "renewDate": "नवीनीकरण तिथि",
+    "expDate": "समाप्ति तिथि",
+    "accountSummary": "खाता सारांश",
+    "openingBalance": "प्रारंभिक शेष",
+    "billAmount": "बिल राशि",
+    "amountPaid": "भुगतान की गई राशि",
+    "proformaInvoiceAmount": "प्रोफॉर्मा चालान राशि",
+    "currentBalance": "वर्तमान शेष",
+    "existingDues": "मौजूदा बकाया",
+    "duesAmount": "बकाया राशि",
+    "payDues": "बकाया भुगतान करें",
+    "selectPaymentGateway": "भुगतान गेटवे चुनें",
+    "payWith": "भुगतान करें",
+    "noGateways": "कोई भुगतान गेटवे उपलब्ध नहीं है",
     "dueAmount": "बकाया राशि",
     "payNow": "अभी भुगतान करें",
     "paymentSuccess": "भुगतान सफल",
-    "paymentSuccessMessage": "आपका भुगतान सफलतापूर्वक प्रोसेस हो गया है! आपको जल्द ही एक पुष्टि ईमेल प्राप्त होगा।"
+    "paymentSuccessMessage": "आपका भुगतान सफलतापूर्वक प्रोसेस हो गया है! आपको जल्द ही पुष्टि ईमेल मिलेगा।"
   },
   "paymentLink": {
     "title": "भुगतान गेटवे",
@@ -301,6 +319,8 @@
     "failureMessage": "आपके भुगतान को संसाधित करने में समस्या हुई।",
     "cancelledTitle": "भुगतान रद्द",
     "cancelledMessage": "आपका भुगतान रद्द कर दिया गया।",
+    "pendingTitle": "भुगतान लंबित",
+    "pendingMessage": "आपका भुगतान संसाधित किया जा रहा है। कृपया प्रतीक्षा करें।",
     "goHome": "होम पर जाएं",
     "checkStatus": "स्थिति जांचें"
   },
