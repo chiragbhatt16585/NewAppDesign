@@ -26,6 +26,8 @@ import AuthSetupScreen from '../screens/AuthSetupScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import AIDemoScreen from '../screens/AIDemoScreen';
 import UpdateSSIDScreen from '../screens/UpdateSSIDScreen';
+import OffersScreen from '../screens/OffersScreen';
+import PartnerAppsScreen from '../screens/PartnerAppsScreen';
 
 const Stack = createStackNavigator();
 
@@ -120,6 +122,8 @@ const AppNavigator: React.FC<AppNavigatorProps> = ({ initialRoute }) => {
         <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: false }} />
         <Stack.Screen name="AIDemo" component={AIDemoScreen} options={{ headerShown: false }} />
         <Stack.Screen name="UpdateSSID" component={UpdateSSIDScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Offers" component={OffersScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="PartnerApps" component={PartnerAppsScreen} options={{ headerShown: false }} />
         <Stack.Screen name="MoreOptions" component={MoreOptionsScreen} />
         <Stack.Screen name="AccountDetails" component={AccountDetailsScreen} />
         <Stack.Screen name="Ledger" component={LedgerScreen} />

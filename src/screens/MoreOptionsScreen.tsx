@@ -68,6 +68,14 @@ const MoreOptionsScreen = ({navigation}: any) => {
     navigation.navigate('UpdateSSID');
   };
 
+  const handleOffers = () => {
+    navigation.navigate('Offers');
+  };
+
+  const handlePartnerApps = () => {
+    navigation.navigate('PartnerApps');
+  };
+
   const handleLogout = async () => {
     Alert.alert(
       t('common.logout'),
@@ -151,6 +159,15 @@ const MoreOptionsScreen = ({navigation}: any) => {
       icon: '👥',
       onPress: handleReferFriend,
     },
+    
+    {
+      id: 'update-ssid',
+      title: 'Update SSID',
+      subtitle: 'Configure WiFi settings',
+      icon: '📶',
+      onPress: handleUpdateSSID,
+    },
+    
     {
       id: 'speedtest',
       title: t('more.speedTest'),
@@ -158,12 +175,19 @@ const MoreOptionsScreen = ({navigation}: any) => {
       icon: '⚡',
       onPress: handleSpeedTest,
     },
+    // {
+    //   id: 'offers',
+    //   title: 'Offers & Rewards',
+    //   subtitle: 'Earn extra income',
+    //   icon: '💰',
+    //   onPress: handleOffers,
+    // },
     {
-      id: 'update-ssid',
-      title: 'Update SSID',
-      subtitle: 'Configure WiFi settings',
-      icon: '📶',
-      onPress: handleUpdateSSID,
+      id: 'partner-apps',
+      title: 'Partner Apps',
+      subtitle: 'Download Partner Apps',
+      icon: '📱',
+      onPress: handlePartnerApps,
     },
     {
       id: 'settings',
