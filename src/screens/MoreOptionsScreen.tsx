@@ -64,6 +64,10 @@ const MoreOptionsScreen = ({navigation}: any) => {
     navigation.navigate('AIDemo');
   };
 
+  const handleUpdateSSID = () => {
+    navigation.navigate('UpdateSSID');
+  };
+
   const handleLogout = async () => {
     Alert.alert(
       t('common.logout'),
@@ -154,13 +158,20 @@ const MoreOptionsScreen = ({navigation}: any) => {
       icon: '⚡',
       onPress: handleSpeedTest,
     },
-            {
-          id: 'settings',
-          title: 'Settings',
-          subtitle: 'Language, Theme & Security',
-          icon: '⚙️',
-          onPress: handleSettings,
-        },
+    {
+      id: 'update-ssid',
+      title: 'Update SSID',
+      subtitle: 'Configure WiFi settings',
+      icon: '📶',
+      onPress: handleUpdateSSID,
+    },
+    {
+      id: 'settings',
+      title: 'Settings',
+      subtitle: 'Language, Theme & Security',
+      icon: '⚙️',
+      onPress: handleSettings,
+    },
         // {
         //   id: 'ai-demo',
         //   title: 'AI Features Demo',

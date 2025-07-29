@@ -1729,6 +1729,108 @@ class ApiService {
       }
     });
   }
+
+  async getCPESSIDDetails(realm: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const username = await sessionManager.getUsername();
+      if (!username) {
+        throw new Error('No username available');
+      }
+      
+      const data = {
+        username,
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+
+      try {
+        console.log('=== GET CPE SSID DETAILS ===');
+        console.log('Username:', username);
+        console.log('Realm:', realm);
+        
+        const res = await fetch(`${url}/selfcareGetCPESSIDDetails`, options);
+        const response = await res.json();
+        
+        console.log('Get CPE SSID details API response:', response);
+        
+        if (response.status !== 'ok' && response.code !== 200) {
+          console.log('Get CPE SSID details API error:', response.message);
+          throw new Error('Could not find SSID details. Please try again.');
+        } else {
+          console.log('SSID details retrieved successfully');
+          return response.data;
+        }
+      } catch (e: any) {
+        console.error('Get CPE SSID details error:', e);
+        const msg = isNetworkError(e) ? networkErrorMsg : e.message;
+        throw new Error(msg);
+      }
+    });
+  }
+
+  async updateSSID(data: {
+    id: string;
+    index: number;
+    ssid: string;
+    password: string;
+  }, realm: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const username = await sessionManager.getUsername();
+      if (!username) {
+        throw new Error('No username available');
+      }
+      
+      const requestData = {
+        username,
+        id: data.id,
+        index: data.index,
+        ssid: data.ssid,
+        password: data.password,
+        status: 'enabled',
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(requestData),
+        timeout
+      };
+
+      try {
+        console.log('=== UPDATE SSID ===');
+        console.log('Username:', username);
+        console.log('SSID Index:', data.index);
+        console.log('SSID Name:', data.ssid);
+        console.log('Realm:', realm);
+        
+        const res = await fetch(`${url}/selfcareUpdateSSID`, options);
+        const response = await res.json();
+        
+        console.log('Update SSID API response:', response);
+        
+        if (response.status !== 'ok' && response.code !== 200) {
+          console.log('Update SSID API error:', response.message);
+          throw new Error(response.message || 'Failed to update SSID');
+        } else {
+          console.log('SSID updated successfully');
+          return response.data;
+        }
+      } catch (e: any) {
+        console.error('Update SSID error:', e);
+        const msg = isNetworkError(e) ? networkErrorMsg : e.message;
+        throw new Error(msg);
+      }
+    });
+  }
 }
 
 // Export singleton instance
