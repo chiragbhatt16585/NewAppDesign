@@ -852,15 +852,15 @@ const HomeScreen = ({navigation}: any) => {
           )}
         </View>
 
-        {/* More Options
+        {/* More Options*/}
         <View style={styles.section}>
           <TouchableOpacity 
-            style={[styles.moreButton, {backgroundColor: colors.card, shadowColor: colors.shadow}]} 
+            style={[styles.moreOptionsButton, {backgroundColor: colors.card, shadowColor: colors.shadow}]} 
             onPress={handleMore}>
-            <Text style={[styles.moreButtonText, {color: colors.text}]}>{t('more.title')}</Text>
+            <Text style={[styles.moreOptionsButtonText, {color: colors.text}]}>{t('more.title')}</Text>
             <Text style={[styles.arrowText, {color: colors.textSecondary}]}>›</Text>
           </TouchableOpacity>
-        </View> */}
+        </View> 
 
         {/* Usage Statistics */}
         <View style={[styles.usageCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
@@ -1228,6 +1228,24 @@ const styles = StyleSheet.create({
 
   arrowText: {
     fontSize: 20,
+  },
+  moreOptionsButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderRadius: 12,
+    padding: 16,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  moreOptionsButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   usageCard: {
     marginHorizontal: 20,

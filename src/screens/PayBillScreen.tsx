@@ -15,15 +15,11 @@ import {useTheme} from '../utils/ThemeContext';
 import {getThemeColors} from '../utils/themeStyles';
 import CommonHeader from '../components/CommonHeader';
 import {useTranslation} from 'react-i18next';
+import { handlePayment } from '../services/commonfunction';
+import { getClientConfig } from '../config/client-config';
 import sessionManager from '../services/sessionManager';
 import {apiService} from '../services/api';
-
-const paymentGateways = [
-  { key: 'atom', label: 'ATOM' },
-  { key: 'paytm', label: 'Paytm' },
-  { key: 'easebuzz', label: 'EASEBUZZ' },
-  { key: 'razorpay', label: 'RazorPay' },
-];
+import { credentialStorage } from '../services/credentialStorage';
 
 const PayBillScreen = ({navigation}: any) => {
   const {isDark} = useTheme();
@@ -31,6 +27,9 @@ const PayBillScreen = ({navigation}: any) => {
   const {t} = useTranslation();
   const [showPaymentModal, setShowPaymentModal] = React.useState(false);
   const [selectedGateway, setSelectedGateway] = React.useState('');
+  const [paymentGateways, setPaymentGateways] = React.useState<any[]>([]);
+  const [loadingGateways, setLoadingGateways] = React.useState(false);
+  const [gatewayError, setGatewayError] = React.useState('');
   const [authData, setAuthData] = React.useState<any>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -64,22 +63,133 @@ const PayBillScreen = ({navigation}: any) => {
     fetchData();
   }, []);
 
-  const handlePayDues = () => {
-    setShowPaymentModal(true);
+  const handlePayDues = async () => {
+    setLoadingGateways(true);
+    setGatewayError('');
+    setPaymentGateways([]);
+    
+    try {
+      // First, check if user is logged in
+      const isLoggedIn = await sessionManager.isLoggedIn();
+      if (!isLoggedIn) {
+        setGatewayError('Please login again to continue with payment.');
+        setLoadingGateways(false);
+        return;
+      }
+
+      // Get current session
+      const session = await sessionManager.getCurrentSession();
+      if (!session) {
+        setGatewayError('Session not found. Please login again.');
+        setLoadingGateways(false);
+        return;
+      }
+
+      console.log('=== PAYMENT GATEWAY DEBUG ===');
+      console.log('Current session username:', session.username);
+      console.log('Session isLoggedIn:', session.isLoggedIn);
+      
+      // Get admin_login_id from authData
+      let adminId = authData?.admin_login_id;
+      if (!adminId) {
+        console.log('No admin_login_id in authData, fetching from authUser...');
+        try {
+          const authDataRefresh = await apiService.authUser(session.username);
+          adminId = authDataRefresh.admin_login_id;
+          console.log('Admin ID fetched from authUser:', adminId);
+        } catch (e: any) {
+          console.error('Failed to fetch admin ID:', e);
+          setGatewayError('Could not determine admin. Please try again.');
+          setLoadingGateways(false);
+          return;
+        }
+      }
+
+      // Check if we have stored credentials for token regeneration
+      const creds = await credentialStorage.getCredentials();
+      if (!creds) {
+        console.log('No stored credentials found - this may cause token regeneration issues');
+      } else {
+        console.log('Stored credentials found for user:', creds.username);
+      }
+
+      const clientConfig = getClientConfig();
+      const realm = clientConfig.clientId;
+      console.log('Using realm:', realm);
+      console.log('Using admin ID:', adminId);
+      
+      const gateways = await apiService.paymentGatewayOptions(adminId, realm);
+      console.log('Payment gateways fetched successfully:', gateways?.length || 0);
+      
+      setPaymentGateways(gateways || []);
+      setShowPaymentModal(true);
+    } catch (err: any) {
+      console.error('Payment gateway fetch error:', err);
+      
+      // Provide more specific error messages
+      if (err.message?.includes('Invalid User')) {
+        setGatewayError('Your session has expired. Please login again to continue.');
+      } else if (err.message?.includes('network')) {
+        setGatewayError('Network error. Please check your internet connection and try again.');
+      } else {
+        setGatewayError(err.message || 'Failed to load payment gateways. Please try again.');
+      }
+    } finally {
+      setLoadingGateways(false);
+    }
   };
 
-  const handleGatewayPay = () => {
+  const handleGatewayPay = async () => {
     setShowPaymentModal(false);
-    Alert.alert(
-      t('payBill.paymentSuccess'),
-      t('payBill.paymentSuccessMessage'),
-      [
-        {
-          text: t('common.ok'),
-          onPress: () => navigation.navigate('Home'),
-        },
-      ]
-    );
+    
+    // Get username from current session
+    const session = await sessionManager.getCurrentSession();
+    if (!session || !session.username) {
+      Alert.alert('Error', 'Please login again to continue with payment.');
+      return;
+    }
+    
+    const clientConfig = getClientConfig();
+    const realm = clientConfig.clientId;
+    const selectedGatewayObj = paymentGateways.find(g => g.id === selectedGateway);
+    
+    // Check ATOM minimum amount requirement
+    if (selectedGatewayObj?.gw_display_name?.toLowerCase().includes('atom') && existingDues < 50) {
+      Alert.alert(
+        'ATOM Payment Gateway',
+        'ATOM requires minimum Rs. 50 for payment. Please select a different payment gateway or contact support.',
+        [
+          {
+            text: 'OK',
+            onPress: () => setShowPaymentModal(true), // Reopen modal to select different gateway
+          },
+        ]
+      );
+      return;
+    }
+    
+    const params = {
+      amount: existingDues,
+      adminname: authData?.admin_login_id,
+      username: session.username,
+      planname: planName,
+      selectedPGType: [{ label: selectedGatewayObj.gw_display_name, value: selectedGatewayObj.id }],
+      payActionType: 'payDues',
+    };
+    
+    console.log('=== PAYMENT DUES DEBUG ===');
+    console.log('Payment Type: PAY DUES (not renewal)');
+    console.log('Amount:', existingDues);
+    console.log('Admin Login ID:', authData?.admin_login_id);
+    console.log('Username:', session.username);
+    console.log('Plan Name:', planName);
+    console.log('Selected Gateway:', selectedGatewayObj);
+    console.log('Pay Action Type:', 'payDues');
+    console.log('Realm:', realm);
+    console.log('Full Params Object:', JSON.stringify(params, null, 2));
+    console.log('=== END PAYMENT DUES DEBUG ===');
+    
+    handlePayment(params, 'payDues', navigation, realm);
   };
 
   if (isLoading) {
@@ -219,22 +329,30 @@ const PayBillScreen = ({navigation}: any) => {
           <View style={{flex: 1, backgroundColor: 'rgba(0,0,0,0.4)'}} />
         </TouchableWithoutFeedback>
         <View style={styles.paymentModalContainer}>
-          <Text style={styles.paymentModalTitle}>{t('payBill.selectPaymentGateway')}</Text>
-          {paymentGateways.map(gateway => (
-            <TouchableOpacity
-              key={gateway.key}
-              style={[styles.gatewayOption, selectedGateway === gateway.key && {backgroundColor: colors.primaryLight}]}
-              onPress={() => setSelectedGateway(gateway.key)}>
-              <Text style={[styles.gatewayLabel, {color: selectedGateway === gateway.key ? colors.primary : colors.text}]}>{gateway.label}</Text>
-              {selectedGateway === gateway.key && <Text style={{color: colors.primary, fontWeight: 'bold'}}>✓</Text>}
-            </TouchableOpacity>
-          ))}
+          <Text style={styles.paymentModalTitle}>Select Payment Gateway</Text>
+          {loadingGateways ? (
+            <Text style={{marginVertical: 20}}>{t('common.loading') || 'Loading...'}</Text>
+          ) : gatewayError ? (
+            <Text style={{color: 'red', marginVertical: 20}}>{gatewayError}</Text>
+          ) : paymentGateways.length === 0 ? (
+            <Text style={{marginVertical: 20}}>{t('payBill.noGateways') || 'No gateways available'}</Text>
+          ) : (
+            paymentGateways.map((gateway: any) => (
+              <TouchableOpacity
+                key={gateway.id}
+                style={[styles.gatewayOption, selectedGateway === gateway.id && {backgroundColor: colors.primaryLight}]}
+                onPress={() => setSelectedGateway(gateway.id)}>
+                <Text style={[styles.gatewayLabel, {color: selectedGateway === gateway.id ? colors.primary : colors.text}]}>{gateway.gw_display_name}</Text>
+                {selectedGateway === gateway.id && <Text style={{color: colors.primary, fontWeight: 'bold'}}>✓</Text>}
+              </TouchableOpacity>
+            ))
+          )}
           <TouchableOpacity
             style={[styles.paymentGatewayButton, {backgroundColor: selectedGateway ? colors.primary : colors.border}]}
             disabled={!selectedGateway}
             onPress={handleGatewayPay}>
-            <Text style={[styles.paymentGatewayButtonText, {color: selectedGateway ? '#fff' : colors.textSecondary}]}> 
-              {t('payBill.payWith')} {selectedGateway ? paymentGateways.find(g => g.key === selectedGateway)?.label : ''}
+            <Text style={[styles.paymentGatewayButtonText, {color: selectedGateway ? '#fff' : colors.textSecondary}]}>
+              Pay with {selectedGateway ? paymentGateways.find(g => g.id === selectedGateway)?.gw_display_name : ''}
             </Text>
           </TouchableOpacity>
         </View>
