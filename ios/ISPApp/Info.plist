@@ -57,5 +57,91 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>paymentresponse</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>paymentresponse</string>
+				<string>isp</string>
+				<string>dna-infotel</string>
+			</array>
+		</dict>
+	</array>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<!-- Google Pay / Tez -->
+		<string>googlepay</string>
+		<string>tez</string>
+		<string>gpay</string>
+		
+		<!-- Popular UPI Apps -->
+		<string>phonepe</string>
+		<string>phonepepay</string>
+		<string>cred</string>
+		<string>credpay</string>
+		<string>paytm</string>
+		<string>paytmmoney</string>
+		<string>paytmmp</string>
+		<string>paytmwallet</string>
+		<string>paytmbank</string>
+		<string>amazonpay</string>
+		<string>amazonpaylite</string>
+		<string>bhim</string>
+		<string>bhimupi</string>
+		<string>upi</string>
+		<string>mobikwik</string>
+		<string>freecharge</string>
+		<string>airtelpay</string>
+		<string>airtel</string>
+		<string>jio</string>
+		<string>jiopay</string>
+		<string>jiomoney</string>
+		
+		<!-- International Payment Apps -->
+		<string>razorpay</string>
+		<string>stripe</string>
+		<string>square</string>
+		<string>paypal</string>
+		
+		<!-- Bank Apps -->
+		<string>yono</string>
+		<string>icicibank</string>
+		<string>hdfcbank</string>
+		<string>sbiyono</string>
+		<string>axisbank</string>
+		<string>kotakbank</string>
+		<string>pnb</string>
+		<string>canarabank</string>
+		<string>unionbank</string>
+		<string>idfcbank</string>
+		<string>yesbank</string>
+		<string>indusindbank</string>
+		<string>federalbank</string>
+		<string>karnatakabank</string>
+		<string>southindianbank</string>
+		<string>tmb</string>
+		<string>karurvysyabank</string>
+		<string>lakshmivilasbank</string>
+		<string>dcbbank</string>
+		<string>jammukashmir</string>
+		<string>pandcbank</string>
+		<string>andhrabank</string>
+		<string>corporationbank</string>
+		<string>syndicatebank</string>
+		<string>vijayabank</string>
+		<string>dhanlaxmibank</string>
+		
+		<!-- Android Intent and Market -->
+		<string>intent</string>
+		<string>market</string>
+	</array>
+	<key>UIAppFonts</key>
+	<array>
+		<string>Feather.ttf</string>
+		<string>MaterialCommunityIcons.ttf</string>
+	</array>
 </dict>
 </plist> 

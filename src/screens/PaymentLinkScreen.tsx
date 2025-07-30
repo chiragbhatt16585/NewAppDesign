@@ -6,6 +6,8 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  AppState,
+  TouchableOpacity,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -27,6 +29,8 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [paymentTimeout, setPaymentTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [isOnPaymentForm, setIsOnPaymentForm] = useState(false);
+  const [appState, setAppState] = useState(AppState.currentState);
 
   const { source, pgInfo, amount, merTxnId } = route.params || {};
 
@@ -34,17 +38,9 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
     if (!source || !pgInfo || !amount || !merTxnId) {
       setError('Invalid payment parameters');
       setLoading(false);
-    } else {
-      // Set a timeout to automatically check payment status after 30 seconds
-      const timeout = setTimeout(() => {
-        console.log('Payment timeout reached, checking status automatically');
-        if (!isPaymentProcessed) {
-          runPayments();
-        }
-      }, 30000); // 30 seconds timeout
-      
-      setPaymentTimeout(timeout);
     }
+    // Remove automatic timeout-based payment status checking
+    // Let the user complete the payment flow naturally
 
     // Cleanup timeout on unmount
     return () => {
@@ -53,6 +49,37 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
       }
     };
   }, [source, pgInfo, amount, merTxnId]);
+
+  // Remove timeout adjustment since we're not using automatic timeouts
+  // useEffect(() => {
+  //   if (isOnPaymentForm && paymentTimeout) {
+  //     console.log('User is on payment form, extending timeout to 2 minutes');
+  //     // Clear existing timeout and set a longer one
+  //     clearTimeout(paymentTimeout);
+  //     const extendedTimeout = setTimeout(() => {
+  //       console.log('Extended payment timeout reached, checking status');
+  //       if (!isPaymentProcessed) {
+  //         runPayments();
+  //       }
+  //     }, 120000); // 2 minutes for payment forms
+  //     
+  //     setPaymentTimeout(extendedTimeout);
+  //   }
+  // }, [isOnPaymentForm]);
+
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState: string) => {
+      console.log('App state changed from', appState, 'to', nextAppState);
+      
+      // Remove automatic payment status checking to prevent premature status checks
+      // Only check status when there's actual indication of payment completion
+      
+      setAppState(nextAppState as any);
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => subscription?.remove();
+  }, [appState, isOnPaymentForm, isPaymentProcessed]);
 
   const processPayment = (event: any) => {
     console.log('Payment navigation event:', event);
@@ -63,6 +90,9 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
       console.log('Payment response endpoint detected');
       console.log('Response URL:', eventURL.href);
       console.log('Response URL search params:', eventURL.search);
+      
+      // Reset payment form state since we're now on a response page
+      setIsOnPaymentForm(false);
       
       // Check if there's any response data in the URL
       const urlParams = new URLSearchParams(eventURL.search);
@@ -91,6 +121,67 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
         runPayments();
       }
     } 
+    // Handle EASEBUZZ specific response URLs
+    else if (eventURL.href.includes('pay.easebuzz.in/response/') || 
+             eventURL.href.includes('pay.easebuzz.in/webservice/')) {
+      console.log('EASEBUZZ response URL detected:', eventURL.href);
+      // Reset payment form state since we're now on a response page
+      setIsOnPaymentForm(false);
+      if (!isPaymentProcessed) {
+        // Wait a bit for the response to be processed
+        setTimeout(() => {
+          runPayments();
+        }, 3000);
+      }
+    }
+    // Handle 3D Secure authentication pages (common with EASEBUZZ)
+    else if (eventURL.href.includes('securehdfc-acs2ui') || 
+             eventURL.href.includes('acs.services') ||
+             eventURL.href.includes('3dsecure') ||
+             eventURL.href.includes('vbv') ||
+             eventURL.href.includes('ipg.bobgateway.com')) {
+      console.log('3D Secure authentication page detected:', eventURL.href);
+      // Don't process payment yet, let the 3D Secure flow complete
+      console.log('Waiting for 3D Secure authentication to complete...');
+    }
+    // Handle return from third-party payment apps
+    else if (eventURL.href.includes('return') || 
+             eventURL.href.includes('callback') ||
+             eventURL.href.includes('redirect') ||
+             eventURL.href.includes('success') ||
+             eventURL.href.includes('failure') ||
+             eventURL.href.includes('cancel') ||
+             eventURL.href.includes('status')) {
+      console.log('Return from third-party payment app detected:', eventURL.href);
+      // Reset payment form state since we're returning from external app
+      setIsOnPaymentForm(false);
+      // Only check payment status if we're on an actual response page
+      if (eventURL.href.includes('response') || eventURL.href.includes('callback') || eventURL.href.includes('return')) {
+        console.log('Actual payment response detected, checking status...');
+        setTimeout(() => {
+          if (!isPaymentProcessed) {
+            runPayments();
+          }
+        }, 3000);
+      }
+    }
+    // Handle OTP pages and payment forms - don't process payment yet
+    else if (eventURL.href.includes('otp') || 
+             eventURL.href.includes('verification') ||
+             eventURL.href.includes('authenticate') ||
+             eventURL.href.includes('verify') ||
+             eventURL.href.includes('sms') ||
+             eventURL.href.includes('mobile') ||
+             eventURL.href.includes('phone') ||
+             eventURL.href.includes('card') ||
+             eventURL.href.includes('payment') ||
+             eventURL.href.includes('gateway') ||
+             eventURL.href.includes('form')) {
+      console.log('OTP/Payment form page detected:', eventURL.href);
+      console.log('Allowing user to complete OTP/payment form...');
+      setIsOnPaymentForm(true);
+      // Don't process payment yet, let the user complete the form/OTP
+    }
     // Check for client-specific success URLs
     else if (eventURL.href.includes('http://selfcare.radinet.in/') && 
              !eventURL.pathname.includes('EBSRedirect.php') && 
@@ -110,11 +201,14 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
         runPayments();
       }
     }
-    // Handle any response that contains payment status indicators
-    else if (eventURL.searchParams.get('status') || 
+    // Handle any response that contains payment status indicators - but only on actual response pages
+    else if ((eventURL.searchParams.get('status') || 
              eventURL.searchParams.get('payment_status') ||
-             eventURL.searchParams.get('txn_status')) {
-      console.log('Payment status parameter detected in URL');
+             eventURL.searchParams.get('txn_status')) &&
+             (eventURL.href.includes('response') || 
+              eventURL.href.includes('callback') ||
+              eventURL.href.includes('return'))) {
+      console.log('Payment status parameter detected in response URL');
       if (!isPaymentProcessed) {
         runPayments();
       }
@@ -142,44 +236,9 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
 
       // For EASEBUZZ, try to get the response data first
       if (pgInfo === 'EASEBUZZ') {
-        console.log('EASEBUZZ detected, checking for response data...');
-        
-        // Wait a bit for the page to load completely
-        setTimeout(async () => {
-          // Check payment status once to get the response data
-          try {
-            const paymentStatus = await apiService.getPaymentStatus(session.username, merTxnId, realm);
-            console.log('EASEBUZZ payment status check result:', paymentStatus);
-            
-            // If we get a response with data, use it
-            if (typeof paymentStatus === 'object' && paymentStatus.data) {
-              console.log('EASEBUZZ response data found:', paymentStatus);
-              paymentResponse(paymentStatus);
-              return;
-            }
-            
-            // If we get a status string, create a response object
-            if (typeof paymentStatus === 'string') {
-              const responseData = {
-                program: 'Get Transaction Detail',
-                data: [{
-                  txn_id: merTxnId,
-                  amount: amount,
-                  txn_status: paymentStatus,
-                  pg_info: 'EASEBUZZ'
-                }]
-              };
-              console.log('Created EASEBUZZ response from status:', responseData);
-              paymentResponse(responseData);
-              return;
-            }
-          } catch (error) {
-            console.log('Error getting EASEBUZZ response data:', error);
-          }
-          
-          // Fallback to retry logic
-          await checkPaymentStatusWithRetry(session.username, merTxnId, realm);
-        }, 2000);
+        console.log('EASEBUZZ detected, waiting for actual payment completion...');
+        // Remove automatic status checking - let the user complete the payment flow naturally
+        // Only check status when there's actual indication of payment completion from the gateway
       } else {
         // Use the sophisticated payment status checking logic from old implementation
         await checkPaymentStatusWithRetry(session.username, merTxnId, realm);
@@ -204,8 +263,16 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
           platform: Platform.OS
         });
         
-        // Normalize the payment status to lowercase for consistent comparison
-        const normalizedStatus = (paymentStatus || '').toLowerCase().trim();
+        // Handle full response object from API
+        if (typeof paymentStatus === 'object' && paymentStatus.data) {
+          console.log('Full payment status response received:', paymentStatus);
+          paymentResponse(paymentStatus);
+          return;
+        }
+        
+        // Handle string status (fallback)
+        const statusString = typeof paymentStatus === 'string' ? paymentStatus : '';
+        const normalizedStatus = statusString.toLowerCase().trim();
         console.log('Normalized Payment Status:', normalizedStatus);
         
         // Platform-specific status handling
@@ -321,11 +388,24 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
     let extractedAmount = amount;
 
     // Handle Easebuzz response format first
-    if (typeof response === 'object' && response !== null && response.data && response.data.txn_status) {
+    if (typeof response === 'object' && response !== null && response.data) {
       console.log('Processing Easebuzz response:', response);
-      status = response.data.txn_status;
-      extractedTxnRef = response.data.txn_id || merTxnId;
-      extractedAmount = response.data.amount || amount;
+      
+      // Handle both array and object data formats
+      if (Array.isArray(response.data) && response.data.length > 0) {
+        // Handle Get Transaction Detail format (array)
+        const transactionData = response.data[0];
+        status = transactionData.txn_status || transactionData.status;
+        extractedTxnRef = transactionData.txn_id || transactionData.txn_ref || merTxnId;
+        extractedAmount = transactionData.amount || amount;
+        console.log('EASEBUZZ array response processed:', { status, extractedTxnRef, extractedAmount });
+      } else if (response.data.txn_status) {
+        // Handle Admin Payment Response format (object)
+        status = response.data.txn_status;
+        extractedTxnRef = response.data.txn_id || merTxnId;
+        extractedAmount = response.data.amount || amount;
+        console.log('EASEBUZZ object response processed:', { status, extractedTxnRef, extractedAmount });
+      }
       
       if (status === 'success') {
         isSuccess = true;
@@ -384,6 +464,9 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
 
   const handleWebViewLoadEnd = () => {
     setLoading(false);
+    
+    // Remove automatic payment status checking to prevent premature status checks
+    // Only check status when there's actual indication of payment completion
     
     // If we're on the response.php page, try to extract response data from the page content
     if (webViewRef.current) {
@@ -480,6 +563,13 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
           onNavigationStateChange={processPayment}
           onError={handleWebViewError}
           onLoadEnd={handleWebViewLoadEnd}
+          scalesPageToFit={true}
+          allowsBackForwardNavigationGestures={false}
+          userAgent="Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1"
+          // Enhanced settings for EASEBUZZ compatibility
+          allowsInlineMediaPlayback={true}
+          mediaPlaybackRequiresUserAction={false}
+          allowsProtectedMedia={true}
           onMessage={(event) => {
             console.log('WebView message:', event.nativeEvent.data);
             console.log('WebView message type:', typeof event.nativeEvent.data);
@@ -526,19 +616,75 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
               }
             }
           }}
-          scalesPageToFit={true}
-          allowsBackForwardNavigationGestures={false}
-          userAgent="Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1"
+          // Additional headers for better compatibility
           onShouldStartLoadWithRequest={(request) => {
             console.log('WebView should start load:', request.url);
             
-            // Check for custom URL schemes that might navigate to PaymentResponse
+            // Allow third-party payment apps to open
+            if (request.url.startsWith('googlepay://') ||
+                request.url.startsWith('tez://') ||
+                request.url.startsWith('gpay://') ||
+                request.url.startsWith('phonepe://') ||
+                request.url.startsWith('phonepepay://') ||
+                request.url.startsWith('cred://') ||
+                request.url.startsWith('credpay://') ||
+                request.url.startsWith('paytm://') ||
+                request.url.startsWith('paytmmoney://') ||
+                request.url.startsWith('paytmmp://') ||
+                request.url.startsWith('paytmwallet://') ||
+                request.url.startsWith('paytmbank://') ||
+                request.url.startsWith('amazonpay://') ||
+                request.url.startsWith('amazonpaylite://') ||
+                request.url.startsWith('bhim://') ||
+                request.url.startsWith('bhimupi://') ||
+                request.url.startsWith('upi://') ||
+                request.url.startsWith('mobikwik://') ||
+                request.url.startsWith('freecharge://') ||
+                request.url.startsWith('airtelpay://') ||
+                request.url.startsWith('airtel://') ||
+                request.url.startsWith('jio://') ||
+                request.url.startsWith('jiopay://') ||
+                request.url.startsWith('jiomoney://') ||
+                request.url.startsWith('intent://') ||
+                request.url.startsWith('market://') ||
+                request.url.includes('play.google.com/store/apps') ||
+                request.url.includes('apps.apple.com/app/')) {
+              console.log('Third-party payment app detected:', request.url);
+              console.log('Allowing external app to open...');
+              return false; // Prevent WebView from loading, allow external app to open
+            }
+            
+            // Handle deep links and universal links for payment apps
+            if (request.url.includes('googlepay') ||
+                request.url.includes('tez') ||
+                request.url.includes('gpay') ||
+                request.url.includes('phonepe') ||
+                request.url.includes('cred') ||
+                request.url.includes('paytm') ||
+                request.url.includes('amazonpay') ||
+                request.url.includes('bhim') ||
+                request.url.includes('upi') ||
+                request.url.includes('mobikwik') ||
+                request.url.includes('freecharge') ||
+                request.url.includes('airtel') ||
+                request.url.includes('jio') ||
+                request.url.includes('razorpay') ||
+                request.url.includes('stripe') ||
+                request.url.includes('square') ||
+                request.url.includes('paypal')) {
+              console.log('Payment app deep link detected:', request.url);
+              console.log('Allowing external payment app to open...');
+              return false; // Prevent WebView from loading, allow external app to open
+            }
+            
+            // Check for specific payment response URLs only
             if (request.url.startsWith('paymentresponse://') || 
                 request.url.startsWith('isp://paymentresponse') ||
-                request.url.includes('paymentresponse') ||
-                request.url.includes('admin') ||
-                request.url.includes('response.php')) {
-              console.log('Custom payment response URL detected:', request.url);
+                // Only check for specific response endpoints, not any URL containing "response"
+                request.url.includes('/tp/pg/response.php') ||
+                request.url.includes('pay.easebuzz.in/response/') ||
+                request.url.includes('pay.easebuzz.in/webservice/')) {
+              console.log('Payment response URL detected:', request.url);
               
               // Try to extract JSON from URL parameters
               try {
@@ -575,7 +721,7 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
               }
             }
             
-            // Allow all other requests
+            // Allow all other requests (including OTP pages, payment forms, etc.)
             return true;
           }}
         />

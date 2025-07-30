@@ -1676,7 +1676,8 @@ class ApiService {
         } else {
           const txnStatus = response.data[0]?.txn_status;
           console.log('Transaction status:', txnStatus);
-          return txnStatus;
+          // Return the full response object for better processing
+          return response;
         }
       } catch (e: any) {
         console.error('Payment status check error:', e);

@@ -52,6 +52,22 @@ export function handlePayment(params: any, payActionType: string, navigation: an
         Object.assign({}, res.data[0].Parameter, { url: res.data[0].URL })
       );
       navigation.navigate("PaymentLink", { source: source, pgInfo: pgInfo, amount: params.amount, merTxnId: txnInfo.merTxnId })
+    } else if (pgInfo === 'EASEBUZZ') {
+      // Handle EASEBUZZ payment gateway specifically
+      txnInfo.merTxnId = res.data.txn_ref_no;
+      source.uri = res.data.url;
+      source.method = 'POST';
+      source.headers = { 
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1"
+      };
+      source.body = queryString.stringify(res.data.parameters);
+      console.log('EASEBUZZ payment configuration:', {
+        url: res.data.url,
+        txnRef: txnInfo.merTxnId,
+        parameters: res.data.parameters
+      });
+      navigation.navigate("PaymentLink", { source: source, pgInfo: pgInfo, amount: params.amount, merTxnId: txnInfo.merTxnId })
     } else if (pgInfo === 'PAYTM') {
       // Temporarily disabled due to compatibility issues with React Native 0.80.1
       Alert.alert(

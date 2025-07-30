@@ -4,7 +4,7 @@ apply plugin: "com.facebook.react"
 
 // Add vector icons configuration
 project.ext.vectoricons = [
-    iconFontNames: [ 'MaterialCommunityIcons.ttf' ]
+    iconFontNames: [ 'MaterialCommunityIcons.ttf', 'Feather.ttf' ]
 ]
 apply from: "../../node_modules/react-native-vector-icons/fonts.gradle"
 

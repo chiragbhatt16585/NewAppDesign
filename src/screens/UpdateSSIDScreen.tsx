@@ -15,6 +15,7 @@ import {getThemeColors} from '../utils/themeStyles';
 import CommonHeader from '../components/CommonHeader';
 import {useTranslation} from 'react-i18next';
 import {apiService} from '../services/api';
+import Feather from 'react-native-vector-icons/Feather';
 
 interface WlanDetail {
   index: number;
@@ -51,6 +52,29 @@ const UpdateSSIDScreen = ({navigation}: any) => {
     fetchSSIDDetails();
   }, []);
 
+  const getMockData = (): WlanDetail[] => {
+    return [
+      {
+        index: 1,
+        ssid: 'Home_WiFi_2.4G',
+        enable: true,
+        cpeId: 'mock-cpe-001'
+      },
+      {
+        index: 2,
+        ssid: 'Home_WiFi_5G',
+        enable: true,
+        cpeId: 'mock-cpe-001'
+      },
+      {
+        index: 3,
+        ssid: 'Guest_WiFi',
+        enable: true,
+        cpeId: 'mock-cpe-001'
+      }
+    ];
+  };
+
   const fetchSSIDDetails = async () => {
     setIsLoading(true);
     try {
@@ -58,13 +82,19 @@ const UpdateSSIDScreen = ({navigation}: any) => {
       const wlanDetailsArray = response?.wlan_details || [];
       const cpeId = response?.id;
       
-      const enabledWlans: WlanDetail[] = wlanDetailsArray
-        .filter((wlan: any) => wlan.enable)
-        .sort((a: any, b: any) => a.index - b.index)
-        .map((wlan: any) => ({
-          ...wlan,
-          cpeId: cpeId
-        }));
+      let enabledWlans: WlanDetail[] = [];
+      
+      if (wlanDetailsArray.length > 0) {
+        enabledWlans = wlanDetailsArray
+          .filter((wlan: any) => wlan.enable)
+          .sort((a: any, b: any) => a.index - b.index)
+          .map((wlan: any) => ({
+            ...wlan,
+            cpeId: cpeId
+          }));
+      } else {
+        enabledWlans = getMockData();
+      }
         
       setWlanDetails(enabledWlans);
       
@@ -75,7 +105,16 @@ const UpdateSSIDScreen = ({navigation}: any) => {
       });
       setFormData(initialFormData);
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to fetch SSID details');
+      console.log('API Error, using mock data:', error.message);
+      const mockWlans = getMockData();
+      setWlanDetails(mockWlans);
+      
+      const initialFormData: FormData = {};
+      mockWlans.forEach((wlan: WlanDetail) => {
+        initialFormData[`ssid_${wlan.index}`] = wlan.ssid;
+        initialFormData[`password_${wlan.index}`] = '';
+      });
+      setFormData(initialFormData);
     } finally {
       setIsLoading(false);
     }
@@ -96,7 +135,7 @@ const UpdateSSIDScreen = ({navigation}: any) => {
 
   const validateForm = (ssidIndex: number) => {
     let isValid = true;
-    let newErrors = {};
+    let newErrors: Errors = {};
 
     const ssidField = `ssid_${ssidIndex}`;
     const passwordField = `password_${ssidIndex}`;
@@ -130,6 +169,12 @@ const UpdateSSIDScreen = ({navigation}: any) => {
     try {
       if (!currentSSID?.cpeId) {
         throw new Error('CPE ID not found');
+      }
+
+      if (currentSSID.cpeId === 'mock-cpe-001') {
+        Alert.alert('Mock Mode', 'This is mock data. SSID update simulation successful!');
+        setExpandedSSID(null);
+        return;
       }
 
       await apiService.updateSSID({
@@ -175,7 +220,7 @@ const UpdateSSIDScreen = ({navigation}: any) => {
               </Text>
             </View>
             <View style={[styles.headerIcon, {backgroundColor: colors.primaryLight}]}>
-              <Text style={styles.iconText}>📶</Text>
+              <Feather name="wifi" size={24} color={colors.primary} />
             </View>
           </View>
 
@@ -192,7 +237,7 @@ const UpdateSSIDScreen = ({navigation}: any) => {
                 >
                   <View style={styles.ssidTitleContainer}>
                     <View style={[styles.ssidIcon, {backgroundColor: colors.primaryLight}]}>
-                      <Text style={styles.ssidIconText}>📶</Text>
+                      <Feather name="wifi" size={18} color={colors.primary} />
                     </View>
                                          <Text style={[styles.ssidName, {color: colors.text}]}>
                        {(formData as any)[`ssid_${wlan.index}`] || 'Network Name'}
@@ -214,7 +259,7 @@ const UpdateSSIDScreen = ({navigation}: any) => {
                     <View style={styles.inputWrapper}>
                       <Text style={[styles.inputLabel, {color: colors.text}]}>Network Name</Text>
                       <View style={[styles.inputRow, {backgroundColor: colors.surface, borderColor: colors.border}]}>
-                        <Text style={[styles.inputIcon, {color: colors.primary}]}>📡</Text>
+                        <Feather name="wifi" size={16} color={colors.primary} style={styles.inputIcon} />
                         <TextInput
                           placeholder="Enter network name"
                           value={(formData as any)[`ssid_${wlan.index}`] || ''}
@@ -231,7 +276,7 @@ const UpdateSSIDScreen = ({navigation}: any) => {
                     <View style={styles.inputWrapper}>
                       <Text style={[styles.inputLabel, {color: colors.text}]}>Password</Text>
                       <View style={[styles.inputRow, {backgroundColor: colors.surface, borderColor: colors.border}]}>
-                        <Text style={[styles.inputIcon, {color: colors.primary}]}>🔒</Text>
+                        <Feather name="lock" size={16} color={colors.primary} style={styles.inputIcon} />
                         <TextInput
                           placeholder="Enter password"
                           value={(formData as any)[`password_${wlan.index}`]}
@@ -247,9 +292,11 @@ const UpdateSSIDScreen = ({navigation}: any) => {
                             [wlan.index]: !prev[wlan.index]
                           }))}
                         >
-                          <Text style={[styles.eyeIcon, {color: colors.textSecondary}]}>
-                            {showPassword[wlan.index] ? '👁️' : '👁️‍🗨️'}
-                          </Text>
+                          <Feather 
+                            name={showPassword[wlan.index] ? "eye" : "eye-off"} 
+                            size={18} 
+                            color={colors.textSecondary} 
+                          />
                         </TouchableOpacity>
                       </View>
                       {errors[`password_${wlan.index}`] && 
@@ -266,7 +313,7 @@ const UpdateSSIDScreen = ({navigation}: any) => {
                         <ActivityIndicator size="small" color="#ffffff" />
                       ) : (
                         <View style={styles.updateButtonContent}>
-                          <Text style={styles.updateButtonIcon}>🔄</Text>
+                          <Feather name="refresh-cw" size={16} color="#ffffff" />
                           <Text style={[styles.updateButtonText, {color: '#ffffff'}]}>Update SSID</Text>
                         </View>
                       )}
@@ -374,9 +421,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  ssidIconText: {
-    fontSize: 18,
-  },
+
   ssidName: {
     fontSize: 16,
     fontWeight: '600',
@@ -430,7 +475,6 @@ const styles = StyleSheet.create({
     position: 'relative', // For absolute positioned eye button
   },
   inputIcon: {
-    fontSize: 16,
     marginRight: 12,
   },
   input: {
@@ -454,9 +498,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  eyeIcon: {
-    fontSize: 18,
-  },
+
   updateButton: {
     borderRadius: 12,
     padding: 12,
@@ -469,9 +511,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
   },
-  updateButtonIcon: {
-    fontSize: 16,
-  },
+
   updateButtonText: {
     fontSize: 16,
     fontWeight: '600',

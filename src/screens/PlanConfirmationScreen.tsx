@@ -328,30 +328,49 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
             <TouchableWithoutFeedback onPress={() => setShowPaymentModal(false)}>
               <View style={{flex: 1, backgroundColor: 'rgba(0,0,0,0.4)'}} />
             </TouchableWithoutFeedback>
-            <View style={styles.paymentModalContainer}>
-              <Text style={styles.paymentModalTitle}>Select Payment Gateway</Text>
+            <View style={[styles.paymentModalContainer, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
+              <Text style={[styles.paymentModalTitle, {color: colors.text}]}>Select Payment Gateway</Text>
               {loadingGateways ? (
-                <Text style={{marginVertical: 20}}>{t('common.loading') || 'Loading...'}</Text>
+                <Text style={[styles.loadingText, {color: colors.textSecondary}]}>{t('common.loading') || 'Loading...'}</Text>
               ) : gatewayError ? (
-                <Text style={{color: 'red', marginVertical: 20}}>{gatewayError}</Text>
+                <Text style={[styles.errorText, {color: colors.error}]}>{gatewayError}</Text>
               ) : paymentGateways.length === 0 ? (
-                <Text style={{marginVertical: 20}}>{t('planConfirmation.noGateways') || 'No gateways available'}</Text>
+                <Text style={[styles.noGatewaysText, {color: colors.textSecondary}]}>{t('planConfirmation.noGateways') || 'No gateways available'}</Text>
               ) : (
                 paymentGateways.map((gateway: any) => (
                   <TouchableOpacity
                     key={gateway.id}
-                    style={[styles.gatewayOption, selectedGateway === gateway.id && {backgroundColor: colors.primaryLight}]}
+                    style={[
+                      styles.gatewayOption, 
+                      {backgroundColor: selectedGateway === gateway.id ? colors.primaryLight : colors.border},
+                      selectedGateway === gateway.id && {borderColor: colors.primary, borderWidth: 1}
+                    ]}
                     onPress={() => setSelectedGateway(gateway.id)}>
-                    <Text style={[styles.gatewayLabel, {color: selectedGateway === gateway.id ? colors.primary : colors.text}]}>{gateway.gw_display_name}</Text>
-                    {selectedGateway === gateway.id && <Text style={{color: colors.primary, fontWeight: 'bold'}}>✓</Text>}
+                    <Text style={[
+                      styles.gatewayLabel, 
+                      {color: selectedGateway === gateway.id ? colors.primary : colors.text}
+                    ]}>
+                      {gateway.gw_display_name}
+                    </Text>
+                    {selectedGateway === gateway.id && (
+                      <Text style={[styles.selectedIcon, {color: colors.primary}]}>✓</Text>
+                    )}
                   </TouchableOpacity>
                 ))
               )}
               <TouchableOpacity
-                style={[styles.paymentGatewayButton, {backgroundColor: selectedGateway ? colors.primary : colors.border}]}
+                style={[
+                  styles.paymentGatewayButton, 
+                  {backgroundColor: selectedGateway ? colors.primary : colors.border}
+                ]}
                 disabled={!selectedGateway}
                 onPress={handleGatewayPay}>
-                <Text style={[styles.paymentGatewayButtonText, {color: selectedGateway ? '#fff' : colors.textSecondary}]}>Pay with {selectedGateway ? paymentGateways.find(g => g.id === selectedGateway)?.gw_display_name : ''}</Text>
+                <Text style={[
+                  styles.paymentGatewayButtonText, 
+                  {color: selectedGateway ? '#fff' : colors.textSecondary}
+                ]}>
+                  Pay with {selectedGateway ? paymentGateways.find(g => g.id === selectedGateway)?.gw_display_name : ''}
+                </Text>
               </TouchableOpacity>
             </View>
           </Modal>
@@ -574,11 +593,9 @@ const styles = StyleSheet.create({
     left: 20,
     right: 20,
     top: '30%',
-    backgroundColor: '#fff',
     borderRadius: 16,
     padding: 24,
     alignItems: 'center',
-    shadowColor: '#000',
     shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.2,
     shadowRadius: 8,
@@ -598,7 +615,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 10,
-    backgroundColor: '#f5f5f5',
   },
   gatewayLabel: {
     fontSize: 16,
@@ -613,11 +629,23 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   paymentGatewayButtonText: {
-    color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
     paddingVertical: 6,
     paddingHorizontal: 8,
+  },
+  loadingText: {
+    marginVertical: 20,
+  },
+  errorText: {
+    marginVertical: 20,
+  },
+  noGatewaysText: {
+    marginVertical: 20,
+  },
+  selectedIcon: {
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 });
 

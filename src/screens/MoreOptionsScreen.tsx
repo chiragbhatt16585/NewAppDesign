@@ -14,6 +14,8 @@ import {getThemeColors} from '../utils/themeStyles';
 import CommonHeader from '../components/CommonHeader';
 import {useTranslation} from 'react-i18next';
 import {useAuth} from '../utils/AuthContext';
+import Feather from 'react-native-vector-icons/Feather';
+import {getClientConfig} from '../config/client-config';
 
 const MoreOptionsScreen = ({navigation}: any) => {
   const {isDark, themeMode, setThemeMode} = useTheme();
@@ -42,7 +44,7 @@ const MoreOptionsScreen = ({navigation}: any) => {
   };
 
   const handleRenewPlan = () => {
-    Alert.alert('Renew Plan', 'Opening plan renewal options...');
+    navigation.navigate('RenewPlan');
   };
 
   const handleSpeedTest = () => {
@@ -76,6 +78,27 @@ const MoreOptionsScreen = ({navigation}: any) => {
     navigation.navigate('PartnerApps');
   };
 
+  const handleReviewRatings = async () => {
+    try {
+      const clientConfig = getClientConfig();
+      const reviewUrl = clientConfig.reviewUrl;
+      
+      if (reviewUrl) {
+        const supported = await Linking.canOpenURL(reviewUrl);
+        if (supported) {
+          await Linking.openURL(reviewUrl);
+        } else {
+          Alert.alert('Error', 'Unable to open review page');
+        }
+      } else {
+        Alert.alert('Error', 'Review URL not configured for this client');
+      }
+    } catch (error) {
+      console.error('Error opening review page:', error);
+      Alert.alert('Error', 'Failed to open review page');
+    }
+  };
+
   const handleLogout = async () => {
     Alert.alert(
       t('common.logout'),
@@ -106,8 +129,6 @@ const MoreOptionsScreen = ({navigation}: any) => {
 
 
   const menuItems = [
-    
-    
     {
       id: 'renew',
       title: t('home.renewPlan'),
@@ -122,7 +143,6 @@ const MoreOptionsScreen = ({navigation}: any) => {
       icon: '⬆️',
       onPress: handleUpgradePlan,
     },
-    
     {
       id: 'ledger',
       title: t('navigation.ledger'),
@@ -141,7 +161,8 @@ const MoreOptionsScreen = ({navigation}: any) => {
       id: 'sessions',
       title: t('navigation.sessions'),
       subtitle: 'Session history',
-      icon: '📱',
+      icon: 'clock',
+      iconType: 'feather',
       onPress: handleSessions,
     },
     {
@@ -151,7 +172,6 @@ const MoreOptionsScreen = ({navigation}: any) => {
       icon: '🆔',
       onPress: handleKYC,
     },
-    
     {
       id: 'refer',
       title: t('more.referFriend'),
@@ -159,15 +179,14 @@ const MoreOptionsScreen = ({navigation}: any) => {
       icon: '👥',
       onPress: handleReferFriend,
     },
-    
     {
       id: 'update-ssid',
       title: 'Update SSID',
       subtitle: 'Configure WiFi settings',
-      icon: '📶',
+      icon: 'wifi',
+      iconType: 'feather',
       onPress: handleUpdateSSID,
     },
-    
     {
       id: 'speedtest',
       title: t('more.speedTest'),
@@ -175,13 +194,6 @@ const MoreOptionsScreen = ({navigation}: any) => {
       icon: '⚡',
       onPress: handleSpeedTest,
     },
-    // {
-    //   id: 'offers',
-    //   title: 'Offers & Rewards',
-    //   subtitle: 'Earn extra income',
-    //   icon: '💰',
-    //   onPress: handleOffers,
-    // },
     {
       id: 'partner-apps',
       title: 'Partner Apps',
@@ -190,19 +202,20 @@ const MoreOptionsScreen = ({navigation}: any) => {
       onPress: handlePartnerApps,
     },
     {
+      id: 'review-ratings',
+      title: 'Review & Ratings',
+      subtitle: 'Rate us on Google Play',
+      icon: 'star',
+      iconType: 'feather',
+      onPress: handleReviewRatings,
+    },
+    {
       id: 'settings',
       title: 'Settings',
       subtitle: 'Language, Theme & Security',
       icon: '⚙️',
       onPress: handleSettings,
     },
-        // {
-        //   id: 'ai-demo',
-        //   title: 'AI Features Demo',
-        //   subtitle: 'Experience smart automation',
-        //   icon: '🤖',
-        //   onPress: handleAIDemo,
-        // },
     {
       id: 'logout',
       title: t('common.logout'),
@@ -235,7 +248,15 @@ const MoreOptionsScreen = ({navigation}: any) => {
                 styles.menuIcon, 
                 {backgroundColor: item.isLogout ? colors.accentLight : colors.primaryLight}
               ]}>
-                <Text style={styles.iconText}>{item.icon}</Text>
+                {item.iconType === 'feather' ? (
+                  <Feather 
+                    name={item.icon} 
+                    size={24} 
+                    color={item.isLogout ? colors.accent : colors.primary} 
+                  />
+                ) : (
+                  <Text style={styles.iconText}>{item.icon}</Text>
+                )}
               </View>
               <View style={styles.menuContent}>
                 <Text style={[
