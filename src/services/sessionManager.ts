@@ -31,31 +31,31 @@ export class SessionManager {
 
   async initialize(): Promise<void> {
     try {
-      console.log('=== STARTING SESSION MANAGER INITIALIZATION ===');
+      // console.log('=== STARTING SESSION MANAGER INITIALIZATION ===');
       
       const savedSession = await AsyncStorage.getItem(this.SESSION_KEY);
-      console.log('Saved session exists:', !!savedSession);
+      // console.log('Saved session exists:', !!savedSession);
       
       if (savedSession) {
         this.currentSession = JSON.parse(savedSession);
-        console.log('Session loaded:', this.currentSession?.username);
-        console.log('Session isLoggedIn:', this.currentSession?.isLoggedIn);
-        console.log('Session client:', this.currentSession?.clientName);
+        // console.log('Session loaded:', this.currentSession?.username);
+        // console.log('Session isLoggedIn:', this.currentSession?.isLoggedIn);
+        // console.log('Session client:', this.currentSession?.clientName);
         
         // Check if session is still valid
         if (this.currentSession && this.isSessionValid()) {
-          console.log('✅ Valid session found, user is logged in');
+          // console.log('✅ Valid session found, user is logged in');
           
           // Note: API configuration is handled by build scripts, no dynamic update needed
         } else {
-          console.log('❌ Session invalid, clearing session');
+          // console.log('❌ Session invalid, clearing session');
           await this.clearSession();
         }
       } else {
-        console.log('No saved session found');
+        // console.log('No saved session found');
       }
       
-      console.log('=== SESSION MANAGER INITIALIZATION COMPLETE ===');
+      // console.log('=== SESSION MANAGER INITIALIZATION COMPLETE ===');
     } catch (error) {
       console.error('Failed to initialize session manager:', error);
       await this.clearSession();
@@ -86,7 +86,7 @@ export class SessionManager {
       
       // Note: API configuration is handled by build scripts, no dynamic update needed
       
-      console.log('Session created successfully for client:', clientName);
+      // console.log('Session created successfully for client:', clientName);
     } catch (error) {
       console.error('Failed to create session:', error);
       throw error;
@@ -123,7 +123,7 @@ export class SessionManager {
       }
       
       await AsyncStorage.setItem('current_client', clientName);
-      console.log('Current client stored:', clientName);
+      // console.log('Current client stored:', clientName);
     } catch (error) {
       console.error('Failed to store current client:', error);
     }
@@ -190,11 +190,11 @@ export class SessionManager {
       this.currentSession = null;
       await AsyncStorage.removeItem(this.SESSION_KEY);
       // Clear credentials from AsyncStorage
-      console.log('[SessionManager] Clearing credentials from AsyncStorage');
+      // console.log('[SessionManager] Clearing credentials from AsyncStorage');
       await credentialStorage.clearCredentials();
       // Clear navigation state to prevent redirecting to protected screens
       await AsyncStorage.removeItem('navigationState');
-      console.log('[SessionManager] Session cleared successfully');
+      // console.log('[SessionManager] Session cleared successfully');
     } catch (error) {
       console.error('Failed to clear session:', error);
     }
@@ -207,7 +207,7 @@ export class SessionManager {
   // New method to regenerate token using stored password
   async regenerateToken(): Promise<string | false> {
     try {
-      console.log('[SessionManager] Attempting to regenerate token...');
+      // console.log('[SessionManager] Attempting to regenerate token...');
       
       // Check if we have a current session
       if (!this.currentSession) {
@@ -223,20 +223,20 @@ export class SessionManager {
       }
       
       const { username, password } = creds;
-      console.log('[SessionManager] Found stored credentials for user:', username);
+      // console.log('[SessionManager] Found stored credentials for user:', username);
       
       // Perform login to get new token
-      console.log('[SessionManager] Attempting authentication...');
+      // console.log('[SessionManager] Attempting authentication...');
       const loginResponse = await apiService.authenticate(username, password);
       
       if (loginResponse && loginResponse.token) {
-        console.log('[SessionManager] Authentication successful, updating session...');
+        // console.log('[SessionManager] Authentication successful, updating session...');
         
         if (this.currentSession) {
           this.currentSession.token = loginResponse.token;
           this.currentSession.lastActivityTime = Date.now();
           await AsyncStorage.setItem(this.SESSION_KEY, JSON.stringify(this.currentSession));
-          console.log('[SessionManager] Token regenerated and session updated successfully');
+          // console.log('[SessionManager] Token regenerated and session updated successfully');
         }
         return loginResponse.token;
       } else {
@@ -255,7 +255,7 @@ export class SessionManager {
       if (this.currentSession) {
         this.currentSession.lastActivityTime = Date.now();
         await AsyncStorage.setItem(this.SESSION_KEY, JSON.stringify(this.currentSession));
-        console.log('Activity time updated');
+        // console.log('Activity time updated');
       }
     } catch (error) {
       console.error('Failed to update activity time:', error);
@@ -270,24 +270,24 @@ export class SessionManager {
 
   private isSessionValid(): boolean {
     if (!this.currentSession) {
-      console.log('No current session');
+      // console.log('No current session');
       return false;
     }
 
     // Check if username exists
     if (!this.currentSession.username) {
-      console.log('No username in session');
+      // console.log('No username in session');
       return false;
     }
 
     // Check if session is marked as logged in
     if (!this.currentSession.isLoggedIn) {
-      console.log('Session marked as not logged in');
+      // console.log('Session marked as not logged in');
       return false;
     }
 
     // Session is valid (no automatic logout) - token can be regenerated
-    console.log('✅ Session is valid');
+    // console.log('✅ Session is valid');
     return true;
   }
 
@@ -302,7 +302,7 @@ export class SessionManager {
         this.currentSession.lastLoginTime = Date.now();
         this.currentSession.lastActivityTime = Date.now(); // Update activity time on refresh
         await AsyncStorage.setItem(this.SESSION_KEY, JSON.stringify(this.currentSession));
-        console.log('Session refreshed');
+        // console.log('Session refreshed');
       }
     } catch (error) {
       console.error('Failed to refresh session:', error);
@@ -315,7 +315,7 @@ export class SessionManager {
         this.currentSession.token = newToken;
         this.currentSession.lastActivityTime = Date.now();
         await AsyncStorage.setItem(this.SESSION_KEY, JSON.stringify(this.currentSession));
-        console.log('Token updated successfully');
+        // console.log('Token updated successfully');
       }
     } catch (error) {
       console.error('Failed to update token:', error);
@@ -369,7 +369,7 @@ export class SessionManager {
 
       // Check if token exists - but don't clear session immediately
       if (!this.currentSession.token) {
-        console.log('No token in session, but keeping session for potential regeneration');
+        // console.log('No token in session, but keeping session for potential regeneration');
         return {
           isValid: false,
           shouldRedirect: false, // Don't redirect, let API handle token regeneration
@@ -396,7 +396,7 @@ export class SessionManager {
   // New method to completely reset session and clear all data
   async resetSession(): Promise<void> {
     try {
-      console.log('=== RESETTING SESSION AND CLEARING ALL DATA ===');
+      // console.log('=== RESETTING SESSION AND CLEARING ALL DATA ===');
       
       // Clear current session
       this.currentSession = null;
@@ -412,7 +412,7 @@ export class SessionManager {
       await AsyncStorage.removeItem('current_client');
       await AsyncStorage.removeItem('current_api_url');
       
-      console.log('Session and all stored data cleared successfully');
+      // console.log('Session and all stored data cleared successfully');
     } catch (error) {
       console.error('Error resetting session:', error);
       throw error;
@@ -422,7 +422,7 @@ export class SessionManager {
   // Enhanced method to check and fix session issues
   async diagnoseAndFixSession(): Promise<{ needsReset: boolean; issues: string[] }> {
     try {
-      console.log('=== DIAGNOSING SESSION ISSUES ===');
+      // console.log('=== DIAGNOSING SESSION ISSUES ===');
       
       const issues: string[] = [];
       let needsReset = false;
@@ -435,7 +435,7 @@ export class SessionManager {
       } else {
         try {
           const parsedSession = JSON.parse(savedSession);
-          console.log('Parsed session:', parsedSession);
+          // console.log('Parsed session:', parsedSession);
           
           // Check session structure - be more lenient
           if (!parsedSession.username) {
@@ -474,7 +474,7 @@ export class SessionManager {
           
           // If we have a valid session structure, don't reset even if some issues exist
           if (parsedSession.username && parsedSession.isLoggedIn) {
-            console.log('Session has valid structure, keeping it');
+            // console.log('Session has valid structure, keeping it');
             needsReset = false;
           }
           
@@ -484,7 +484,7 @@ export class SessionManager {
         }
       }
       
-      console.log('Session diagnosis complete:', { needsReset, issues });
+      // console.log('Session diagnosis complete:', { needsReset, issues });
       return { needsReset, issues };
       
     } catch (error) {
@@ -496,34 +496,34 @@ export class SessionManager {
   // New method to automatically refresh session and regenerate token if needed
   async autoRefreshSession(): Promise<{ success: boolean; message: string }> {
     try {
-      console.log('=== AUTO REFRESHING SESSION ===');
+      // console.log('=== AUTO REFRESHING SESSION ===');
       
       const session = await this.getCurrentSession();
       if (!session) {
-        console.log('No session found for auto refresh');
+        // console.log('No session found for auto refresh');
         return { success: false, message: 'No active session found' };
       }
 
-      console.log('Current session found:', session.username);
+      // console.log('Current session found:', session.username);
       
       // Check if token needs regeneration (if missing or expired)
       const needsTokenRegeneration = !session.token || await this.isTokenExpired(session.token);
       
       if (needsTokenRegeneration) {
-        console.log('Token needs regeneration, attempting...');
+        // console.log('Token needs regeneration, attempting...');
         const newToken = await this.regenerateToken();
         
         if (newToken) {
-          console.log('✅ Token regenerated successfully');
+          // console.log('✅ Token regenerated successfully');
           await this.updateToken(newToken);
           await this.refreshSession();
           return { success: true, message: 'Session refreshed and token regenerated' };
         } else {
-          console.log('❌ Token regeneration failed');
+          // console.log('❌ Token regeneration failed');
           return { success: false, message: 'Failed to regenerate token' };
         }
       } else {
-        console.log('✅ Token is still valid, just refreshing session');
+        // console.log('✅ Token is still valid, just refreshing session');
         await this.refreshSession();
         return { success: true, message: 'Session refreshed' };
       }
@@ -545,10 +545,10 @@ export class SessionManager {
       // Consider token expired if more than 24 hours of inactivity
       const isExpired = hoursSinceLastActivity > 24;
       
-      console.log('Token expiry check:', {
-        hoursSinceLastActivity: Math.round(hoursSinceLastActivity),
-        isExpired
-      });
+      // console.log('Token expiry check:', {
+      //   hoursSinceLastActivity: Math.round(hoursSinceLastActivity),
+      //   isExpired
+      // });
       
       return isExpired;
     } catch (error) {
@@ -569,10 +569,10 @@ export class SessionManager {
       
       const shouldRefresh = hoursSinceLastActivity > 1; // Refresh if more than 1 hour
       
-      console.log('Auto refresh check:', {
-        hoursSinceLastActivity: Math.round(hoursSinceLastActivity),
-        shouldRefresh
-      });
+      // console.log('Auto refresh check:', {
+      //   hoursSinceLastActivity: Math.round(hoursSinceLastActivity),
+      //   shouldRefresh
+      // });
       
       return shouldRefresh;
     } catch (error) {

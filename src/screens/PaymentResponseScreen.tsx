@@ -396,6 +396,13 @@ const PaymentResponseScreen = ({ route, navigation }: any) => {
       message: t('paymentResponse.failureMessage') || 'There was a problem processing your payment.',
       emoji: '❌'
     },
+    fail: {
+      icon: 'alert-circle',
+      color: colors.error || '#F44336',
+      title: t('paymentResponse.failureTitle') || 'Payment Failed',
+      message: t('paymentResponse.failureMessage') || 'There was a problem processing your payment.',
+      emoji: '❌'
+    },
     cancelled: {
       icon: 'close-circle',
       color: colors.warning || '#FFC107',
@@ -426,7 +433,7 @@ const PaymentResponseScreen = ({ route, navigation }: any) => {
     }
   };
   
-  const info = statusInfo[paymentStatus] || statusInfo.success;
+  const info = statusInfo[paymentStatus] || statusInfo.failed;
   console.log('Selected status info:', info);
 
   const handleCheckStatus = async () => {
@@ -448,11 +455,35 @@ const PaymentResponseScreen = ({ route, navigation }: any) => {
       }
       
       console.log('Checking payment status for txnRef:', txnRef, 'username:', username);
-      const paymentStatus = await apiService.getPaymentStatus(username, txnRef, realm);
+      const paymentStatusResponse = await apiService.getPaymentStatus(username, txnRef, realm);
       
-      console.log('Payment status result:', paymentStatus);
+      console.log('Payment status result:', paymentStatusResponse);
       
-      if (paymentStatus === 'success' || paymentStatus === 'S') {
+      // Extract the actual status from the response
+      let actualStatus = '';
+      let statusMessage = '';
+      
+      if (typeof paymentStatusResponse === 'object' && paymentStatusResponse !== null) {
+        // Handle EASEBUZZ response format
+        if (paymentStatusResponse.data && Array.isArray(paymentStatusResponse.data) && paymentStatusResponse.data.length > 0) {
+          actualStatus = paymentStatusResponse.data[0].txn_status || paymentStatusResponse.data[0].status || '';
+          statusMessage = paymentStatusResponse.data[0].message || paymentStatusResponse.message || '';
+        } else if (paymentStatusResponse.data && paymentStatusResponse.data.txn_status) {
+          actualStatus = paymentStatusResponse.data.txn_status;
+          statusMessage = paymentStatusResponse.data.message || paymentStatusResponse.message || '';
+        } else if (paymentStatusResponse.status) {
+          actualStatus = paymentStatusResponse.status;
+          statusMessage = paymentStatusResponse.message || '';
+        }
+      } else if (typeof paymentStatusResponse === 'string') {
+        actualStatus = paymentStatusResponse;
+        statusMessage = '';
+      }
+      
+      console.log('Extracted status:', actualStatus);
+      console.log('Status message:', statusMessage);
+      
+      if (actualStatus === 'success' || actualStatus === 'S' || actualStatus === 'completed') {
         Alert.alert(
           'Payment Status Updated', 
           'Great! Your payment was successful. Your plan has been activated.',
@@ -460,16 +491,22 @@ const PaymentResponseScreen = ({ route, navigation }: any) => {
             { text: 'OK', onPress: () => navigation.navigate('Home') }
           ]
         );
-      } else if (paymentStatus === 'failed' || paymentStatus === 'F') {
+      } else if (actualStatus === 'failed' || actualStatus === 'F' || actualStatus === 'fail' || actualStatus === 'cancelled') {
         Alert.alert(
           'Payment Status', 
-          'Payment is still pending or failed. Please try again later.',
+          `Payment status: ${actualStatus.toUpperCase()}. ${statusMessage || 'Please try again later.'}`,
+          [{ text: 'OK' }]
+        );
+      } else if (actualStatus === 'pending' || actualStatus === 'in_progress' || actualStatus === 'pg_pending') {
+        Alert.alert(
+          'Payment Status', 
+          'Payment is still being processed. Please wait a few minutes and try again.',
           [{ text: 'OK' }]
         );
       } else {
         Alert.alert(
           'Payment Status', 
-          `Current status: ${paymentStatus}. Please contact support if you have any questions.`,
+          `Current status: ${actualStatus || 'Unknown'}. ${statusMessage || 'Please contact support if you have any questions.'}`,
           [{ text: 'OK' }]
         );
       }
@@ -481,7 +518,7 @@ const PaymentResponseScreen = ({ route, navigation }: any) => {
     }
   };
 
-  const isFailedPayment = paymentStatus === 'failure' || paymentStatus === 'failed' || paymentStatus === 'pending' || paymentStatus === 'in_progress' || paymentStatus === 'pg_pending';
+  const isFailedPayment = paymentStatus === 'failure' || paymentStatus === 'failed' || paymentStatus === 'fail' || paymentStatus === 'pending' || paymentStatus === 'in_progress' || paymentStatus === 'pg_pending';
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>

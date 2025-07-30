@@ -41,12 +41,12 @@ const HomeScreen = ({navigation}: any) => {
   const {logout} = useAuth();
   const {checkSessionAndHandle} = useSessionValidation();
   const {reloadOnFocus} = useScreenDataReload({
-    onReloadStart: () => console.log('Auto reload starting...'),
+    onReloadStart: () => {/* console.log('Auto reload starting...'); */},
     onReloadSuccess: (data) => {
-      console.log('Auto reload successful, refreshing screen data');
+      // console.log('Auto reload successful, refreshing screen data');
       fetchAccountData();
     },
-    onReloadError: (error) => console.log('Auto reload failed:', error)
+    onReloadError: (error) => {/* console.log('Auto reload failed:', error) */}
   });
 
   // State for API data
@@ -145,41 +145,41 @@ const HomeScreen = ({navigation}: any) => {
 
   const fetchAccountData = async () => {
     try {
-      console.log('🏠 [HomeScreen] fetchAccountData started');
+      // console.log('🏠 [HomeScreen] fetchAccountData started');
       setIsLoading(true);
       
       // Check session validity before making API call
       const isSessionValid = await checkSessionAndHandle(navigation);
-      console.log('🏠 [HomeScreen] Session validation result:', isSessionValid);
+      // console.log('🏠 [HomeScreen] Session validation result:', isSessionValid);
       
       if (!isSessionValid) {
-        console.log('🏠 [HomeScreen] Session validation failed, but continuing with API call');
+        // console.log('🏠 [HomeScreen] Session validation failed, but continuing with API call');
       }
       
       // Get current session data
       const session = await sessionManager.getCurrentSession();
-      console.log('🏠 [HomeScreen] Current session:', {
-        username: session?.username,
-        hasToken: !!session?.token,
-        tokenLength: session?.token?.length || 0
-      });
+      // console.log('🏠 [HomeScreen] Current session:', {
+      //   username: session?.username,
+      //   hasToken: !!session?.token,
+      //   tokenLength: session?.token?.length || 0
+      // });
       
       if (!session) {
-        console.log('🏠 [HomeScreen] No session found, stopping');
+        // console.log('🏠 [HomeScreen] No session found, stopping');
         setIsLoading(false);
         return;
       }
 
       const { username } = session;
-      console.log('🏠 [HomeScreen] Making API call for username:', username);
+      // console.log('🏠 [HomeScreen] Making API call for username:', username);
 
       // Use the enhanced API service with automatic token regeneration
-      console.log('🏠 [HomeScreen] Calling makeAuthenticatedRequest...');
+      // console.log('🏠 [HomeScreen] Calling makeAuthenticatedRequest...');
       const authResponse = await apiService.makeAuthenticatedRequest(async (token) => {
-        console.log('🏠 [HomeScreen] Inside makeAuthenticatedRequest callback, token length:', token?.length || 0);
+        // console.log('🏠 [HomeScreen] Inside makeAuthenticatedRequest callback, token length:', token?.length || 0);
         return await apiService.authUser(username);
       });
-      console.log('🏠 [HomeScreen] API call completed, response received:', !!authResponse);
+      // console.log('🏠 [HomeScreen] API call completed, response received:', !!authResponse);
       
       // console.warn('=== AUTH USER API RESPONSE ===');
       // console.warn('Full Response:', JSON.stringify(authResponse, null, 2));
@@ -237,7 +237,7 @@ const HomeScreen = ({navigation}: any) => {
       console.error('🏠 [HomeScreen] Error fetching account data:', error.message || error);
       //Alert.alert('Error', `Failed to load account data: ${error.message}`);
     } finally {
-      console.log('🏠 [HomeScreen] fetchAccountData completed, setting loading to false');
+      // console.log('🏠 [HomeScreen] fetchAccountData completed, setting loading to false');
       setIsLoading(false);
     }
   };
@@ -392,50 +392,50 @@ const HomeScreen = ({navigation}: any) => {
   // Test function to simulate token expiration and regeneration
   const handleTestTokenRegeneration = async () => {
     try {
-      console.log('🧪 === TOKEN REGENERATION TEST STARTED ===');
+      // console.log('🧪 === TOKEN REGENERATION TEST STARTED ===');
       
       // Get current session info
       const currentSession = await sessionManager.getCurrentSession();
-      console.log('🧪 Current session:', {
-        username: currentSession?.username,
-        hasToken: !!currentSession?.token,
-        tokenLength: currentSession?.token?.length || 0
-      });
+      // console.log('🧪 Current session:', {
+      //   username: currentSession?.username,
+      //   hasToken: !!currentSession?.token,
+      //   tokenLength: currentSession?.token?.length || 0
+      // });
 
       // Test 1: Try to get current token
-      console.log('🧪 Test 1: Getting current token...');
+      // console.log('🧪 Test 1: Getting current token...');
       const currentToken = await sessionManager.getToken();
-      console.log('🧪 Current token exists:', !!currentToken);
+      // console.log('🧪 Current token exists:', !!currentToken);
 
       // Test 2: Simulate token expiration by clearing token from session
-      console.log('🧪 Test 2: Simulating token expiration...');
+      // console.log('🧪 Test 2: Simulating token expiration...');
       if (currentSession) {
         currentSession.token = ''; // Clear the token
         await sessionManager.updateToken(''); // This will trigger regeneration on next API call
-        console.log('🧪 Token cleared from session');
+        // console.log('🧪 Token cleared from session');
       }
 
       // Test 3: Try to make an API call that should trigger regeneration
-      console.log('🧪 Test 3: Making API call to trigger token regeneration...');
+      // console.log('🧪 Test 3: Making API call to trigger token regeneration...');
       const testResult = await apiService.makeAuthenticatedRequest(async (token) => {
-        console.log('🧪 API call executed with token length:', token?.length || 0);
+        // console.log('🧪 API call executed with token length:', token?.length || 0);
         return { success: true, message: 'Test API call successful' };
       });
 
-      console.log('🧪 Test 3 result:', testResult);
+      // console.log('🧪 Test 3 result:', testResult);
 
       // Test 4: Verify new token was generated
-      console.log('🧪 Test 4: Verifying new token...');
+      // console.log('🧪 Test 4: Verifying new token...');
       const newToken = await sessionManager.getToken();
-      console.log('🧪 New token exists:', !!newToken);
-      console.log('🧪 New token length:', newToken?.length || 0);
+      // console.log('🧪 New token exists:', !!newToken);
+      // console.log('🧪 New token length:', newToken?.length || 0);
 
       // Test 5: Try to fetch account data to verify everything works
-      console.log('🧪 Test 5: Testing account data fetch...');
+      // console.log('🧪 Test 5: Testing account data fetch...');
       await fetchAccountData();
-      console.log('🧪 Account data fetch completed');
+      // console.log('🧪 Account data fetch completed');
 
-      console.log('🧪 === TOKEN REGENERATION TEST COMPLETED ===');
+      // console.log('🧪 === TOKEN REGENERATION TEST COMPLETED ===');
       
       Alert.alert(
         'Token Regeneration Test',
@@ -456,41 +456,41 @@ const HomeScreen = ({navigation}: any) => {
   // Test function to simulate the exact scenario from error logs
   const handleTestAutoDataReloader = async () => {
     try {
-      console.log('🧪 === AUTO DATA RELOADER TEST STARTED ===');
+      // console.log('🧪 === AUTO DATA RELOADER TEST STARTED ===');
       
       // Import the auto data reloader
       const AutoDataReloader = require('../services/autoDataReloader').default;
       
       // Test 1: Simulate token expiration scenario
-      console.log('🧪 Test 1: Simulating token expiration scenario...');
+      // console.log('🧪 Test 1: Simulating token expiration scenario...');
       const currentSession = await sessionManager.getCurrentSession();
       if (currentSession) {
         // Clear the token to simulate expiration
         currentSession.token = '';
         await sessionManager.updateToken('');
-        console.log('🧪 Token cleared to simulate expiration');
+        // console.log('🧪 Token cleared to simulate expiration');
       }
 
       // Test 2: Try auto data reload
-      console.log('🧪 Test 2: Testing auto data reload with expired token...');
+      // console.log('🧪 Test 2: Testing auto data reload with expired token...');
       const reloadResult = await AutoDataReloader.autoReloadUserData();
-      console.log('🧪 Auto reload result:', reloadResult);
+      // console.log('🧪 Auto reload result:', reloadResult);
 
       // Test 3: Verify session state after reload
-      console.log('🧪 Test 3: Verifying session state...');
+      // console.log('🧪 Test 3: Verifying session state...');
       const sessionAfterReload = await sessionManager.getCurrentSession();
-      console.log('🧪 Session after reload:', {
-        username: sessionAfterReload?.username,
-        hasToken: !!sessionAfterReload?.token,
-        tokenLength: sessionAfterReload?.token?.length || 0
-      });
+      // console.log('🧪 Session after reload:', {
+      //   username: sessionAfterReload?.username,
+      //   hasToken: !!sessionAfterReload?.token,
+      //   tokenLength: sessionAfterReload?.token?.length || 0
+      // });
 
       // Test 4: Try to fetch fresh data
-      console.log('🧪 Test 4: Testing fresh data fetch...');
+      // console.log('🧪 Test 4: Testing fresh data fetch...');
       await fetchAccountData();
-      console.log('🧪 Fresh data fetch completed');
+      // console.log('🧪 Fresh data fetch completed');
 
-      console.log('🧪 === AUTO DATA RELOADER TEST COMPLETED ===');
+      // console.log('🧪 === AUTO DATA RELOADER TEST COMPLETED ===');
       
       Alert.alert(
         'Auto Data Reloader Test',
@@ -511,28 +511,28 @@ const HomeScreen = ({navigation}: any) => {
   // Simple test that mimics the real error scenario
   const handleTestRealScenario = async () => {
     try {
-      console.log('🧪 === REAL SCENARIO TEST STARTED ===');
+      // console.log('🧪 === REAL SCENARIO TEST STARTED ===');
       
       // Step 1: Clear token (simulate expiration)
-      console.log('🧪 Step 1: Clearing token to simulate expiration...');
+      // console.log('🧪 Step 1: Clearing token to simulate expiration...');
       const currentSession = await sessionManager.getCurrentSession();
       if (currentSession) {
         currentSession.token = '';
         await sessionManager.updateToken('');
-        console.log('🧪 Token cleared');
+        // console.log('🧪 Token cleared');
       }
 
       // Step 2: Try to fetch account data (this should trigger regeneration)
-      console.log('🧪 Step 2: Attempting to fetch account data...');
+      // console.log('🧪 Step 2: Attempting to fetch account data...');
       await fetchAccountData();
-      console.log('🧪 Account data fetch completed');
+      // console.log('🧪 Account data fetch completed');
 
       // Step 3: Verify data was loaded
-      console.log('🧪 Step 3: Verifying data was loaded...');
-      console.log('🧪 Auth data loaded:', !!authData);
-      console.log('🧪 Current session token exists:', !!(await sessionManager.getToken()));
+      // console.log('🧪 Step 3: Verifying data was loaded...');
+      // console.log('🧪 Auth data loaded:', !!authData);
+      // console.log('🧪 Current session token exists:', !!(await sessionManager.getToken()));
 
-      console.log('🧪 === REAL SCENARIO TEST COMPLETED ===');
+      // console.log('🧪 === REAL SCENARIO TEST COMPLETED ===');
       
       Alert.alert(
         'Real Scenario Test',

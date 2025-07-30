@@ -32,7 +32,7 @@ const AccountDetailsScreen = ({navigation}: any) => {
     try {
       const session = await sessionManager.getCurrentSession();
       if (!session?.username) {
-        console.log('=== ACCOUNT DETAILS SCREEN: No user session found, redirecting to Login ===');
+        // console.log('=== ACCOUNT DETAILS SCREEN: No user session found, redirecting to Login ===');
         Alert.alert(
           'Authentication Required',
           'Please login to view your account details.',
@@ -68,12 +68,12 @@ const AccountDetailsScreen = ({navigation}: any) => {
       setIsLoading(true);
       
       // First, diagnose session issues
-      console.log('=== DIAGNOSING SESSION BEFORE API CALL ===');
+      // console.log('=== DIAGNOSING SESSION BEFORE API CALL ===');
       const sessionDiagnosis = await sessionManager.diagnoseAndFixSession();
       
       if (sessionDiagnosis.needsReset) {
-        console.log('Session issues detected:', sessionDiagnosis.issues);
-        console.log('Resetting session and redirecting to login...');
+        // console.log('Session issues detected:', sessionDiagnosis.issues);
+        // console.log('Resetting session and redirecting to login...');
         
         // Reset the session
         await sessionManager.resetSession();
@@ -99,13 +99,13 @@ const AccountDetailsScreen = ({navigation}: any) => {
       
       const session = await sessionManager.getCurrentSession();
       if (!session) {
-        console.log('No valid session found after diagnosis');
+        // console.log('No valid session found after diagnosis');
         setIsLoading(false);
         return;
       }
 
       const { username } = session;
-      console.log('Using session with username:', username);
+      // console.log('Using session with username:', username);
       
       // Use the enhanced API service with automatic token regeneration
       const authResponse = await apiService.makeAuthenticatedRequest(async (token) => {
@@ -113,15 +113,15 @@ const AccountDetailsScreen = ({navigation}: any) => {
       });
       
       if (authResponse) {
-        console.log('=== ACCOUNT DETAILS API RESPONSE ===');
-        console.log('Full Response:', JSON.stringify(authResponse, null, 2));
-        console.log('Response Type:', typeof authResponse);
-        console.log('Is Array:', Array.isArray(authResponse));
-        console.log('Keys:', authResponse ? Object.keys(authResponse) : 'No response');
+        // console.log('=== ACCOUNT DETAILS API RESPONSE ===');
+        // console.log('Full Response:', JSON.stringify(authResponse, null, 2));
+        // console.log('Response Type:', typeof authResponse);
+        // console.log('Is Array:', Array.isArray(authResponse));
+        // console.log('Keys:', authResponse ? Object.keys(authResponse) : 'No response');
         
         // Check for static IP data specifically
-        console.log('authData._obj:', authResponse._obj);
-        console.log('authData._obj?.static_ip_details:', authResponse._obj?.static_ip_details);
+        // console.log('authData._obj:', authResponse._obj);
+        // console.log('authData._obj?.static_ip_details:', authResponse._obj?.static_ip_details);
         
         setAuthData(authResponse);
       }
@@ -134,7 +134,7 @@ const AccountDetailsScreen = ({navigation}: any) => {
         error.message.includes('Authentication required') ||
         error.message.includes('Authentication failed')
       )) {
-        console.log('Authentication error detected, resetting session...');
+        // console.log('Authentication error detected, resetting session...');
         
         // Reset session and redirect to login
         await sessionManager.resetSession();
@@ -173,7 +173,7 @@ const AccountDetailsScreen = ({navigation}: any) => {
 
   const handleResetSession = async () => {
     try {
-      console.log('=== MANUAL SESSION RESET ===');
+      // console.log('=== MANUAL SESSION RESET ===');
       await sessionManager.resetSession();
       
       Alert.alert(
@@ -196,7 +196,7 @@ const AccountDetailsScreen = ({navigation}: any) => {
 
   const handleDebugSession = async () => {
     try {
-      console.log('=== DEBUGGING SESSION ===');
+      // console.log('=== DEBUGGING SESSION ===');
       const diagnosis = await sessionManager.diagnoseAndFixSession();
       
       Alert.alert(

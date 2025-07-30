@@ -43,8 +43,8 @@ const AppNavigator: React.FC<AppNavigatorProps> = ({ initialRoute }) => {
   useEffect(() => {
     const restoreState = async () => {
       try {
-        console.log('=== NAVIGATION STATE RESTORATION ===');
-        console.log('Initial route prop:', initialRoute);
+        // console.log('=== NAVIGATION STATE RESTORATION ===');
+        // console.log('Initial route prop:', initialRoute);
         
         // For now, always start with a clean navigation state
         setCurrentInitialRoute(initialRoute || 'Home');
@@ -76,7 +76,7 @@ const AppNavigator: React.FC<AppNavigatorProps> = ({ initialRoute }) => {
         }
         */
       } catch (err) {
-        console.log('❌ Failed to restore navigation state:', err);
+        // console.log('❌ Failed to restore navigation state:', err);
         setCurrentInitialRoute(initialRoute || 'Home');
       } finally {
         setIsReady(true);
@@ -88,16 +88,16 @@ const AppNavigator: React.FC<AppNavigatorProps> = ({ initialRoute }) => {
 
   const onStateChange = async (state: any) => {
     try {
-      console.log('=== NAVIGATION STATE SAVING DISABLED ===');
-      console.log('State to save:', state);
-      console.log('Current routes:', state?.routes?.map((r: any) => r.name));
-      console.log('Current index:', state?.index);
+      // console.log('=== NAVIGATION STATE SAVING DISABLED ===');
+      // console.log('State to save:', state);
+      // console.log('Current routes:', state?.routes?.map((r: any) => r.name));
+      // console.log('Current index:', state?.index);
       
       // Temporarily disable state saving to prevent navigation issues
       // await AsyncStorage.setItem('navigationState', JSON.stringify(state));
-      console.log('✅ Navigation state saving disabled');
+      // console.log('✅ Navigation state saving disabled');
     } catch (err) {
-      console.log('❌ Failed to save navigation state:', err);
+      // console.log('❌ Failed to save navigation state:', err);
     }
   };
 

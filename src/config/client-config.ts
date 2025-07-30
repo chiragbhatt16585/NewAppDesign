@@ -254,21 +254,21 @@ export const getClientConfig = (): ClientConfig => {
   // For now, let's use a simple approach - you can enhance this
   const currentClient = process.env.CLIENT_ID || 'dna-infotel';
   
-  console.log('=== CLIENT CONFIG DEBUG ===');
-  console.log('Current client:', currentClient);
-  console.log('Environment CLIENT_ID:', process.env.CLIENT_ID);
+  // console.log('=== CLIENT CONFIG DEBUG ===');
+  // console.log('Current client:', currentClient);
+  // console.log('Environment CLIENT_ID:', process.env.CLIENT_ID);
   
   const config = clientConfigs[currentClient];
   if (!config) {
     throw new Error(`Unknown client: ${currentClient}`);
   }
   
-  console.log('Selected config:', {
-    clientId: config.clientId,
-    clientName: config.clientName,
-    apiBaseURL: config.api.baseURL
-  });
-  console.log('=== END CLIENT CONFIG DEBUG ===');
+  // console.log('Selected config:', {
+  //   clientId: config.clientId,
+  //   clientName: config.clientName,
+  //   apiBaseURL: config.api.baseURL
+  // });
+  // console.log('=== END CLIENT CONFIG DEBUG ===');
   
   return config;
 };

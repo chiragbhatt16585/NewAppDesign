@@ -31,6 +31,7 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
   const [paymentTimeout, setPaymentTimeout] = useState<NodeJS.Timeout | null>(null);
   const [isOnPaymentForm, setIsOnPaymentForm] = useState(false);
   const [appState, setAppState] = useState(AppState.currentState);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const { source, pgInfo, amount, merTxnId } = route.params || {};
 
@@ -83,6 +84,8 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
 
   const processPayment = (event: any) => {
     console.log('Payment navigation event:', event);
+    console.log('Payment URL:', event.url);
+    console.log('Payment Gateway:', pgInfo);
     const eventURL = new URL(event.url);
     
     // Check if payment is completed (response.php endpoint)
@@ -155,11 +158,32 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
       console.log('Return from third-party payment app detected:', eventURL.href);
       // Reset payment form state since we're returning from external app
       setIsOnPaymentForm(false);
-      // Only check payment status if we're on an actual response page
+      
+      // Check for cancelled transaction first
+      if (eventURL.href.includes('cancel') || 
+          eventURL.href.includes('failure') ||
+          eventURL.href.includes('decline') ||
+          eventURL.href.includes('reject') ||
+          eventURL.href.includes('abort') ||
+          // Atom payment gateway specific cancellation patterns
+          eventURL.href.includes('atomtech.in/cancel') ||
+          eventURL.href.includes('atomtech.in/failure') ||
+          eventURL.href.includes('atomtech.in/decline') ||
+          eventURL.searchParams.get('status') === 'cancelled' ||
+          eventURL.searchParams.get('payment_status') === 'cancelled' ||
+          eventURL.searchParams.get('txn_status') === 'cancelled') {
+        console.log('Cancelled transaction detected, marking as failed');
+        if (!isPaymentProcessed) {
+          paymentResponse('fail');
+        }
+        return;
+      }
+      
+      // Only check payment status if we're on an actual response page and not cancelled
       if (eventURL.href.includes('response') || eventURL.href.includes('callback') || eventURL.href.includes('return')) {
         console.log('Actual payment response detected, checking status...');
         setTimeout(() => {
-          if (!isPaymentProcessed) {
+          if (!isPaymentProcessed && !isProcessingPayment) {
             runPayments();
           }
         }, 3000);
@@ -187,17 +211,57 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
              !eventURL.pathname.includes('EBSRedirect.php') && 
              !eventURL.pathname.includes('pgRedirect.php')) {
       console.log('Client-specific success URL detected');
-      if (!isPaymentProcessed) {
+      if (!isPaymentProcessed && !isProcessingPayment) {
         setIsPaymentProcessed(true);
         runPayments();
       }
+    }
+    // Atom payment gateway specific handling
+    else if (pgInfo === 'ATOM' && (
+             eventURL.href.includes('atomtech.in') ||
+             eventURL.href.includes('atom.in') ||
+             eventURL.href.includes('atomgateway.in'))) {
+      console.log('Atom payment gateway URL detected:', eventURL.href);
+      
+      // Check for Atom cancellation patterns
+      if (eventURL.href.includes('cancel') || 
+          eventURL.href.includes('failure') ||
+          eventURL.href.includes('decline') ||
+          eventURL.href.includes('error')) {
+        console.log('Atom cancellation URL pattern detected');
+        if (!isPaymentProcessed) {
+          paymentResponse('fail');
+        }
+        return;
+      }
+      
+      // Check for Atom success patterns
+      if (eventURL.href.includes('success') || 
+          eventURL.href.includes('complete') ||
+          eventURL.href.includes('approved')) {
+        console.log('Atom success URL pattern detected');
+        if (!isPaymentProcessed && !isProcessingPayment) {
+          setTimeout(() => {
+            runPayments();
+          }, 2000);
+        }
+        return;
+      }
+      
+      // For other Atom URLs, wait and check status
+      console.log('Atom payment gateway page detected, waiting for completion...');
+      setTimeout(() => {
+        if (!isPaymentProcessed && !isProcessingPayment) {
+          runPayments();
+        }
+      }, 3000);
     }
     // Handle JSON responses that might be displayed in WebView
     else if (eventURL.pathname.includes('.json') || 
              eventURL.searchParams.get('format') === 'json' ||
              eventURL.searchParams.get('response_format') === 'json') {
       console.log('JSON response detected, processing payment status');
-      if (!isPaymentProcessed) {
+      if (!isPaymentProcessed && !isProcessingPayment) {
         runPayments();
       }
     }
@@ -209,13 +273,19 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
               eventURL.href.includes('callback') ||
               eventURL.href.includes('return'))) {
       console.log('Payment status parameter detected in response URL');
-      if (!isPaymentProcessed) {
+      if (!isPaymentProcessed && !isProcessingPayment) {
         runPayments();
       }
     }
   };
 
   const runPayments = async () => {
+    if (isProcessingPayment || isPaymentProcessed) {
+      console.log('Payment already being processed or completed, skipping...');
+      return;
+    }
+    
+    setIsProcessingPayment(true);
     try {
       console.log('=== RUN PAYMENTS DEBUG ===');
       console.log('Merchant Txn ID:', merTxnId);
@@ -239,6 +309,51 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
         console.log('EASEBUZZ detected, waiting for actual payment completion...');
         // Remove automatic status checking - let the user complete the payment flow naturally
         // Only check status when there's actual indication of payment completion from the gateway
+      } else if (pgInfo === 'ATOM') {
+        console.log('ATOM payment gateway detected, checking for cancellation patterns...');
+        // For Atom, check if we're on a cancellation page before checking status
+        if (webViewRef.current && !isPaymentProcessed) {
+          webViewRef.current.injectJavaScript(`
+            (function() {
+              try {
+                // Check for Atom cancellation indicators in page content
+                const bodyText = document.body.innerText || '';
+                const titleText = document.title || '';
+                
+                if (bodyText.toLowerCase().includes('cancelled') || 
+                    bodyText.toLowerCase().includes('cancelled') ||
+                    bodyText.toLowerCase().includes('declined') ||
+                    bodyText.toLowerCase().includes('failed') ||
+                    titleText.toLowerCase().includes('cancelled') ||
+                    titleText.toLowerCase().includes('failed')) {
+                  console.log('Atom cancellation detected in page content');
+                  window.ReactNativeWebView.postMessage(JSON.stringify({status: 'cancelled', source: 'page_content'}));
+                  return;
+                }
+                
+                // Check for Atom specific error messages
+                if (bodyText.includes('Transaction Cancelled') || 
+                    bodyText.includes('Payment Failed') ||
+                    bodyText.includes('Transaction Declined')) {
+                  console.log('Atom specific error message detected');
+                  window.ReactNativeWebView.postMessage(JSON.stringify({status: 'cancelled', source: 'error_message'}));
+                  return;
+                }
+                
+                console.log('No Atom cancellation detected, proceeding with status check');
+              } catch (e) {
+                console.log('Error checking Atom cancellation:', e);
+              }
+            })();
+          `);
+        }
+        
+        // Wait a bit for the JavaScript injection to complete, then check status
+        setTimeout(async () => {
+          if (!isPaymentProcessed && !isProcessingPayment) {
+            await checkPaymentStatusWithRetry(session.username, merTxnId, realm);
+          }
+        }, 2000);
       } else {
         // Use the sophisticated payment status checking logic from old implementation
         await checkPaymentStatusWithRetry(session.username, merTxnId, realm);
@@ -248,6 +363,8 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
       console.log('Defaulting to failed payment due to error');
       // Default to failed payment if we can't check status
       paymentResponse('fail');
+    } finally {
+      setIsProcessingPayment(false);
     }
   };
 
@@ -445,6 +562,7 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
     console.log('Extracted amount:', extractedAmount);
 
     setIsPaymentProcessed(true);
+    setIsProcessingPayment(false);
     
     // Navigate to payment response screen
     navigation.navigate('PaymentResponse', {
@@ -588,6 +706,15 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
                 return;
               }
               
+              // Check for Atom cancellation messages
+              if (data.status === 'cancelled' && (data.source === 'page_content' || data.source === 'error_message')) {
+                console.log('Atom cancellation detected in WebView message:', data);
+                if (!isPaymentProcessed) {
+                  paymentResponse('fail');
+                }
+                return;
+              }
+              
               if (data.status || data.payment_status || (data.data && data.data.txn_status)) {
                 console.log('Payment status message received:', data);
                 if (!isPaymentProcessed) {
@@ -675,6 +802,39 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
               console.log('Payment app deep link detected:', request.url);
               console.log('Allowing external payment app to open...');
               return false; // Prevent WebView from loading, allow external app to open
+            }
+            
+            // Check for cancelled transactions first
+            if (request.url.includes('cancel') || 
+                request.url.includes('failure') ||
+                request.url.includes('cancelled') ||
+                request.url.includes('abort') ||
+                request.url.includes('decline') ||
+                request.url.includes('reject') ||
+                // Atom payment gateway specific cancellation patterns
+                request.url.includes('atomtech.in/cancel') ||
+                request.url.includes('atomtech.in/failure') ||
+                request.url.includes('atomtech.in/decline')) {
+              console.log('Cancelled transaction URL detected:', request.url);
+              if (!isPaymentProcessed) {
+                paymentResponse('fail');
+              }
+              return false; // Prevent WebView from loading cancelled transaction URL
+            }
+            
+            // Check for cancelled transaction in URL parameters
+            try {
+              const url = new URL(request.url);
+              const status = url.searchParams.get('status') || url.searchParams.get('payment_status') || url.searchParams.get('txn_status');
+              if (status && (status.toLowerCase() === 'cancelled' || status.toLowerCase() === 'canceled' || status.toLowerCase() === 'failed' || status.toLowerCase() === 'failure')) {
+                console.log('Cancelled transaction detected in URL parameters:', status);
+                if (!isPaymentProcessed) {
+                  paymentResponse('fail');
+                }
+                return false; // Prevent WebView from loading cancelled transaction URL
+              }
+            } catch (e) {
+              console.log('Failed to parse URL for cancellation check:', e);
             }
             
             // Check for specific payment response URLs only
