@@ -1832,6 +1832,70 @@ class ApiService {
       }
     });
   }
+
+  async getCouponCode(realm: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const username = await sessionManager.getUsername();
+      if (!username) {
+        throw new Error('No username available');
+      }
+      
+      const requestData = {
+        username,
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(requestData),
+        timeout
+      };
+
+      try {
+        console.log('=== GET COUPON CODE ===');
+        console.log('Username:', username);
+        console.log('Realm:', realm);
+        
+        const res = await fetch(`${url}/selfcareGetCouponCode`, options);
+        const response = await res.json();
+        
+        console.log('Get coupon code API response:', response);
+        
+        if (response.status !== 'ok' && response.code !== 200) {
+          console.log('Get coupon code API error:', response.message);
+          throw new Error('No coupon found.');
+        } else {
+          console.log('Coupon codes retrieved successfully');
+          
+          const plan_wise = response.data['plan_wise'] !== undefined ? response.data.plan_wise.map((obj: any, index: number) => ({ ...obj, index })) : null;
+          const demographics_wise = response.data['demographics_wise'] !== undefined ? response.data.demographics_wise.map((obj: any, index: number) => ({ ...obj, index })) : null;
+          const user_wise = response.data['user_wise'] !== undefined ? response.data.user_wise.map((obj: any, index: number) => ({ ...obj, index })) : null;
+          
+          var result: any[] = [];
+          if(plan_wise!=null && plan_wise.length>0) {
+            result = plan_wise.concat(demographics_wise || [], user_wise || []);
+          } else if (demographics_wise!=null && demographics_wise.length > 0) {
+            result = demographics_wise.concat(user_wise || [])
+          } else if (user_wise!=null && user_wise.length > 0) {
+            result = user_wise;
+          }
+          
+          result = result.filter((vl) => {
+            return vl!=null;
+          })
+          
+          console.log('Processed coupon codes:', result);
+          return result;
+        }
+      } catch (e: any) {
+        console.error('Get coupon code error:', e);
+        const msg = isNetworkError(e) ? networkErrorMsg : e.message;
+        throw new Error(msg);
+      }
+    });
+  }
 }
 
 // Export singleton instance

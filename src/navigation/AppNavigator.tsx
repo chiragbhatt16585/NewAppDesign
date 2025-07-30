@@ -10,6 +10,8 @@ import LedgerScreen from '../screens/LedgerScreen';
 import TicketsScreen from '../screens/TicketsScreen';
 import SessionsScreen from '../screens/SessionsScreen';
 import RenewPlanScreen from '../screens/RenewPlanScreen';
+import UpgradePlanScreen from '../screens/UpgradePlanScreen';
+import UpgradePlanConfirmationScreen from '../screens/UpgradePlanConfirmationScreen';
 import PlanConfirmationScreen from '../screens/PlanConfirmationScreen';
 import PaymentLinkScreen from '../screens/PaymentLinkScreen';
 import PaymentResponseScreen from '../screens/PaymentResponseScreen';
@@ -130,6 +132,8 @@ const AppNavigator: React.FC<AppNavigatorProps> = ({ initialRoute }) => {
         <Stack.Screen name="Tickets" component={TicketsScreen} />
         <Stack.Screen name="Sessions" component={SessionsScreen} />
         <Stack.Screen name="RenewPlan" component={RenewPlanScreen} />
+        <Stack.Screen name="UpgradePlan" component={UpgradePlanScreen} />
+        <Stack.Screen name="UpgradePlanConfirmation" component={UpgradePlanConfirmationScreen} />
         <Stack.Screen name="PlanConfirmation" component={PlanConfirmationScreen} />
         <Stack.Screen name="PayBill" component={PayBillScreen} />
         <Stack.Screen name="ContactUs" component={ContactUsScreen} />

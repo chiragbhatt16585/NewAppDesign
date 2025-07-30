@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useEffect} from 'react';
 import {
   View,
   Text,
@@ -51,6 +51,58 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
   const [loadingGateways, setLoadingGateways] = React.useState(false);
   const [gatewayError, setGatewayError] = React.useState('');
   const [adminLoginIdState, setAdminLoginIdState] = React.useState(adminLoginId);
+  const [coupons, setCoupons] = React.useState<any[]>([]);
+  const [selectedCoupon, setSelectedCoupon] = React.useState<any>(null);
+  const [couponDiscount, setCouponDiscount] = React.useState(0);
+
+  useEffect(() => {
+    loadCoupons();
+  }, []);
+
+  const loadCoupons = async () => {
+    try {
+      const clientConfig = getClientConfig();
+      const realm = clientConfig.clientId;
+      const couponData = await apiService.getCouponCode(realm);
+      console.log('=== PLAN CONFIRMATION COUPON DATA ===');
+      console.log('Available Coupons:', JSON.stringify(couponData, null, 2));
+      console.log('=== END PLAN CONFIRMATION COUPON DATA ===');
+      setCoupons(couponData || []);
+    } catch (error) {
+      console.error('Error fetching coupons:', error);
+      setCoupons([]);
+    }
+  };
+
+  const handleCouponSelect = (coupon: any) => {
+    if (selectedCoupon && selectedCoupon.id === coupon.id) {
+      // Deselect if same coupon is clicked
+      setSelectedCoupon(null);
+      setCouponDiscount(0);
+    } else {
+      // Select new coupon
+      setSelectedCoupon(coupon);
+      
+      // Calculate discount based on coupon
+      try {
+        const discountJson = JSON.parse(coupon.discount_coupon_json || '{}');
+        const discountValue = parseFloat(discountJson.discount_option_value || '0');
+        setCouponDiscount(discountValue);
+      } catch (error) {
+        console.error('Error parsing coupon discount:', error);
+        setCouponDiscount(0);
+      }
+    }
+  };
+
+  const calculateFinalAmount = () => {
+    let finalAmount = totalAmount;
+    
+    // Subtract coupon discount
+    finalAmount -= couponDiscount;
+    
+    return Math.max(0, finalAmount);
+  };
 
   const getOTTIcon = (service: string) => {
     switch (service.toLowerCase()) {
@@ -267,6 +319,65 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
             )}
           </View>
 
+          {/* Coupon Selection */}
+          {coupons.length > 0 && (
+            <View style={[styles.couponCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
+              <Text style={[styles.couponTitle, {color: colors.text}]}>Available Coupons</Text>
+              
+              {coupons.map((coupon, index) => {
+                let discountInfo = '';
+                try {
+                  const discountJson = JSON.parse(coupon.discount_coupon_json || '{}');
+                  const discountType = discountJson.discount_option || 'flat';
+                  const discountValue = discountJson.discount_option_value || '0';
+                  discountInfo = `${discountType === 'flat' ? '₹' : ''}${discountValue}${discountType === 'percentage' ? '%' : ''} off`;
+                } catch (error) {
+                  discountInfo = 'Discount available';
+                }
+
+                const isSelected = selectedCoupon && selectedCoupon.id === coupon.id;
+
+                return (
+                  <TouchableOpacity
+                    key={coupon.id || index}
+                    style={[
+                      styles.couponItem,
+                      {borderColor: isSelected ? colors.primary : colors.border},
+                      isSelected && {backgroundColor: colors.primary + '08'}
+                    ]}
+                    onPress={() => handleCouponSelect(coupon)}
+                  >
+                    <View style={styles.couponContent}>
+                      <View style={styles.couponLeft}>
+                        <Text style={[styles.couponCode, {color: isSelected ? colors.primary : colors.text}]}>
+                          {JSON.parse(coupon.discount_coupon_json || '{}').discount_code || 'CODE'}
+                        </Text>
+                        <Text style={[styles.couponDiscount, {color: colors.success}]}>
+                          {discountInfo}
+                        </Text>
+                      </View>
+                      
+                      <View style={styles.couponRight}>
+                        <Text style={[styles.couponName, {color: colors.text}]} numberOfLines={1}>
+                          {coupon.campaign_name || 'Coupon'}
+                        </Text>
+                        <Text style={[styles.couponExpiry, {color: colors.textSecondary}]} numberOfLines={1}>
+                          {coupon.expiry_date || 'N/A'}
+                        </Text>
+                      </View>
+                      
+                      {isSelected && (
+                        <View style={styles.selectedBadge}>
+                          <Text style={styles.selectedBadgeText}>SELECTED</Text>
+                        </View>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+
           {/* Pricing Breakdown */}
           <View style={[styles.pricingCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
             <Text style={[styles.pricingTitle, {color: colors.text}]}>{t('planConfirmation.pricingBreakdown')}</Text>
@@ -296,9 +407,16 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
               <Text style={[styles.pricingValue, {color: colors.text}]}>₹{selectedPlan.dues}</Text>
             </View>
 
+            {selectedCoupon && couponDiscount > 0 && (
+              <View style={styles.pricingRow}>
+                <Text style={[styles.pricingLabel, {color: colors.textSecondary}]}>Coupon Discount</Text>
+                <Text style={[styles.pricingValue, {color: colors.success}]}>-₹{couponDiscount}</Text>
+              </View>
+            )}
+
             <View style={[styles.pricingRow, styles.finalTotalRow]}>
               <Text style={[styles.pricingLabel, styles.finalTotalLabel, {color: colors.text}]}>{t('planConfirmation.totalAmount')}</Text>
-              <Text style={[styles.pricingValue, styles.finalTotalValue, {color: colors.accent}]}>₹{totalAmount}</Text>
+              <Text style={[styles.pricingValue, styles.finalTotalValue, {color: colors.accent}]}>₹{calculateFinalAmount()}</Text>
             </View>
           </View>
 
@@ -314,7 +432,7 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
               style={[styles.confirmButton, {backgroundColor: colors.primary}]}
               onPress={handleConfirmPayment}>
               <Text style={styles.confirmButtonText}>
-                {t('planConfirmation.confirmAndPay')} - ₹{totalAmount}
+                {t('planConfirmation.confirmAndPay')} - ₹{calculateFinalAmount()}
               </Text>
             </TouchableOpacity>
           </View>
@@ -587,6 +705,74 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  couponCard: {
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 3,
+  },
+  couponTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 12,
+  },
+  couponItem: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+    position: 'relative',
+  },
+  couponContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  couponLeft: {
+    flex: 1,
+    marginRight: 12,
+  },
+  couponRight: {
+    flex: 2,
+    alignItems: 'flex-end',
+  },
+  couponName: {
+    fontSize: 13,
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  couponCode: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    fontFamily: 'monospace',
+    marginBottom: 2,
+  },
+  couponDiscount: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  couponExpiry: {
+    fontSize: 11,
+  },
+  selectedBadge: {
+    backgroundColor: '#10B981',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginLeft: 8,
+  },
+  selectedBadgeText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
   },
   paymentModalContainer: {
     position: 'absolute',

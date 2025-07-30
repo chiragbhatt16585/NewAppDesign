@@ -36,7 +36,7 @@ const MoreOptionsScreen = ({navigation}: any) => {
   };
 
   const handleUpgradePlan = () => {
-    Alert.alert('Upgrade Plan', 'Opening plan upgrade options...');
+    navigation.navigate('UpgradePlan');
   };
 
   const handleUsageDetails = () => {

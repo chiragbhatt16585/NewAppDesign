@@ -40,7 +40,7 @@ interface Plan {
   isExpanded?: boolean;
 }
 
-const RenewPlanScreen = ({navigation}: any) => {
+const UpgradePlanScreen = ({navigation}: any) => {
   const {isDark} = useTheme();
   const colors = getThemeColors(isDark);
   const {t} = useTranslation();
@@ -84,7 +84,6 @@ const RenewPlanScreen = ({navigation}: any) => {
   const loadPlanData = async (forceRefresh = false) => {
     try {
       setIsLoading(true);
-      //Alert.alert('Loading plan data...');
       
       // Get current session
       const session = await sessionManager.getCurrentSession();
@@ -96,36 +95,40 @@ const RenewPlanScreen = ({navigation}: any) => {
 
       const {username} = session;
       
-      // Always fetch fresh data for RenewPlanScreen
-      console.log('Fetching fresh data from API');
+      // Always fetch fresh data for UpgradePlanScreen
+      // console.log('Fetching fresh data from API');
       
       // Get user authentication data
       const authResponse = await apiService.makeAuthenticatedRequest(async (token) => {
         return await apiService.authUser(username);
       });
+      console.log('=== AUTH RESPONSE ===');
+      console.log('Full Auth Response:', JSON.stringify(authResponse, null, 2));
+      console.log('Current Plan:', authResponse?.current_plan);
+      console.log('Current Plan1:', authResponse?.current_plan1);
+      console.log('Plan Price:', authResponse?.plan_price);
+      console.log('Admin Login ID:', authResponse?.admin_login_id);
+      console.log('=== END AUTH RESPONSE ===');
       setAuthData(authResponse);
 
       // Get admin tax info
       const taxInfo = await apiService.getAdminTaxInfo(authResponse.admin_login_id, 'default');
+      console.log('=== TAX INFO ===');
+      console.log('Tax Info:', JSON.stringify(taxInfo, null, 2));
+      console.log('Show All Plans:', taxInfo?.isShowAllPlan);
+      console.log('=== END TAX INFO ===');
       
       // Get payment dues
       const duesResponse = await apiService.userPaymentDues(username, 'default');
       const payDuesAmount = duesResponse ? Math.round(parseFloat(duesResponse)) : 0;
       setPayDues(payDuesAmount);
+      console.log('=== PAYMENT DUES ===');
+      console.log('Dues Response:', duesResponse);
+      console.log('Dues Amount:', payDuesAmount);
+      console.log('=== END PAYMENT DUES ===');
 
       // Get plan list
       const isShowAllPlan = taxInfo?.isShowAllPlan || false;
-      //Alert.alert('isShowAllPlan', isShowAllPlan.toString());
-      
-      // console.log('=== PLAN API CALL DEBUG ===');
-      // console.log('Admin ID:', authResponse.admin_login_id);
-      // console.log('Username:', username);
-      // console.log('Current Plan:', authResponse.current_plan1);
-      // console.log('Show All Plans:', isShowAllPlan);
-      // console.log('Is Dashboard:', false);
-      // console.log('Realm:', 'default');
-      // console.log('Auth Response Keys:', Object.keys(authResponse));
-      // console.log('Full Auth Response:', authResponse);
       
       let planList: any[] = [];
       try {
@@ -138,19 +141,34 @@ const RenewPlanScreen = ({navigation}: any) => {
           'default'
         );
         
-        console.log('=== PLAN API RESPONSE SUCCESS ===');
-        console.log('Plan Count:', planList?.length || 0);
-        if (planList?.[0]) {
-          console.log('First Plan Name:', planList[0].name);
-          console.log('First Plan Speed:', planList[0].downloadSpeed);
-          console.log('First Plan Price:', planList[0].FinalAmount);
-          console.log('First Plan Validity:', planList[0].days);
-          console.log('First Plan Data Limit:', planList[0].limit);
-          console.log('First Plan OTT Count:', planList[0].content_providers?.length || 0);
-        }
-        console.log('=== END PLAN API RESPONSE ===');
+        // Filter out current plan and only show higher plans
+        const currentPlanName = authResponse.current_plan || authResponse.current_plan1;
+        const currentPlanPrice = authResponse.plan_price || 0;
         
-        setPlansData(planList);
+        const upgradePlans = planList.filter((plan: any) => {
+          // Filter out current plan by name
+          if (plan.name === currentPlanName) {
+            return false;
+          }
+          
+          // Filter out plans with same or lower price
+          if (plan.FinalAmount <= currentPlanPrice) {
+            return false;
+          }
+          
+          return true;
+        });
+        
+        console.log('=== UPGRADE PLAN FILTERING ===');
+        console.log('Current Plan:', currentPlanName);
+        console.log('Current Plan Price:', currentPlanPrice);
+        console.log('Total Plans:', planList.length);
+        console.log('Full Plan List:', JSON.stringify(planList, null, 2));
+        console.log('Upgrade Plans:', upgradePlans.length);
+        console.log('Filtered Upgrade Plans:', JSON.stringify(upgradePlans, null, 2));
+        console.log('=== END UPGRADE PLAN FILTERING ===');
+        
+        setPlansData(upgradePlans);
       } catch (planError: any) {
         console.error('=== PLAN API ERROR ===');
         console.error('Error:', planError);
@@ -171,12 +189,6 @@ const RenewPlanScreen = ({navigation}: any) => {
         payDues: payDuesAmount,
         lastUpdated: Date.now()
       });
-
-      // Set current plan as selected by default
-      const currentPlan = planList.find((plan: any) => plan.name === authResponse.current_plan || plan.name === authResponse.current_plan1);
-      if (currentPlan) {
-        setSelectedPlan(currentPlan);
-      }
 
     } catch (error: any) {
       console.error('Load plan data error:', error);
@@ -222,7 +234,7 @@ const RenewPlanScreen = ({navigation}: any) => {
   };
 
   const handleRefresh = async () => {
-    console.log('Manual refresh triggered');
+    // console.log('Manual refresh triggered');
     await dataCache.clearAllCache();
     await loadPlanData();
   };
@@ -280,14 +292,6 @@ const RenewPlanScreen = ({navigation}: any) => {
 
     // Sort plans based on selected sort option
     filteredPlans.sort((a, b) => {
-      // console.log('Auth data current plan fields:', {
-      //   current_plan: authData?.current_plan,
-      //   current_plan1: authData?.current_plan1,
-      //   plan_name: a.name
-      // });
-      const aIsCurrent = a.name === authData?.current_plan || a.name === authData?.current_plan1;
-      const bIsCurrent = b.name === authData?.current_plan || b.name === authData?.current_plan1;
-      
       switch (sortOption) {
         case 'price-low-high':
           return a.FinalAmount - b.FinalAmount;
@@ -305,11 +309,7 @@ const RenewPlanScreen = ({navigation}: any) => {
           return limitB - limitA;
         case '':
         default:
-          // Default: Put current plan first, then sort by price low to high
-          // console.log('Default sorting - Current plan:', authData?.current_plan);
-          // console.log('Comparing plans:', { a: a.name, b: b.name, aIsCurrent, bIsCurrent });
-          if (aIsCurrent && !bIsCurrent) return -1;
-          if (!aIsCurrent && bIsCurrent) return 1;
+          // Default: Sort by price low to high for upgrade plans
           return a.FinalAmount - b.FinalAmount;
       }
     });
@@ -340,11 +340,11 @@ const RenewPlanScreen = ({navigation}: any) => {
       mrp: selectedPlan.FinalAmount,
       dues: !payDues || isNaN(payDues) ? 0 : payDues,
       gbLimit: selectedPlan.limit === 'Unlimited' ? -1 : selectedPlan.limit,
-      isCurrentPlan: selectedPlan.name === authData?.current_plan || selectedPlan.name === authData?.current_plan1,
+      isCurrentPlan: false, // Always false for upgrade plans
       ottServices: selectedPlan.content_providers ? selectedPlan.content_providers : [],
     };
 
-    navigation.navigate('PlanConfirmation', {
+    navigation.navigate('UpgradePlanConfirmation', {
       selectedPlan: planForConfirmation,
       totalAmount: totalAmount,
       payDues: payDues,
@@ -396,7 +396,6 @@ const RenewPlanScreen = ({navigation}: any) => {
         styles.planCard,
         {backgroundColor: colors.card, shadowColor: colors.shadow},
         selectedPlan?.id === item.id && {borderColor: colors.primary, borderWidth: 2},
-        (item.name === authData?.current_plan || item.name === authData?.current_plan1) && {borderColor: colors.success, borderWidth: 2},
       ]}
       onPress={() => handlePlanExpand(item.id)}>
       
@@ -407,13 +406,6 @@ const RenewPlanScreen = ({navigation}: any) => {
             <Text style={styles.planIcon}>🚀</Text>
             <View style={styles.planTitleContainer}>
               <Text style={[styles.planName, {color: colors.text}]}>{item.name}</Text>
-              <View style={styles.planBadges}>
-                {(item.name === authData?.current_plan || item.name === authData?.current_plan1) && (
-                  <View style={[styles.currentPlanBadge, {backgroundColor: colors.success}]}>
-                    <Text style={styles.currentPlanText}>{t('renewPlan.currentPlan')}</Text>
-                  </View>
-                )}
-              </View>
             </View>
           </View>
           
@@ -489,24 +481,6 @@ const RenewPlanScreen = ({navigation}: any) => {
             </View>
           )}
 
-          {/* FUP Details */}
-          {/* {item.isfupBriefDetailsAvailable().result && (
-            <View style={styles.fupSection}>
-              <Text style={[styles.fupText, {color: colors.warning}]}>
-                After {item.fupBriefDetails()?.limit} GB, speed will be {item.fupBriefDetails()?.downloadSpeed}
-              </Text>
-            </View>
-          )} */}
-
-          {/* TBQ Details */}
-          {/* {item.isTBQPlan() && (
-            <View style={styles.tbqSection}>
-              <Text style={[styles.tbqText, {color: colors.warning}]}>
-                {item.tbqBriefDetails()?.days === 'all days' ? 'Between' : `On every ${item.tbqBriefDetails()?.days} between`} {item.tbqBriefDetails()?.start} and {item.tbqBriefDetails()?.stop}
-              </Text>
-            </View>
-          )} */}
-
           {/* Select Plan Button */}
           <TouchableOpacity
             style={[
@@ -546,14 +520,13 @@ const RenewPlanScreen = ({navigation}: any) => {
     <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}>
       <CommonHeader navigation={navigation} />
 
-
       {/* Page Heading */}
       <View style={styles.headingContainer}>
         <Text style={[styles.pageHeading, {color: colors.text}]}>
-          {t('renewPlan.title')}
+          Upgrade Plan
         </Text>
         <Text style={[styles.pageSubheading, {color: colors.textSecondary}]}>
-          {t('renewPlan.subtitle')}
+          Choose a higher plan to upgrade your current subscription
         </Text>
       </View>
 
@@ -927,13 +900,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 4,
   },
-  currentPlanBadge: {
+  upgradePlanBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
     alignSelf: 'flex-start',
   },
-  currentPlanText: {
+  upgradePlanText: {
     color: '#fff',
     fontSize: 10,
     fontWeight: '600',
@@ -943,17 +916,6 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 4,
     marginTop: 4,
-  },
-  ottPlanBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
-  },
-  ottPlanText: {
-    color: '#fff',
-    fontSize: 9,
-    fontWeight: '600',
   },
   priceBadge: {
     paddingHorizontal: 12,
@@ -1405,4 +1367,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default RenewPlanScreen; 
+export default UpgradePlanScreen; 
