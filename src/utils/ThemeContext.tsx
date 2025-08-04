@@ -1,5 +1,6 @@
 import React, {createContext, useContext, useState, useEffect} from 'react';
 import {Appearance, ColorSchemeName} from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 
@@ -29,6 +30,34 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({children}) => {
   const [systemColorScheme, setSystemColorScheme] = useState<ColorSchemeName>(
     Appearance.getColorScheme(),
   );
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Load saved theme mode from AsyncStorage
+  useEffect(() => {
+    const loadThemeMode = async () => {
+      try {
+        const savedThemeMode = await AsyncStorage.getItem('themeMode');
+        if (savedThemeMode && ['light', 'dark', 'system'].includes(savedThemeMode)) {
+          setThemeMode(savedThemeMode as ThemeMode);
+        }
+      } catch (error) {
+        console.error('Error loading theme mode:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadThemeMode();
+  }, []);
+
+  // Save theme mode to AsyncStorage when it changes
+  const saveThemeMode = async (mode: ThemeMode) => {
+    try {
+      await AsyncStorage.setItem('themeMode', mode);
+    } catch (error) {
+      console.error('Error saving theme mode:', error);
+    }
+  };
 
   useEffect(() => {
     const subscription = Appearance.addChangeListener(({colorScheme}) => {
@@ -44,12 +73,23 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({children}) => {
 
   const isDark = theme === 'dark';
 
+  // Wrapper function to save theme mode when it's changed
+  const handleSetThemeMode = (mode: ThemeMode) => {
+    setThemeMode(mode);
+    saveThemeMode(mode);
+  };
+
   const value: ThemeContextType = {
     theme,
     themeMode,
-    setThemeMode,
+    setThemeMode: handleSetThemeMode,
     isDark,
   };
+
+  // Show loading state while theme is being loaded
+  if (isLoading) {
+    return null; // or a loading spinner
+  }
 
   return (
     <ThemeContext.Provider value={value}>

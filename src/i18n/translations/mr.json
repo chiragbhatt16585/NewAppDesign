@@ -206,7 +206,7 @@
     "gbHighToLow": "जीबी मर्यादा - जास्त ते कमी",
     "clearFilters": "फिल्टर साफ करा",
     "applyFilters": "फिल्टर लागू करा",
-    "payNow": "आता भरा",
+    "payNow": "पुढे जा",
     "confirmPayment": "पेमेंटची पुष्टी करा",
     "confirmPaymentMessage": "तुम्हाला खरोखर {{plan}} साठी ₹{{amount}} भरायचे आहे?",
     "paymentSuccess": "पेमेंट यशस्वी",
@@ -254,7 +254,7 @@
     "payWith": "भरा",
     "noGateways": "कोणतेही पेमेंट गेटवे उपलब्ध नाहीत",
     "dueAmount": "बकाया रक्कम",
-    "payNow": "आता भरा",
+    "payNow": "पुढे जा",
     "paymentSuccess": "पेमेंट यशस्वी",
     "paymentSuccessMessage": "तुमचे पेमेंट यशस्वीरित्या प्रोसेस झाले आहे! तुम्हाला लवकरच पुष्टीकरण ईमेल मिळेल."
   },

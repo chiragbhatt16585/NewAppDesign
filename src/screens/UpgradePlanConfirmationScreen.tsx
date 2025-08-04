@@ -24,6 +24,7 @@ const UpgradePlanConfirmationScreen = ({navigation, route}: any) => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [currentPlanData, setCurrentPlanData] = useState<any>(null);
+  const [currentPlanDetails, setCurrentPlanDetails] = useState<any>(null);
   const [salesReturnData, setSalesReturnData] = useState<any>(null);
   const [coupons, setCoupons] = useState<any[]>([]);
   const [selectedCoupon, setSelectedCoupon] = useState<any>(null);
@@ -58,6 +59,25 @@ const UpgradePlanConfirmationScreen = ({navigation, route}: any) => {
       // Extract refund data from authUser response
       console.log('=== AUTH USER RESPONSE FOR REFUND ===');
       console.log('Full Auth Response:', JSON.stringify(authResponse, null, 2));
+      console.log('=== CURRENT PLAN DATA DEBUG ===');
+      console.log('Full Current Plan Data:', JSON.stringify(authResponse, null, 2));
+      console.log('Current Plan Data Keys:', Object.keys(authResponse || {}));
+      console.log('Usage Details:', authResponse?.usage_details);
+      console.log('Usage Details [0]:', authResponse?.usage_details?.[0]);
+      console.log('Usage Details [0] Keys:', authResponse?.usage_details?.[0] ? Object.keys(authResponse.usage_details[0]) : 'No usage details');
+      console.log('Plan Price Fields:', {
+        plan_price: authResponse?.plan_price,
+        price: authResponse?.price,
+        current_plan_price: authResponse?.current_plan_price,
+        plan_amount: authResponse?.plan_amount,
+        amount: authResponse?.amount,
+        usage_details: authResponse?.usage_details?.[0],
+        'usage_details[0].plan_price': authResponse?.usage_details?.[0]?.plan_price,
+        'usage_details[0].amount': authResponse?.usage_details?.[0]?.amount,
+        'usage_details[0].plan_amount': authResponse?.usage_details?.[0]?.plan_amount,
+        'usage_details[0].current_plan_price': authResponse?.usage_details?.[0]?.current_plan_price
+      });
+      console.log('=== END CURRENT PLAN DATA DEBUG ===');
       console.log('=== END AUTH USER RESPONSE ===');
       
       // Check if authResponse contains sales_return_details
@@ -100,6 +120,50 @@ const UpgradePlanConfirmationScreen = ({navigation, route}: any) => {
         console.log('Mock Sales Return Data:', JSON.stringify(mockSalesReturnData, null, 2));
         console.log('=== END MOCK DATA ===');
         setSalesReturnData(mockSalesReturnData);
+      }
+
+      // Get current plan details from plan API
+      try {
+        const currentPlanName = authResponse?.current_plan || authResponse?.current_plan1;
+        console.log('=== GETTING CURRENT PLAN DETAILS ===');
+        console.log('Current Plan Name:', currentPlanName);
+        console.log('Admin Login ID:', authResponse?.admin_login_id);
+        console.log('Username:', username);
+        
+        if (currentPlanName && authResponse?.admin_login_id) {
+          // Get admin tax info for plan API
+          const taxInfo = await apiService.getAdminTaxInfo(authResponse.admin_login_id, 'default');
+          const isShowAllPlan = taxInfo?.isShowAllPlan || false;
+          
+          // Get full plan list
+          const planList = await apiService.planList(
+            authResponse.admin_login_id,
+            username,
+            currentPlanName,
+            isShowAllPlan,
+            false, // is_dashboard
+            'default'
+          );
+          
+          console.log('=== PLAN LIST RESPONSE ===');
+          console.log('Total Plans:', planList?.length || 0);
+          console.log('Full Plan List:', JSON.stringify(planList, null, 2));
+          
+          // Find current plan in the list
+          const currentPlan = planList?.find((plan: any) => 
+            plan.name === currentPlanName || 
+            plan.name === authResponse?.current_plan || 
+            plan.name === authResponse?.current_plan1
+          );
+          
+          console.log('=== CURRENT PLAN FOUND ===');
+          console.log('Current Plan Details:', JSON.stringify(currentPlan, null, 2));
+          console.log('=== END CURRENT PLAN DETAILS ===');
+          
+          setCurrentPlanDetails(currentPlan);
+        }
+      } catch (error) {
+        console.error('Error fetching current plan details:', error);
       }
 
       // Get available coupons
@@ -233,69 +297,108 @@ const UpgradePlanConfirmationScreen = ({navigation, route}: any) => {
     return Math.max(0, finalAmount);
   };
 
-  const renderPlanComparison = () => (
-    <View style={[styles.comparisonCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
-      <Text style={[styles.comparisonTitle, {color: colors.text}]}>Plan Comparison</Text>
+  const renderPlanComparison = () => {
+    // Debug current plan price calculation
+    const currentPlanPrice = currentPlanDetails?.FinalAmount || 
+      currentPlanDetails?.amt ||
+      currentPlanDetails?.price ||
+      currentPlanData?.plan_price || 
+      currentPlanData?.price || 
+      currentPlanData?.current_plan_price ||
+      currentPlanData?.plan_amount ||
+      currentPlanData?.amount ||
+      currentPlanData?.usage_details?.[0]?.plan_price ||
+      currentPlanData?.usage_details?.[0]?.amount ||
+      0;
+    
+    console.log('=== PLAN COMPARISON DEBUG ===');
+    console.log('Current Plan Data:', currentPlanData);
+    console.log('Current Plan Details:', currentPlanDetails);
+    console.log('Calculated Current Plan Price:', currentPlanPrice);
+    console.log('Selected Plan Price:', selectedPlan.price);
+    console.log('=== END PLAN COMPARISON DEBUG ===');
+    
+    return (
+      <View style={[styles.comparisonCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
+        <Text style={[styles.comparisonTitle, {color: colors.text}]}>Plan Comparison</Text>
       
       <View style={styles.comparisonTable}>
-        <View style={styles.comparisonHeader}>
-          <Text style={[styles.comparisonHeaderText, {color: colors.textSecondary}]}>Feature</Text>
-          <Text style={[styles.comparisonHeaderText, {color: colors.textSecondary}]}>Current Plan</Text>
-          <Text style={[styles.comparisonHeaderText, {color: colors.textSecondary}]}>New Plan</Text>
+        {/* Header Row */}
+        <View style={[styles.tableHeader, {borderBottomColor: colors.border}]}>
+          <Text style={[styles.headerCell, {color: colors.textSecondary}]}>Parameters</Text>
+          <Text style={[styles.headerCell, {color: colors.textSecondary}]}>Current</Text>
+          <Text style={[styles.headerCell, {color: colors.textSecondary}]}>New</Text>
         </View>
         
-        <View style={styles.comparisonRow}>
-          <Text style={[styles.comparisonLabel, {color: colors.text}]}>Plan Name</Text>
-          <Text style={[styles.comparisonValue, {color: colors.text}]}>
-            {currentPlanData?.current_plan || 'N/A'}
+        {/* Plan Name Row */}
+        <View style={[styles.tableRow, {borderBottomColor: colors.border}]}>
+          <Text style={[styles.parameterCell, {color: colors.textSecondary}]}>Plan Name</Text>
+          <Text style={[styles.currentCell, {color: colors.text}]}>
+            {currentPlanDetails?.name || currentPlanData?.current_plan || 'N/A'}
           </Text>
-          <Text style={[styles.comparisonValue, {color: colors.primary, fontWeight: 'bold'}]}>
+          <Text style={[styles.newCell, {color: colors.primary, fontWeight: '600'}]}>
             {selectedPlan.name}
           </Text>
         </View>
         
-        <View style={styles.comparisonRow}>
-          <Text style={[styles.comparisonLabel, {color: colors.text}]}>Speed</Text>
-          <Text style={[styles.comparisonValue, {color: colors.text}]}>
-            {currentPlanData?.plan_download_speed || 'N/A'}
+        {/* Speed Row */}
+        <View style={[styles.tableRow, {borderBottomColor: colors.border}]}>
+          <Text style={[styles.parameterCell, {color: colors.textSecondary}]}>⚡ Speed</Text>
+          <Text style={[styles.currentCell, {color: colors.text}]}>
+            {currentPlanDetails?.downloadSpeed || currentPlanData?.plan_download_speed || 'N/A'}
           </Text>
-          <Text style={[styles.comparisonValue, {color: colors.primary, fontWeight: 'bold'}]}>
+          <Text style={[styles.newCell, {color: colors.primary, fontWeight: '600'}]}>
             {selectedPlan.speed}
           </Text>
         </View>
         
-        <View style={styles.comparisonRow}>
-          <Text style={[styles.comparisonLabel, {color: colors.text}]}>Data Limit</Text>
-          <Text style={[styles.comparisonValue, {color: colors.text}]}>
-            {currentPlanData?.usage_details?.[0]?.plan_data || 'N/A'}
+        {/* Data Row */}
+        <View style={[styles.tableRow, {borderBottomColor: colors.border}]}>
+          <Text style={[styles.parameterCell, {color: colors.textSecondary}]}>📊 Data</Text>
+          <Text style={[styles.currentCell, {color: colors.text}]}>
+            {currentPlanDetails?.limit === 'Unlimited' ? 'Unlimited' : `${currentPlanDetails?.limit || 'N/A'} GB`}
           </Text>
-          <Text style={[styles.comparisonValue, {color: colors.primary, fontWeight: 'bold'}]}>
+          <Text style={[styles.newCell, {color: colors.primary, fontWeight: '600'}]}>
             {selectedPlan.gbLimit === -1 ? 'Unlimited' : `${selectedPlan.gbLimit} GB`}
           </Text>
         </View>
         
-        <View style={styles.comparisonRow}>
-          <Text style={[styles.comparisonLabel, {color: colors.text}]}>Validity</Text>
-          <Text style={[styles.comparisonValue, {color: colors.text}]}>
-            {currentPlanData?.usage_details?.[0]?.plan_days || 'N/A'} Days
+        {/* Validity Row */}
+        <View style={[styles.tableRow, {borderBottomColor: colors.border}]}>
+          <Text style={[styles.parameterCell, {color: colors.textSecondary}]}>⏰ Validity</Text>
+          <Text style={[styles.currentCell, {color: colors.text}]}>
+            {currentPlanDetails?.days ? `${currentPlanDetails.days} Days` : 'N/A'}
           </Text>
-          <Text style={[styles.comparisonValue, {color: colors.primary, fontWeight: 'bold'}]}>
+          <Text style={[styles.newCell, {color: colors.primary, fontWeight: '600'}]}>
             {selectedPlan.validity}
           </Text>
         </View>
         
-        <View style={styles.comparisonRow}>
-          <Text style={[styles.comparisonLabel, {color: colors.text}]}>Price</Text>
-          <Text style={[styles.comparisonValue, {color: colors.text}]}>
-            {formatCurrency(currentPlanData?.plan_price || 0)}
+        {/* OTT Row */}
+        <View style={[styles.tableRow, {borderBottomColor: colors.border}]}>
+          <Text style={[styles.parameterCell, {color: colors.textSecondary}]}>📺 OTT</Text>
+          <Text style={[styles.currentCell, {color: colors.text}]}>
+            {currentPlanDetails?.content_providers && currentPlanDetails.content_providers.length > 0 ? 'Included' : 'Not Included'}
           </Text>
-          <Text style={[styles.comparisonValue, {color: colors.primary, fontWeight: 'bold'}]}>
+          <Text style={[styles.newCell, {color: colors.primary, fontWeight: '600'}]}>
+            {selectedPlan.ottServices && selectedPlan.ottServices.length > 0 ? 'Included' : 'Not Included'}
+          </Text>
+        </View>
+        
+        {/* Price Row */}
+        <View style={[styles.tableRow, {borderBottomColor: colors.border}]}>
+          <Text style={[styles.parameterCell, {color: colors.textSecondary}]}>💰 Price</Text>
+          <Text style={[styles.currentCell, {color: colors.text}]}>
+            {formatCurrency(currentPlanPrice)}
+          </Text>
+          <Text style={[styles.newCell, {color: colors.primary, fontWeight: 'bold', fontSize: 16}]}>
             {formatCurrency(selectedPlan.price)}
           </Text>
         </View>
       </View>
     </View>
   );
+  };
 
   const renderSalesReturnDetails = () => {
     console.log('=== RENDER SALES RETURN DEBUG ===');
@@ -386,7 +489,7 @@ const UpgradePlanConfirmationScreen = ({navigation, route}: any) => {
               style={[
                 styles.couponItem,
                 {borderColor: isSelected ? colors.primary : colors.border},
-                isSelected && {backgroundColor: colors.primary + '08'}
+                isSelected && {backgroundColor: colors.primary + '10'}
               ]}
               onPress={() => handleCouponSelect(coupon)}
             >
@@ -410,8 +513,8 @@ const UpgradePlanConfirmationScreen = ({navigation, route}: any) => {
                 </View>
                 
                 {isSelected && (
-                  <View style={styles.selectedBadge}>
-                    <Text style={styles.selectedBadgeText}>SELECTED</Text>
+                  <View style={[styles.selectedIndicator, {backgroundColor: colors.primary}]}>
+                    <Text style={styles.selectedIndicatorText}>✓</Text>
                   </View>
                 )}
               </View>
@@ -581,38 +684,119 @@ const styles = StyleSheet.create({
   comparisonTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 16,
+    marginBottom: 20,
     textAlign: 'center',
   },
   comparisonTable: {
-    gap: 12,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
   },
-  comparisonHeader: {
+  tableHeader: {
     flexDirection: 'row',
-    paddingBottom: 8,
+    backgroundColor: '#f8f9fa',
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
   },
-  comparisonHeaderText: {
+  headerCell: {
     flex: 1,
     fontSize: 14,
     fontWeight: '600',
     textAlign: 'center',
   },
-  comparisonRow: {
+  tableRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
   },
-  comparisonLabel: {
+  parameterCell: {
     flex: 1,
     fontSize: 14,
     fontWeight: '500',
   },
-  comparisonValue: {
+  currentCell: {
     flex: 1,
     fontSize: 14,
     textAlign: 'center',
+  },
+  newCell: {
+    flex: 1,
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  planCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  planInfo: {
+    flex: 1,
+  },
+  planName: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  planPrice: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  planStatusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  planStatusText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+
+  planFeatures: {
+    gap: 12,
+  },
+  planFeaturesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  planFeature: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  featureItem: {
+    flex: 1,
+    minWidth: '48%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  featureIcon: {
+    fontSize: 16,
+    width: 20,
+    textAlign: 'center',
+  },
+  featureLabel: {
+    fontSize: 12,
+    flex: 1,
+  },
+  featureValue: {
+    fontSize: 12,
+    fontWeight: '500',
+    textAlign: 'right',
+    flex: 1,
+  },
+  arrowContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  arrowIcon: {
+    fontSize: 24,
   },
   salesReturnCard: {
     borderRadius: 16,
@@ -705,18 +889,18 @@ const styles = StyleSheet.create({
   couponExpiry: {
     fontSize: 11,
   },
-  selectedBadge: {
-    backgroundColor: '#10B981',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+  selectedIndicator: {
+    width: 24,
+    height: 24,
     borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginLeft: 8,
   },
-  selectedBadgeText: {
+  selectedIndicatorText: {
     color: '#ffffff',
-    fontSize: 10,
+    fontSize: 14,
     fontWeight: 'bold',
-    letterSpacing: 0.5,
   },
   paymentCard: {
     borderRadius: 16,

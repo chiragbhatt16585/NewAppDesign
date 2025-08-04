@@ -391,17 +391,18 @@ const RenewPlanScreen = ({navigation}: any) => {
   };
 
   const renderPlanItem = ({item}: {item: Plan}) => (
-    <TouchableOpacity
+    <View
       style={[
         styles.planCard,
         {backgroundColor: colors.card, shadowColor: colors.shadow},
         selectedPlan?.id === item.id && {borderColor: colors.primary, borderWidth: 2},
         (item.name === authData?.current_plan || item.name === authData?.current_plan1) && {borderColor: colors.success, borderWidth: 2},
-      ]}
-      onPress={() => handlePlanExpand(item.id)}>
+      ]}>
       
       {/* Compact Plan Header */}
-      <View style={styles.planHeader}>
+      <TouchableOpacity 
+        style={styles.planHeader}
+        onPress={() => handlePlanExpand(item.id)}>
         <View style={styles.planInfo}>
           <View style={styles.planTitleRow}>
             <Text style={styles.planIcon}>🚀</Text>
@@ -449,34 +450,49 @@ const RenewPlanScreen = ({navigation}: any) => {
           </View>
           <TouchableOpacity 
             style={styles.expandButton}
-            onPress={() => handlePlanExpand(item.id)}>
+            onPress={(e) => {
+              e.stopPropagation();
+              handlePlanExpand(item.id);
+            }}>
             <Text style={[styles.expandIcon, {color: colors.textSecondary}]}>
               {item.isExpanded ? '▼' : '▶'}
             </Text>
           </TouchableOpacity>
+          {selectedPlan?.id === item.id && (
+            <View style={[styles.selectedIndicator, {backgroundColor: colors.primary}]}>
+              <Text style={styles.selectedIndicatorText}>✓</Text>
+            </View>
+          )}
         </View>
-      </View>
+      </TouchableOpacity>
 
       {/* Compact Plan Details */}
       {item.isExpanded && (
         <View style={styles.planDetails}>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailIcon}>⬆️</Text>
-            <Text style={styles.detailValue}>{item.uploadSpeed}</Text>
-            <Text style={styles.detailIcon}>⬇️</Text>
-            <Text style={styles.detailValue}>{item.downloadSpeed}</Text>
-            <Text style={styles.detailIcon}>💾</Text>
-            <Text style={styles.detailValue}>{item.limit === 'Unlimited' ? 'Unlimited' : `${item.limit} GB`}</Text>
-            
-          </View>
+          {/* {(!selectedPlan || selectedPlan.id !== item.id) && (
+            <View style={styles.detailRow}>
+              <Text style={styles.detailIcon}>⬆️</Text>
+              <Text style={styles.detailValue}>{item.uploadSpeed}</Text>
+              <Text style={styles.detailIcon}>⬇️</Text>
+              <Text style={styles.detailValue}>{item.downloadSpeed}</Text>
+              <Text style={styles.detailIcon}>💾</Text>
+              <Text style={styles.detailValue}>{item.limit === 'Unlimited' ? 'Unlimited' : `${item.limit} GB`}</Text>
+              
+            </View>
+          )} */}
 
           {/* OTT Services */}
-          {item.content_providers && item.content_providers.length > 0 && (
+          {item.content_providers && item.content_providers.length > 0 && (!selectedPlan || selectedPlan.id !== item.id) && (
             <View style={styles.ottSection}>
               <Text style={[styles.ottTitle, {color: colors.textSecondary}]}>
                 {t('renewPlan.ottServices')}
               </Text>
-              <View style={styles.ottGrid}>
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.ottScrollContainer}
+                nestedScrollEnabled={true}
+                scrollEnabled={true}>
                 {item.content_providers.map((provider: any, index: number) => (
                   <View key={index} style={styles.ottItem}>
                     {renderOTTIcon(provider)}
@@ -485,7 +501,7 @@ const RenewPlanScreen = ({navigation}: any) => {
                     </Text>
                   </View>
                 ))}
-              </View>
+              </ScrollView>
             </View>
           )}
 
@@ -508,23 +524,20 @@ const RenewPlanScreen = ({navigation}: any) => {
           )} */}
 
           {/* Select Plan Button */}
-          <TouchableOpacity
-            style={[
-              styles.selectPlanButton,
-              {backgroundColor: selectedPlan?.id === item.id ? colors.primary : colors.card},
-              selectedPlan?.id === item.id && {borderColor: colors.primary}
-            ]}
-            onPress={() => handlePlanSelect(item)}>
-                         <Text style={[
-               styles.selectPlanText,
-               {color: selectedPlan?.id === item.id ? '#ffffff' : colors.primary}
-             ]}>
-              {selectedPlan?.id === item.id ? t('renewPlan.selected') : t('renewPlan.selectPlan')}
-            </Text>
-          </TouchableOpacity>
+          {!selectedPlan || selectedPlan.id !== item.id ? (
+            <View style={styles.selectPlanContainer}>
+              <TouchableOpacity
+                style={[styles.selectPlanButton, {backgroundColor: colors.card, borderColor: colors.primary}]}
+                onPress={() => handlePlanSelect(item)}>
+                <Text style={[styles.selectPlanText, {color: colors.primary}]}>
+                  {t('renewPlan.selectPlan')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
         </View>
       )}
-    </TouchableOpacity>
+    </View>
   );
 
   if (isLoading) {
@@ -674,6 +687,8 @@ const RenewPlanScreen = ({navigation}: any) => {
         contentContainerStyle={styles.plansList}
         refreshing={isLoading}
         onRefresh={handleRefresh}
+        nestedScrollEnabled={true}
+        scrollEnabled={true}
       />
 
       {/* Pay Now Button */}
@@ -965,7 +980,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   planDetails: {
-    gap: 8,
+    gap: 4,
   },
   detailRow: {
     flexDirection: 'row',
@@ -1008,8 +1023,8 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   ottSection: {
-    marginTop: 12,
-    paddingTop: 12,
+    marginTop: 4,
+    paddingTop: 4,
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
   },
@@ -1366,9 +1381,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     marginTop: 8,
   },
+  ottScrollContainer: {
+    paddingHorizontal: 4,
+    gap: 16,
+  },
+
   ottItem: {
     alignItems: 'center',
     marginVertical: 4,
+    minWidth: 80,
+    paddingHorizontal: 8,
   },
   ottIcon: {
     fontSize: 24,
@@ -1386,6 +1408,24 @@ const styles = StyleSheet.create({
   selectPlanText: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  selectPlanContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  selectedIndicator: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+  selectedIndicatorText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   payButtonContainer: {
     position: 'absolute',

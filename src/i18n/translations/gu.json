@@ -254,7 +254,7 @@
     "gbHighToLow": "જીબી મર્યાદા - વધુ થી ઓછી",
     "clearFilters": "ફિલ્ટર સાફ કરો",
     "applyFilters": "ફિલ્ટર લાગુ કરો",
-    "payNow": "હવે ચૂકવો",
+    "payNow": "આગળ વધો",
     "confirmPayment": "ચુકવણીની પુષ્ટિ કરો",
     "confirmPaymentMessage": "શું તમે ખરેખર {{plan}} માટે ₹{{amount}} ચૂકવવા માંગો છો?",
     "paymentSuccess": "ચુકવણી સફળ",
@@ -302,7 +302,7 @@
     "payWith": "થી ચૂકવો",
     "noGateways": "કોઈ ચુકવણી ગેટવે ઉપલબ્ધ નથી",
     "dueAmount": "બાકી રકમ",
-    "payNow": "હવે ચૂકવો",
+    "payNow": "આગળ વધો",
     "paymentSuccess": "ચુકવણી સફળ",
     "paymentSuccessMessage": "તમારી ચુકવણી સફળતાપૂર્વક પ્રોસેસ થઈ છે! તમને ટૂંક સમયમાં પુષ્ટિ ઈમેલ મળશે."
   },

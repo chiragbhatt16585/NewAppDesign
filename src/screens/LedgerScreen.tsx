@@ -34,6 +34,7 @@ const LedgerScreen = ({navigation}: any) => {
   const [loading, setLoading] = useState(true);
   const [ledgerData, setLedgerData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
 
   // State for different data types
   const [proformaInvoices, setProformaInvoices] = useState<any[]>([]);
@@ -463,34 +464,47 @@ const LedgerScreen = ({navigation}: any) => {
         )}
       </View>
 
-      {/* Bottom Total Section */}
+      {/* Collapsible Account Summary */}
       <View style={[styles.bottomSection, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
-        <Text style={[styles.bottomSectionTitle, {color: colors.text}]}>{t('ledger.accountSummary')}</Text>
+        <TouchableOpacity 
+          style={styles.summaryHeader}
+          onPress={() => setIsSummaryExpanded(!isSummaryExpanded)}
+        >
+          <View style={styles.summaryHeaderContent}>
+            <Text style={[styles.bottomSectionTitle, {color: colors.text}]}>{t('ledger.accountSummary')}</Text>
+            <View style={[styles.currentBalanceRow, styles.compactBalanceRow]}>
+              <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('ledger.currentBalance')}</Text>
+              <Text style={[styles.summaryValue, {color: colors.text, fontWeight: 'bold'}]}>₹{summaryData?.balance || 0}</Text>
+            </View>
+          </View>
+          <Text style={[styles.expandIcon, {color: colors.textSecondary}]}>
+            {isSummaryExpanded ? '▼' : '▶'}
+          </Text>
+        </TouchableOpacity>
         
-        <View style={styles.summaryRow}>
-          <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('ledger.openingBalance')}</Text>
-          <Text style={[styles.summaryValue, {color: colors.text}]}>₹{summaryData?.openingBalance || 0}</Text>
-        </View>
-        
-        <View style={styles.summaryRow}>
-          <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('ledger.proformaAmount')}</Text>
-          <Text style={[styles.summaryValue, {color: colors.accent}]}>₹{summaryData?.proforma_invoice || 0}</Text>
-        </View>
-        
-        <View style={styles.summaryRow}>
-          <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('ledger.billAmount')}</Text>
-          <Text style={[styles.summaryValue, {color: colors.accent}]}>₹{summaryData?.billAmount || 0}</Text>
-        </View>
-        
-        <View style={styles.summaryRow}>
-          <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('ledger.paidAmount')}</Text>
-          <Text style={[styles.summaryValue, {color: colors.success}]}>₹{summaryData?.paidAmount || 0}</Text>
-        </View>
-        
-        <View style={[styles.summaryRow, styles.currentBalanceRow]}>
-          <Text style={[styles.summaryLabel, styles.currentBalanceLabel, {color: colors.text}]}>{t('ledger.currentBalance')}</Text>
-          <Text style={[styles.summaryValue, styles.currentBalanceValue, {color: colors.text}]}>₹{summaryData?.balance || 0}</Text>
-        </View>
+        {isSummaryExpanded && (
+          <View style={styles.expandedSummary}>
+            <View style={styles.summaryRow}>
+              <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('ledger.openingBalance')}</Text>
+              <Text style={[styles.summaryValue, {color: colors.text}]}>₹{summaryData?.openingBalance || 0}</Text>
+            </View>
+            
+            <View style={styles.summaryRow}>
+              <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('ledger.proformaAmount')}</Text>
+              <Text style={[styles.summaryValue, {color: colors.accent}]}>₹{summaryData?.proforma_invoice || 0}</Text>
+            </View>
+            
+            <View style={styles.summaryRow}>
+              <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('ledger.billAmount')}</Text>
+              <Text style={[styles.summaryValue, {color: colors.accent}]}>₹{summaryData?.billAmount || 0}</Text>
+            </View>
+            
+            <View style={styles.summaryRow}>
+              <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('ledger.paidAmount')}</Text>
+              <Text style={[styles.summaryValue, {color: colors.success}]}>₹{summaryData?.paidAmount || 0}</Text>
+            </View>
+          </View>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -538,7 +552,7 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     paddingVertical: 16,
-    paddingBottom: 200, // Add extra padding to avoid overlap with bottom section
+    paddingBottom: 120, // Reduced padding since summary is now compact
   },
   itemCard: {
     borderRadius: 12,
@@ -610,7 +624,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: 20,
     borderRadius: 16,
-    padding: 20,
+    padding: 16,
     shadowOffset: {
       width: 0,
       height: 2,
@@ -618,6 +632,30 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3.84,
     elevation: 5,
+  },
+  summaryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  summaryHeaderContent: {
+    flex: 1,
+  },
+  expandIcon: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginLeft: 8,
+  },
+  expandedSummary: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+  },
+  compactBalanceRow: {
+    marginTop: 8,
+    paddingTop: 0,
+    borderTopWidth: 0,
   },
   bottomSectionTitle: {
     fontSize: 18,

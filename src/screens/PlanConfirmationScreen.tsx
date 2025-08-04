@@ -262,42 +262,49 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
           <View style={[styles.planSummaryCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
             <View style={styles.planHeader}>
               <View style={styles.planInfo}>
-                <View style={styles.planTitleRow}>
-                  <Text style={styles.planIcon}>🚀</Text>
-                  <View style={styles.planTitleContainer}>
-                    <Text style={[styles.planName, {color: colors.text}]}>{selectedPlan.name}</Text>
+                {/* Price and Current Plan Badge Row */}
+                <View style={styles.planBadgesRow}>
+                  <View style={styles.planBadgesLeft}>
                     {selectedPlan.isCurrentPlan && (
                       <View style={[styles.currentPlanBadge, {backgroundColor: colors.success}]}>
                         <Text style={styles.currentPlanText}>{t('planConfirmation.currentPlan')}</Text>
                       </View>
                     )}
                   </View>
+                  <View style={[styles.priceBadge, {backgroundColor: colors.primaryLight}]}>
+                    <Text style={[styles.priceText, {color: colors.primary}]}>₹{selectedPlan.mrp}</Text>
+                  </View>
                 </View>
-              </View>
-              <View style={[styles.priceBadge, {backgroundColor: colors.primaryLight}]}>
-                <Text style={[styles.priceText, {color: colors.primary}]}>₹{selectedPlan.mrp}</Text>
+                
+                {/* Plan Name Row */}
+                <View style={styles.planTitleRow}>
+                  <Text style={styles.planIcon}>🚀</Text>
+                  <View style={styles.planTitleContainer}>
+                    <Text style={[styles.planName, {color: colors.text}]} numberOfLines={2}>
+                      {selectedPlan.name}
+                    </Text>
+                  </View>
+                </View>
               </View>
             </View>
 
             {/* Plan Details */}
             <View style={styles.planDetails}>
               <View style={styles.detailRow}>
-                <Text style={styles.detailIcon}>⚡</Text>
-                <Text style={[styles.detailValue, {color: colors.text, marginRight: 100}]}>{selectedPlan.speed}</Text>
-                <Text style={styles.detailIcon}>⏰</Text>
-                <Text style={[styles.detailValue, {color: colors.text}]}>{selectedPlan.validity}</Text>
-              </View>
-              <View style={styles.detailRow}>
-                <Text style={styles.detailIcon}>⬆️</Text>
-                <Text style={[styles.detailValue, {color: colors.text, marginRight: 100}]}>{selectedPlan.upload}</Text>
-                <Text style={styles.detailIcon}>⬇️</Text>
-                <Text style={[styles.detailValue, {color: colors.text}]}>{selectedPlan.download}</Text>
-              </View>
-              <View style={styles.detailRow}>
-                <Text style={styles.detailIcon}>💾</Text>
-                <Text style={[styles.detailValue, {color: colors.text}]}>
-                  {selectedPlan.gbLimit === -1 ? 'Unlimited' : `${selectedPlan.gbLimit} GB`}
-                </Text>
+                <View style={styles.detailItem}>
+                  <Text style={styles.detailIcon}>⚡</Text>
+                  <Text style={[styles.detailValue, {color: colors.text}]}>{selectedPlan.speed}</Text>
+                </View>
+                <View style={styles.detailItem}>
+                  <Text style={styles.detailIcon}>💾</Text>
+                  <Text style={[styles.detailValue, {color: colors.text}]}>
+                    {selectedPlan.gbLimit === -1 ? 'Unlimited' : `${selectedPlan.gbLimit} GB`}
+                  </Text>
+                </View>
+                <View style={styles.detailItem}>
+                  <Text style={styles.detailIcon}>⏰</Text>
+                  <Text style={[styles.detailValue, {color: colors.text}]}>{selectedPlan.validity}</Text>
+                </View>
               </View>
             </View>
 
@@ -305,16 +312,21 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
             {selectedPlan.ottServices && selectedPlan.ottServices.length > 0 && (
               <View style={styles.ottSection}>
                 <Text style={[styles.ottTitle, {color: colors.textSecondary}]}>🎬 {t('planConfirmation.ottServices')}</Text>
-                <View style={styles.ottIcons}>
+                <ScrollView 
+                  horizontal 
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.ottScrollContainer}
+                  nestedScrollEnabled={true}
+                  scrollEnabled={true}>
                   {selectedPlan.ottServices.map((service: any, index: number) => (
-                    <View key={index} style={styles.ottIcon}>
+                    <View key={index} style={styles.ottItem}>
                       {renderOTTIcon(service)}
                       <Text style={[styles.ottServiceName, {color: colors.textSecondary}]}>
                         {service.content_provider}
                       </Text>
                     </View>
                   ))}
-                </View>
+                </ScrollView>
               </View>
             )}
           </View>
@@ -322,7 +334,7 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
           {/* Coupon Selection */}
           {coupons.length > 0 && (
             <View style={[styles.couponCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
-              <Text style={[styles.couponTitle, {color: colors.text}]}>Available Coupons</Text>
+              <Text style={[styles.couponTitle, {color: colors.text}]}> Coupons For You</Text>
               
               {coupons.map((coupon, index) => {
                 let discountInfo = '';
@@ -343,34 +355,39 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
                     style={[
                       styles.couponItem,
                       {borderColor: isSelected ? colors.primary : colors.border},
-                      isSelected && {backgroundColor: colors.primary + '08'}
+                      isSelected && {backgroundColor: colors.primary + '10'}
                     ]}
                     onPress={() => handleCouponSelect(coupon)}
                   >
                     <View style={styles.couponContent}>
                       <View style={styles.couponLeft}>
-                        <Text style={[styles.couponCode, {color: isSelected ? colors.primary : colors.text}]}>
-                          {JSON.parse(coupon.discount_coupon_json || '{}').discount_code || 'CODE'}
-                        </Text>
-                        <Text style={[styles.couponDiscount, {color: colors.success}]}>
-                          {discountInfo}
-                        </Text>
-                      </View>
-                      
-                      <View style={styles.couponRight}>
-                        <Text style={[styles.couponName, {color: colors.text}]} numberOfLines={1}>
-                          {coupon.campaign_name || 'Coupon'}
-                        </Text>
-                        <Text style={[styles.couponExpiry, {color: colors.textSecondary}]} numberOfLines={1}>
-                          {coupon.expiry_date || 'N/A'}
-                        </Text>
+                        <View style={styles.couponCodeRow}>
+                          <Text style={[styles.couponCode, {color: isSelected ? colors.primary : colors.text}]} numberOfLines={1}>
+                            {JSON.parse(coupon.discount_coupon_json || '{}').discount_code || 'CODE'}
+                          </Text>
+                          <Text style={[styles.couponPrice, {color: colors.success}]}>
+                            {discountInfo}
+                          </Text>
+                        </View>
+                        <View style={styles.campaignSection}>
+                          <Text style={[styles.campaignHeading, {color: colors.textSecondary}]}>Campaign : </Text>
+                          <Text style={[styles.couponDescription, {color: colors.textSecondary}]}>
+                            {coupon.campaign_name || 'Coupon Description'}
+                          </Text>
+                        </View>
                       </View>
                       
                       {isSelected && (
-                        <View style={styles.selectedBadge}>
-                          <Text style={styles.selectedBadgeText}>SELECTED</Text>
+                        <View style={[styles.selectedIndicator, {backgroundColor: colors.primary}]}>
+                          <Text style={styles.selectedIndicatorText}>✓</Text>
                         </View>
                       )}
+                    </View>
+                    
+                    <View style={styles.couponExpiryRow}>
+                      <Text style={[styles.couponExpiry, {color: colors.textSecondary}]} numberOfLines={1}>
+                        Valid till  {coupon.expiry_date || 'N/A'}
+                      </Text>
                     </View>
                   </TouchableOpacity>
                 );
@@ -378,7 +395,7 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
             </View>
           )}
 
-          {/* Pricing Breakdown */}
+          {/* Price Breakup */}
           <View style={[styles.pricingCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
             <Text style={[styles.pricingTitle, {color: colors.text}]}>{t('planConfirmation.pricingBreakdown')}</Text>
             
@@ -555,6 +572,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 4,
   },
+  planBadgesRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  planBadgesLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   currentPlanBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -582,6 +609,13 @@ const styles = StyleSheet.create({
   detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  detailItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
   },
   detailIcon: {
     fontSize: 18,
@@ -612,6 +646,16 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 0,
     marginTop: 8,
+  },
+  ottScrollContainer: {
+    paddingHorizontal: 4,
+    gap: 16,
+  },
+  ottItem: {
+    alignItems: 'center',
+    marginVertical: 4,
+    minWidth: 80,
+    paddingHorizontal: 8,
   },
   ottIcon: {
     alignItems: 'center',
@@ -752,27 +796,55 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: 'bold',
     fontFamily: 'monospace',
+  },
+  couponCodeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  couponPrice: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  couponDescription: {
+    fontSize: 11,
+    color: '#666',
+  },
+  campaignSection: {
+    marginTop: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  campaignHeading: {
+    fontSize: 11,
+    fontWeight: '600',
     marginBottom: 2,
   },
-  couponDiscount: {
-    fontSize: 12,
-    fontWeight: '600',
+  couponExpiryRow: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
   },
   couponExpiry: {
-    fontSize: 11,
+    fontSize: 10,
+    fontStyle: 'italic',
+    textAlign: 'right',
   },
-  selectedBadge: {
-    backgroundColor: '#10B981',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+  selectedIndicator: {
+    width: 24,
+    height: 24,
     borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginLeft: 8,
   },
-  selectedBadgeText: {
+  selectedIndicatorText: {
     color: '#ffffff',
-    fontSize: 10,
+    fontSize: 14,
     fontWeight: 'bold',
-    letterSpacing: 0.5,
   },
   paymentModalContainer: {
     position: 'absolute',
