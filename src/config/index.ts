@@ -22,7 +22,7 @@ const getCurrentClient = (): string => {
 // Client configurations
 const clientConfigs: Record<string, ClientConfig> = {
   microscan: {
-    name: 'Microscan ISP App',
+    name: 'Microscan',
     companyName: 'Microscan Internet Private Limited',
     apiUrl: 'https://mydesk.microscan.co.in',
     supportEmail: 'support@microscan.in',

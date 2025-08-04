@@ -1,4 +1,35 @@
 {
   "name": "MicroscanApp",
-  "displayName": "Microscan ISP App"
+  "expo": {
+    "name": "Microscan",
+    "slug": "microscan",
+    "version": "4.0.0",
+    "orientation": "portrait",
+    "icon": "./app-icons/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./app-icons/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.spacecom.log2space.microscan",
+      "buildNumber": "4"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./app-icons/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "package": "com.spacecom.log2space.microscan",
+      "versionCode": 4
+    },
+    "web": {
+      "favicon": "./app-icons/favicon.png"
+    }
+  }
 } 

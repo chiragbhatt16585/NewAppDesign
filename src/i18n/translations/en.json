@@ -101,6 +101,7 @@
     "inprogress": "In Progress",
     "resolved": "Resolved",
     "closed": "Closed",
+    "closed_online": "Closed Online",
     "high": "High",
     "medium": "Medium",
     "low": "Low",

@@ -31,12 +31,15 @@ const fixGeneratedFile = () => {
     // Replace any hardcoded package references
     const oldPackagePattern = /com\.h8\.dnasubscriber\.BuildConfig/g;
     const newPackagePattern = /com\.microscan\.app\.BuildConfig/g;
+    const correctMicroscanPattern = /in\.spacecom\.log2space\.client\.microscan\.BuildConfig/g;
     
     if (namespace === 'com.microscan.app') {
       content = content.replace(oldPackagePattern, 'com.microscan.app.BuildConfig');
+      content = content.replace(newPackagePattern, 'com.microscan.app.BuildConfig');
       console.log('✅ Fixed for Microscan package');
     } else if (namespace === 'com.h8.dnasubscriber') {
       content = content.replace(newPackagePattern, 'com.h8.dnasubscriber.BuildConfig');
+      content = content.replace(correctMicroscanPattern, 'com.h8.dnasubscriber.BuildConfig');
       console.log('✅ Fixed for DNA Infotel package');
     }
     

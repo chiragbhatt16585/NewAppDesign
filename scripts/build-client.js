@@ -10,16 +10,20 @@ const switchJavaPackage = (client) => {
   const javaSrcPath = './android/app/src/main/java';
   let mainActivityPath = '';
   let appJsonPath = '';
+  let packagePath = '';
 
   if (client === 'microscan') {
     mainActivityPath = `${javaSrcPath}/com/microscan/app/MainActivity.kt`;
     appJsonPath = './config/microscan/app.json';
+    packagePath = `${javaSrcPath}/com/microscan/app`;
   } else if (client === 'dna-infotel') {
     mainActivityPath = `${javaSrcPath}/com/h8/dnasubscriber/MainActivity.kt`;
     appJsonPath = './config/dna-infotel/app.json';
+    packagePath = `${javaSrcPath}/com/h8/dnasubscriber`;
   } else if (client === 'one-sevenstar') {
     mainActivityPath = `${javaSrcPath}/com/h8/dnasubscriber/MainActivity.kt`;
     appJsonPath = './config/one-sevenstar/app.json';
+    packagePath = `${javaSrcPath}/com/h8/dnasubscriber`;
   } else {
     return;
   }
@@ -34,9 +38,28 @@ const switchJavaPackage = (client) => {
     return;
   }
 
+  // Create package directory if it doesn't exist
+  if (!fs.existsSync(packagePath)) {
+    fs.mkdirSync(packagePath, { recursive: true });
+    console.log(`✅ Created package directory: ${packagePath}`);
+  }
+
+  // Copy MainActivity.kt to the correct package location
+  const sourceMainActivity = './android/app/src/main/java/com/h8/dnasubscriber/MainActivity.kt';
+  if (fs.existsSync(sourceMainActivity) && !fs.existsSync(mainActivityPath)) {
+    fs.copyFileSync(sourceMainActivity, mainActivityPath);
+    console.log(`✅ Copied MainActivity.kt to ${mainActivityPath}`);
+  }
+
   // Update getMainComponentName in MainActivity.kt
   if (fs.existsSync(mainActivityPath)) {
     let content = fs.readFileSync(mainActivityPath, 'utf8');
+    
+    // Update package declaration
+    if (client === 'microscan') {
+      content = content.replace(/package com\.h8\.dnasubscriber/, 'package com.microscan.app');
+    }
+    
     content = content.replace(/override fun getMainComponentName\(\): String = ".*"/, `override fun getMainComponentName(): String = "${appName}"`);
     fs.writeFileSync(mainActivityPath, content);
     console.log(`✅ Updated getMainComponentName() in ${mainActivityPath} to '${appName}'`);
@@ -171,6 +194,11 @@ const copyFiles = () => {
       fs.copyFileSync(`${sourcePath}/logo-config.json`, './src/config/logo-config.json');
       console.log(`✅ Copied logo config for ${clientName}`);
     }
+
+    // Update current client configuration
+    const currentClientConfig = { clientId: clientName };
+    fs.writeFileSync('./src/config/current-client.json', JSON.stringify(currentClientConfig, null, 2));
+    console.log(`✅ Updated current client configuration to: ${clientName}`);
 
     // Switch Java package based on client
     switchJavaPackage(clientName);

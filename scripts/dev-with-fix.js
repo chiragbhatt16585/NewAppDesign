@@ -48,6 +48,11 @@ buildProcess.on('close', (code) => {
       
       if (namespace === 'com.microscan.app') {
         content = content.replace(oldPackagePattern, 'com.microscan.app.BuildConfig');
+        // Also comment out the new architecture check
+        content = content.replace(
+          /if \(com\.microscan\.app\.BuildConfig\.IS_NEW_ARCHITECTURE_ENABLED\) \{\s+DefaultNewArchitectureEntryPoint\.load\(\);\s+\}/g,
+          '// if (com.microscan.app.BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {\n    //   DefaultNewArchitectureEntryPoint.load();\n    // }'
+        );
       } else if (namespace === 'com.h8.dnasubscriber') {
         content = content.replace(newPackagePattern, 'com.h8.dnasubscriber.BuildConfig');
       }
@@ -63,10 +68,10 @@ buildProcess.on('close', (code) => {
   // Run fix immediately
   fixGeneratedFile();
   
-  // Set up interval to check and fix every 1 second during build
+  // Set up interval to check and fix every 100ms during build
   const interval = setInterval(() => {
     fixGeneratedFile();
-  }, 1000);
+  }, 100);
   
   // Start the Android build
   const androidProcess = spawn('npx', ['react-native', 'run-android'], { 

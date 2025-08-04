@@ -246,29 +246,21 @@ const clientConfigs: Record<string, ClientConfig> = {
 
 // Get current client configuration
 export const getClientConfig = (): ClientConfig => {
-  // You can determine the current client in several ways:
-  // 1. From environment variable
-  // 2. From build-time configuration
-  // 3. From runtime detection
+  // Read current client from configuration file
+  let currentClient = 'dna-infotel'; // fallback
   
-  // For now, let's use a simple approach - you can enhance this
-  const currentClient = process.env.CLIENT_ID || 'dna-infotel';
-  
-  // console.log('=== CLIENT CONFIG DEBUG ===');
-  // console.log('Current client:', currentClient);
-  // console.log('Environment CLIENT_ID:', process.env.CLIENT_ID);
+  try {
+    const currentClientConfig = require('./current-client.json');
+    currentClient = currentClientConfig.clientId;
+  } catch (error) {
+    // If file doesn't exist or can't be read, use fallback
+    console.warn('Could not read current-client.json, using fallback:', currentClient);
+  }
   
   const config = clientConfigs[currentClient];
   if (!config) {
     throw new Error(`Unknown client: ${currentClient}`);
   }
-  
-  // console.log('Selected config:', {
-  //   clientId: config.clientId,
-  //   clientName: config.clientName,
-  //   apiBaseURL: config.api.baseURL
-  // });
-  // console.log('=== END CLIENT CONFIG DEBUG ===');
   
   return config;
 };

@@ -101,6 +101,7 @@
     "inprogress": "प्रगति में",
     "resolved": "समाधान",
     "closed": "बंद",
+    "closed_online": "ऑनलाइन बंद",
     "high": "उच्च",
     "medium": "मध्यम",
     "low": "कम",
