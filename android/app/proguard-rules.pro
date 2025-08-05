@@ -8,3 +8,9 @@
 #   http://developer.android.com/guide/developing/tools/proguard.html
 
 # Add any project specific keep options here:
+
+# Exclude AR-related classes to prevent AR dependency issues
+-dontwarn com.google.ar.core.**
+-keep class com.google.ar.core.** { *; }
+-dontwarn androidx.xr.arcore.**
+-keep class androidx.xr.arcore.** { *; }

@@ -121,6 +121,27 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
     }
   };
 
+  const getDiscountCode = (coupon: any): string | null => {
+    try {
+      if (!coupon.discount_coupon_json) {
+        return null;
+      }
+      
+      const discountJson = JSON.parse(coupon.discount_coupon_json);
+      const discountCode = discountJson?.discount_code;
+      
+      // Return null if discount_code is empty, null, or undefined
+      if (!discountCode || discountCode.trim() === '') {
+        return null;
+      }
+      
+      return discountCode;
+    } catch (error) {
+      console.error('Error parsing discount coupon JSON:', error);
+      return null;
+    }
+  };
+
   const handleConfirmPayment = async () => {
     setLoadingGateways(true);
     setGatewayError('');
@@ -362,9 +383,11 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
                     <View style={styles.couponContent}>
                       <View style={styles.couponLeft}>
                         <View style={styles.couponCodeRow}>
-                          <Text style={[styles.couponCode, {color: isSelected ? colors.primary : colors.text}]} numberOfLines={1}>
-                            {JSON.parse(coupon.discount_coupon_json || '{}').discount_code || 'CODE'}
-                          </Text>
+                          {getDiscountCode(coupon) && (
+                            <Text style={[styles.couponCode, {color: isSelected ? colors.primary : colors.text}]} numberOfLines={1}>
+                              {getDiscountCode(coupon)}
+                            </Text>
+                          )}
                           <Text style={[styles.couponPrice, {color: colors.success}]}>
                             {discountInfo}
                           </Text>

@@ -114,11 +114,18 @@ const MoreOptionsScreen = ({navigation}: any) => {
           onPress: async () => {
             try {
               await logout();
-              navigation.navigate('Login');
+              // Reset navigation stack to prevent back navigation
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Login' }],
+              });
             } catch (error) {
               console.error('Logout error:', error);
-              // Even if logout fails, navigate to login
-              navigation.navigate('Login');
+              // Even if logout fails, reset navigation stack
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Login' }],
+              });
             }
           },
         },

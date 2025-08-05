@@ -3,6 +3,15 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
 
+    
+    <!-- AR Feature - Optional -->
+    <uses-feature android:name="android.hardware.camera.ar" android:required="false" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    
+    <!-- AR Permissions - Optional -->
+    <uses-permission android:name="android.permission.CAMERA" android:required="false" />
+    <uses-permission android:name="com.google.ar.core.permission.CAMERA" android:required="false" />
+    
     <application
       android:name=".MainApplication"
       android:label="@string/app_name"
@@ -115,5 +124,9 @@
                   android:host="www.sandbox.paypal.com" />
         </intent-filter>
       </activity>
+      
+      <!-- ARCore Metadata - Optional -->
+      <meta-data android:name="com.google.ar.core" android:value="optional" />
+      
     </application>
 </manifest>

@@ -14,6 +14,7 @@ import {
   Easing,
   Image,
   Linking,
+  BackHandler,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -66,6 +67,16 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
   // Check for existing session on component mount
   useEffect(() => {
     checkExistingSession();
+  }, []);
+
+  // Handle back button on login screen
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      // Prevent going back from login screen
+      return true;
+    });
+
+    return () => backHandler.remove();
   }, []);
 
   // Reset auth step if username is cleared

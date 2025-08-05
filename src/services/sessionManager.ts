@@ -1,5 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { credentialStorage } from './credentialStorage';
+import { pinStorage } from './pinStorage';
+import biometricAuthService from './biometricAuth';
 import { apiService } from './api';
 
 export interface UserSession {
@@ -201,7 +203,42 @@ export class SessionManager {
   }
 
   async logout(): Promise<void> {
-    await this.clearSession();
+    try {
+      // Clear current session
+      this.currentSession = null;
+      
+      // Clear all session-related data
+      await AsyncStorage.multiRemove([
+        this.SESSION_KEY,
+        'stored_username',
+        'stored_password',
+        'current_client',
+        'current_api_url',
+        'navigationState',
+        'userData',
+        'plansData',
+        'authData',
+        'showBiometricAfterLogin',
+        'domainName',
+        'user_pin',
+        'biometricAuthConfig'
+      ]);
+      
+      // Clear credentials
+      await credentialStorage.clearCredentials();
+      
+      // Clear PIN
+      await pinStorage.clearPin();
+      
+      // Disable biometric auth
+      await biometricAuthService.disableAuth();
+      
+      console.log('Session logout completed - all data cleared');
+    } catch (error) {
+      console.error('Error during logout:', error);
+      // Fallback to basic session clear
+      await this.clearSession();
+    }
   }
 
   // New method to regenerate token using stored password

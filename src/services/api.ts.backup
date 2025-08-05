@@ -1869,13 +1869,9 @@ class ApiService {
         } else {
           console.log('Coupon codes retrieved successfully');
           
-          const plan_wise = response.data['plan_wise'] !== undefined ? response.data.plan_wise.map((obj: any, index: number) => ({ ...obj, index, source: 'plan_wise' })) : null;
-          const demographics_wise = response.data['demographics_wise'] !== undefined ? response.data.demographics_wise.map((obj: any, index: number) => ({ ...obj, index, source: 'demographics_wise' })) : null;
-          const user_wise = response.data['user_wise'] !== undefined ? response.data.user_wise.map((obj: any, index: number) => ({ ...obj, index, source: 'user_wise' })) : null;
-          
-          console.log('Plan-wise coupons:', plan_wise?.length || 0);
-          console.log('Demographics-wise coupons:', demographics_wise?.length || 0);
-          console.log('User-wise coupons:', user_wise?.length || 0);
+          const plan_wise = response.data['plan_wise'] !== undefined ? response.data.plan_wise.map((obj: any, index: number) => ({ ...obj, index })) : null;
+          const demographics_wise = response.data['demographics_wise'] !== undefined ? response.data.demographics_wise.map((obj: any, index: number) => ({ ...obj, index })) : null;
+          const user_wise = response.data['user_wise'] !== undefined ? response.data.user_wise.map((obj: any, index: number) => ({ ...obj, index })) : null;
           
           var result: any[] = [];
           if(plan_wise!=null && plan_wise.length>0) {
@@ -1886,30 +1882,9 @@ class ApiService {
             result = user_wise;
           }
           
-          // Remove null values
           result = result.filter((vl) => {
             return vl!=null;
           })
-          
-          // Deduplicate coupons based on unique identifier (id or discount_coupon_json)
-          const seenCoupons = new Set();
-          const originalCount = result.length;
-          result = result.filter((coupon) => {
-            // Create a unique key for each coupon
-            const uniqueKey = coupon.id || coupon.discount_coupon_json || JSON.stringify(coupon);
-            
-            if (seenCoupons.has(uniqueKey)) {
-              return false; // Remove duplicate
-            } else {
-              seenCoupons.add(uniqueKey);
-              return true; // Keep first occurrence
-            }
-          });
-          
-          const duplicateCount = originalCount - result.length;
-          if (duplicateCount > 0) {
-            console.log(`Removed ${duplicateCount} duplicate coupons`);
-          }
           
           console.log('Processed coupon codes:', result);
           return result;

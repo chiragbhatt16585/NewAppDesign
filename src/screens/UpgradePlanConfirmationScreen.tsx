@@ -241,6 +241,27 @@ const UpgradePlanConfirmationScreen = ({navigation, route}: any) => {
     return `₹${amount.toFixed(2)}`;
   };
 
+  const getDiscountCode = (coupon: any): string | null => {
+    try {
+      if (!coupon.discount_coupon_json) {
+        return null;
+      }
+      
+      const discountJson = JSON.parse(coupon.discount_coupon_json);
+      const discountCode = discountJson?.discount_code;
+      
+      // Return null if discount_code is empty, null, or undefined
+      if (!discountCode || discountCode.trim() === '') {
+        return null;
+      }
+      
+      return discountCode;
+    } catch (error) {
+      console.error('Error parsing discount coupon JSON:', error);
+      return null;
+    }
+  };
+
   const calculateRefundAmount = () => {
     if (!currentPlanData || !currentPlanData.usage_details?.[0]) {
       return 0;
@@ -495,9 +516,11 @@ const UpgradePlanConfirmationScreen = ({navigation, route}: any) => {
             >
               <View style={styles.couponContent}>
                 <View style={styles.couponLeft}>
-                  <Text style={[styles.couponCode, {color: isSelected ? colors.primary : colors.text}]}>
-                    {JSON.parse(coupon.discount_coupon_json || '{}').discount_code || 'CODE'}
-                  </Text>
+                  {getDiscountCode(coupon) && (
+                    <Text style={[styles.couponCode, {color: isSelected ? colors.primary : colors.text}]}>
+                      {getDiscountCode(coupon)}
+                    </Text>
+                  )}
                   <Text style={[styles.couponDiscount, {color: colors.success}]}>
                     {discountInfo}
                   </Text>

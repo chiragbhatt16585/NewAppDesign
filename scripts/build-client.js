@@ -118,10 +118,28 @@ const copyFiles = () => {
       console.log(`✅ Copied app.json for ${clientName}`);
     }
 
-    // Copy api.ts
+    // Copy api.ts (only if it doesn't exist or is smaller than current)
     if (fs.existsSync(`${sourcePath}/api.ts`)) {
-      fs.copyFileSync(`${sourcePath}/api.ts`, './src/services/api.ts');
-      console.log(`✅ Copied api.ts for ${clientName}`);
+      const sourceApiPath = `${sourcePath}/api.ts`;
+      const targetApiPath = './src/services/api.ts';
+      
+      // Check if target exists and compare sizes
+      if (fs.existsSync(targetApiPath)) {
+        const sourceStats = fs.statSync(sourceApiPath);
+        const targetStats = fs.statSync(targetApiPath);
+        
+        // Only copy if source is significantly larger (more complete)
+        if (sourceStats.size > targetStats.size * 1.2) {
+          fs.copyFileSync(sourceApiPath, targetApiPath);
+          console.log(`✅ Copied enhanced api.ts for ${clientName}`);
+        } else {
+          console.log(`⚠️  Skipped api.ts copy - current version is more complete`);
+        }
+      } else {
+        // Target doesn't exist, copy it
+        fs.copyFileSync(sourceApiPath, targetApiPath);
+        console.log(`✅ Copied api.ts for ${clientName}`);
+      }
     }
 
     // Copy assets (in-app logos)

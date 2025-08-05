@@ -2,6 +2,9 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiService } from '../services/api';
 import sessionManager from '../services/sessionManager';
+import dataCache from '../services/dataCache';
+import { pinStorage } from '../services/pinStorage';
+import biometricAuthService from '../services/biometricAuth';
 // Session monitoring disabled for persistent login
 // import sessionMonitor from '../services/sessionMonitor';
 
@@ -176,15 +179,60 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = async () => {
     try {
       setLoading(true);
+      
+      // Clear all cached data first
+      await dataCache.clearAllCache();
+      
+      // Clear any other stored data
+      await AsyncStorage.multiRemove([
+        'userData',
+        'plansData', 
+        'authData',
+        'navigationState',
+        'showBiometricAfterLogin',
+        'domainName',
+        'user_pin',
+        'biometricAuthConfig'
+      ]);
+      
+      // Clear PIN storage
+      await pinStorage.clearPin();
+      
+      // Disable biometric auth
+      await biometricAuthService.disableAuth();
+      
+      // Perform API logout
       await apiService.logout();
+      
+      // Clear session
       await sessionManager.logout();
+      
+      // Reset auth state
       setIsAuthenticated(false);
       setUserData(null);
+      
       // Session monitoring disabled for persistent login
       // sessionMonitor.stopMonitoring();
     } catch (error) {
       console.error('Logout error:', error);
-      // Even if API logout fails, clear local session
+      // Even if API logout fails, clear all local data
+      await dataCache.clearAllCache();
+      await AsyncStorage.multiRemove([
+        'userData',
+        'plansData', 
+        'authData',
+        'navigationState',
+        'showBiometricAfterLogin',
+        'domainName',
+        'user_pin',
+        'biometricAuthConfig'
+      ]);
+      
+      // Clear PIN storage
+      await pinStorage.clearPin();
+      
+      // Disable biometric auth
+      await biometricAuthService.disableAuth();
       await sessionManager.logout();
       setIsAuthenticated(false);
       setUserData(null);
