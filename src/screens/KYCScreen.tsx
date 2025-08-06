@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Dimensions,
   Linking,
+  RefreshControl,
 } from 'react-native';
 import ImageViewing from 'react-native-image-viewing';
 import {SafeAreaView} from 'react-native-safe-area-context';
@@ -28,7 +29,7 @@ interface KYCItem {
   title: string;
   subtitle: string;
   icon: string;
-  status: 'pending' | 'uploaded' | 'verified' | 'rejected';
+  status: 'not_uploaded' | 'pending' | 'uploaded' | 'verified' | 'rejected';
   uploadedDate?: string;
   documentName?: string;
 }
@@ -57,6 +58,7 @@ const KYCScreen = ({navigation}: any) => {
   const colors = getThemeColors(isDark);
   const {t} = useTranslation();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [kycData, setKycData] = useState<KYCItem[]>([]);
   const [imageViewerVisible, setImageViewerVisible] = useState(false);
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
@@ -66,9 +68,23 @@ const KYCScreen = ({navigation}: any) => {
     loadKYCData();
   }, []);
 
-  const loadKYCData = async () => {
+  // Add focus listener to refresh data when returning from DocumentUpload
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      console.log('KYC Screen focused - refreshing data');
+      loadKYCData();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
+  const loadKYCData = async (isRefresh = false) => {
     try {
-      setLoading(true);
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
       
       // Get username from session manager
       const username = await sessionManager.getUsername();
@@ -89,108 +105,170 @@ const KYCScreen = ({navigation}: any) => {
       // Call the viewUserKyc API to get KYC information
       const kycResponse = await apiService.viewUserKyc(username, realm);
       
+      // Define all required document types
+      const allRequiredDocuments = [
+        {
+          doc_type: 'id_proof',
+          doc_name: 'Identity Proof',
+          icon: '🆔',
+          subtitle: 'Aadhaar card, PAN card, or driving license'
+        },
+        {
+          doc_type: 'address_proof',
+          doc_name: 'Address Proof',
+          icon: '🏠',
+          subtitle: 'Utility bill, rental agreement, or bank statement'
+        },
+        {
+          doc_type: 'user_photo',
+          doc_name: 'User Photo',
+          icon: '📸',
+          subtitle: 'Recent passport size photograph'
+        },
+        {
+          doc_type: 'gst_certificate',
+          doc_name: 'GST Certificate',
+          icon: '🏢',
+          subtitle: 'GST registration certificate'
+        },
+        {
+          doc_type: 'user_sign',
+          doc_name: 'User Signature',
+          icon: '✍️',
+          subtitle: 'Digital signature or handwritten signature'
+        },
+        {
+          doc_type: 'other',
+          doc_name: 'Additional Documents',
+          icon: '📄',
+          subtitle: 'Additional supporting documents'
+        }
+      ];
+
       if (kycResponse && Array.isArray(kycResponse) && kycResponse.length > 0) {
+        console.log('=== KYC DATA REFRESH DEBUG ===');
         console.log('KYC Data received:', JSON.stringify(kycResponse, null, 2));
+        console.log('Number of documents:', kycResponse.length);
+        kycResponse.forEach((doc: KYCDocument, index: number) => {
+          console.log(`Document ${index + 1}:`, {
+            doc_type: doc.doc_type,
+            doc_name: doc.doc_name,
+            doc_id: doc.doc_id,
+            kyc_status: doc.kyc_status,
+            filename: doc.filename
+          });
+        });
+        console.log('================================');
         
-        // Transform API data to KYCItem format
-        const transformedData: KYCItem[] = kycResponse.map((doc: KYCDocument) => {
-          const getDocIcon = (docType: string) => {
-            switch (docType) {
-              case 'id_proof': return '🆔';
-              case 'address_proof': return '🏠';
-              case 'user_photo': return '📸';
-              case 'user_sign': return '✍️';
-              case 'other': return '📄';
-              default: return '📋';
-            }
-          };
-
-          const getDocTitle = (docName: string) => {
-            return docName.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
-          };
-
-          const getDocSubtitle = (docType: string, docId: string, status: string) => {
-            // If document is uploaded/verified/rejected, show document number
-            if (status !== 'pending') {
-              return `ID No. : ${docId}`;
-            }
-            
-            // Otherwise show generic description
-            switch (docType) {
-              case 'id_proof': return 'Aadhaar card, PAN card, or driving license';
-              case 'address_proof': return 'Utility bill, rental agreement, or bank statement';
-              case 'user_photo': return 'Recent passport size photograph';
-              case 'user_sign': return 'Digital signature or handwritten signature';
-              case 'other': return 'Additional supporting documents';
-              default: return 'Document verification';
-            }
-          };
-
-          const getStatus = (kycStatus: string) => {
-            switch (kycStatus?.toLowerCase()) {
-              case 'approved': return 'verified';
-              case 'pending': return 'uploaded';
-              case 'rejected': return 'rejected';
-              default: return 'pending';
-            }
-          };
-
-          const status = getStatus(doc.kyc_status);
-          
-          return {
-            id: doc.id,
-            title: getDocTitle(doc.doc_name),
-            subtitle: getDocSubtitle(doc.doc_type, doc.doc_id, status),
-            icon: getDocIcon(doc.doc_type),
-            status: status,
-            uploadedDate: doc.entry_date,
-            documentName: doc.filename,
-          };
+        // Create a map of uploaded documents by doc_type
+        const uploadedDocsMap = new Map();
+        kycResponse.forEach((doc: KYCDocument) => {
+          uploadedDocsMap.set(doc.doc_type, doc);
         });
 
-        setKycData(transformedData);
+        // Filter required documents - exclude User Signature and Other documents if no existing data
+        const filteredRequiredDocuments = allRequiredDocuments.filter(requiredDoc => {
+          // Always include User Signature if it exists in uploaded data
+          if (requiredDoc.doc_type === 'user_sign') {
+            return uploadedDocsMap.has('user_sign');
+          }
+          // Always include Other documents if it exists in uploaded data
+          if (requiredDoc.doc_type === 'other') {
+            return uploadedDocsMap.has('other');
+          }
+          // Include all other documents
+          return true;
+        });
+
+        // Merge API data with filtered required documents
+        const mergedData: KYCItem[] = filteredRequiredDocuments.map((requiredDoc, index) => {
+          const uploadedDoc = uploadedDocsMap.get(requiredDoc.doc_type);
+          
+          if (uploadedDoc) {
+            // Document exists in API response
+            const getStatus = (kycStatus: string) => {
+              switch (kycStatus?.toLowerCase()) {
+                case 'approved': return 'verified';
+                case 'pending': return 'pending'; // Document uploaded but not verified
+                case 'rejected': return 'rejected';
+                default: return 'pending';
+              }
+            };
+
+            const status = getStatus(uploadedDoc.kyc_status) as 'pending' | 'uploaded' | 'verified' | 'rejected';
+            
+            const mappedItem: KYCItem = {
+              id: uploadedDoc.id,
+              title: uploadedDoc.doc_name.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
+              subtitle: `ID No. : ${uploadedDoc.doc_id}`,
+              icon: requiredDoc.icon,
+              status: status,
+              uploadedDate: uploadedDoc.entry_date || uploadedDoc.last_update || 'Date not available',
+              documentName: uploadedDoc.filename || 'Document',
+            };
+            
+            console.log('=== KYC ITEM DEBUG ===');
+            console.log('Document Type:', requiredDoc.doc_type);
+            console.log('Status:', status);
+            console.log('Uploaded Date:', mappedItem.uploadedDate);
+            console.log('Document Name:', mappedItem.documentName);
+            console.log('========================');
+            
+            return mappedItem;
+          } else {
+            // Document not uploaded yet (this should not happen for user_sign due to filtering)
+            return {
+              id: `not_uploaded_${index}`,
+              title: requiredDoc.doc_name,
+              subtitle: requiredDoc.subtitle,
+              icon: requiredDoc.icon,
+              status: 'not_uploaded',
+            };
+          }
+        });
+
+        setKycData(mergedData);
       } else {
-        console.log('No KYC data received, showing static sample data');
-        // Show static sample data when no KYC data is available
-        const staticKYCData: KYCItem[] = [
+        console.log('No KYC data received, showing test data with uploaded documents');
+        // Show test data with some uploaded documents for testing (excluding User Signature and Other)
+        const testKYCData: KYCItem[] = [
           {
             id: '1',
             title: 'Identity Proof',
-            subtitle: 'Aadhaar card, PAN card, or driving license',
+            subtitle: 'ID No. : A123456789',
             icon: '🆔',
             status: 'pending',
+            uploadedDate: '2024-01-15 14:30:00',
+            documentName: 'aadhar_card.pdf',
           },
           {
             id: '2',
             title: 'Address Proof',
-            subtitle: 'Utility bill, rental agreement, or bank statement',
+            subtitle: 'ID No. : 123456789',
             icon: '🏠',
-            status: 'pending',
+            status: 'verified',
+            uploadedDate: '2024-01-10 09:15:00',
+            documentName: 'utility_bill.pdf',
           },
           {
             id: '3',
             title: 'User Photo',
             subtitle: 'Recent passport size photograph',
             icon: '📸',
-            status: 'pending',
+            status: 'not_uploaded',
           },
           {
             id: '4',
-            title: 'User Signature',
-            subtitle: 'Digital signature or handwritten signature',
-            icon: '✍️',
-            status: 'pending',
-          },
-          {
-            id: '5',
-            title: 'Additional Documents',
-            subtitle: 'Additional supporting documents',
-            icon: '📄',
-            status: 'pending',
+            title: 'GST Certificate',
+            subtitle: 'GST registration certificate',
+            icon: '🏢',
+            status: 'rejected',
+            uploadedDate: '2024-01-12 16:45:00',
+            documentName: 'gst_cert.pdf',
           },
         ];
         
-        setKycData(staticKYCData);
+        setKycData(testKYCData);
       }
     } catch (error: any) {
       console.error('Error loading KYC data:', error);
@@ -202,43 +280,42 @@ const KYCScreen = ({navigation}: any) => {
           title: 'Identity Proof',
           subtitle: 'Aadhaar card, PAN card, or driving license',
           icon: '🆔',
-          status: 'pending',
+          status: 'not_uploaded',
         },
         {
           id: '2',
           title: 'Address Proof',
           subtitle: 'Utility bill, rental agreement, or bank statement',
           icon: '🏠',
-          status: 'pending',
+          status: 'not_uploaded',
         },
         {
           id: '3',
           title: 'User Photo',
           subtitle: 'Recent passport size photograph',
           icon: '📸',
-          status: 'pending',
+          status: 'not_uploaded',
         },
         {
           id: '4',
-          title: 'User Signature',
-          subtitle: 'Digital signature or handwritten signature',
-          icon: '✍️',
-          status: 'pending',
-        },
-        {
-          id: '5',
-          title: 'Additional Documents',
-          subtitle: 'Additional supporting documents',
-          icon: '📄',
-          status: 'pending',
+          title: 'GST Certificate',
+          subtitle: 'GST registration certificate',
+          icon: '🏢',
+          status: 'not_uploaded',
         },
       ];
       
       setKycData(staticKYCData);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
+
+  const onRefresh = useCallback(() => {
+    console.log('Manual refresh triggered');
+    loadKYCData(true);
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -249,8 +326,11 @@ const KYCScreen = ({navigation}: any) => {
       case 'rejected':
         return '#EF4444';
       case 'pending':
-      default:
         return '#F59E0B';
+      case 'not_uploaded':
+        return '#6B7280';
+      default:
+        return '#6B7280';
     }
   };
 
@@ -263,8 +343,11 @@ const KYCScreen = ({navigation}: any) => {
       case 'rejected':
         return 'Rejected';
       case 'pending':
+        return 'Pending';
+      case 'not_uploaded':
+        return ''; // No status text for not uploaded documents
       default:
-        return 'Upload';
+        return '';
     }
   };
 
@@ -277,8 +360,11 @@ const KYCScreen = ({navigation}: any) => {
       case 'rejected':
         return '✕';
       case 'pending':
+        return '⏳';
+      case 'not_uploaded':
+        return '📄';
       default:
-        return null; // We'll use a MaterialIcon for upload
+        return '📄';
     }
   };
 
@@ -338,14 +424,12 @@ const KYCScreen = ({navigation}: any) => {
   const handleUploadDocument = (item: KYCItem) => {
     console.log('handleUploadDocument called for:', item.title);
     
-    // Navigate to Address Proof screen for all documents (for testing)
-    console.log('Navigating to AddressProof screen');
     try {
-      navigation.navigate('AddressProof', { documentType: item.title });
+      navigation.navigate('DocumentUpload', { documentType: item.title });
       console.log('Navigation call completed');
     } catch (error) {
       console.error('Navigation error:', error);
-      Alert.alert('Navigation Error', 'Failed to navigate to Address Proof screen');
+      Alert.alert('Navigation Error', 'Failed to navigate to Document Upload screen');
     }
   };
 
@@ -354,7 +438,17 @@ const KYCScreen = ({navigation}: any) => {
 
 
   const renderKYCItem = (item: KYCItem) => {
-    const isUpload = item.status === 'pending';
+    // Allow upload for not uploaded documents
+    const isUpload = item.status === 'not_uploaded';
+    const canUpload = item.status === 'pending' || item.status === 'uploaded' || item.status === 'verified' || item.status === 'rejected';
+    
+    console.log('=== RENDER DEBUG ===');
+    console.log('Item Title:', item.title);
+    console.log('Item Status:', item.status);
+    console.log('Item Uploaded Date:', item.uploadedDate);
+    console.log('Item Document Name:', item.documentName);
+    console.log('Show Document Info:', (item.status === 'uploaded' || item.status === 'verified' || item.status === 'rejected'));
+    console.log('===================');
     return (
       <View
         key={item.id}
@@ -369,49 +463,58 @@ const KYCScreen = ({navigation}: any) => {
               <Text style={[styles.kycSubtitle, {color: colors.textSecondary}]}>{item.subtitle}</Text>
             </View>
           </View>
-          <TouchableOpacity
-            style={[
-              styles.statusContainer,
-              {backgroundColor: isUpload ? '#FEF3C7' : getStatusColor(item.status) + '15'},
-              isUpload && {borderWidth: 1, borderColor: '#F59E0B'}
-            ]}
-            onPress={isUpload ? () => handleUploadDocument(item) : undefined}
-            disabled={!isUpload}
-          >
-            {isUpload ? (
-              <Text style={[styles.statusIcon, {color: getStatusColor(item.status), fontSize: 16, fontWeight: 'bold'}]}>
-                ⬆️
-              </Text>
-            ) : (
-              <Text style={[styles.statusIcon, {color: getStatusColor(item.status)}]}>
-                {getStatusIcon(item.status)}
-              </Text>
+          <View style={styles.statusActionsContainer}>
+            {/* Status Display - Only show when there's a status text */}
+            {getStatusText(item.status) && (
+              <View
+                style={[
+                  styles.statusContainer,
+                  {backgroundColor: getStatusColor(item.status) + '15'}
+                ]}
+              >
+                <Text style={[styles.statusIcon, {color: getStatusColor(item.status)}]}>
+                  {getStatusIcon(item.status)}
+                </Text>
+                <Text style={[styles.statusText, {color: getStatusColor(item.status)}]}>
+                  {getStatusText(item.status)}
+                </Text>
+              </View>
             )}
-            <Text style={[styles.statusText, {color: getStatusColor(item.status)}]}>
-              {getStatusText(item.status)}
-            </Text>
-          </TouchableOpacity>
+            
+            {/* Upload Button - Only show for not uploaded documents */}
+            {isUpload && (
+              <TouchableOpacity
+                style={[
+                  styles.uploadActionButton,
+                  {backgroundColor: colors.primary}
+                ]}
+                onPress={() => handleUploadDocument(item)}
+              >
+                <Text style={[styles.uploadActionText, {color: 'white'}]}>
+                  Upload
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
         
 
         
-        {/* Document info for uploaded/verified/rejected documents */}
-        {(item.status === 'uploaded' || item.status === 'verified' || item.status === 'rejected') && (
+        {/* Document info for uploaded/pending/verified/rejected documents */}
+        {(item.status === 'uploaded' || item.status === 'pending' || item.status === 'verified' || item.status === 'rejected') && (
           <View style={[styles.documentInfoRow, {borderTopColor: colors.borderLight}]}> 
             <View style={styles.dateContainer}>
               <Text style={styles.dateIcon}>📅</Text>
               <Text style={[styles.uploadedDate, {color: colors.textSecondary}]}> 
-                {item.uploadedDate} 
+                {item.uploadedDate || 'Date not available'} 
               </Text> 
             </View> 
-            {item.documentName && ( 
-              <TouchableOpacity  
-                style={styles.viewDocumentButton} 
-                onPress={() => handleViewDocument(item)}> 
-                <Text style={styles.viewIcon}>👁️</Text> 
-                <Text style={[styles.viewText, {color: colors.primary}]}>View</Text> 
-              </TouchableOpacity> 
-            )} 
+            <TouchableOpacity  
+              style={styles.viewDocumentButton} 
+              onPress={() => handleViewDocument(item)}> 
+              <Text style={styles.viewIcon}>👁️</Text> 
+              <Text style={[styles.viewText, {color: colors.primary}]}>View</Text> 
+            </TouchableOpacity> 
           </View> 
         )}
       </View>
@@ -442,7 +545,18 @@ const KYCScreen = ({navigation}: any) => {
     <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}>
       <CommonHeader navigation={navigation} />
       
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.scrollView} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+          />
+        }
+      >
         {/* Modern Header */}
         <View style={styles.header}>
           <View style={styles.headerContent}>
@@ -789,6 +903,22 @@ const styles = StyleSheet.create({
   uploadButtonText: {
     color: 'white',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  statusActionsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  uploadActionButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  uploadActionText: {
+    fontSize: 12,
     fontWeight: '600',
   },
 

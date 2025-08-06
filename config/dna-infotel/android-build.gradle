@@ -84,6 +84,7 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 291
         versionName "291.0.0"
+        buildConfigField "boolean", "IS_NEW_ARCHITECTURE_ENABLED", "false"
     }
     
     signingConfigs {

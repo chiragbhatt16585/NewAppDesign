@@ -117,7 +117,27 @@ const toFormData = (data: any): FormData => {
   const formData = new FormData();
   Object.keys(data).forEach(key => {
     if (data[key] !== undefined && data[key] !== null) {
-      formData.append(key, data[key]);
+      // Handle file uploads from react-native-image-picker
+      if (key.includes('_file') && data[key] && typeof data[key] === 'object' && data[key].uri) {
+        const file = data[key];
+        const fileType = file.type || 'image/jpeg';
+        const fileName = file.fileName || file.name || `document.${fileType.split('/')[1] || 'jpg'}`;
+        
+        console.log('=== FILE UPLOAD DEBUG ===');
+        console.log('File key:', key);
+        console.log('File object:', file);
+        console.log('File type:', fileType);
+        console.log('File name:', fileName);
+        console.log('========================');
+        
+        formData.append(key, {
+          uri: file.uri,
+          type: fileType,
+          name: fileName,
+        } as any);
+      } else {
+        formData.append(key, data[key]);
+      }
     }
   });
   return formData;
@@ -1916,6 +1936,299 @@ class ApiService {
         }
       } catch (e: any) {
         console.error('Get coupon code error:', e);
+        const msg = isNetworkError(e) ? networkErrorMsg : e.message;
+        throw new Error(msg);
+      }
+    });
+  }
+
+  async Staticdropdown(dataObj: any, realm: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const username = await sessionManager.getUsername();
+      if (!username) {
+        throw new Error('No username available');
+      }
+
+      const data = {
+        data: dataObj,
+        request_source: 'app',
+        username: username,
+        request_app: 'user_app'
+      };
+
+      // Convert to URL-encoded format like the old param function
+      const formData = new URLSearchParams();
+      formData.append('data', JSON.stringify(dataObj));
+      formData.append('request_source', 'app');
+      formData.append('username', username);
+      formData.append('request_app', 'user_app');
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, 'Content-Type': 'application/x-www-form-urlencoded' }),
+        body: formData.toString(),
+        timeout
+      };
+
+      try {
+        const res = await fetch(`${url}/selfcareStaticdropdown`, options);
+        const response = await res.json();
+        
+        if (response.status != 'ok' && response.code != 200) {
+          throw new Error('Invalid username or password');
+        } else {
+          return response.data;
+        }
+      } catch (e: any) {
+        const msg = isNetworkError(e) ? networkErrorMsg : e.message;
+        throw new Error(msg);
+      }
+    });
+  }
+
+  async updateKycDetails(username: string, documentName: string, documentId: string, document: any, docType: string, realm: string, ekycData: any = null) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const data: any = {
+        username: username,
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      // Set document type specific fields based on old app structure
+      switch (docType) {
+        case 'address_proof':
+          data.address_proof_docid = documentId;
+          data.address_proof_name = documentName;
+          data.address_proof_file = document;
+          break;
+        case 'id_proof':
+          data.id_proof_docid = documentId;
+          data.id_proof_name = documentName;
+          data.id_proof_file = document;
+          break;
+        case 'caf':
+          data.caf_docid = documentId;
+          data.caf_name = documentName;
+          data.caf_file = document;
+          break;
+        case 'user_photo':
+          data.user_photo = document;
+          break;
+        case 'gst_certificate':
+          data.gst_number = documentId;
+          data.gst_certificate = document;
+          break;
+        case 'user_sign':
+          data.user_sign_docid = documentId;
+          data.user_sign_name = documentName;
+          data.user_sign_file = document;
+          break;
+        case 'other':
+          data.other_docid = documentId;
+          data.other_name = documentName;
+          data.other_file = document;
+          break;
+        default:
+          throw new Error(`Unsupported document type: ${docType}`);
+      }
+
+      // Add E-KYC specific data if provided
+      if (ekycData) {
+        data.is_aadhar_verified = ekycData.is_aadhar_verified || 'true';
+        data.is_without_otp_ekyc_data_verified = ekycData.is_without_otp_ekyc_data_verified || '';
+        
+        // Set E-KYC table ID based on document type
+        switch (docType) {
+          case 'address_proof':
+            data.address_proof_ekyc_table_id = ekycData.address_proof_ekyc_table_id || '';
+            break;
+          case 'id_proof':
+            data.id_proof_ekyc_table_id = ekycData.id_proof_ekyc_table_id || '';
+            break;
+          case 'caf':
+            data.caf_ekyc_table_id = ekycData.caf_ekyc_table_id || '';
+            break;
+          case 'user_photo':
+            data.user_photo_ekyc_table_id = ekycData.user_photo_ekyc_table_id || '';
+            break;
+          case 'gst_certificate':
+            data.gst_certificate_ekyc_table_id = ekycData.gst_certificate_ekyc_table_id || '';
+            break;
+          case 'user_sign':
+            data.user_sign_ekyc_table_id = ekycData.user_sign_ekyc_table_id || '';
+            break;
+          case 'other':
+            data.other_ekyc_table_id = ekycData.other_ekyc_table_id || '';
+            break;
+        }
+      }
+
+      const options = {
+        method,
+        headers: new Headers({ 
+          Authentication: token, 
+          // Remove Content-Type for file uploads - React Native will set it automatically
+          'cache-control': 'no-cache',
+          'referer': 'https://crm.dnainfotel.com/'
+        }),
+        body: toFormData(data),
+        timeout
+      };
+      console.log('=== UPDATE KYC DETAILS ===');
+      console.log('Request Data:', data); 
+      console.log('========================================');
+
+      try {
+        console.log(`=== UPDATE KYC ${docType.toUpperCase()} REQUEST ===`);
+        console.log('Request Data:', JSON.stringify(data, null, 2));
+        console.log('========================================');
+
+        const res = await fetch(`${url}/selfcareUpdateKycDetails`, options);
+        const response = await res.json();
+        
+        console.log(`=== UPDATE KYC ${docType.toUpperCase()} RESPONSE ===`);
+        console.log('Response:', JSON.stringify(response, null, 2));
+        console.log('==========================================');
+        
+        if (response.status !== 'ok' && response.code !== 200) {
+          throw new Error(response.message || 'Failed to update KYC details');
+        } else {
+          return response;
+        }
+      } catch (e: any) {
+        console.error(`=== UPDATE KYC ${docType.toUpperCase()} ERROR ===`);
+        console.error('Error:', e);
+        console.error('Error Message:', e.message);
+        console.error('=======================================');
+        const msg = isNetworkError(e) ? networkErrorMsg : e.message;
+        throw new Error(msg);
+      }
+    });
+  }
+
+  // Keep the old methods for backward compatibility
+  async updateKycDetailsAddressProof(username: string, documentName: string, documentId: string, document: any, realm: string, ekycData: any = null) {
+    return this.updateKycDetails(username, documentName, documentId, document, 'address_proof', realm, ekycData);
+  }
+
+  async updateKycDetailsIDProof(username: string, documentName: string, documentId: string, document: any, realm: string, ekycData: any = null) {
+    return this.updateKycDetails(username, documentName, documentId, document, 'id_proof', realm, ekycData);
+  }
+
+  async selfcareAadhaarVerificationOTP(data: any, realm: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const username = await sessionManager.getUsername();
+      if (!username) {
+        throw new Error('No username available');
+      }
+
+      const requestData = {
+        username,
+        aadhar_no: data.aadhar_no,
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(requestData),
+        timeout
+      };
+
+      try {
+        const res = await fetch(`${url}/selfcareAadhaarVerificationOTP`, options);
+        const response = await res.json();
+        
+        if (response.status !== 'ok' && response.code !== 200) {
+          throw new Error(response.message || 'Failed to generate OTP');
+        } else {
+          return response;
+        }
+      } catch (e: any) {
+        const msg = isNetworkError(e) ? networkErrorMsg : e.message;
+        throw new Error(msg);
+      }
+    });
+  }
+
+  async selfcareSubmitAadhaarOTP(data: any, realm: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const username = await sessionManager.getUsername();
+      if (!username) {
+        throw new Error('No username available');
+      }
+
+      const requestData = {
+        username,
+        aadhar_no: data.aadhar_no,
+        otp: data.otp,
+        mahareferid: data.mahareferid,
+        client_refid: data.client_refid,
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(requestData),
+        timeout
+      };
+
+      try {
+        const res = await fetch(`${url}/selfcareSubmitAadhaarOTP`, options);
+        const response = await res.json();
+        
+        if (response.status !== 'ok' && response.code !== 200) {
+          throw new Error(response.message || 'Failed to verify OTP');
+        } else {
+          return response;
+        }
+      } catch (e: any) {
+        const msg = isNetworkError(e) ? networkErrorMsg : e.message;
+        throw new Error(msg);
+      }
+    });
+  }
+
+  async selfcareSubmiteKYCData(data: any, realm: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const username = await sessionManager.getUsername();
+      if (!username) {
+        throw new Error('No username available');
+      }
+
+      const requestData = {
+        username: username,
+        kyc_id: data.kyc_id,
+        ekyc_api_status: data.ekyc_api_status,
+        ref_data: data.ref_data,
+        ekyc_json: data.ekyc_json,
+        doc_type: data.doc_type || 'address_proof',
+        doc_name: data.doc_name || '',
+        ekyc_status: 'verified',
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(requestData),
+        timeout
+      };
+
+      try {
+        const res = await fetch(`${url}/selfcareSubmiteKYCData`, options);
+        const response = await res.json();
+        
+        if (response.status !== 'ok' && response.code !== 200) {
+          throw new Error(response.message || 'Failed to submit KYC data');
+        } else {
+          return response;
+        }
+      } catch (e: any) {
         const msg = isNetworkError(e) ? networkErrorMsg : e.message;
         throw new Error(msg);
       }

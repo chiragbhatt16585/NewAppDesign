@@ -19,6 +19,7 @@ import PayBillScreen from '../screens/PayBillScreen';
 import ContactUsScreen from '../screens/ContactUsScreen';
 import LanguageScreen from '../screens/LanguageScreen';
 import KYCScreen from '../screens/KYCScreen';
+import DocumentUploadScreen from '../screens/DocumentUploadScreen';
 import UsageDetailsScreen from '../screens/UsageDetailsScreen';
 import WebViewScreen from '../screens/WebViewScreen';
 import ReferFriendScreen from '../screens/ReferFriendScreen';
@@ -139,6 +140,7 @@ const AppNavigator: React.FC<AppNavigatorProps> = ({ initialRoute }) => {
         <Stack.Screen name="ContactUs" component={ContactUsScreen} />
         <Stack.Screen name="Language" component={LanguageScreen} />
         <Stack.Screen name="KYC" component={KYCScreen} />
+        <Stack.Screen name="DocumentUpload" component={DocumentUploadScreen} />
         <Stack.Screen name="UsageDetails" component={UsageDetailsScreen} />
         <Stack.Screen name="WebView" component={WebViewScreen} />
         <Stack.Screen name="ReferFriend" component={ReferFriendScreen} options={{ headerShown: false }} />

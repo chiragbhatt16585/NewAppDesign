@@ -2,6 +2,9 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.CAMERA" />
 
     
     <!-- AR Feature - Optional -->
@@ -9,7 +12,6 @@
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     
     <!-- AR Permissions - Optional -->
-    <uses-permission android:name="android.permission.CAMERA" android:required="false" />
     <uses-permission android:name="com.google.ar.core.permission.CAMERA" android:required="false" />
     
     <application
