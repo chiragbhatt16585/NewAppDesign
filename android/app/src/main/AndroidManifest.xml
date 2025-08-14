@@ -136,24 +136,7 @@
       <!-- ARCore Metadata - Optional -->
       <meta-data android:name="com.google.ar.core" android:value="optional" />
       
-      <!-- Firebase Messaging Service -->
-      <service
-        android:name="io.invertase.firebase.messaging.ReactNativeFirebaseMessagingService"
-        android:exported="false">
-        <intent-filter>
-          <action android:name="com.google.firebase.MESSAGING_EVENT" />
-        </intent-filter>
-      </service>
-      
-      <!-- Firebase Messaging Receiver -->
-      <receiver
-        android:name="io.invertase.firebase.messaging.ReactNativeFirebaseMessagingReceiver"
-        android:exported="true">
-        <intent-filter>
-          <action android:name="android.intent.action.BOOT_COMPLETED" />
-          <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
-        </intent-filter>
-      </receiver>
+
       
     </application>
 </manifest>

@@ -74,8 +74,4 @@ yarn-error.log
 !.yarn/sdks
 !.yarn/versions
 
-# Firebase Configuration Files (Multi-Client)
-config/*/google-services.json
-config/*/GoogleService-Info.plist
-android/app/google-services.json
-ios/GoogleService-Info.plist
+

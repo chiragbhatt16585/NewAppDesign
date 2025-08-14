@@ -242,7 +242,7 @@ const SettingsScreen = ({ navigation }: any) => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <CommonHeader navigation={navigation} title="Settings" />
+      <CommonHeader navigation={navigation}  />
 
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.content}>

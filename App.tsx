@@ -26,7 +26,7 @@ import {testSessionPersistence} from './src/services/sessionPersistenceTest';
 import {testKYCFunctionality} from './src/services/kycTest';
 import {testClientConfiguration} from './src/services/clientConfigTest';
 import {testBiometricAvailability} from './src/services/biometricTest';
-import PushNotificationService from './src/services/pushNotificationService';
+
 import './src/i18n';
 
 function AppContent() {
@@ -118,34 +118,7 @@ function AppContent() {
     try {
       console.log('=== INITIALIZING APP ===');
       
-      // Initialize push notifications
-      console.log('Initializing push notifications...');
-      try {
-        const pushService = PushNotificationService.getInstance();
-        console.log('Push service instance created:', !!pushService);
-        
-        const hasPermission = await pushService.requestUserPermission();
-        console.log('Permission granted:', hasPermission);
-        
-        const fcmToken = await pushService.getFcmToken();
-        console.log('FCM Token received:', !!fcmToken);
-        
-        if (fcmToken) {
-          // Send token to backend when user is logged in
-          const loggedIn = await sessionManager.isLoggedIn();
-          if (loggedIn) {
-            await pushService.sendTokenToBackend(fcmToken);
-          }
-        }
-        
-        // Set up notification listeners
-        pushService.onMessageReceived();
-        pushService.onNotificationOpenedApp();
-        pushService.getInitialNotification();
-      } catch (error) {
-        console.error('Error initializing push notifications:', error);
-        // Continue with app initialization even if push notifications fail
-      }
+
       
       // Initialize session manager first
       await sessionManager.initialize();

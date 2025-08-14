@@ -219,20 +219,7 @@ const copyFiles = () => {
       console.log(`✅ Copied logo config for ${clientName}`);
     }
 
-    // Copy Firebase configuration files
-    if (fs.existsSync(`${sourcePath}/google-services.json`)) {
-      fs.copyFileSync(`${sourcePath}/google-services.json`, './android/app/google-services.json');
-      console.log(`✅ Copied Firebase Android config for ${clientName}`);
-    } else {
-      console.log(`⚠️  No google-services.json found for ${clientName}`);
-    }
 
-    if (fs.existsSync(`${sourcePath}/GoogleService-Info.plist`)) {
-      fs.copyFileSync(`${sourcePath}/GoogleService-Info.plist`, './ios/GoogleService-Info.plist');
-      console.log(`✅ Copied Firebase iOS config for ${clientName}`);
-    } else {
-      console.log(`⚠️  No GoogleService-Info.plist found for ${clientName}`);
-    }
 
     // Update current client configuration
     const currentClientConfig = { clientId: clientName };
