@@ -29,6 +29,7 @@ import AuthSetupScreen from '../screens/AuthSetupScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import TermsScreen from '../screens/TermsScreen';
 import FAQScreen from '../screens/FAQScreen';
+import AboutScreen from '../screens/AboutScreen';
 import AIDemoScreen from '../screens/AIDemoScreen';
 import UpdateSSIDScreen from '../screens/UpdateSSIDScreen';
 import OffersScreen from '../screens/OffersScreen';
@@ -127,6 +128,7 @@ const AppNavigator: React.FC<AppNavigatorProps> = ({ initialRoute }) => {
         <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: false }} />
         <Stack.Screen name="TermsScreen" component={TermsScreen} options={{ headerShown: false }} />
         <Stack.Screen name="FAQScreen" component={FAQScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="AboutScreen" component={AboutScreen} options={{ headerShown: false }} />
         <Stack.Screen name="AIDemo" component={AIDemoScreen} options={{ headerShown: false }} />
         <Stack.Screen name="UpdateSSID" component={UpdateSSIDScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Offers" component={OffersScreen} options={{ headerShown: false }} />

@@ -59,6 +59,14 @@ export interface ClientConfig {
     tollFree?: string;
     landline?: string;
   };
+  about: {
+    companyName: string;
+    establishedYear: string;
+    description: string;
+    specializations: string[];
+    serviceAreas: string[];
+    achievements: string[];
+  };
   reviewUrl?: string;
 }
 
@@ -123,6 +131,27 @@ const clientConfigs: Record<string, ClientConfig> = {
           },
         },
       },
+      about: {
+        companyName: 'MICROSCAN',
+        establishedYear: '2010',
+        description: 'Microscan is a leading internet service provider committed to delivering high-quality broadband services to residential and business customers.',
+        specializations: [
+          'High-speed broadband internet',
+          'Fiber optic technology',
+          'Business internet solutions',
+          '24/7 customer support'
+        ],
+        serviceAreas: [
+          'Mumbai Metropolitan Region',
+          'Pune and surrounding areas',
+          'Maharashtra state'
+        ],
+        achievements: [
+          'Trusted by thousands of customers',
+          'Award-winning customer service',
+          'Continuous network expansion'
+        ],
+      },
       reviewUrl: 'https://play.google.com/store/apps/details?id=com.h8.dnasubscriber',
   },
       'dna-infotel': {
@@ -169,6 +198,26 @@ const clientConfigs: Record<string, ClientConfig> = {
         },
         tollFree: '1800-313-6345',
         landline: '0250-6635100',
+      },
+      about: {
+        companyName: 'DNA INFOTEL PVT LTD',
+        establishedYear: '2008',
+        description: 'A brand Established in the year 2008, in association with M/s Digital Network Associates PVT LTD also known as "DNA". We have our services operating extensively from Vasai to Virar Region includes Highway and coastal region.',
+        specializations: [
+          'Hi-Speed Broadband Internet connection',
+          'GePON/GPON technology (FTTH - Fibre to the Home)',
+          'Leased Line connections for Small, Medium and large scale enterprises'
+        ],
+        serviceAreas: [
+          'Vasai to Virar Region',
+          'Highway region',
+          'Coastal region'
+        ],
+        achievements: [
+          'Successfully reached to a prominent broadband supplier',
+          'Extensive service coverage across multiple regions',
+          'Latest technology implementation'
+        ],
       },
       reviewUrl: 'https://g.page/r/CSrSiBGUlFE_EB0/review',
     },
@@ -239,6 +288,27 @@ const clientConfigs: Record<string, ClientConfig> = {
       },
       tollFree: '+91-800-123-4569',
       landline: '+91-123-4567892',
+    },
+    about: {
+      companyName: 'ONE SEVEN STAR',
+      establishedYear: '2015',
+      description: 'One Seven Star is a dynamic internet service provider focused on delivering reliable and fast internet connectivity to homes and businesses.',
+      specializations: [
+        'High-speed internet services',
+        'Fiber optic networks',
+        'Business internet solutions',
+        'Customer-focused service'
+      ],
+      serviceAreas: [
+        'Multiple cities across India',
+        'Urban and rural areas',
+        'Business districts'
+      ],
+      achievements: [
+        'Growing customer base',
+        'Innovative service offerings',
+        'Reliable network infrastructure'
+      ],
     },
     reviewUrl: 'https://play.google.com/store/apps/details?id=com.h8.dnasubscriber',
   },
