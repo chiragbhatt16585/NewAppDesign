@@ -190,6 +190,12 @@ const copyFiles = () => {
       console.log(`✅ Copied strings.json for ${clientName}`);
     }
 
+    // Copy app.json for correct app name
+    if (fs.existsSync(`${sourcePath}/app.json`)) {
+      fs.copyFileSync(`${sourcePath}/app.json`, './app.json');
+      console.log(`✅ Copied app.json for ${clientName}`);
+    }
+
     // Copy Android build.gradle
     if (fs.existsSync(`${sourcePath}/android-build.gradle`)) {
       fs.copyFileSync(`${sourcePath}/android-build.gradle`, './android/app/build.gradle');
@@ -211,6 +217,21 @@ const copyFiles = () => {
     if (fs.existsSync(`${sourcePath}/logo-config.json`)) {
       fs.copyFileSync(`${sourcePath}/logo-config.json`, './src/config/logo-config.json');
       console.log(`✅ Copied logo config for ${clientName}`);
+    }
+
+    // Copy Firebase configuration files
+    if (fs.existsSync(`${sourcePath}/google-services.json`)) {
+      fs.copyFileSync(`${sourcePath}/google-services.json`, './android/app/google-services.json');
+      console.log(`✅ Copied Firebase Android config for ${clientName}`);
+    } else {
+      console.log(`⚠️  No google-services.json found for ${clientName}`);
+    }
+
+    if (fs.existsSync(`${sourcePath}/GoogleService-Info.plist`)) {
+      fs.copyFileSync(`${sourcePath}/GoogleService-Info.plist`, './ios/GoogleService-Info.plist');
+      console.log(`✅ Copied Firebase iOS config for ${clientName}`);
+    } else {
+      console.log(`⚠️  No GoogleService-Info.plist found for ${clientName}`);
     }
 
     // Update current client configuration

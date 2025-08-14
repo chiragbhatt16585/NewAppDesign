@@ -16,6 +16,7 @@ import CommonHeader from '../components/CommonHeader';
 import { useTranslation } from 'react-i18next';
 import biometricAuthService from '../services/biometricAuth';
 import { pinStorage } from '../services/pinStorage';
+import DeviceInfo from 'react-native-device-info';
 
 const SettingsScreen = ({ navigation }: any) => {
   const { isDark, themeMode, setThemeMode } = useTheme();
@@ -25,9 +26,11 @@ const SettingsScreen = ({ navigation }: any) => {
   const [biometricStatus, setBiometricStatus] = useState<string>('Not Available');
   const [biometricType, setBiometricType] = useState<string>('');
   const [showLanguageModal, setShowLanguageModal] = useState(false);
+  const [appVersion, setAppVersion] = useState<string>('1.0.0');
 
   useEffect(() => {
     loadSecurityStatus();
+    loadAppVersion();
   }, []);
 
   const loadSecurityStatus = async () => {
@@ -48,6 +51,15 @@ const SettingsScreen = ({ navigation }: any) => {
       }
     } catch (error) {
       console.error('Error loading security status:', error);
+    }
+  };
+
+  const loadAppVersion = async () => {
+    try {
+      const version = await DeviceInfo.getVersion();
+      setAppVersion(version);
+    } catch (error) {
+      console.error('Error loading app version:', error);
     }
   };
 
@@ -179,6 +191,39 @@ const SettingsScreen = ({ navigation }: any) => {
         //   statusColor: getStatusColor(biometricStatus),
         //   statusIcon: getStatusIcon(biometricStatus),
         // },
+      ],
+    },
+    {
+      title: 'Support & Information',
+      items: [
+        {
+          id: 'faq',
+          title: 'FAQ',
+          subtitle: 'Frequently Asked Questions',
+          icon: '❓',
+          onPress: () => navigation.navigate('FAQScreen'),
+        },
+        {
+          id: 'terms',
+          title: 'Terms & Conditions',
+          subtitle: 'Read our terms of service',
+          icon: '📋',
+          onPress: () => navigation.navigate('TermsScreen'),
+        },
+        {
+          id: 'about',
+          title: 'About Company',
+          subtitle: 'Learn more about us',
+          icon: '🏢',
+          onPress: () => navigation.navigate('AboutScreen'),
+        },
+        {
+          id: 'version',
+          title: 'App Version',
+          subtitle: appVersion,
+          icon: '📱',
+          onPress: () => {}, // No action needed for version
+        },
       ],
     },
     // {

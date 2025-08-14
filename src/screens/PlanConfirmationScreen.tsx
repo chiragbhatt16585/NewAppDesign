@@ -44,6 +44,19 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
   const colors = getThemeColors(isDark);
   const {t} = useTranslation();
   const {selectedPlan, totalAmount, admin_login_id: adminLoginId} = route.params;
+  
+  // // Debug: Log the values we receive
+  // console.log('=== PLAN CONFIRMATION SCREEN INIT ===');
+  // console.log('selectedPlan:', selectedPlan);
+  // console.log('totalAmount from route:', totalAmount);
+  // console.log('selectedPlan.mrp:', selectedPlan?.mrp);
+  // console.log('selectedPlan.dues:', selectedPlan?.dues);
+  
+  // Check if totalAmount matches what we expect
+  const expectedTotal = (selectedPlan?.mrp || 0) + (selectedPlan?.dues || 0);
+  // console.log('Expected total (mrp + dues):', expectedTotal);
+  // console.log('totalAmount matches expected:', totalAmount === expectedTotal);
+  // console.log('=== END INIT DEBUG ===');
 
   const [showPaymentModal, setShowPaymentModal] = React.useState(false);
   const [selectedGateway, setSelectedGateway] = React.useState('');
@@ -64,9 +77,9 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
       const clientConfig = getClientConfig();
       const realm = clientConfig.clientId;
       const couponData = await apiService.getCouponCode(realm);
-      console.log('=== PLAN CONFIRMATION COUPON DATA ===');
-      console.log('Available Coupons:', JSON.stringify(couponData, null, 2));
-      console.log('=== END PLAN CONFIRMATION COUPON DATA ===');
+      // console.log('=== PLAN CONFIRMATION COUPON DATA ===');
+      // console.log('Available Coupons:', JSON.stringify(couponData, null, 2));
+      // console.log('=== END PLAN CONFIRMATION COUPON DATA ===');
       setCoupons(couponData || []);
     } catch (error) {
       console.error('Error fetching coupons:', error);
@@ -74,32 +87,29 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
     }
   };
 
-  const handleCouponSelect = (coupon: any) => {
-    if (selectedCoupon && selectedCoupon.id === coupon.id) {
-      // Deselect if same coupon is clicked
-      setSelectedCoupon(null);
-      setCouponDiscount(0);
-    } else {
-      // Select new coupon
-      setSelectedCoupon(coupon);
-      
-      // Calculate discount based on coupon
-      try {
-        const discountJson = JSON.parse(coupon.discount_coupon_json || '{}');
-        const discountValue = parseFloat(discountJson.discount_option_value || '0');
-        setCouponDiscount(discountValue);
-      } catch (error) {
-        console.error('Error parsing coupon discount:', error);
-        setCouponDiscount(0);
-      }
-    }
-  };
-
   const calculateFinalAmount = () => {
-    let finalAmount = totalAmount;
+    // Use the totalAmount from route params (which should already include mrp + dues)
+    // But also calculate it from plan data as a fallback
+    const routeTotalAmount = totalAmount || 0;
+    const calculatedTotalAmount = (selectedPlan?.mrp || 0) + (selectedPlan?.dues || 0);
+    
+    // Use the route totalAmount if it exists, otherwise use calculated
+    const baseAmount = routeTotalAmount > 0 ? routeTotalAmount : calculatedTotalAmount;
+    
+    let finalAmount = baseAmount;
     
     // Subtract coupon discount
     finalAmount -= couponDiscount;
+    
+    // console.log('=== CALCULATE FINAL AMOUNT DEBUG ===');
+    // console.log('totalAmount from route:', totalAmount);
+    // console.log('selectedPlan.mrp:', selectedPlan?.mrp);
+    // console.log('selectedPlan.dues:', selectedPlan?.dues);
+    // console.log('calculatedTotalAmount (mrp + dues):', calculatedTotalAmount);
+    // console.log('baseAmount used:', baseAmount);
+    // console.log('couponDiscount:', couponDiscount);
+    // console.log('Final amount after discount:', finalAmount);
+    // console.log('=== END CALCULATE FINAL AMOUNT DEBUG ===');
     
     return Math.max(0, finalAmount);
   };
@@ -118,6 +128,36 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
         return '📡';
       default:
         return '🎬';
+    }
+  };
+
+  const handleCouponSelect = (coupon: any) => {
+    if (selectedCoupon && selectedCoupon.id === coupon.id) {
+      // Deselect if same coupon is clicked
+      setSelectedCoupon(null);
+      setCouponDiscount(0);
+      console.log('Coupon deselected, discount reset to 0');
+    } else {
+      // Select new coupon
+      setSelectedCoupon(coupon);
+      
+      // Calculate discount based on coupon
+      try {
+        const discountJson = JSON.parse(coupon.discount_coupon_json || '{}');
+        const discountValue = parseFloat(discountJson.discount_option_value || '0');
+        setCouponDiscount(discountValue);
+        
+        // console.log('=== COUPON SELECTION DEBUG ===');
+        // console.log('Selected Coupon:', coupon);
+        // console.log('Discount JSON:', discountJson);
+        // console.log('Discount Value:', discountValue);
+        // console.log('Original Amount:', totalAmount);
+        // console.log('Final Amount:', totalAmount - discountValue);
+        // console.log('=== END COUPON DEBUG ===');
+      } catch (error) {
+        console.error('Error parsing coupon discount:', error);
+        setCouponDiscount(0);
+      }
     }
   };
 
@@ -142,6 +182,8 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
     }
   };
 
+
+
   const handleConfirmPayment = async () => {
     setLoadingGateways(true);
     setGatewayError('');
@@ -164,9 +206,9 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
         return;
       }
 
-      console.log('=== PAYMENT GATEWAY DEBUG ===');
-      console.log('Current session username:', session.username);
-      console.log('Session isLoggedIn:', session.isLoggedIn);
+      // console.log('=== PAYMENT GATEWAY DEBUG ===');
+      // console.log('Current session username:', session.username);
+      // console.log('Session isLoggedIn:', session.isLoggedIn);
       
       let adminId = adminLoginIdState;
       if (!adminId) {
@@ -232,15 +274,40 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
     const clientConfig = getClientConfig();
     const realm = clientConfig.clientId;
     const selectedGatewayObj = paymentGateways.find(g => g.id === selectedGateway);
+    
+    // Calculate final amount with coupon discount
+    const finalAmount = calculateFinalAmount();
+    
     const params = {
-      amount: totalAmount,
+      amount: finalAmount, // Use calculated amount (mrp + dues)
       adminname: adminLoginId,
       username: session.username, // Use username from session instead of route.params
       planname: selectedPlan.name,
       selectedPGType: [{ label: selectedGatewayObj.gw_display_name, value: selectedGatewayObj.id }],
       payActionType: 'renewal',
+      // Add coupon information for backend processing
+      couponCode: selectedCoupon ? getDiscountCode(selectedCoupon) : null,
+      campaignCode: selectedCoupon?.campaign_code || null,
+      couponDiscount: couponDiscount,
+      originalAmount: totalAmount,
       // Add proforma_invoice, refund_amount, old_pin_serial if needed
     };
+    
+    console.log('=== PAYMENT PARAMS WITH COUPON ===');
+    console.log('Route totalAmount:', totalAmount);
+    console.log('Selected Plan MRP:', selectedPlan?.mrp);
+    console.log('Selected Plan Dues:', selectedPlan?.dues);
+    console.log('Calculated Base Amount (mrp + dues):', (selectedPlan?.mrp || 0) + (selectedPlan?.dues || 0));
+    console.log('Coupon Discount Applied:', couponDiscount);
+    console.log('Final Amount to Pay:', finalAmount);
+    console.log('Admin Login ID:', adminLoginId);
+    console.log('Username:', session.username);
+    console.log('Plan Name:', selectedPlan.name);
+    console.log('Coupon Code:', params.couponCode);
+    console.log('Campaign Code:', params.campaignCode);
+    console.log('Coupon Discount:', params.couponDiscount);
+    console.log('=== END PAYMENT PARAMS ===');
+    
     handlePayment(params, 'renewal', navigation, realm);
   };
 
@@ -447,6 +514,8 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
               <Text style={[styles.pricingValue, {color: colors.text}]}>₹{selectedPlan.dues}</Text>
             </View>
 
+
+
             {selectedCoupon && couponDiscount > 0 && (
               <View style={styles.pricingRow}>
                 <Text style={[styles.pricingLabel, {color: colors.textSecondary}]}>Coupon Discount</Text>
@@ -458,6 +527,8 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
               <Text style={[styles.pricingLabel, styles.finalTotalLabel, {color: colors.text}]}>{t('planConfirmation.totalAmount')}</Text>
               <Text style={[styles.pricingValue, styles.finalTotalValue, {color: colors.accent}]}>₹{calculateFinalAmount()}</Text>
             </View>
+            
+
           </View>
 
           {/* Action Buttons */}
@@ -488,6 +559,11 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
             </TouchableWithoutFeedback>
             <View style={[styles.paymentModalContainer, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
               <Text style={[styles.paymentModalTitle, {color: colors.text}]}>Select Payment Gateway</Text>
+              
+
+
+
+
               {loadingGateways ? (
                 <Text style={[styles.loadingText, {color: colors.textSecondary}]}>{t('common.loading') || 'Loading...'}</Text>
               ) : gatewayError ? (
@@ -527,7 +603,7 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
                   styles.paymentGatewayButtonText, 
                   {color: selectedGateway ? '#fff' : colors.textSecondary}
                 ]}>
-                  Pay with {selectedGateway ? paymentGateways.find(g => g.id === selectedGateway)?.gw_display_name : ''}
+                  Pay ₹{calculateFinalAmount()} with {selectedGateway ? paymentGateways.find(g => g.id === selectedGateway)?.gw_display_name : ''}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -748,31 +824,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
   },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  cancelButton: {
-    flex: 1,
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  confirmButton: {
-    flex: 1,
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  confirmButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
   couponCard: {
     borderRadius: 12,
     padding: 16,
@@ -806,25 +857,16 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 12,
   },
-  couponRight: {
-    flex: 2,
-    alignItems: 'flex-end',
-  },
-  couponName: {
-    fontSize: 13,
-    fontWeight: '500',
-    marginBottom: 2,
-  },
-  couponCode: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    fontFamily: 'monospace',
-  },
   couponCodeRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 4,
+  },
+  couponCode: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    fontFamily: 'monospace',
   },
   couponPrice: {
     fontSize: 14,
@@ -869,6 +911,32 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
   },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  cancelButton: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  confirmButton: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  confirmButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+
   paymentModalContainer: {
     position: 'absolute',
     left: 20,
@@ -928,6 +996,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
+
 });
 
 export default PlanConfirmationScreen; 

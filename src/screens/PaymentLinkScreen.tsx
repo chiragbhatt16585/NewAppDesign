@@ -35,6 +35,14 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
 
   const { source, pgInfo, amount, merTxnId } = route.params || {};
 
+  // Debug: Log the amount parameter received
+  console.log('=== PAYMENT LINK SCREEN DEBUG ===');
+  console.log('Amount received from navigation:', amount);
+  console.log('pgInfo:', pgInfo);
+  console.log('merTxnId:', merTxnId);
+  console.log('Route params:', JSON.stringify(route.params, null, 2));
+  console.log('=== END PAYMENT LINK DEBUG ===');
+
   useEffect(() => {
     if (!source || !pgInfo || !amount || !merTxnId) {
       setError('Invalid payment parameters');

@@ -11,14 +11,44 @@ const domain = ''; // TODO: Set your domain if needed for EBS/PayuMoney
 export function handlePayment(params: any, payActionType: string, navigation: any, realm: string) {
   console.log('=== HANDLE PAYMENT DEBUG ===');
   console.log('Payment params:', params);
+  console.log('Amount received:', params.amount);
+  console.log('Coupon Code received:', params.couponCode);
+  console.log('Coupon Discount received:', params.couponDiscount);
   console.log('Pay action type:', payActionType);
   console.log('Realm:', realm);
   
   // Use makeAuthenticatedRequest instead of handleTokenUpdate (same pattern as other screens)
   apiService.makeAuthenticatedRequest(async (token) => {
     console.log('Token received for payment request:', token ? 'exists' : 'missing');
-    return await apiService.paymentRequestDetails(params, realm);
+    
+    // Add campaign_code and coupon_amount using existing variables
+    const apiParams = {
+      ...params,
+      // Prefer explicit campaignCode from selected coupon; fallback to couponCode
+      campaign_code: params.campaignCode || params.couponCode || null,
+      coupon_amount: params.couponDiscount || 0,
+    };
+    
+    console.log('=== FINAL API PARAMS ===');
+    console.log('API Params:', apiParams);
+    console.log('Amount being sent to payment gateway:', apiParams.amount);
+    console.log('Campaign Code:', apiParams.campaign_code);
+    console.log('Coupon Amount:', apiParams.coupon_amount);
+    console.log('Original Amount (before discount):', apiParams.originalAmount);
+    console.log('=== BACKEND API CALL DEBUG ===');
+    console.log('Calling apiService.paymentRequestDetails with params:', JSON.stringify(apiParams, null, 2));
+    console.log('Realm:', realm);
+    console.log('=== END API PARAMS ===');
+    
+    return await apiService.paymentRequestDetails(apiParams, realm);
   }).then((res: any) => {
+    console.log('=== BACKEND RESPONSE DEBUG ===');
+    console.log('Backend response received:', JSON.stringify(res, null, 2));
+    console.log('Backend response data:', JSON.stringify(res.data, null, 2));
+    console.log('Backend amount in response:', res.data?.amount || 'NOT FOUND');
+    console.log('Backend txn_ref_no:', res.data?.txn_ref_no || 'NOT FOUND');
+    console.log('Backend URL:', res.data?.url || 'NOT FOUND');
+    console.log('=== END BACKEND RESPONSE ===');
     console.log('Payment request successful:', res);
     const txnInfo: any = {}; // TODO: Implement or import TxnInfo from your utils if needed
     var pgInfo = params.selectedPGType && params.selectedPGType[0].label;
@@ -62,11 +92,16 @@ export function handlePayment(params: any, payActionType: string, navigation: an
         "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1"
       };
       source.body = queryString.stringify(res.data.parameters);
+      console.log('=== EASEBUZZ PAYMENT DEBUG ===');
       console.log('EASEBUZZ payment configuration:', {
         url: res.data.url,
         txnRef: txnInfo.merTxnId,
         parameters: res.data.parameters
       });
+      console.log('Amount being sent to PaymentLink:', params.amount);
+      console.log('Backend amount from response:', res.data?.amount);
+      console.log('Amount mismatch check:', params.amount !== res.data?.amount ? 'MISMATCH!' : 'OK');
+      console.log('=== END EASEBUZZ DEBUG ===');
       navigation.navigate("PaymentLink", { source: source, pgInfo: pgInfo, amount: params.amount, merTxnId: txnInfo.merTxnId })
     } else if (pgInfo === 'PAYTM') {
       // Temporarily disabled due to compatibility issues with React Native 0.80.1
@@ -110,9 +145,16 @@ export function handlePayment(params: any, payActionType: string, navigation: an
     } else if (pgInfo === 'RAZORPAY') {
       txnInfo.merTxnId = res.data.txn_ref_no;
       const data = res.data.parameters;
+      
+      console.log('=== RAZORPAY PAYMENT DEBUG ===');
+      console.log('Backend amount from data:', data.amount);
+      console.log('Our calculated amount (params.amount):', params.amount);
+      console.log('Using amount for Razorpay:', params.amount);
+      console.log('=== END RAZORPAY DEBUG ===');
+      
       const options = {
         key: data.key,
-        amount: data.amount,
+        amount: data.amount, // Use backend order amount to match server-created Razorpay order
         name: data.name,
         description: data.description,
         image: '',

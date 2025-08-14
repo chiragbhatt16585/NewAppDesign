@@ -115,6 +115,9 @@ export interface Ticket {
 // Utility function to convert object to FormData
 const toFormData = (data: any): FormData => {
   const formData = new FormData();
+  console.log('=== TO FORM DATA DEBUG ===');
+  console.log('Input data object:', data);
+  
   Object.keys(data).forEach(key => {
     if (data[key] !== undefined && data[key] !== null) {
       // Handle file uploads from react-native-image-picker
@@ -136,10 +139,19 @@ const toFormData = (data: any): FormData => {
           name: fileName,
         } as any);
       } else {
+        console.log(`Adding to FormData - ${key}:`, data[key]);
         formData.append(key, data[key]);
       }
+    } else {
+      console.log(`Skipping ${key} - value is undefined or null:`, data[key]);
     }
   });
+  
+  console.log('=== FINAL FORM DATA CONTENTS ===');
+  // Log what's actually in the FormData
+  console.log('FormData created with keys:', Object.keys(data).filter(key => data[key] !== undefined && data[key] !== null));
+  console.log('=== END FORM DATA DEBUG ===');
+  
   return formData;
 };
 
@@ -1319,7 +1331,10 @@ class ApiService {
       payActionType,
       proforma_invoice,
       refund_amount,
-      old_pin_serial
+      old_pin_serial,
+      campaign_code,
+      coupon_amount,
+      originalAmount
     }: {
       amount: number,
       adminname: string,
@@ -1329,7 +1344,10 @@ class ApiService {
       payActionType: string,
       proforma_invoice?: string,
       refund_amount?: number,
-      old_pin_serial?: string
+      old_pin_serial?: string,
+      campaign_code?: string | null,
+      coupon_amount?: number,
+      originalAmount?: number
     },
     realm: string
   ) {
@@ -1348,12 +1366,42 @@ class ApiService {
       if (old_pin_serial !== undefined) data.old_pin_serial = old_pin_serial;
       if (proforma_invoice) data.proforma_invoice = proforma_invoice;
       if (planname !== undefined) data.planname = planname;
+      if (campaign_code) data.campaign_code = campaign_code;
+      if (coupon_amount !== undefined) data.coupon_amount = coupon_amount;
+      if (originalAmount !== undefined) data.originalAmount = originalAmount;
+      
+      // Add comprehensive logging
+      console.log('=== API PAYMENT REQUEST DEBUG ===');
+      console.log('Function parameters received:', {
+        amount,
+        adminname,
+        username,
+        planname,
+        selectedPGType,
+        payActionType,
+        campaign_code,
+        coupon_amount,
+        originalAmount
+      });
+      console.log('Final data object being sent to backend:', data);
+      console.log('Realm:', realm);
+      console.log('API URL:', `${url}/selfcareMerchantPaymentRequest`);
+      console.log('=== END API DEBUG ===');
+      
       const options = {
         method,
         headers: new Headers({ Authentication: token, ...fixedHeaders }),
         body: toFormData(data),
         timeout
       };
+      
+      console.log('=== FINAL REQUEST OPTIONS ===');
+      console.log('Method:', method);
+      console.log('Headers:', { Authentication: token ? 'exists' : 'missing', ...fixedHeaders });
+      console.log('Body (FormData):', 'FormData object created above');
+      console.log('Timeout:', timeout);
+      console.log('=== END REQUEST OPTIONS ===');
+      
       try {
         const res = await fetch(`${url}/selfcareMerchantPaymentRequest`, options);
         const response = await res.json();

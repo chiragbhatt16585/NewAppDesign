@@ -7,6 +7,7 @@ require Pod::Executable.execute_command('node', ['-p',
 
 platform :ios, min_ios_version_supported
 prepare_react_native_project!
+use_modular_headers!
 
 linkage = ENV['USE_FRAMEWORKS']
 if linkage != nil
@@ -23,6 +24,10 @@ target 'ISPApp' do
     :app_path => "#{Pod::Config.instance.installation_root}/..",
     :hermes_enabled => false,
   )
+  
+  # Firebase pods
+  pod 'Firebase/Core'
+  pod 'Firebase/Messaging'
 
   post_install do |installer|
     # https://github.com/facebook/react-native/blob/main/packages/react-native/scripts/react_native_pods.rb#L197-L202
