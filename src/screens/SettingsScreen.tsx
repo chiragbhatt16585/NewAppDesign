@@ -70,28 +70,28 @@ const SettingsScreen = ({ navigation }: any) => {
   const handleLanguageSelect = (languageCode: string, languageName: string, flag: string) => {
     i18n.changeLanguage(languageCode);
     setShowLanguageModal(false);
-    Alert.alert('Language Changed', `Switched to ${languageName} ${flag}`);
+    Alert.alert(t('settings.languageChanged'), `${t('settings.switchedTo')} ${languageName} ${flag}`);
   };
 
   const handleThemeSettings = () => {
     Alert.alert(
-      'Theme Settings',
-      'Choose your preferred theme',
+      t('settings.themeSettings'),
+      t('settings.themeSettingsSubtitle'),
       [
         {
-          text: 'Cancel',
+          text: t('common.cancel'),
           style: 'cancel',
         },
         {
-          text: 'Light',
+          text: t('settings.lightTheme'),
           onPress: () => setThemeMode('light'),
         },
         {
-          text: 'Dark',
+          text: t('settings.darkTheme'),
           onPress: () => setThemeMode('dark'),
         },
         {
-          text: 'System',
+          text: t('settings.systemTheme'),
           onPress: () => setThemeMode('system'),
         },
       ],
@@ -105,13 +105,13 @@ const SettingsScreen = ({ navigation }: any) => {
   const getThemeDisplayText = () => {
     switch (themeMode) {
       case 'light':
-        return 'Light Theme';
+        return t('settings.lightTheme');
       case 'dark':
-        return 'Dark Theme';
+        return t('settings.darkTheme');
       case 'system':
-        return 'System Theme';
+        return t('settings.systemTheme');
       default:
-        return 'System Theme';
+        return t('settings.systemTheme');
     }
   };
 
@@ -145,18 +145,18 @@ const SettingsScreen = ({ navigation }: any) => {
 
   const settingsSections = [
     {
-      title: 'Appearance',
+      title: t('settings.appearance'),
       items: [
         {
           id: 'language',
-          title: 'Language',
+          title: t('settings.language'),
           subtitle: getLanguageDisplayText(),
           icon: '🌐',
           onPress: handleLanguageChange,
         },
         {
           id: 'theme',
-          title: 'Theme',
+          title: t('settings.theme'),
           subtitle: getThemeDisplayText(),
           icon: isDark ? '🌙' : '☀️',
           onPress: handleThemeSettings,
@@ -164,80 +164,50 @@ const SettingsScreen = ({ navigation }: any) => {
       ],
     },
     {
-      title: 'Security',
+      title: t('settings.security'),
       items: [
         {
           id: 'security',
-          title: 'Security Settings',
-          subtitle: 'PIN & Biometric Authentication',
+          title: t('settings.securitySettings'),
+          subtitle: t('settings.securitySettingsSubtitle'),
           icon: '🔒',
           onPress: handleSecuritySettings,
         },
-        // {
-        //   id: 'pin-status',
-        //   title: 'PIN Status',
-        //   subtitle: pinStatus,
-        //   icon: '🔢',
-        //   onPress: () => navigation.navigate('SecuritySettingsScreen'),
-        //   statusColor: getStatusColor(pinStatus),
-        //   statusIcon: getStatusIcon(pinStatus),
-        // },
-        // {
-        //   id: 'biometric-status',
-        //   title: 'Biometric Status',
-        //   subtitle: biometricType ? `${biometricType} - ${biometricStatus}` : biometricStatus,
-        //   icon: '👆',
-        //   onPress: () => navigation.navigate('SecuritySettingsScreen'),
-        //   statusColor: getStatusColor(biometricStatus),
-        //   statusIcon: getStatusIcon(biometricStatus),
-        // },
       ],
     },
     {
-      title: 'Support & Information',
+      title: t('settings.support'),
       items: [
         {
           id: 'faq',
-          title: 'FAQ',
-          subtitle: 'Frequently Asked Questions',
+          title: t('settings.faq'),
+          subtitle: t('settings.faqSubtitle'),
           icon: '❓',
           onPress: () => navigation.navigate('FAQScreen'),
         },
         {
           id: 'terms',
-          title: 'Terms & Conditions',
-          subtitle: 'Read our terms of service',
+          title: t('settings.terms'),
+          subtitle: t('settings.termsSubtitle'),
           icon: '📋',
           onPress: () => navigation.navigate('TermsScreen'),
         },
         {
           id: 'about',
-          title: 'About Company',
-          subtitle: 'Learn more about us',
+          title: t('settings.about'),
+          subtitle: t('settings.aboutSubtitle'),
           icon: '🏢',
           onPress: () => navigation.navigate('AboutScreen'),
         },
         {
           id: 'version',
-          title: 'App Version',
+          title: t('settings.version'),
           subtitle: appVersion,
           icon: '📱',
           onPress: () => {}, // No action needed for version
         },
       ],
     },
-    // {
-    //   title: 'Notes',
-    //   items: [
-    //     {
-    //       id: 'notes',
-    //       title: 'Status Color Guide',
-    //       subtitle: '🟢 Green = Active/Set\n\n🟠 Orange = Available\n\n🔴 Red = Not Set',
-    //       icon: '📝',
-    //       onPress: () => {}, // No action needed
-    //     },
-    //   ],
-    // },
   ];
 
   return (
@@ -276,13 +246,7 @@ const SettingsScreen = ({ navigation }: any) => {
                     </Text>
                   </View>
                   
-                  {item.statusColor && item.statusIcon ? (
-                    <View style={[styles.statusContainer, { backgroundColor: item.statusColor }]}>
-                      <Text style={styles.statusIcon}>{item.statusIcon}</Text>
-                    </View>
-                  ) : (
-                    <Text style={[styles.arrowText, { color: colors.textSecondary }]}>›</Text>
-                  )}
+                  <Text style={[styles.arrowText, { color: colors.textSecondary }]}>›</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -301,7 +265,7 @@ const SettingsScreen = ({ navigation }: any) => {
           <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: colors.text }]}>
-                Select Language
+                {t('settings.selectLanguage')}
               </Text>
               <TouchableOpacity
                 onPress={() => setShowLanguageModal(false)}
@@ -312,7 +276,7 @@ const SettingsScreen = ({ navigation }: any) => {
             </View>
             
             <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>
-              Choose your preferred language
+              {t('settings.selectLanguageSubtitle')}
             </Text>
 
             <View style={styles.languageList}>
