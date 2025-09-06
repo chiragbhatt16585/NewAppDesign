@@ -68,6 +68,13 @@ export interface ClientConfig {
     achievements: string[];
   };
   reviewUrl?: string;
+  versionCheck?: {
+    enabled: boolean;
+    checkInterval: number; // in hours
+    forceUpdateEnabled: boolean;
+    appStoreId?: string; // for iOS
+    packageName?: string; // for Android
+  };
 }
 
 // Client configurations
@@ -153,6 +160,13 @@ const clientConfigs: Record<string, ClientConfig> = {
         ],
       },
       reviewUrl: 'https://play.google.com/store/apps/details?id=com.h8.dnasubscriber',
+      versionCheck: {
+        enabled: true,
+        checkInterval: 24, // Check every 24 hours
+        forceUpdateEnabled: true,
+        packageName: 'com.h8.dnasubscriber',
+        appStoreId: '1559045355',
+      },
   },
       'dna-infotel': {
       clientId: 'dna-infotel',
@@ -220,6 +234,13 @@ const clientConfigs: Record<string, ClientConfig> = {
         ],
       },
       reviewUrl: 'https://g.page/r/CSrSiBGUlFE_EB0/review',
+      versionCheck: {
+        enabled: true,
+        checkInterval: 24, // Check every 24 hours
+        forceUpdateEnabled: true,
+        packageName: 'com.h8.dnasubscriber',
+        appStoreId: '123456789',
+      },
     },
   'one-sevenstar': {
     clientId: 'one-sevenstar',
@@ -311,6 +332,13 @@ const clientConfigs: Record<string, ClientConfig> = {
       ],
     },
     reviewUrl: 'https://play.google.com/store/apps/details?id=com.h8.dnasubscriber',
+    versionCheck: {
+      enabled: true,
+      checkInterval: 24, // Check every 24 hours
+      forceUpdateEnabled: true,
+      packageName: 'com.h8.dnasubscriber',
+      appStoreId: '123456789',
+    },
   },
 };
 

@@ -538,6 +538,7 @@ class ApiService {
       try {
         const res = await fetch(`${url}/selfcareHelpdesk`, options);
         const response = await res.json();
+        //console.log('🏠 [HomeScreen11111] API call completed, full response:', response);
         
         if (response.status !== 'ok' && response.code !== 200) {
           throw new Error('Invalid username or password');
@@ -2282,6 +2283,10 @@ class ApiService {
       }
     });
   }
+
+  /**
+   * Check app version information
+   */
 }
 
 // Export singleton instance

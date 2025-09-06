@@ -127,7 +127,7 @@ const TicketsScreen = ({navigation}: any) => {
 
       <View style={styles.titleRow}>
         <Text style={[styles.titleIcon, {color: colors.textSecondary}]}>📋</Text>
-        <Text style={[styles.ticketTitle, {color: colors.text}]}>{item.title}</Text>
+        <Text style={[styles.ticketTitle, {color: colors.textSecondary}]}>{item.title}</Text>
       </View>
       {/* <Text style={[styles.ticketRemarks, {color: colors.textSecondary}]}>
         {item.remarks}

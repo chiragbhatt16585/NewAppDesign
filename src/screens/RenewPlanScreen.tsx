@@ -407,7 +407,7 @@ const RenewPlanScreen = ({navigation}: any) => {
           <View style={styles.planTitleRow}>
             <Text style={styles.planIcon}>🚀</Text>
             <View style={styles.planTitleContainer}>
-              <Text style={[styles.planName, {color: colors.text}]}>{item.name}</Text>
+              <Text style={[styles.planName, {color: colors.textSecondary}]}>{item.name}</Text>
               <View style={styles.planBadges}>
                 {(item.name === authData?.current_plan || item.name === authData?.current_plan1) && (
                   <View style={[styles.currentPlanBadge, {backgroundColor: colors.success}]}>
@@ -892,8 +892,8 @@ const styles = StyleSheet.create({
   },
   headingContainer: {
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
+    paddingTop: 0,
+    paddingBottom: 0,
   },
   pageHeading: {
     fontSize: 24,

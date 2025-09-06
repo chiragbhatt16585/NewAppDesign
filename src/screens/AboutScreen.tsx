@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
+import { WebView } from 'react-native-webview';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../utils/ThemeContext';
 import { getThemeColors } from '../utils/themeStyles';
@@ -15,184 +16,150 @@ import CommonHeader from '../components/CommonHeader';
 const AboutScreen = ({ navigation }: any) => {
   const { isDark } = useTheme();
   const colors = getThemeColors(isDark);
-  
-  // Get client configuration dynamically
-  const clientConfig = getClientConfig();
-  const aboutData = clientConfig.about;
+  const [htmlContent, setHtmlContent] = useState<string>('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const renderSection = (title: string, content: string | string[], icon: string) => (
-    <View style={[styles.section, { backgroundColor: colors.card }]}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionIcon}>{icon}</Text>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          {title}
-        </Text>
-      </View>
+  useEffect(() => {
+    fetchAboutUs();
+  }, []);
+
+  const fetchAboutUs = async () => {
+    try {
+      setLoading(true);
+      setError(null);
       
-      {Array.isArray(content) ? (
-        <View style={styles.listContainer}>
-          {content.map((item, index) => (
-            <View key={index} style={styles.listItem}>
-              <Text style={styles.bulletPoint}>•</Text>
-              <Text style={[styles.listText, { color: colors.textSecondary }]}>
-                {item}
-              </Text>
-            </View>
-          ))}
+      const clientConfig = getClientConfig();
+      const baseUrl = clientConfig.api.baseURL;
+      
+      // Handle both cases: with and without https:// prefix
+      let domain;
+      if (baseUrl.startsWith('https://')) {
+        // If baseURL already has https://, extract domain and remove /l2s/api
+        domain = baseUrl.replace('https://', '').split('/')[0];
+      } else {
+        // If baseURL doesn't have https://, extract domain and remove /l2s/api
+        domain = baseUrl.split('/')[0];
+      }
+      
+      const url = `https://${domain}/tmp/aboutus.html`;
+      
+      console.log('Fetching About Us from:', url);
+      
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const html = await response.text();
+      setHtmlContent(html);
+      console.log('About Us loaded successfully');
+    } catch (err) {
+      console.error('Error fetching About Us:', err);
+      setError('Failed to load About Us. Please try again later.');
+      
+      // Show fallback content
+      setHtmlContent(`
+        <html>
+          <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+              body { 
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+                margin: 20px; 
+                line-height: 1.6; 
+                color: #333;
+              }
+              h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+              h2 { color: #34495e; margin-top: 30px; }
+              p { margin-bottom: 15px; }
+              .error { color: #e74c3c; background: #fdf2f2; padding: 15px; border-radius: 5px; border-left: 4px solid #e74c3c; }
+            </style>
+          </head>
+          <body>
+            <h1>About Us</h1>
+            <div class="error">
+              <h2>⚠️ Content Unavailable</h2>
+              <p>We're unable to load the About Us information at the moment. This could be due to:</p>
+              <ul>
+                <li>Network connectivity issues</li>
+                <li>Server maintenance</li>
+                <li>Temporary service disruption</li>
+              </ul>
+              <p>Please try again later or contact our support team for assistance.</p>
+            </div>
+          </body>
+        </html>
+      `);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const retryFetch = () => {
+    fetchAboutUs();
+  };
+
+  if (loading && !htmlContent) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <CommonHeader navigation={navigation} />
+        
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+            Loading About Us...
+          </Text>
         </View>
-      ) : (
-        <Text style={[styles.sectionContent, { color: colors.textSecondary }]}>
-          {content}
-        </Text>
-      )}
-    </View>
-  );
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <CommonHeader navigation={navigation} />
-      
-      <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
-        {/* Hero Section */}
-        <View style={[styles.heroSection, { backgroundColor: colors.primary }]}>
-          <Text style={styles.heroTitle}>
-            {aboutData.companyName}
+
+      {/* Error Message */}
+      {error && (
+        <View style={styles.errorContainer}>
+          <Text style={[styles.errorText, { color: colors.error || '#e74c3c' }]}>
+            {error}
           </Text>
-          <Text style={styles.heroSubtitle}>
-            Established in {aboutData.establishedYear}
-          </Text>
+          <TouchableOpacity 
+            style={[styles.retryButton, { backgroundColor: colors.primary }]}
+            onPress={retryFetch}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
         </View>
+      )}
 
-        {/* Company Description */}
-        <View style={styles.contentContainer}>
-          {renderSection(
-            'About Us',
-            aboutData.description,
-            '🏢'
-          )}
-
-          {/* Specializations */}
-          {renderSection(
-            'Our Specializations',
-            aboutData.specializations,
-            '⚡'
-          )}
-
-          {/* Service Areas */}
-          {renderSection(
-            'Service Areas',
-            aboutData.serviceAreas,
-            '🌍'
-          )}
-
-          {/* Achievements */}
-          {renderSection(
-            'Key Achievements',
-            aboutData.achievements,
-            '🏆'
-          )}
-
-          {/* Contact Information */}
-          <View style={[styles.section, { backgroundColor: colors.card }]}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionIcon}>📞</Text>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                Contact Information
-              </Text>
-            </View>
-            
-            <View style={styles.contactInfo}>
-              {clientConfig.contact.tollFree && (
-                <View style={styles.contactItem}>
-                  <Text style={styles.contactLabel}>Toll Free:</Text>
-                  <Text style={[styles.contactValue, { color: colors.primary }]}>
-                    {clientConfig.contact.tollFree}
-                  </Text>
-                </View>
-              )}
-              
-              {clientConfig.contact.landline && (
-                <View style={styles.contactItem}>
-                  <Text style={styles.contactLabel}>Landline:</Text>
-                  <Text style={[styles.contactValue, { color: colors.primary }]}>
-                    {clientConfig.contact.landline}
-                  </Text>
-                </View>
-              )}
-              
-              {clientConfig.contact.emails?.inquiries && (
-                <View style={styles.contactItem}>
-                  <Text style={styles.contactLabel}>Email:</Text>
-                  <Text style={[styles.contactValue, { color: colors.primary }]}>
-                    {clientConfig.contact.emails.inquiries}
-                  </Text>
-                </View>
-              )}
-            </View>
-          </View>
-
-          {/* Head Office */}
-          {clientConfig.contact.headOffice && (
-            <View style={[styles.section, { backgroundColor: colors.card }]}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionIcon}>📍</Text>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                  {clientConfig.contact.headOffice.title}
-                </Text>
-              </View>
-              <Text style={[styles.sectionContent, { color: colors.textSecondary }]}>
-                {clientConfig.contact.headOffice.address}
-              </Text>
-            </View>
-          )}
-
-          {/* Branch Offices */}
-          {clientConfig.contact.branchOffices && clientConfig.contact.branchOffices.length > 0 && (
-            <View style={[styles.section, { backgroundColor: colors.card }]}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionIcon}>🏢</Text>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                  Branch Offices
-                </Text>
-              </View>
-              
-              {clientConfig.contact.branchOffices.map((office, index) => (
-                <View key={index} style={styles.branchOffice}>
-                  <Text style={[styles.branchTitle, { color: colors.text }]}>
-                    {office.title}
-                  </Text>
-                  <Text style={[styles.branchAddress, { color: colors.textSecondary }]}>
-                    {office.address}
-                  </Text>
-                  {office.corporateLandline && (
-                    <Text style={[styles.branchPhone, { color: colors.primary }]}>
-                      📞 {office.corporateLandline}
-                    </Text>
-                  )}
-                </View>
-              ))}
-            </View>
-          )}
-
-          {/* Call to Action */}
-          <View style={[styles.ctaSection, { backgroundColor: colors.primary }]}>
-            <Text style={styles.ctaTitle}>
-              Ready to Get Started?
+      {/* WebView */}
+      <View style={styles.webViewContainer}>
+        {loading && (
+          <View style={styles.webViewLoadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+              Loading...
             </Text>
-            <Text style={styles.ctaSubtitle}>
-              Experience the best internet service with {aboutData.companyName}
-            </Text>
-            <TouchableOpacity
-              style={[styles.ctaButton, { backgroundColor: colors.background }]}
-              onPress={() => navigation.navigate('ContactUs')}
-            >
-              <Text style={[styles.ctaButtonText, { color: colors.primary }]}>
-                Contact Us Today
-              </Text>
-            </TouchableOpacity>
           </View>
-        </View>
-      </ScrollView>
+        )}
+        <WebView
+          source={{ html: htmlContent }}
+          style={styles.webview}
+          onLoadStart={() => setLoading(true)}
+          onLoadEnd={() => setLoading(false)}
+          javaScriptEnabled={true}
+          domStorageEnabled={true}
+          startInLoadingState={true}
+          scalesPageToFit={true}
+          onError={(syntheticEvent) => {
+            const { nativeEvent } = syntheticEvent;
+            console.error('WebView error:', nativeEvent);
+            setError('Failed to display About Us. Please try again.');
+          }}
+        />
+      </View>
     </SafeAreaView>
   );
 };
@@ -201,142 +168,51 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  scrollView: {
+  loadingContainer: {
     flex: 1,
-  },
-  heroSection: {
-    padding: 30,
-    alignItems: 'center',
     justifyContent: 'center',
-  },
-  heroTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: 'white',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  heroSubtitle: {
-    fontSize: 18,
-    color: 'rgba(255, 255, 255, 0.9)',
-    textAlign: 'center',
-  },
-  contentContainer: {
-    padding: 20,
-  },
-  section: {
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
     alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+  },
+  errorContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  errorText: {
+    fontSize: 16,
+    textAlign: 'center',
     marginBottom: 16,
   },
-  sectionIcon: {
-    fontSize: 24,
-    marginRight: 12,
+  retryButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
   },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  sectionContent: {
-    fontSize: 16,
-    lineHeight: 24,
-  },
-  listContainer: {
-    marginTop: 8,
-  },
-  listItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-  bulletPoint: {
-    fontSize: 18,
-    color: '#4CAF50',
-    marginRight: 12,
-    marginTop: 2,
-  },
-  listText: {
-    fontSize: 16,
-    lineHeight: 22,
-    flex: 1,
-  },
-  contactInfo: {
-    marginTop: 8,
-  },
-  contactItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-    paddingVertical: 8,
-  },
-  contactLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#666',
-  },
-  contactValue: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  branchOffice: {
-    marginBottom: 20,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  branchTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  branchAddress: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 4,
-  },
-  branchPhone: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  ctaSection: {
-    borderRadius: 16,
-    padding: 30,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  ctaTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
+  retryButtonText: {
     color: 'white',
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  ctaSubtitle: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.9)',
-    textAlign: 'center',
-    marginBottom: 24,
-    lineHeight: 22,
-  },
-  ctaButton: {
-    paddingHorizontal: 32,
-    paddingVertical: 16,
-    borderRadius: 12,
-  },
-  ctaButtonText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  webViewContainer: {
+    flex: 1,
+    position: 'relative',
+  },
+  webViewLoadingContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    zIndex: 1,
+  },
+  webview: {
+    flex: 1,
   },
 });
 

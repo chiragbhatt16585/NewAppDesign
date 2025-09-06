@@ -16,6 +16,7 @@ import {
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useFocusEffect} from '@react-navigation/native';
 import LogoImage from '../components/LogoImage';
+import CommonHeader from '../components/CommonHeader';
 import {useTheme} from '../utils/ThemeContext';
 import {getThemeColors} from '../utils/themeStyles';
 import {useTranslation} from 'react-i18next';
@@ -347,7 +348,7 @@ const HomeScreen = ({navigation}: any) => {
   };
 
   const handleSupport = () => {
-    Alert.alert('Support', 'Opening support chat...');
+    navigation.navigate('Tickets');
   };
 
   const handleMore = () => {
@@ -567,22 +568,23 @@ const HomeScreen = ({navigation}: any) => {
   return (
     <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header with Logo */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <LogoImage type="header" />
-          </View>
-          <View style={styles.headerRight}>
-            
+        {/* Unified Header */}
+        <CommonHeader
+          navigation={navigation}
+          showBackButton={false}
+          rightComponent={(
             <TouchableOpacity 
-              style={[styles.profileButton, {backgroundColor: colors.accent}]} 
-              onPress={handleProfilePress}>
+              style={[styles.profileButton, {backgroundColor: colors.accent}]}
+              onPress={handleProfilePress}
+            >
               <Text style={styles.profileText}>
                 {authData ? `${authData.first_name?.[0] || ''}${authData.last_name?.[0] || ''}` : 'CB'}
               </Text>
             </TouchableOpacity>
-          </View>
-        </View>
+          )}
+        />
+
+        
 
         {/* Profile Dropdown Menu */}
         {showProfileMenu && (
@@ -1032,6 +1034,7 @@ const styles = StyleSheet.create({
   },
   welcomeSection: {
     paddingHorizontal: 20,
+    marginTop: 8,
     paddingBottom: 20,
   },
   welcomeText: {

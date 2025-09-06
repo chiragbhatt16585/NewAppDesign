@@ -406,7 +406,7 @@ const UpgradePlanScreen = ({navigation}: any) => {
           <View style={styles.planTitleRow}>
             <Text style={styles.planIcon}>🚀</Text>
             <View style={styles.planTitleContainer}>
-              <Text style={[styles.planName, {color: colors.text}]}>{item.name}</Text>
+              <Text style={[styles.planName, {color: colors.textSecondary}]}>{item.name}</Text>
             </View>
           </View>
           
@@ -862,8 +862,8 @@ const styles = StyleSheet.create({
   },
   headingContainer: {
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
+    paddingTop: 0,
+    paddingBottom: 0,
   },
   pageHeading: {
     fontSize: 24,

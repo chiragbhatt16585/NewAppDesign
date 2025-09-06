@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import biometricAuthService from '../services/biometricAuth';
 import { pinStorage } from '../services/pinStorage';
 import DeviceInfo from 'react-native-device-info';
+import versionCheckService from '../services/versionCheck';
 
 const SettingsScreen = ({ navigation }: any) => {
   const { isDark, themeMode, setThemeMode } = useTheme();
@@ -27,6 +28,7 @@ const SettingsScreen = ({ navigation }: any) => {
   const [biometricType, setBiometricType] = useState<string>('');
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [appVersion, setAppVersion] = useState<string>('1.0.0');
+  const [isChecking, setIsChecking] = useState<boolean>(false);
 
   useEffect(() => {
     loadSecurityStatus();
@@ -100,6 +102,35 @@ const SettingsScreen = ({ navigation }: any) => {
 
   const handleSecuritySettings = () => {
     navigation.navigate('SecuritySettingsScreen');
+  };
+
+  const handleCheckForUpdates = async () => {
+    try {
+      setIsChecking(true);
+      const versionInfo = await versionCheckService.checkForUpdates();
+      
+      if (versionInfo && versionInfo.needsUpdate) {
+        // Show update dialog using Alert
+        Alert.alert(
+          'Update Required',
+          `A new version (${versionInfo.latestVersion}) is available. Please update to continue using the app.`,
+          [
+            {
+              text: 'Update Now',
+              onPress: () => versionCheckService.openStore(versionInfo.updateUrl),
+            },
+          ],
+          { cancelable: false }
+        );
+      } else {
+        Alert.alert('No Updates', 'You are using the latest version of the app.');
+      }
+    } catch (error) {
+      console.error('Error checking for updates:', error);
+      Alert.alert('Error', 'Failed to check for updates. Please try again.');
+    } finally {
+      setIsChecking(false);
+    }
   };
 
   const getThemeDisplayText = () => {
@@ -205,6 +236,13 @@ const SettingsScreen = ({ navigation }: any) => {
           subtitle: appVersion,
           icon: '📱',
           onPress: () => {}, // No action needed for version
+        },
+        {
+          id: 'checkUpdates',
+          title: t('settings.checkUpdates'),
+          subtitle: isChecking ? t('settings.checkingUpdates') : t('settings.checkUpdatesSubtitle'),
+          icon: '🔄',
+          onPress: handleCheckForUpdates,
         },
       ],
     },

@@ -34,6 +34,7 @@ import AIDemoScreen from '../screens/AIDemoScreen';
 import UpdateSSIDScreen from '../screens/UpdateSSIDScreen';
 import OffersScreen from '../screens/OffersScreen';
 import PartnerAppsScreen from '../screens/PartnerAppsScreen';
+import IntroScreen from '../screens/IntroScreen';
 
 const Stack = createStackNavigator();
 
@@ -44,7 +45,7 @@ interface AppNavigatorProps {
 const AppNavigator: React.FC<AppNavigatorProps> = ({ initialRoute }) => {
   const [isReady, setIsReady] = useState(false);
   const [initialState, setInitialState] = useState();
-  const [currentInitialRoute, setCurrentInitialRoute] = useState('Home');
+  const [currentInitialRoute, setCurrentInitialRoute] = useState('Intro');
 
   useEffect(() => {
     const restoreState = async () => {
@@ -53,7 +54,7 @@ const AppNavigator: React.FC<AppNavigatorProps> = ({ initialRoute }) => {
         // console.log('Initial route prop:', initialRoute);
         
         // For now, always start with a clean navigation state
-        setCurrentInitialRoute(initialRoute || 'Home');
+        setCurrentInitialRoute(initialRoute || 'Intro');
         setIsReady(true);
         
         // TODO: Re-enable state restoration once back button issue is fixed
@@ -71,19 +72,19 @@ const AppNavigator: React.FC<AppNavigatorProps> = ({ initialRoute }) => {
             setInitialState(savedState);
             // Use the current route name for initial route fallback
             const currentRoute = savedState.routes[savedState.index || 0];
-            setCurrentInitialRoute(currentRoute?.name || initialRoute || 'Home');
+            setCurrentInitialRoute(currentRoute?.name || initialRoute || 'Intro');
           } else {
-            console.log('❌ No valid saved navigation state found, using initial route:', initialRoute || 'Home');
-            setCurrentInitialRoute(initialRoute || 'Home');
+            console.log('❌ No valid saved navigation state found, using initial route:', initialRoute || 'Intro');
+            setCurrentInitialRoute(initialRoute || 'Intro');
           }
         } else {
-          console.log('❌ No saved navigation state found, using initial route:', initialRoute || 'Home');
-          setCurrentInitialRoute(initialRoute || 'Home');
+          console.log('❌ No saved navigation state found, using initial route:', initialRoute || 'Intro');
+          setCurrentInitialRoute(initialRoute || 'Intro');
         }
         */
       } catch (err) {
         // console.log('❌ Failed to restore navigation state:', err);
-        setCurrentInitialRoute(initialRoute || 'Home');
+        setCurrentInitialRoute(initialRoute || 'Intro');
       } finally {
         setIsReady(true);
       }
@@ -120,6 +121,7 @@ const AppNavigator: React.FC<AppNavigatorProps> = ({ initialRoute }) => {
         screenOptions={{
           headerShown: false,
         }}>
+        <Stack.Screen name="Intro" component={IntroScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="SetPinScreen" component={SetPinScreen} options={{ headerShown: false }} />

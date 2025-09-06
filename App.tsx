@@ -26,6 +26,8 @@ import {testSessionPersistence} from './src/services/sessionPersistenceTest';
 import {testKYCFunctionality} from './src/services/kycTest';
 import {testClientConfiguration} from './src/services/clientConfigTest';
 import {testBiometricAvailability} from './src/services/biometricTest';
+import {useVersionCheck} from './src/hooks/useVersionCheck';
+import UpdateModal from './src/components/UpdateModal';
 
 import './src/i18n';
 
@@ -39,6 +41,17 @@ function AppContent() {
   const [isRecentlyAuthenticated, setIsRecentlyAuthenticated] = useState(false);
   const [isAppInitialized, setIsAppInitialized] = useState(false);
   const [hasAuthenticatedThisSession, setHasAuthenticatedThisSession] = useState(false);
+
+  // Version check hook
+  const {
+    versionInfo,
+    isChecking,
+    showUpdateModal,
+    isVersionCheckEnabled,
+    checkForUpdates,
+    handleUpdate,
+    closeUpdateModal,
+  } = useVersionCheck();
 
   // Add error boundary for AuthProvider
 
@@ -251,7 +264,17 @@ function AppContent() {
   return (
     <>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <AppNavigator initialRoute={isLoggedIn ? undefined : 'Login'} />
+      <AppNavigator initialRoute={isLoggedIn ? 'Home' : 'Login'} />
+      
+      {/* Version Update Modal */}
+      {showUpdateModal && versionInfo && (
+        <UpdateModal
+          visible={showUpdateModal}
+          versionInfo={versionInfo}
+          onUpdate={handleUpdate}
+          onClose={closeUpdateModal}
+        />
+      )}
     </>
   );
 }

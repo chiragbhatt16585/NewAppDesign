@@ -390,6 +390,8 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
           
           if (success) {
             console.log('=== LOGIN SUCCESS ===');
+            console.log('=== LOGIN RESPONSE ===');
+            console.log('Response:', success);
             // Save credentials for session regeneration
             await credentialStorage.saveCredentials(username, password);
             // Check if user has set up any authentication

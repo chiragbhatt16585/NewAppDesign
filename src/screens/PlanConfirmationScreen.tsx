@@ -368,7 +368,7 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
                 <View style={styles.planTitleRow}>
                   <Text style={styles.planIcon}>🚀</Text>
                   <View style={styles.planTitleContainer}>
-                    <Text style={[styles.planName, {color: colors.text}]} numberOfLines={2}>
+                    <Text style={[styles.planName, {color: colors.textSecondary}]} numberOfLines={2}>
                       {selectedPlan.name}
                     </Text>
                   </View>
