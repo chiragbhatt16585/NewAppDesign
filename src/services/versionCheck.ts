@@ -95,30 +95,35 @@ class VersionCheckService {
         return null;
       }
       
-      // Check if current version is in the allowed versions list
-      const allowedVersions = [
-        versionData.androidAppVersion,
-        versionData.iOSAppVersion,
-        versionData.androidBetaAppVersion,
-        versionData.iOSBetaAppVersion
-      ].filter(Boolean); // Remove any undefined values
-      
-      const needsUpdate = !allowedVersions.includes(currentVersion.toString());
-      
+      // Determine latest server version for the current platform (fallback to beta if needed)
+      const serverVersionRawForCompare = isIOS
+        ? (versionData.iOSAppVersion ?? versionData.iOSBetaAppVersion)
+        : (versionData.androidAppVersion ?? versionData.androidBetaAppVersion);
+      const serverVersionForCompare = serverVersionRawForCompare != null ? String(serverVersionRawForCompare) : '';
+
+      // Decide if update is needed based on platform-specific comparison
+      let needsUpdate = false;
+      if (isIOS) {
+        needsUpdate = serverVersionForCompare !== '' && this.compareVersions(currentVersion.toString(), serverVersionForCompare) < 0;
+      } else {
+        const currentBuild = Number(currentVersion);
+        const serverBuild = Number(serverVersionForCompare);
+        needsUpdate = !Number.isNaN(currentBuild) && !Number.isNaN(serverBuild) && currentBuild < serverBuild;
+      }
+
       console.log('Version comparison result:', {
         currentVersion,
-        allowedVersions,
+        serverVersion: serverVersionForCompare,
         needsUpdate,
-        isIOS,
-        versionData: {
-          androidAppVersion: versionData.androidAppVersion,
-          iOSAppVersion: versionData.iOSAppVersion,
-          androidBetaAppVersion: versionData.androidBetaAppVersion,
-          iOSBetaAppVersion: versionData.iOSBetaAppVersion
-        }
+        isIOS
       });
 
       if (needsUpdate) {
+        // Determine latest server version for the current platform (fallback to beta if needed)
+        const serverVersionRaw = isIOS
+          ? (versionData.iOSAppVersion ?? versionData.iOSBetaAppVersion)
+          : (versionData.androidAppVersion ?? versionData.androidBetaAppVersion);
+        const serverVersion = serverVersionRaw != null ? String(serverVersionRaw) : '';
         const updateUrl = this.getStoreUrl();
         
         console.log('Update needed, returning version info:', {

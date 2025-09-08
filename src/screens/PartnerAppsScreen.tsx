@@ -62,34 +62,34 @@ const PartnerAppsScreen = ({navigation}: any) => {
           downloads: '50L+',
           size: '45 MB',
         },
-        {
-          id: '2',
-          name: 'PlayBox TV',
-          description: 'Premium entertainment platform with exclusive movies, web series, and original content. High-quality streaming experience with live TV channels.',
-          icon: '📺',
-          logoUrl: 'https://www.playboxtv.in/images/playbox-logo.png',
-          color: '#4ECDC4',
-          androidUrl: 'https://play.google.com/store/apps/details?id=playboxtv.mobile.app.in&hl=en_IN',
-          iosUrl: 'https://apps.apple.com/in/app/playboxtv/id1622405621',
-          category: 'entertainment',
-          rating: 4.3,
-          downloads: '5M+',
-          size: '38 MB',
-        },
-        {
-          id: '3',
-          name: 'YuppTV',
-          description: 'Live TV streaming with 500+ channels including TV9 Telugu, Republic Bharat, NDTV 24x7, and regional content. Watch news, sports, and entertainment live.',
-          icon: '📡',
-          logoUrl: 'https://www.yupptv.com/fast-tv',
-          color: '#45B7D1',
-          androidUrl: 'https://play.google.com/store/apps/details?id=com.yupptv',
-          iosUrl: 'https://apps.apple.com/app/yupptv/id456789123',
-          category: 'ott',
-          rating: 4.2,
-          downloads: '8M+',
-          size: '52 MB',
-        },
+        // {
+        //   id: '2',
+        //   name: 'PlayBox TV',
+        //   description: 'Premium entertainment platform with exclusive movies, web series, and original content. High-quality streaming experience with live TV channels.',
+        //   icon: '📺',
+        //   logoUrl: 'https://www.playboxtv.in/images/playbox-logo.png',
+        //   color: '#4ECDC4',
+        //   androidUrl: 'https://play.google.com/store/apps/details?id=playboxtv.mobile.app.in&hl=en_IN',
+        //   iosUrl: 'https://apps.apple.com/in/app/playboxtv/id1622405621',
+        //   category: 'entertainment',
+        //   rating: 4.3,
+        //   downloads: '5M+',
+        //   size: '38 MB',
+        // },
+        // {
+        //   id: '3',
+        //   name: 'YuppTV',
+        //   description: 'Live TV streaming with 500+ channels including TV9 Telugu, Republic Bharat, NDTV 24x7, and regional content. Watch news, sports, and entertainment live.',
+        //   icon: '📡',
+        //   logoUrl: 'https://www.yupptv.com/fast-tv',
+        //   color: '#45B7D1',
+        //   androidUrl: 'https://play.google.com/store/apps/details?id=com.yupptv',
+        //   iosUrl: 'https://apps.apple.com/app/yupptv/id456789123',
+        //   category: 'ott',
+        //   rating: 4.2,
+        //   downloads: '8M+',
+        //   size: '52 MB',
+        // },
         // {
         //   id: '4',
         //   name: 'NewsHub',
@@ -234,7 +234,7 @@ const PartnerAppsScreen = ({navigation}: any) => {
                   <Text style={[styles.appDescription, {color: colors.textSecondary}]}>
                     {app.description}
                   </Text>
-                  <View style={styles.appMeta}>
+                  {/* <View style={styles.appMeta}>
                     <View style={styles.metaItem}>
                       <Text style={[styles.metaLabel, {color: colors.textSecondary}]}>⭐ {app.rating}</Text>
                     </View>
@@ -244,7 +244,7 @@ const PartnerAppsScreen = ({navigation}: any) => {
                     <View style={styles.metaItem}>
                       <Text style={[styles.metaLabel, {color: colors.textSecondary}]}>📱 {app.size}</Text>
                     </View>
-                  </View>
+                  </View> */}
                 </View>
               </View>
 

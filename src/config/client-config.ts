@@ -239,7 +239,7 @@ const clientConfigs: Record<string, ClientConfig> = {
         checkInterval: 24, // Check every 24 hours
         forceUpdateEnabled: true,
         packageName: 'com.h8.dnasubscriber',
-        appStoreId: '123456789',
+        appStoreId: '1559045355',
       },
     },
   'one-sevenstar': {
