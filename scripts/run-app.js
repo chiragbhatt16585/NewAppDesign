@@ -23,6 +23,15 @@ const CLIENTS = {
     keystore: 'Log2spaceDNAInfotelAppKey.jks',
     configDir: 'config/dna-infotel',
   },
+  'logon-broadband': {
+    name: 'Logon Broadband',
+    packageName: 'com.logon.broadband',
+    namespace: 'com.logon.broadband',
+    versionCode: 1,
+    versionName: '1.0.0',
+    keystore: 'debug.keystore',
+    configDir: 'config/logon-broadband',
+  },
 };
 
 function switchClient(clientId) {
@@ -86,6 +95,14 @@ function switchClient(clientId) {
     
     if (fs.existsSync(assetsDir)) {
       execSync(`cp -r ${assetsDir}/* ${targetAssetsDir}/`, { stdio: 'inherit' });
+    }
+
+    // Copy logo-config.json to src/config
+    const logoConfigSrc = path.join(configDir, 'logo-config.json');
+    const logoConfigDest = path.join(__dirname, '../src/config/logo-config.json');
+    if (fs.existsSync(logoConfigSrc)) {
+      fs.copyFileSync(logoConfigSrc, logoConfigDest);
+      console.log('✅ Copied logo-config.json');
     }
   }
 

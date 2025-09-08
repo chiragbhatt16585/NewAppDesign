@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "488114331278",
+    "project_id": "log2space---logon-broadband",
+    "storage_bucket": "log2space---logon-broadband.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:488114331278:android:414a15ae92b05db965b3df",
+        "android_client_info": {
+          "package_name": "com.spacecom.log2space.logonbrodband"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDpg3Z7k-HxDuaCts0OYs3sFx2gyFbY7_4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

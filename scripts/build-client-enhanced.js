@@ -24,6 +24,15 @@ const CLIENTS = {
     keystore: 'Log2spaceDNAInfotelAppKey.jks',
     configDir: 'config/dna-infotel',
   },
+  'logon-broadband': {
+    name: 'Logon Broadband',
+    packageName: 'com.logon.broadband',
+    namespace: 'com.logon.broadband',
+    versionCode: 1,
+    versionName: '1.0.0',
+    keystore: 'LogonBroadband.jks',
+    configDir: 'config/logon-broadband',
+  },
 };
 
 // Colors for console output

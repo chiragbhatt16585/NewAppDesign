@@ -109,6 +109,8 @@ export class SessionManager {
           clientName = 'dna-infotel';
         } else if (currentUrl.includes('7stardigitalnetwork.com')) {
           clientName = 'one-sevenstar';
+        } else if (currentUrl.includes('logonbroadband.com')) {
+          clientName = 'logon-broadband';
         }
       } else {
         // If no stored URL, try to detect from current API configuration
@@ -119,6 +121,8 @@ export class SessionManager {
           clientName = 'dna-infotel';
         } else if (domainUrl.includes('7stardigitalnetwork.com')) {
           clientName = 'one-sevenstar';
+        } else if (domainUrl.includes('logonbroadband.com')) {
+          clientName = 'logon-broadband';
         }
         
         await AsyncStorage.setItem('current_api_url', `https://${domainUrl}`);

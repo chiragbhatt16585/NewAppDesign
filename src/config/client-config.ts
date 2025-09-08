@@ -340,6 +340,54 @@ const clientConfigs: Record<string, ClientConfig> = {
       appStoreId: '123456789',
     },
   },
+  'logon-broadband': {
+    clientId: 'logon-broadband',
+    clientName: 'Logon Broadband',
+    api: {
+      baseURL: 'https://admin.logonbroadband.com/l2s/api',
+      timeout: 30000,
+    },
+    branding: {
+      logo: 'isp_logo.png',
+      primaryColor: '#1976D2',
+      secondaryColor: '#42A5F5',
+      appName: 'Logon Broadband',
+    },
+    features: {
+      biometricAuth: true,
+      pushNotifications: true,
+      fileUpload: true,
+      multiLanguage: true,
+    },
+    contact: {
+      whatsappNumber: '+91 7208065651',
+      landline: '+91 22 50508000',
+      headOffice: {
+        title: 'Head Office',
+        address: '003, Logon Broadband, Laxman Nagar, Kurar Village, Malad East, Mumbai, Maharashtra',
+      },
+      branchOffices: [],
+    },
+    about: {
+      companyName: 'Logon Broadband',
+      establishedYear: '2024',
+      description: 'Logon Broadband is an internet service provider.',
+      specializations: [
+        'Broadband internet services',
+        'Fiber connectivity',
+      ],
+      serviceAreas: [],
+      achievements: [],
+    },
+    reviewUrl: undefined,
+    versionCheck: {
+      enabled: true,
+      checkInterval: 24,
+      forceUpdateEnabled: true,
+      packageName: 'com.spacecom.log2space.logonbrodband',
+      appStoreId: '1234567890',
+    },
+  },
 };
 
 // Get current client configuration
