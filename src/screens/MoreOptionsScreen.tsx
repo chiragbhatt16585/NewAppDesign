@@ -188,7 +188,7 @@ const MoreOptionsScreen = ({navigation}: any) => {
     },
     {
       id: 'update-ssid',
-      title: 'Update SSID',
+      title: t('more.updateSSID'),
       subtitle: 'Configure WiFi settings',
       icon: 'wifi',
       iconType: 'feather',
@@ -203,14 +203,14 @@ const MoreOptionsScreen = ({navigation}: any) => {
     },
     {
       id: 'partner-apps',
-      title: 'Partner Apps',
+      title: t('more.partnerApps'),
       subtitle: 'Download Partner Apps',
       icon: '📱',
       onPress: handlePartnerApps,
     },
     {
       id: 'review-ratings',
-      title: 'Review & Ratings',
+      title: t('more.reviewRatings'),
       subtitle: 'Rate us on Google Play',
       icon: 'star',
       iconType: 'feather',
@@ -218,7 +218,7 @@ const MoreOptionsScreen = ({navigation}: any) => {
     },
     {
       id: 'settings',
-      title: 'Settings',
+      title: t('more.settings'),
       subtitle: 'Language, Theme & Security',
       icon: '⚙️',
       onPress: handleSettings,

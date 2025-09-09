@@ -177,7 +177,10 @@
     "darkTheme": "ડાર્ક થીમ",
     "systemTheme": "સિસ્ટમ થીમ",
     "securitySettings": "સુરક્ષા સેટિંગ્સ",
-    "securitySettingsSubtitle": "PIN અને બાયોમેટ્રિક પ્રમાણીકરણ"
+    "securitySettingsSubtitle": "PIN અને બાયોમેટ્રિક પ્રમાણીકરણ",
+    "partnerApps": "પાર્ટનર એપ્સ",
+    "reviewRatings": "સમીક્ષા અને રેટિંગ",
+    "updateSSID": "SSID અપડેટ કરો"
   },
   "settings": {
     "title": "સેટિંગ્સ",
@@ -534,5 +537,27 @@
     "gstCertificate": "જીએસટી પ્રમાણપત્ર",
     "userSignature": "વપરાશકર્તા સહી",
     "additionalDocuments": "વધારાના દસ્તાવેજો"
+  },
+  "updateSSID": {
+    "title": "SSID સેટિંગ્સ અપડેટ કરો",
+    "subtitle": "તમારી WiFi નેટવર્ક સેટિંગ્સ કોન્ફિગર કરો",
+    "loading": "SSID વિગતો લોડ થઈ રહ્યું છે...",
+    "configuration": "SSID કોન્ફિગરેશન",
+    "networkName": "નેટવર્ક નામ",
+    "password": "પાસવર્ડ",
+    "enterNetworkName": "નેટવર્ક નામ દાખલ કરો",
+    "enterPassword": "પાસવર્ડ દાખલ કરો",
+    "updateSSID": "SSID અપડેટ કરો",
+    "active": "સક્રિય",
+    "ssidRequired": "SSID જરૂરી છે",
+    "passwordRequired": "પાસવર્ડ જરૂરી છે",
+    "passwordMinLength": "પાસવર્ડ ઓછામાં ઓછા 8 અક્ષરનો હોવો જોઈએ",
+    "error": "ભૂલ",
+    "pleaseCorrectErrors": "કૃપા કરીને ભૂલો સુધારો",
+    "success": "સફળતા",
+    "ssidUpdatedSuccess": "SSID સફળતાપૂર્વક અપડેટ થયું!",
+    "mockMode": "મોક મોડ",
+    "mockSuccess": "આ મોક ડેટા છે. SSID અપડેટ સિમ્યુલેશન સફળ!",
+    "failedToUpdate": "SSID અપડેટ કરવામાં નિષ્ફળ"
   }
 } 

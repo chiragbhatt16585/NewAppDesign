@@ -314,7 +314,10 @@
     "darkTheme": "Dark Theme",
     "systemTheme": "System Theme",
     "securitySettings": "Security Settings",
-    "securitySettingsSubtitle": "PIN & Biometric authentication"
+    "securitySettingsSubtitle": "PIN & Biometric authentication",
+    "partnerApps": "Partner Apps",
+    "reviewRatings": "Review & Ratings",
+    "updateSSID": "Update SSID"
   },
   "settings": {
     "title": "Settings",
@@ -549,5 +552,27 @@
     "gstCertificate": "GST Certificate",
     "userSignature": "User Signature",
     "additionalDocuments": "Additional Documents"
+  },
+  "updateSSID": {
+    "title": "Update SSID Settings",
+    "subtitle": "Configure your WiFi network settings",
+    "loading": "Loading SSID details...",
+    "configuration": "SSID Configuration",
+    "networkName": "Network Name",
+    "password": "Password",
+    "enterNetworkName": "Enter network name",
+    "enterPassword": "Enter password",
+    "updateSSID": "Update SSID",
+    "active": "Active",
+    "ssidRequired": "SSID is required",
+    "passwordRequired": "Password is required",
+    "passwordMinLength": "Password must be at least 8 characters",
+    "error": "Error",
+    "pleaseCorrectErrors": "Please correct the errors",
+    "success": "Success",
+    "ssidUpdatedSuccess": "SSID updated successfully!",
+    "mockMode": "Mock Mode",
+    "mockSuccess": "This is mock data. SSID update simulation successful!",
+    "failedToUpdate": "Failed to update SSID"
   }
 } 

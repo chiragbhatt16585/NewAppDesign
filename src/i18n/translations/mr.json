@@ -175,7 +175,12 @@
     "theme": "थीम",
     "lightTheme": "लाइट थीम",
     "darkTheme": "डार्क थीम",
-    "systemTheme": "सिस्टम थीम"
+    "systemTheme": "सिस्टम थीम",
+    "securitySettings": "सुरक्षा सेटिंग्ज",
+    "securitySettingsSubtitle": "PIN आणि बायोमेट्रिक प्रमाणीकरण",
+    "partnerApps": "पार्टनर अॅप्स",
+    "reviewRatings": "समीक्षा आणि रेटिंग",
+    "updateSSID": "SSID अपडेट करा"
   },
   "settings": {
     "title": "सेटिंग्ज",
@@ -397,5 +402,27 @@
     "submit": "सबमिट करा",
     "searchBuildings": "इमारती शोधा... (किमान 3 अक्षरे)",
     "noBuildingsFound": "कोणतीही इमारत सापडली नाही"
+  },
+  "updateSSID": {
+    "title": "SSID सेटिंग्ज अपडेट करा",
+    "subtitle": "तुमच्या WiFi नेटवर्क सेटिंग्ज कॉन्फिगर करा",
+    "loading": "SSID तपशील लोड होत आहेत...",
+    "configuration": "SSID कॉन्फिगरेशन",
+    "networkName": "नेटवर्क नाव",
+    "password": "पासवर्ड",
+    "enterNetworkName": "नेटवर्क नाव प्रविष्ट करा",
+    "enterPassword": "पासवर्ड प्रविष्ट करा",
+    "updateSSID": "SSID अपडेट करा",
+    "active": "सक्रिय",
+    "ssidRequired": "SSID आवश्यक आहे",
+    "passwordRequired": "पासवर्ड आवश्यक आहे",
+    "passwordMinLength": "पासवर्ड किमान 8 अक्षरे असावे",
+    "error": "त्रुटी",
+    "pleaseCorrectErrors": "कृपया त्रुटी दुरुस्त करा",
+    "success": "यशस्वी",
+    "ssidUpdatedSuccess": "SSID यशस्वीरित्या अपडेट केले!",
+    "mockMode": "मॉक मोड",
+    "mockSuccess": "हे मॉक डेटा आहे. SSID अपडेट सिम्युलेशन यशस्वी!",
+    "failedToUpdate": "SSID अपडेट करण्यात अयशस्वी"
   }
 } 

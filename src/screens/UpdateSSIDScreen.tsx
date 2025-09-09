@@ -141,15 +141,15 @@ const UpdateSSIDScreen = ({navigation}: any) => {
     const passwordField = `password_${ssidIndex}`;
 
     if (!formData[ssidField]?.trim()) {
-      newErrors[ssidField] = 'SSID is required';
+      newErrors[ssidField] = t('updateSSID.ssidRequired');
       isValid = false;
     }
 
     if (!formData[passwordField]?.trim()) {
-      newErrors[passwordField] = 'Password is required';
+      newErrors[passwordField] = t('updateSSID.passwordRequired');
       isValid = false;
     } else if (formData[passwordField].length < 8) {
-      newErrors[passwordField] = 'Password must be at least 8 characters';
+      newErrors[passwordField] = t('updateSSID.passwordMinLength');
       isValid = false;
     }
 
@@ -159,7 +159,7 @@ const UpdateSSIDScreen = ({navigation}: any) => {
 
   const handleSubmit = async (ssidIndex: number) => {
     if (!validateForm(ssidIndex)) {
-      Alert.alert('Error', 'Please correct the errors');
+      Alert.alert(t('updateSSID.error'), t('updateSSID.pleaseCorrectErrors'));
       return;
     }
 
@@ -172,7 +172,7 @@ const UpdateSSIDScreen = ({navigation}: any) => {
       }
 
       if (currentSSID.cpeId === 'mock-cpe-001') {
-        Alert.alert('Mock Mode', 'This is mock data. SSID update simulation successful!');
+        Alert.alert(t('updateSSID.mockMode'), t('updateSSID.mockSuccess'));
         setExpandedSSID(null);
         return;
       }
@@ -184,11 +184,11 @@ const UpdateSSIDScreen = ({navigation}: any) => {
         password: (formData as any)[`password_${ssidIndex}`]
       }, 'default');
       
-      Alert.alert('Success', 'SSID updated successfully!');
+      Alert.alert(t('updateSSID.success'), t('updateSSID.ssidUpdatedSuccess'));
       setExpandedSSID(null);
       fetchSSIDDetails();
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to update SSID');
+      Alert.alert(t('updateSSID.error'), error.message || t('updateSSID.failedToUpdate'));
     } finally {
       setIsLoading(false);
     }
@@ -200,7 +200,7 @@ const UpdateSSIDScreen = ({navigation}: any) => {
         <CommonHeader navigation={navigation} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.loadingText, {color: colors.text}]}>Loading SSID details...</Text>
+          <Text style={[styles.loadingText, {color: colors.text}]}>{t('updateSSID.loading')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -214,9 +214,9 @@ const UpdateSSIDScreen = ({navigation}: any) => {
         <View style={styles.content}>
           <View style={[styles.headerCard, {backgroundColor: colors.card}]}>
             <View style={styles.headerContent}>
-              <Text style={[styles.headerTitle, {color: colors.text}]}>Update SSID Settings</Text>
+              <Text style={[styles.headerTitle, {color: colors.text}]}>{t('updateSSID.title')}</Text>
               <Text style={[styles.headerSubtitle, {color: colors.textSecondary}]}>
-                Configure your WiFi network settings
+                {t('updateSSID.subtitle')}
               </Text>
             </View>
             <View style={[styles.headerIcon, {backgroundColor: colors.primaryLight}]}>
@@ -226,7 +226,7 @@ const UpdateSSIDScreen = ({navigation}: any) => {
 
           <View style={styles.formContainer}>
             <View style={styles.formHeader}>
-              <Text style={[styles.formHeaderText, {color: colors.text}]}>SSID Configuration</Text>
+              <Text style={[styles.formHeaderText, {color: colors.text}]}>{t('updateSSID.configuration')}</Text>
             </View>
 
             {wlanDetails.map((wlan) => (
@@ -240,13 +240,13 @@ const UpdateSSIDScreen = ({navigation}: any) => {
                       <Feather name="wifi" size={18} color={colors.primary} />
                     </View>
                                          <Text style={[styles.ssidName, {color: colors.text}]}>
-                       {(formData as any)[`ssid_${wlan.index}`] || 'Network Name'}
+                       {(formData as any)[`ssid_${wlan.index}`] || t('updateSSID.networkName')}
                      </Text>
                   </View>
                   <View style={styles.headerRight}>
                     <View style={[styles.activeStatus, {backgroundColor: colors.successLight}]}>
                       <View style={[styles.activeDot, {backgroundColor: colors.success}]} />
-                      <Text style={[styles.activeText, {color: colors.success}]}>Active</Text>
+                      <Text style={[styles.activeText, {color: colors.success}]}>{t('updateSSID.active')}</Text>
                     </View>
                     <Text style={[styles.expandIcon, {color: colors.textSecondary}]}>
                       {expandedSSID === wlan.index ? '▼' : '▶'}
@@ -257,11 +257,11 @@ const UpdateSSIDScreen = ({navigation}: any) => {
                 {expandedSSID === wlan.index && (
                   <View style={[styles.expandedContent, {borderTopColor: colors.border}]}>
                     <View style={styles.inputWrapper}>
-                      <Text style={[styles.inputLabel, {color: colors.text}]}>Network Name</Text>
+                      <Text style={[styles.inputLabel, {color: colors.text}]}>{t('updateSSID.networkName')}</Text>
                       <View style={[styles.inputRow, {backgroundColor: colors.surface, borderColor: colors.border}]}>
                         <Feather name="wifi" size={16} color={colors.primary} style={styles.inputIcon} />
                         <TextInput
-                          placeholder="Enter network name"
+                          placeholder={t('updateSSID.enterNetworkName')}
                           value={(formData as any)[`ssid_${wlan.index}`] || ''}
                           onChangeText={(text) => handleInputChange(`ssid_${wlan.index}`, text)}
                           style={[styles.input, {color: colors.text}, (errors as any)[`ssid_${wlan.index}`] && styles.inputError]}
@@ -274,11 +274,11 @@ const UpdateSSIDScreen = ({navigation}: any) => {
                     </View>
 
                     <View style={styles.inputWrapper}>
-                      <Text style={[styles.inputLabel, {color: colors.text}]}>Password</Text>
+                      <Text style={[styles.inputLabel, {color: colors.text}]}>{t('updateSSID.password')}</Text>
                       <View style={[styles.inputRow, {backgroundColor: colors.surface, borderColor: colors.border}]}>
                         <Feather name="lock" size={16} color={colors.primary} style={styles.inputIcon} />
                         <TextInput
-                          placeholder="Enter password"
+                          placeholder={t('updateSSID.enterPassword')}
                           value={(formData as any)[`password_${wlan.index}`]}
                           onChangeText={(text) => handleInputChange(`password_${wlan.index}`, text)}
                           secureTextEntry={!showPassword[wlan.index]}
@@ -314,7 +314,7 @@ const UpdateSSIDScreen = ({navigation}: any) => {
                       ) : (
                         <View style={styles.updateButtonContent}>
                           <Feather name="refresh-cw" size={16} color="#ffffff" />
-                          <Text style={[styles.updateButtonText, {color: '#ffffff'}]}>Update SSID</Text>
+                          <Text style={[styles.updateButtonText, {color: '#ffffff'}]}>{t('updateSSID.updateSSID')}</Text>
                         </View>
                       )}
                     </TouchableOpacity>

@@ -177,7 +177,10 @@
     "darkTheme": "डार्क थीम",
     "systemTheme": "सिस्टम थीम",
     "securitySettings": "सुरक्षा सेटिंग्स",
-    "securitySettingsSubtitle": "PIN और बायोमेट्रिक प्रमाणीकरण"
+    "securitySettingsSubtitle": "PIN और बायोमेट्रिक प्रमाणीकरण",
+    "partnerApps": "पार्टनर ऐप्स",
+    "reviewRatings": "समीक्षा और रेटिंग",
+    "updateSSID": "SSID अपडेट करें"
   },
   "settings": {
     "title": "सेटिंग्स",
@@ -534,5 +537,27 @@
     "gstCertificate": "जीएसटी प्रमाणपत्र",
     "userSignature": "उपयोगकर्ता हस्ताक्षर",
     "additionalDocuments": "अतिरिक्त दस्तावेज़"
+  },
+  "updateSSID": {
+    "title": "SSID सेटिंग्स अपडेट करें",
+    "subtitle": "अपनी WiFi नेटवर्क सेटिंग्स कॉन्फ़िगर करें",
+    "loading": "SSID विवरण लोड हो रहे हैं...",
+    "configuration": "SSID कॉन्फ़िगरेशन",
+    "networkName": "नेटवर्क नाम",
+    "password": "पासवर्ड",
+    "enterNetworkName": "नेटवर्क नाम दर्ज करें",
+    "enterPassword": "पासवर्ड दर्ज करें",
+    "updateSSID": "SSID अपडेट करें",
+    "active": "सक्रिय",
+    "ssidRequired": "SSID आवश्यक है",
+    "passwordRequired": "पासवर्ड आवश्यक है",
+    "passwordMinLength": "पासवर्ड कम से कम 8 अक्षर का होना चाहिए",
+    "error": "त्रुटि",
+    "pleaseCorrectErrors": "कृपया त्रुटियों को सुधारें",
+    "success": "सफलता",
+    "ssidUpdatedSuccess": "SSID सफलतापूर्वक अपडेट हो गया!",
+    "mockMode": "मॉक मोड",
+    "mockSuccess": "यह मॉक डेटा है। SSID अपडेट सिमुलेशन सफल!",
+    "failedToUpdate": "SSID अपडेट करने में विफल"
   }
 } 
