@@ -176,6 +176,9 @@ const isTokenExpiredError = (error: any): boolean => {
 class ApiService {
   private isRegeneratingToken = false;
   private tokenRegenerationPromise: Promise<string | false> | null = null;
+  private authUserInFlight: Promise<any> | null = null;
+  private authUserCache: { data: any; ts: number } | null = null;
+  private readonly AUTHUSER_TTL_MS = 60 * 1000;
 
   abortController() {
     const abortController = new AbortController();
@@ -520,12 +523,20 @@ class ApiService {
   }
 
   async authUser(user_id: string) {
-    return this.makeAuthenticatedRequest(async (token: string) => {
+    // TTL cache check
+    if (this.authUserCache && Date.now() - this.authUserCache.ts < this.AUTHUSER_TTL_MS) {
+      return this.authUserCache.data
+    }
+    // in-flight dedupe
+    if (this.authUserInFlight) {
+      return this.authUserInFlight
+    }
+    this.authUserInFlight = this.makeAuthenticatedRequest(async (token: string) => {
       const data = {
         username: user_id.toLowerCase().trim(),
         fetch_company_details: 'yes',
         request_source: 'app',
-        request_app: 'user_app' 
+        request_app: 'user_app'
       };
 
       const options = {
@@ -538,18 +549,21 @@ class ApiService {
       try {
         const res = await fetch(`${url}/selfcareHelpdesk`, options);
         const response = await res.json();
-        //console.log('🏠 [HomeScreen11111] API call completed, full response:', response);
-        
         if (response.status !== 'ok' && response.code !== 200) {
           throw new Error('Invalid username or password');
         } else {
+          this.authUserCache = { data: response.data, ts: Date.now() }
           return response.data;
         }
       } catch (e: any) {
         const msg = isNetworkError(e) ? networkErrorMsg : e.message;
         throw new Error(msg);
+      } finally {
+        this.authUserInFlight = null
       }
-    });
+    })
+
+    return this.authUserInFlight
   }
 
   async logout() {
@@ -1419,10 +1433,19 @@ class ApiService {
 
   async addDeviceDetails(fcm_token: string, mac_addr: string, hostname: string, device_info: any, realm: string) {
     return this.makeAuthenticatedRequest(async (token: string) => {
+      //alert('addDeviceDetails');
       const username = await sessionManager.getUsername();
       if (!username) {
         throw new Error('No username found in session');
       }
+      // eslint-disable-next-line no-console
+      console.log('[API] addDeviceDetails request', {
+        username: username.toLowerCase().trim(),
+        realm,
+        hostname,
+        mac_addr,
+        tokenPreview: fcm_token?.slice(0, 10) + '...',
+      });
       const data = {
         username: username.toLowerCase().trim(),
         fcm_token,
@@ -1440,8 +1463,16 @@ class ApiService {
         timeout
       };
       try {
+        // eslint-disable-next-line no-console
+        console.log('[API] POST /selfcareAddDeviceInfo start')
         const res = await fetch(`${url}/selfcareAddDeviceInfo`, options);
         const response = await res.json();
+        // eslint-disable-next-line no-console
+        console.log('[API] POST /selfcareAddDeviceInfo response', {
+          status: response?.status,
+          code: response?.code,
+          message: response?.message,
+        })
         if (response.status !== 'ok' && response.code !== 200) {
           throw new Error('Invalid username or password');
         } else {
@@ -1449,6 +1480,8 @@ class ApiService {
         }
       } catch (e: any) {
         let msg = isNetworkError(e) ? networkErrorMsg : e.message;
+        // eslint-disable-next-line no-console
+        console.warn('[API] addDeviceDetails failed', msg)
         throw new Error(msg);
       }
     });

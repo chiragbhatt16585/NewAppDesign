@@ -11,6 +11,8 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="com.google.android.c2dm.permission.RECEIVE" />
+    <!-- Android 13+ runtime permission for notifications -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     
     <!-- AR Feature - Optional -->
@@ -134,6 +136,28 @@
         </intent-filter>
       </activity>
       
+      <!-- RN Push Notification (notification opened/background handling) -->
+      <receiver
+        android:name="com.dieam.reactnativepushnotification.modules.RNPushNotificationActions"
+        android:exported="false" />
+      <receiver
+        android:name="com.dieam.reactnativepushnotification.modules.RNPushNotificationPublisher"
+        android:exported="false" />
+      <receiver
+        android:name="com.dieam.reactnativepushnotification.modules.RNPushNotificationBootEventReceiver"
+        android:exported="false">
+        <intent-filter>
+          <action android:name="android.intent.action.BOOT_COMPLETED" />
+        </intent-filter>
+      </receiver>
+      <service
+        android:name="com.dieam.reactnativepushnotification.modules.RNPushNotificationListenerService"
+        android:exported="false">
+        <intent-filter>
+          <action android:name="com.google.firebase.MESSAGING_EVENT" />
+        </intent-filter>
+      </service>
+
       <!-- ARCore Metadata - Optional -->
       <meta-data android:name="com.google.ar.core" android:value="optional" />
       

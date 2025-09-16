@@ -28,6 +28,7 @@ import {testClientConfiguration} from './src/services/clientConfigTest';
 import {testBiometricAvailability} from './src/services/biometricTest';
 import {useVersionCheck} from './src/hooks/useVersionCheck';
 import UpdateModal from './src/components/UpdateModal';
+import { initializePushNotifications, registerPendingPushToken } from './src/services/notificationService';
 
 import './src/i18n';
 
@@ -57,6 +58,14 @@ function AppContent() {
 
   useEffect(() => {
     initializeApp();
+    (async () => {
+      try {
+        const client = (await AsyncStorage.getItem('current_client')) || 'dna-infotel';
+        initializePushNotifications(client);
+      } catch {
+        initializePushNotifications('dna-infotel');
+      }
+    })();
   }, []);
 
   // Check for biometric auth flag after login
@@ -209,6 +218,11 @@ function AppContent() {
     setLastAuthTime(Date.now()); // Record successful authentication time
     setIsRecentlyAuthenticated(true); // Mark as recently authenticated
     console.log('✅ Authentication successful, recording time');
+    // Attempt to register any pending push token after user is authenticated
+    (async () => {
+      const client = (await AsyncStorage.getItem('current_client')) || 'dna-infotel';
+      registerPendingPushToken(client);
+    })();
     
     // Reset the recently authenticated flag after 5 minutes
     setTimeout(() => {

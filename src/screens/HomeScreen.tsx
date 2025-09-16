@@ -26,6 +26,7 @@ import sessionManager from '../services/sessionManager';
 import {useSessionValidation} from '../utils/useSessionValidation';
 import {useScreenDataReload} from '../utils/useAutoDataReload';
 import { getClientConfig } from '../config/client-config';
+import { initializePushNotifications, registerPendingPushToken, registerDeviceManually } from '../services/notificationService';
 // import AIUsageInsights from '../components/AIUsageInsights';
 //import ispLogo from '../assets/isp_logo.png';
 
@@ -52,6 +53,8 @@ const HomeScreen = ({navigation}: any) => {
 
   // State for API data
   const [authData, setAuthData] = useState<any>(null);
+  const isFetchingRef = useRef(false);
+  const lastFetchTsRef = useRef<number>(0);
   const [planDetails, setPlanDetails] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [apiResponse, setApiResponse] = useState<string>('');
@@ -92,6 +95,22 @@ const HomeScreen = ({navigation}: any) => {
     //console.warn('=== HOMESCREEN MOUNTED ===');
     //Alert.alert('HomeScreen', 'Component mounted');
     fetchAccountData();
+    // Initialize push registration similar to old app behavior
+    (async () => {
+      try {
+        const realm = getClientConfig().clientId;
+        console.log('[HomeScreen] Initializing push notifications for realm:', realm);
+        //Alert.alert('PushDebug', `Home init for realm: ${realm}`);
+        await initializePushNotifications(realm);
+        console.log('[HomeScreen] Trying pending token registration');
+        await registerPendingPushToken(realm);
+        console.log('[HomeScreen] Trying manual device registration');
+        await registerDeviceManually(realm);
+      } catch (e) {
+        console.warn('[HomeScreen] Push initialization/registration error', (e as any)?.message || e);
+        //Alert.alert('PushDebug', `Home init error: ${(e as any)?.message || e}`);
+      }
+    })();
   }, []);
 
   useEffect(() => {
@@ -146,6 +165,11 @@ const HomeScreen = ({navigation}: any) => {
 
   const fetchAccountData = async () => {
     try {
+      if (isFetchingRef.current) return;
+      const now = Date.now();
+      if (now - lastFetchTsRef.current < 5000) return; // debounce within 5s
+      isFetchingRef.current = true;
+      lastFetchTsRef.current = now;
       // console.log('🏠 [HomeScreen] fetchAccountData started');
       setIsLoading(true);
       
@@ -176,10 +200,7 @@ const HomeScreen = ({navigation}: any) => {
 
       // Use the enhanced API service with automatic token regeneration
       // console.log('🏠 [HomeScreen] Calling makeAuthenticatedRequest...');
-      const authResponse = await apiService.makeAuthenticatedRequest(async (token) => {
-        // console.log('🏠 [HomeScreen] Inside makeAuthenticatedRequest callback, token length:', token?.length || 0);
-        return await apiService.authUser(username);
-      });
+      const authResponse = await apiService.authUser(username);
       // console.log('🏠 [HomeScreen] API call completed, response received:', !!authResponse);
       
       // console.warn('=== AUTH USER API RESPONSE ===');
@@ -240,6 +261,7 @@ const HomeScreen = ({navigation}: any) => {
     } finally {
       // console.log('🏠 [HomeScreen] fetchAccountData completed, setting loading to false');
       setIsLoading(false);
+      isFetchingRef.current = false;
     }
   };
 

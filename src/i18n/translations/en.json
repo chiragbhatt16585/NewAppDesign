@@ -106,7 +106,6 @@
     "medium": "Medium",
     "low": "Low",
     "created": "Created",
-    "closed": "Closed",
     "noTickets": "No tickets found",
     "noTicketsSubtitle": "You don't have any tickets yet"
   },

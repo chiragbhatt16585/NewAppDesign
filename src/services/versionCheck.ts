@@ -82,16 +82,16 @@ class VersionCheckService {
       if (authData.end_user_app_version) {
         try {
           versionData = JSON.parse(authData.end_user_app_version);
-          console.log('Parsed version data from end_user_app_version:', versionData);
-          console.log('Available version fields:', Object.keys(versionData));
+          // console.log('Parsed version data from end_user_app_version:', versionData);
+          // console.log('Available version fields:', Object.keys(versionData));
         } catch (parseError) {
-          console.error('Error parsing end_user_app_version:', parseError);
+          //console.error('Error parsing end_user_app_version:', parseError);
           return null;
         }
       }
 
       if (!versionData) {
-        console.log('No version data found in end_user_app_version');
+        // console.log('No version data found in end_user_app_version');
         return null;
       }
       
@@ -111,12 +111,12 @@ class VersionCheckService {
         needsUpdate = !Number.isNaN(currentBuild) && !Number.isNaN(serverBuild) && currentBuild < serverBuild;
       }
 
-      console.log('Version comparison result:', {
-        currentVersion,
-        serverVersion: serverVersionForCompare,
-        needsUpdate,
-        isIOS
-      });
+      // console.log('Version comparison result:', {
+      //   currentVersion,
+      //   serverVersion: serverVersionForCompare,
+      //   needsUpdate,
+      //   isIOS
+      // });
 
       if (needsUpdate) {
         // Determine latest server version for the current platform (fallback to beta if needed)
@@ -126,13 +126,13 @@ class VersionCheckService {
         const serverVersion = serverVersionRaw != null ? String(serverVersionRaw) : '';
         const updateUrl = this.getStoreUrl();
         
-        console.log('Update needed, returning version info:', {
-          currentVersion,
-          latestVersion: serverVersion,
-          needsUpdate,
-          updateUrl,
-          forceUpdate: true
-        });
+        // console.log('Update needed, returning version info:', {
+        //   currentVersion,
+        //   latestVersion: serverVersion,
+        //   needsUpdate,
+        //   updateUrl,
+        //   forceUpdate: true
+        // });
         
         return {
           currentVersion,
@@ -177,8 +177,8 @@ class VersionCheckService {
       if (authData.end_user_app_version) {
         try {
           versionData = JSON.parse(authData.end_user_app_version);
-          console.log('Parsed version data from end_user_app_version:', versionData);
-          console.log('Available version fields:', Object.keys(versionData));
+          // console.log('Parsed version data from end_user_app_version:', versionData);
+          // console.log('Available version fields:', Object.keys(versionData));
         } catch (parseError) {
           console.error('Error parsing end_user_app_version:', parseError);
           return null;
@@ -198,13 +198,13 @@ class VersionCheckService {
       const currentVersion = isIOS ? await this.getCurrentVersion() : await this.getBuildNumber();
       const needsUpdate = serverVersion && serverVersion.toString() !== currentVersion.toString();
       
-      console.log('Version comparison:', {
-        currentVersion,
-        serverVersion,
-        betaVersion,
-        needsUpdate,
-        isIOS
-      });
+      // console.log('Version comparison:', {
+      //   currentVersion,
+      //   serverVersion,
+      //   betaVersion,
+      //   needsUpdate,
+      //   isIOS
+      // });
 
       if (!serverVersion) {
         console.log('No server version found in version data');

@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>Logon Broadband</string>
+	<string>DNA Infotel App</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -66,15 +66,18 @@
 			<array>
 				<string>paymentresponse</string>
 				<string>isp</string>
-				<string>logon-broadband</string>
+				<string>dna-infotel</string>
 			</array>
 		</dict>
 	</array>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
+		<!-- Google Pay / Tez -->
 		<string>googlepay</string>
 		<string>tez</string>
 		<string>gpay</string>
+		
+		<!-- Popular UPI Apps -->
 		<string>phonepe</string>
 		<string>phonepepay</string>
 		<string>cred</string>
@@ -96,10 +99,14 @@
 		<string>jio</string>
 		<string>jiopay</string>
 		<string>jiomoney</string>
+		
+		<!-- International Payment Apps -->
 		<string>razorpay</string>
 		<string>stripe</string>
 		<string>square</string>
 		<string>paypal</string>
+		
+		<!-- Bank Apps -->
 		<string>yono</string>
 		<string>icicibank</string>
 		<string>hdfcbank</string>
@@ -126,10 +133,10 @@
 		<string>syndicatebank</string>
 		<string>vijayabank</string>
 		<string>dhanlaxmibank</string>
+		
+		<!-- Android Intent and Market -->
 		<string>intent</string>
 		<string>market</string>
 	</array>
 </dict>
-</plist>
-
-
+</plist> 

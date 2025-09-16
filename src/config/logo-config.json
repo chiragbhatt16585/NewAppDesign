@@ -1,25 +1,10 @@
 {
-  "clientName": "logon-broadband",
-  "appName": "Logon Broadband",
-  "companyName": "Logon Broadband",
-  "logoFileName": "isp_logo.png",
-  "appIconFileName": "icon.png",
-  "splashScreenFileName": "splash.png",
-  "adaptiveIconFileName": "adaptive-icon.png",
-  "faviconFileName": "favicon.png",
-  "primaryColor": "#1976D2",
-  "secondaryColor": "#42A5F5",
-  "accentColor": "#FFC107",
-  "backgroundColor": "#FFFFFF",
-  "textColor": "#212121",
   "login": {
-    "width": 200,
+    "width": 300,
     "height": 200
   },
   "header": {
-    "width": 120,
-    "height": 60
+    "width": 100,
+    "height": 70
   }
-}
-
-
+} 

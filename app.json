@@ -1,9 +1,9 @@
 {
-  "name": "LogonBroadbandApp",
+  "name": "DNAInfotelApp",
   "expo": {
-    "name": "Logon Broadband",
-    "slug": "logon-broadband",
-    "version": "1.0.0",
+    "name": "DNA Infotel",
+    "slug": "dna-infotel",
+    "version": "4.0.0",
     "orientation": "portrait",
     "icon": "./app-icons/icon.png",
     "userInterfaceStyle": "light",
@@ -17,21 +17,19 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.logon.broadband",
-      "buildNumber": "1"
+      "bundleIdentifier": "com.spacecom.log2space.dnainfotel",
+      "buildNumber": "4"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./app-icons/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
       },
-      "package": "com.logon.broadband",
-      "versionCode": 1
+      "package": "com.spacecom.log2space.dnainfotel",
+      "versionCode": 4
     },
     "web": {
       "favicon": "./app-icons/favicon.png"
     }
   }
-}
-
-
+} 
