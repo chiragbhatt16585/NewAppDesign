@@ -70,7 +70,7 @@ class VersionCheckService {
       // Get username from session manager
       const username = await this.getCurrentUsername();
       if (!username) {
-        console.log('No username found for version check');
+        //console.log('No username found for version check');
         return null;
       }
 
@@ -101,22 +101,44 @@ class VersionCheckService {
         : (versionData.androidAppVersion ?? versionData.androidBetaAppVersion);
       const serverVersionForCompare = serverVersionRawForCompare != null ? String(serverVersionRawForCompare) : '';
 
+      // console.log('Version check details:', {
+      //   isIOS,
+      //   currentVersion,
+      //   serverVersionRawForCompare,
+      //   serverVersionForCompare,
+      //   iOSAppVersion: versionData.iOSAppVersion,
+      //   iOSBetaAppVersion: versionData.iOSBetaAppVersion,
+      //   androidAppVersion: versionData.androidAppVersion,
+      //   androidBetaAppVersion: versionData.androidBetaAppVersion
+      // });
+
       // Decide if update is needed based on platform-specific comparison
       let needsUpdate = false;
       if (isIOS) {
-        needsUpdate = serverVersionForCompare !== '' && this.compareVersions(currentVersion.toString(), serverVersionForCompare) < 0;
+        const comparisonResult = this.compareVersions(currentVersion.toString(), serverVersionForCompare);
+        needsUpdate = serverVersionForCompare !== '' && comparisonResult < 0;
+        
+        // console.log('iOS Version comparison:', {
+        //   currentVersion: currentVersion.toString(),
+        //   serverVersion: serverVersionForCompare,
+        //   comparisonResult,
+        //   needsUpdate,
+        //   currentVersionType: typeof currentVersion,
+        //   serverVersionType: typeof serverVersionForCompare
+        // });
       } else {
         const currentBuild = Number(currentVersion);
         const serverBuild = Number(serverVersionForCompare);
         needsUpdate = !Number.isNaN(currentBuild) && !Number.isNaN(serverBuild) && currentBuild < serverBuild;
+        
+        // console.log('Android Version comparison:', {
+        //   currentVersion: currentVersion.toString(),
+        //   serverVersion: serverVersionForCompare,
+        //   currentBuild,
+        //   serverBuild,
+        //   needsUpdate
+        // });
       }
-
-      // console.log('Version comparison result:', {
-      //   currentVersion,
-      //   serverVersion: serverVersionForCompare,
-      //   needsUpdate,
-      //   isIOS
-      // });
 
       if (needsUpdate) {
         // Determine latest server version for the current platform (fallback to beta if needed)

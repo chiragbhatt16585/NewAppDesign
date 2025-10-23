@@ -29,6 +29,8 @@ import {testBiometricAvailability} from './src/services/biometricTest';
 import {useVersionCheck} from './src/hooks/useVersionCheck';
 import UpdateModal from './src/components/UpdateModal';
 import { initializePushNotifications, registerPendingPushToken } from './src/services/notificationService';
+import { initializeFirebase } from './src/services/firebaseInit';
+import appLifecycleManager from './src/services/appLifecycleManager';
 
 import './src/i18n';
 
@@ -58,6 +60,14 @@ function AppContent() {
 
   useEffect(() => {
     initializeApp();
+    
+    // Initialize Firebase first
+    console.log('🔥 Initializing Firebase...');
+    const firebaseInitialized = initializeFirebase();
+    if (!firebaseInitialized) {
+      console.error('❌ Firebase initialization failed');
+    }
+    
     (async () => {
       try {
         const client = (await AsyncStorage.getItem('current_client')) || 'dna-infotel';
@@ -102,7 +112,11 @@ function AppContent() {
     };
 
     const subscription = AppState.addEventListener('change', handleAppStateChange);
-    return () => subscription?.remove();
+    return () => {
+      subscription?.remove();
+      // Clean up app lifecycle manager when component unmounts
+      appLifecycleManager.destroy();
+    };
   }, [appState, showBiometricAuth, lastAuthTime]);
 
   const checkBiometricOnResume = async () => {

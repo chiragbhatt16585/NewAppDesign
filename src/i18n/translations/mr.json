@@ -79,7 +79,7 @@
     "amount": "रक्कम",
     "balance": "शिल्लक",
     "noTransactions": "कोणतेही व्यवहार सापडले नाहीत",
-    "accountSummary": "खाते सारांश",
+    "accountSummary": "लेजर सारांश",
     "openingBalance": "प्रारंभिक शिल्लक",
     "proformaAmount": "प्रोफॉर्मा चालन रक्कम",
     "billAmount": "बिल रक्कम",
@@ -273,7 +273,8 @@
     "confirmPaymentMessage": "तुम्हाला खरोखर {{plan}} साठी ₹{{amount}} पेमेंट सुरू ठेवायचे आहे?",
     "proceedToPay": "पेमेंटसाठी पुढे जा",
     "paymentSuccess": "पेमेंट यशस्वी",
-    "paymentSuccessMessage": "तुमची योजना यशस्वीरित्या नूतनीकरण झाली आहे! तुम्हाला लवकरच पुष्टी ईमेल मिळेल."
+    "paymentSuccessMessage": "तुमची योजना यशस्वीरित्या नूतनीकरण झाली आहे! तुम्हाला लवकरच पुष्टी ईमेल मिळेल.",
+    "advanceRenewalNote": "टीप: तुमची वर्तमान योजना सक्रिय आहे, त्यामुळे हे नूतनीकरण अॅडव्हान्स रिन्युअल पाईपलाईनमध्ये जोडले जाईल."
   },
   "payBill": {
     "title": "बिल भरा",
@@ -284,11 +285,14 @@
     "renewDate": "नूतनीकरण तारीख",
     "expDate": "समाप्ती तारीख",
     "accountSummary": "खाते सारांश",
+    "billingSummary": "बिलिंग सारांश",
     "openingBalance": "प्रारंभिक शिल्लक",
     "billAmount": "बिल रक्कम",
     "amountPaid": "भरलेली रक्कम",
     "proformaInvoiceAmount": "प्रोफॉर्मा चलन रक्कम",
     "currentBalance": "सध्याचे शिल्लक",
+    "outstandingBalance": "थकीत शिल्लक",
+    "creditBalance": "क्रेडिट शिल्लक",
     "existingDues": "विद्यमान बकाया",
     "duesAmount": "बकाया रक्कम",
     "payDues": "बकाया भरा",

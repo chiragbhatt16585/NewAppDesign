@@ -4,9 +4,10 @@ import sessionManager from './sessionManager';
 export class SessionMonitor {
   private static instance: SessionMonitor;
   private checkInterval: NodeJS.Timeout | null = null;
-  private readonly CHECK_INTERVAL = 30 * 60 * 1000; // Check every 30 minutes
+  private readonly CHECK_INTERVAL = 60 * 60 * 1000; // Check every 60 minutes (reduced frequency)
   private readonly WARNING_THRESHOLD = 24 * 60 * 60 * 1000; // 24 hours
   private readonly INACTIVITY_WARNING_DAYS = 6; // Warn after 6 days of inactivity
+  private isMonitoring: boolean = false;
 
   private constructor() {}
 
@@ -18,10 +19,13 @@ export class SessionMonitor {
   }
 
   startMonitoring(): void {
-    if (this.checkInterval) {
-      this.stopMonitoring();
+    if (this.checkInterval || this.isMonitoring) {
+      console.log('Session monitoring already started');
+      return;
     }
 
+    console.log('Starting session monitoring...');
+    this.isMonitoring = true;
     this.checkInterval = setInterval(async () => {
       await this.checkSessionStatus();
     }, this.CHECK_INTERVAL);
@@ -35,6 +39,8 @@ export class SessionMonitor {
       clearInterval(this.checkInterval);
       this.checkInterval = null;
     }
+    this.isMonitoring = false;
+    console.log('Session monitoring stopped');
   }
 
   // Call this method when user performs any action in the app

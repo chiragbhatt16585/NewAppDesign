@@ -12,6 +12,7 @@ import {
   FlatList,
   BackHandler,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useFocusEffect} from '@react-navigation/native';
@@ -26,7 +27,10 @@ import sessionManager from '../services/sessionManager';
 import {useSessionValidation} from '../utils/useSessionValidation';
 import {useScreenDataReload} from '../utils/useAutoDataReload';
 import { getClientConfig } from '../config/client-config';
-import { initializePushNotifications, registerPendingPushToken, registerDeviceManually } from '../services/notificationService';
+import { initializePushNotifications, registerPendingPushToken, registerDeviceManually, updateDeviceWithRealFCMToken } from '../services/notificationService';
+import { debugVersionCheck, quickVersionTest } from '../services/versionDebug';
+import { debugFCMTokenIssues, forceFCMTokenGeneration } from '../services/fcmDebug';
+import { testFirebaseConfiguration, runComprehensiveFirebaseTest } from '../services/firebaseTest';
 // import AIUsageInsights from '../components/AIUsageInsights';
 //import ispLogo from '../assets/isp_logo.png';
 
@@ -102,10 +106,29 @@ const HomeScreen = ({navigation}: any) => {
         console.log('[HomeScreen] Initializing push notifications for realm:', realm);
         //Alert.alert('PushDebug', `Home init for realm: ${realm}`);
         await initializePushNotifications(realm);
+        
+        // Add delay for iOS to ensure FCM token is ready
+        if (Platform.OS === 'ios') {
+          console.log('[HomeScreen] iOS detected, adding delay for FCM token...');
+          await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay
+        }
+        
         console.log('[HomeScreen] Trying pending token registration');
         await registerPendingPushToken(realm);
         console.log('[HomeScreen] Trying manual device registration');
         await registerDeviceManually(realm);
+        
+        // Retry registration after a delay if it failed
+        setTimeout(async () => {
+          try {
+            console.log('[HomeScreen] Retrying device registration after delay...');
+            await registerPendingPushToken(realm);
+            await registerDeviceManually(realm);
+          } catch (retryError) {
+            console.warn('[HomeScreen] Retry registration failed:', retryError);
+          }
+        }, 5000); // Retry after 5 seconds
+        
       } catch (e) {
         console.warn('[HomeScreen] Push initialization/registration error', (e as any)?.message || e);
         //Alert.alert('PushDebug', `Home init error: ${(e as any)?.message || e}`);
@@ -648,6 +671,81 @@ const HomeScreen = ({navigation}: any) => {
               <Text style={[styles.menuText, {color: colors.text}]}>Test Real Scenario</Text>
             </TouchableOpacity>
             */}
+            {/* <TouchableOpacity 
+              style={[styles.menuItem, {backgroundColor: 'transparent'}]} 
+              onPress={() => {
+                setShowProfileMenu(false);
+                navigation.navigate('NotificationTest');
+              }}
+              activeOpacity={0.7}>
+              <Text style={[styles.menuIcon, {color: colors.textSecondary}]}>🔔</Text>
+              <Text style={[styles.menuText, {color: colors.text}]}>Test Notifications</Text>
+            </TouchableOpacity> */}
+            {/* <TouchableOpacity 
+              style={[styles.menuItem, {backgroundColor: 'transparent'}]} 
+              onPress={async () => {
+                setShowProfileMenu(false);
+                await debugVersionCheck();
+              }}
+              activeOpacity={0.7}>
+              <Text style={[styles.menuIcon, {color: colors.textSecondary}]}>🔍</Text>
+              <Text style={[styles.menuText, {color: colors.text}]}>Debug Version Check</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.menuItem, {backgroundColor: 'transparent'}]} 
+              onPress={async () => {
+                setShowProfileMenu(false);
+                await quickVersionTest();
+              }}
+              activeOpacity={0.7}>
+              <Text style={[styles.menuIcon, {color: colors.textSecondary}]}>⚡</Text>
+              <Text style={[styles.menuText, {color: colors.text}]}>Quick Version Test</Text>
+            </TouchableOpacity> */}
+            {/* <TouchableOpacity 
+              style={[styles.menuItem, {backgroundColor: 'transparent'}]} 
+              onPress={async () => {
+                setShowProfileMenu(false);
+                await debugFCMTokenIssues();
+              }}
+              activeOpacity={0.7}>
+              <Text style={[styles.menuIcon, {color: colors.textSecondary}]}>🔥</Text>
+              <Text style={[styles.menuText, {color: colors.text}]}>Debug FCM Token</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.menuItem, {backgroundColor: 'transparent'}]} 
+              onPress={async () => {
+                setShowProfileMenu(false);
+                const token = await forceFCMTokenGeneration();
+                Alert.alert('FCM Token', token ? `Token: ${token.substring(0, 20)}...` : 'No token generated');
+              }}
+              activeOpacity={0.7}>
+              <Text style={[styles.menuIcon, {color: colors.textSecondary}]}>🔄</Text>
+              <Text style={[styles.menuText, {color: colors.text}]}>Force FCM Token</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.menuItem, {backgroundColor: 'transparent'}]} 
+              onPress={async () => {
+                setShowProfileMenu(false);
+                const results = await runComprehensiveFirebaseTest();
+                const status = results.overall ? '✅ All tests passed!' : '❌ Some tests failed';
+                Alert.alert('Firebase Test Results', status);
+              }}
+              activeOpacity={0.7}>
+              <Text style={[styles.menuIcon, {color: colors.textSecondary}]}>🧪</Text>
+              <Text style={[styles.menuText, {color: colors.text}]}>Firebase Test</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.menuItem, {backgroundColor: 'transparent'}]} 
+              onPress={async () => {
+                setShowProfileMenu(false);
+                const realm = getClientConfig().clientId;
+                const success = await updateDeviceWithRealFCMToken(realm);
+                Alert.alert('Update FCM Token', success ? '✅ Device updated with real FCM token!' : '❌ No real FCM token available');
+              }}
+              activeOpacity={0.7}>
+              <Text style={[styles.menuIcon, {color: colors.textSecondary}]}>🔄</Text>
+              <Text style={[styles.menuText, {color: colors.text}]}>Update FCM Token</Text>
+            </TouchableOpacity> */}
             <TouchableOpacity 
               style={[styles.menuItem, {backgroundColor: 'transparent'}]} 
               onPress={handleLogout}
@@ -809,7 +907,7 @@ const HomeScreen = ({navigation}: any) => {
                 <Text style={styles.iconText}>💳</Text>
               </View>
               <Text style={[styles.actionTitle, {color: colors.text}]}>{t('home.payBill')}</Text>
-              <Text style={[styles.actionSubtitle, {color: colors.textSecondary}]}>₹{authData?.payment_dues || 0}</Text>
+              <Text style={[styles.actionSubtitle, {color: colors.textSecondary}]}>{Number(authData?.payment_dues) > 0 ? `₹${authData?.payment_dues}` : 'Fully Paid'}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 

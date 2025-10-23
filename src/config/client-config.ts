@@ -388,6 +388,70 @@ const clientConfigs: Record<string, ClientConfig> = {
       appStoreId: '1234567890',
     },
   },
+  'linkway': {
+    clientId: 'linkway',
+    clientName: 'Linkway',
+    api: {
+      baseURL: 'https://linkway.l2s.biz/l2s/api',
+      timeout: 30000,
+    },
+    branding: {
+      logo: 'isp_logo.png',
+      primaryColor: '#1976D2',
+      secondaryColor: '#42A5F5',
+      appName: 'Linkway',
+    },
+    features: {
+      biometricAuth: true,
+      pushNotifications: true,
+      fileUpload: true,
+      multiLanguage: true,
+    },
+    contact: {
+      whatsappNumber: '9970695360',
+      headOffice: {
+        title: 'Head Office',
+        address: 'OFFICE NO.15, Karan- A, Majithia Park, Achole Rd, Nalasopara East, Maharashtra 401209',
+        customerSupport: '9970695360',
+        customerSupportHours: 'Mon-Fri 9:00 AM - 6:00 PM',
+      },
+      branchOffices: [],
+      emails: {
+        inquiries: 'linkwaybrodband@gmail.com',
+        sales: 'linkwaybrodband@gmail.com',
+        support: 'linkwaybrodband@gmail.com',
+      },
+    },
+    about: {
+      companyName: 'Linkway',
+      establishedYear: '2024',
+      description: 'Linkway is an internet service provider committed to delivering high-quality broadband services.',
+      specializations: [
+        'High-speed broadband internet',
+        'Fiber optic technology',
+        'Business internet solutions',
+        '24/7 customer support'
+      ],
+      serviceAreas: [
+        'Nalasopara East',
+        'Maharashtra',
+        'Surrounding areas'
+      ],
+      achievements: [
+        'Reliable internet services',
+        'Customer-focused approach',
+        'Modern technology implementation'
+      ],
+    },
+    reviewUrl: undefined,
+    versionCheck: {
+      enabled: true,
+      checkInterval: 24,
+      forceUpdateEnabled: true,
+      packageName: 'com.spacecom.log2space.linkway',
+      appStoreId: '1234567890',
+    },
+  },
 };
 
 // Get current client configuration

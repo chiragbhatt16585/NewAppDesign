@@ -270,9 +270,9 @@ const PayBillScreen = ({navigation}: any) => {
             </View>
           </View>
 
-          {/* Account Summary */}
+          {/* Billing Summary */}
           <View style={[styles.sectionCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}> 
-            <Text style={[styles.sectionTitle, {color: colors.text}]}>{t('payBill.accountSummary')}</Text>
+            <Text style={[styles.sectionTitle, {color: colors.text}]}>{t('payBill.billingSummary')}</Text>
             <View style={styles.summaryDetails}>
               <View style={styles.summaryRow}>
                 <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('payBill.openingBalance')}</Text>
@@ -291,19 +291,19 @@ const PayBillScreen = ({navigation}: any) => {
                 <Text style={[styles.summaryValue, {color: colors.text}]}>₹{proformaInvoiceAmount}</Text>
               </View>
               <View style={[styles.summaryRow, styles.totalRow]}>
-                <Text style={[styles.summaryLabel, styles.totalLabel, {color: colors.text}]}>{t('payBill.currentBalance')}</Text>
-                <Text style={[styles.summaryValue, styles.totalValue, {color: colors.accent}]}>₹{currentBalance}</Text>
+                <Text style={[styles.summaryLabel, styles.totalLabel, {color: colors.text}]}>{t('payBill.outstandingBalance')}</Text>
+                <Text style={[styles.summaryValue, styles.totalValue, {color: colors.accent}]}>₹{currentBalance > 0 ? currentBalance : 0}</Text>
               </View>
             </View>
           </View>
 
-          {/* Existing Dues */}
+          {/* Current Balance / Credit Balance */}
           <View style={[styles.sectionCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}> 
-            <Text style={[styles.sectionTitle, {color: colors.text}]}>{t('payBill.existingDues')}</Text>
+            <Text style={[styles.sectionTitle, {color: colors.text}]}>{t('payBill.currentBalance')}</Text>
             <View style={styles.duesSection}>
               <View style={styles.duesRow}>
-                <Text style={[styles.duesLabel, {color: colors.textSecondary}]}>{t('payBill.duesAmount')}</Text>
-                <Text style={[styles.duesValue, {color: colors.accent}]}>₹{existingDues}</Text>
+                <Text style={[styles.duesLabel, {color: colors.textSecondary}]}>{currentBalance < 0 ? t('payBill.creditBalance') : t('payBill.duesAmount')}</Text>
+                <Text style={[styles.duesValue, {color: currentBalance < 0 ? 'green' : colors.accent}]}>₹{currentBalance < 0 ? Math.abs(currentBalance) + ' CR' : existingDues}</Text>
               </View>
               {existingDues > 0 && (
                 <TouchableOpacity

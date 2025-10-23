@@ -24,6 +24,10 @@ const switchJavaPackage = (client) => {
     mainActivityPath = `${javaSrcPath}/com/h8/dnasubscriber/MainActivity.kt`;
     appJsonPath = './config/one-sevenstar/app.json';
     packagePath = `${javaSrcPath}/com/h8/dnasubscriber`;
+  } else if (client === 'linkway') {
+    mainActivityPath = `${javaSrcPath}/com/spacecom/log2space/linkway/MainActivity.kt`;
+    appJsonPath = './config/linkway/app.json';
+    packagePath = `${javaSrcPath}/com/spacecom/log2space/linkway`;
   } else {
     return;
   }
@@ -58,6 +62,8 @@ const switchJavaPackage = (client) => {
     // Update package declaration
     if (client === 'microscan') {
       content = content.replace(/package com\.h8\.dnasubscriber/, 'package com.microscan.app');
+    } else if (client === 'linkway') {
+      content = content.replace(/package com\.h8\.dnasubscriber/, 'package com.spacecom.log2space.linkway');
     }
     
     content = content.replace(/override fun getMainComponentName\(\): String = ".*"/, `override fun getMainComponentName(): String = "${appName}"`);
@@ -77,6 +83,8 @@ const fixIOSAppDelegate = (client) => {
     appJsonPath = './config/dna-infotel/app.json';
   } else if (client === 'one-sevenstar') {
     appJsonPath = './config/one-sevenstar/app.json';
+  } else if (client === 'linkway') {
+    appJsonPath = './config/linkway/app.json';
   } else {
     return;
   }

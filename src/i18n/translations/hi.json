@@ -79,7 +79,7 @@
     "amount": "राशि",
     "balance": "शेष राशि",
     "noTransactions": "कोई लेन-देन नहीं मिला",
-    "accountSummary": "खाता सारांश",
+    "accountSummary": "लेजर सारांश",
     "openingBalance": "प्रारंभिक शेष",
     "proformaAmount": "प्रोफॉर्मा चालान राशि",
     "billAmount": "बिल राशि",
@@ -319,7 +319,8 @@
     "confirmPaymentMessage": "क्या आप वाकई {{plan}} के लिए ₹{{amount}} का भुगतान जारी रखना चाहते हैं?",
     "proceedToPay": "भुगतान के लिए आगे बढ़ें",
     "paymentSuccess": "भुगतान सफल",
-    "paymentSuccessMessage": "आपकी योजना सफलतापूर्वक नवीनीकरण हो गई है! आपको शीघ्र ही एक पुष्टि ईमेल प्राप्त होगा।"
+    "paymentSuccessMessage": "आपकी योजना सफलतापूर्वक नवीनीकरण हो गई है! आपको शीघ्र ही एक पुष्टि ईमेल प्राप्त होगा।",
+    "advanceRenewalNote": "नोट: आपका वर्तमान प्लान सक्रिय है, इसलिए यह नवीनीकरण अग्रिम नवीनीकरण पाइपलाइन में जोड़ा जाएगा।"
   },
   "payBill": {
     "title": "बिल भुगतान",
@@ -330,11 +331,14 @@
     "renewDate": "नवीनीकरण तिथि",
     "expDate": "समाप्ति तिथि",
     "accountSummary": "खाता सारांश",
+    "billingSummary": "बिलिंग सारांश",
     "openingBalance": "प्रारंभिक शेष",
     "billAmount": "बिल राशि",
     "amountPaid": "भुगतान की गई राशि",
     "proformaInvoiceAmount": "प्रोफॉर्मा चालान राशि",
     "currentBalance": "वर्तमान शेष",
+    "outstandingBalance": "बकाया शेष",
+    "creditBalance": "क्रेडिट शेष",
     "existingDues": "मौजूदा बकाया",
     "duesAmount": "बकाया राशि",
     "payDues": "बकाया भुगतान करें",

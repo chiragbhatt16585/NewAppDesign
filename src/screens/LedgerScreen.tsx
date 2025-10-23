@@ -474,7 +474,19 @@ const LedgerScreen = ({navigation}: any) => {
             <Text style={[styles.bottomSectionTitle, {color: colors.text}]}>{t('ledger.accountSummary')}</Text>
             <View style={[styles.currentBalanceRow, styles.compactBalanceRow]}>
               <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('ledger.currentBalance')}</Text>
-              <Text style={[styles.summaryValue, {color: colors.text, fontWeight: 'bold'}]}>₹{summaryData?.balance || 0}</Text>
+              {(() => {
+                const duesRaw = summaryData?.balance ?? 0;
+                const dues = Number(duesRaw) || 0;
+                const isZero = dues === 0;
+                const isDr = dues > 0; // positive -> Due (DR)
+                const amountColor = isZero ? colors.text : isDr ? '#d32f2f' : '#2e7d32';
+                const displayValue = Math.abs(dues).toFixed(2);
+                return (
+                  <Text style={[styles.summaryValue, {color: amountColor, fontWeight: 'bold'}]}>
+                    ₹{isZero ? '0.00' : displayValue} {isZero ? '' : (isDr ? 'DR' : 'CR')}
+                  </Text>
+                );
+              })()}
             </View>
           </View>
           <Text style={[styles.expandIcon, {color: colors.textSecondary}]}>
@@ -676,6 +688,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   currentBalanceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
     marginTop: 8,

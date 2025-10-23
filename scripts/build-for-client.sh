@@ -21,9 +21,13 @@ case $CLIENT_NAME in
     echo "Building for One Seven Star..."
     node scripts/build-client.js one-sevenstar
     ;;
+  "linkway")
+    echo "Building for Linkway..."
+    node scripts/build-client.js linkway
+    ;;
   *)
     echo "❌ Unknown client: $CLIENT_NAME"
-    echo "Available clients: microscan, dna-infotel, one-sevenstar"
+    echo "Available clients: microscan, dna-infotel, one-sevenstar, linkway"
     exit 1
     ;;
 esac

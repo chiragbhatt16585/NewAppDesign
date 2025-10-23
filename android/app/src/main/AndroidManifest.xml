@@ -13,6 +13,14 @@
     <uses-permission android:name="com.google.android.c2dm.permission.RECEIVE" />
     <!-- Android 13+ runtime permission for notifications -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    
+    <!-- Additional permissions to prevent app killing -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 
     
     <!-- AR Feature - Optional -->
@@ -29,15 +37,23 @@
       android:roundIcon="@mipmap/ic_launcher_round"
       android:allowBackup="false"
       android:theme="@style/AppTheme"
-      android:supportsRtl="true">
+      android:supportsRtl="true"
+      android:hardwareAccelerated="true"
+      android:largeHeap="true"
+      android:requestLegacyExternalStorage="true"
+      android:extractNativeLibs="false"
+      android:usesCleartextTraffic="true">
       <activity
         android:name=".MainActivity"
         android:label="@string/app_name"
         android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
         android:screenOrientation="portrait"
-        android:launchMode="singleTask"
+        android:launchMode="singleTop"
         android:windowSoftInputMode="adjustResize"
-        android:exported="true">
+        android:exported="true"
+        android:excludeFromRecents="false"
+        android:taskAffinity=""
+        android:clearTaskOnLaunch="false">
         <intent-filter>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
@@ -79,6 +95,13 @@
             <category android:name="android.intent.category.DEFAULT" />
             <category android:name="android.intent.category.BROWSABLE" />
             <data android:scheme="one-sevenstar" />
+        </intent-filter>
+        
+        <intent-filter>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.DEFAULT" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="linkway" />
         </intent-filter>
         
         <!-- Payment Gateway Response URLs -->
@@ -161,7 +184,12 @@
       <!-- ARCore Metadata - Optional -->
       <meta-data android:name="com.google.ar.core" android:value="optional" />
       
-
+      <!-- Foreground Service to keep app alive -->
+      <service
+        android:name="com.h8.dnasubscriber.KeepAliveService"
+        android:enabled="true"
+        android:exported="false"
+        android:foregroundServiceType="dataSync" />
       
     </application>
 </manifest>

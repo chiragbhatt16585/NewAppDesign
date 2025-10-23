@@ -37,6 +37,10 @@ interface PlanData {
   gbLimit: number;
   isCurrentPlan: boolean;
   ottServices?: string[];
+  ott_plan?: string;
+  voice_plan?: string;
+  iptv?: string;
+  fup_flag?: string;
 }
 
 const PlanConfirmationScreen = ({navigation, route}: any) => {
@@ -67,9 +71,45 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
   const [coupons, setCoupons] = React.useState<any[]>([]);
   const [selectedCoupon, setSelectedCoupon] = React.useState<any>(null);
   const [couponDiscount, setCouponDiscount] = React.useState(0);
+  const [isAccountActive, setIsAccountActive] = React.useState<boolean>(false);
 
   useEffect(() => {
     loadCoupons();
+  }, []);
+
+  // Fetch user's account status (Active/Inactive/etc.)
+  useEffect(() => {
+    (async () => {
+      try {
+        const session = await sessionManager.getCurrentSession();
+        if (session?.username) {
+          const authData = await apiService.authUser(session.username);
+          const statusCandidates: any[] = [
+            authData?.account_status,
+            authData?.status,
+            authData?.accountStatus,
+            authData?.user_status,
+            authData?.userStatus,
+            authData?.service_status,
+            authData?.serviceStatus,
+            authData?.active_status,
+            authData?.is_active,
+          ];
+          let active = false;
+          for (const val of statusCandidates) {
+            if (typeof val === 'boolean' && val) { active = true; break; }
+            if (typeof val === 'number' && val === 1) { active = true; break; }
+            if (typeof val === 'string') {
+              const s = val.trim().toLowerCase();
+              if (s === 'active' || s === 'a' || s === 'enabled') { active = true; break; }
+            }
+          }
+          setIsAccountActive(active);
+        }
+      } catch (e) {
+        // Silent fail; note will simply not render
+      }
+    })();
   }, []);
 
   const loadCoupons = async () => {
@@ -394,6 +434,34 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
                   <Text style={[styles.detailValue, {color: colors.text}]}>{selectedPlan.validity}</Text>
                 </View>
               </View>
+              
+              {/* Plan Features */}
+              <View style={styles.planFeaturesRow}>
+                {selectedPlan.ott_plan?.toLowerCase() === 'yes' && (
+                  <View style={[styles.featureBadge, {backgroundColor: colors.successLight}]}>
+                    <Text style={[styles.featureIcon, {color: colors.success}]}>🎬</Text>
+                    <Text style={[styles.featureText, {color: colors.success}]}>OTT</Text>
+                  </View>
+                )}
+                {selectedPlan.voice_plan?.toLowerCase() === 'yes' && (
+                  <View style={[styles.featureBadge, {backgroundColor: colors.accentLight}]}>
+                    <Text style={[styles.featureIcon, {color: colors.accent}]}>📞</Text>
+                    <Text style={[styles.featureText, {color: colors.accent}]}>VOIP</Text>
+                  </View>
+                )}
+                {selectedPlan.iptv?.toLowerCase() === 'yes' && (
+                  <View style={[styles.featureBadge, {backgroundColor: colors.primaryLight}]}>
+                    <Text style={[styles.featureIcon, {color: colors.primary}]}>📺</Text>
+                    <Text style={[styles.featureText, {color: colors.primary}]}>IPTV</Text>
+                  </View>
+                )}
+                {selectedPlan.fup_flag?.toLowerCase() === 'yes' && (
+                  <View style={[styles.featureBadge, {backgroundColor: colors.surface}]}>
+                    <Text style={[styles.featureIcon, {color: colors.text}]}>📊</Text>
+                    <Text style={[styles.featureText, {color: colors.text}]}>FUP</Text>
+                  </View>
+                )}
+              </View>
             </View>
 
             {/* OTT Services */}
@@ -418,6 +486,14 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
               </View>
             )}
           </View>
+
+          {/* Advance Renewal Note (only if account status is active) */}
+          {isAccountActive && (
+            <View style={[styles.noteCard, {backgroundColor: '#FFF8E1', shadowColor: colors.shadow}]}> 
+              {/* <Text style={styles.noteTitle}>Note</Text> */}
+              <Text style={[styles.noteText, {color: colors.textSecondary}]}>{t('planConfirmation.advanceRenewalNote')}</Text>
+            </View>
+          )}
 
           {/* Coupon Selection */}
           {coupons.length > 0 && (
@@ -485,23 +561,25 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
             </View>
           )}
 
+          
+
           {/* Price Breakup */}
           <View style={[styles.pricingCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
             <Text style={[styles.pricingTitle, {color: colors.text}]}>{t('planConfirmation.pricingBreakdown')}</Text>
             
             <View style={styles.pricingRow}>
               <Text style={[styles.pricingLabel, {color: colors.textSecondary}]}>{t('planConfirmation.baseAmount')}</Text>
-              <Text style={[styles.pricingValue, {color: colors.text}]}>₹{selectedPlan.baseAmount}</Text>
+              <Text style={[styles.pricingValue, {color: colors.text}]}>₹{selectedPlan.baseAmount.toFixed(2)}</Text>
             </View>
             
             <View style={styles.pricingRow}>
               <Text style={[styles.pricingLabel, {color: colors.textSecondary}]}>{t('planConfirmation.cgst')} (9%)</Text>
-              <Text style={[styles.pricingValue, {color: colors.text}]}>₹{selectedPlan.cgst}</Text>
+              <Text style={[styles.pricingValue, {color: colors.text}]}>₹{selectedPlan.cgst.toFixed(2)}</Text>
             </View>
             
             <View style={styles.pricingRow}>
               <Text style={[styles.pricingLabel, {color: colors.textSecondary}]}>{t('planConfirmation.sgst')} (9%)</Text>
-              <Text style={[styles.pricingValue, {color: colors.text}]}>₹{selectedPlan.sgst}</Text>
+              <Text style={[styles.pricingValue, {color: colors.text}]}>₹{selectedPlan.sgst.toFixed(2)}</Text>
             </View>
             
             <View style={[styles.pricingRow, styles.totalRow]}>
@@ -783,6 +861,28 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 16,
   },
+  noteCard: {
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#FFE082',
+  },
+  noteTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#795548',
+    marginBottom: 6,
+    textTransform: 'uppercase',
+  },
+  noteText: {
+    fontSize: 12,
+    lineHeight: 18,
+  },
   pricingRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -995,6 +1095,28 @@ const styles = StyleSheet.create({
   selectedIcon: {
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  planFeaturesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    justifyContent: 'flex-start',
+    marginTop: 12,
+  },
+  featureBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 4,
+  },
+  featureIcon: {
+    fontSize: 14,
+  },
+  featureText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
 
 });

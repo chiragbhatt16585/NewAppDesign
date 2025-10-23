@@ -397,12 +397,45 @@ const UpgradePlanConfirmationScreen = ({navigation, route}: any) => {
         
         {/* OTT Row */}
         <View style={[styles.tableRow, {borderBottomColor: colors.border}]}>
-          <Text style={[styles.parameterCell, {color: colors.textSecondary}]}>📺 OTT</Text>
+          <Text style={[styles.parameterCell, {color: colors.textSecondary}]}>🎬 OTT</Text>
           <Text style={[styles.currentCell, {color: colors.text}]}>
-            {currentPlanDetails?.content_providers && currentPlanDetails.content_providers.length > 0 ? 'Included' : 'Not Included'}
+            {currentPlanDetails?.ott_plan?.toLowerCase() === 'yes' || (currentPlanDetails?.content_providers && currentPlanDetails.content_providers.length > 0) ? 'Yes' : 'No'}
           </Text>
           <Text style={[styles.newCell, {color: colors.primary, fontWeight: '600'}]}>
-            {selectedPlan.ottServices && selectedPlan.ottServices.length > 0 ? 'Included' : 'Not Included'}
+            {selectedPlan.ott_plan?.toLowerCase() === 'yes' || (selectedPlan.ottServices && selectedPlan.ottServices.length > 0) ? 'Yes' : 'No'}
+          </Text>
+        </View>
+        
+        {/* VOIP Row */}
+        <View style={[styles.tableRow, {borderBottomColor: colors.border}]}>
+          <Text style={[styles.parameterCell, {color: colors.textSecondary}]}>📞 VOIP</Text>
+          <Text style={[styles.currentCell, {color: colors.text}]}>
+            {currentPlanDetails?.voice_plan?.toLowerCase() === 'yes' ? 'Yes' : 'No'}
+          </Text>
+          <Text style={[styles.newCell, {color: colors.primary, fontWeight: '600'}]}>
+            {selectedPlan.voice_plan?.toLowerCase() === 'yes' ? 'Yes' : 'No'}
+          </Text>
+        </View>
+        
+        {/* IPTV Row */}
+        <View style={[styles.tableRow, {borderBottomColor: colors.border}]}>
+          <Text style={[styles.parameterCell, {color: colors.textSecondary}]}>📺 IPTV</Text>
+          <Text style={[styles.currentCell, {color: colors.text}]}>
+            {currentPlanDetails?.iptv?.toLowerCase() === 'yes' ? 'Yes' : 'No'}
+          </Text>
+          <Text style={[styles.newCell, {color: colors.primary, fontWeight: '600'}]}>
+            {selectedPlan.iptv?.toLowerCase() === 'yes' ? 'Yes' : 'No'}
+          </Text>
+        </View>
+        
+        {/* FUP Row */}
+        <View style={[styles.tableRow, {borderBottomColor: colors.border}]}>
+          <Text style={[styles.parameterCell, {color: colors.textSecondary}]}>📊 FUP</Text>
+          <Text style={[styles.currentCell, {color: colors.text}]}>
+            {currentPlanDetails?.fup_flag?.toLowerCase() === 'yes' ? 'Yes' : 'No'}
+          </Text>
+          <Text style={[styles.newCell, {color: colors.primary, fontWeight: '600'}]}>
+            {selectedPlan.fup_flag?.toLowerCase() === 'yes' ? 'Yes' : 'No'}
           </Text>
         </View>
         

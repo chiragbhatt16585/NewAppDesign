@@ -18,7 +18,7 @@ fi
 
 # Client configurations
 clients_microscan="Microscan:com.microscan.app:33.0.0"
-clients_dnainfotel="DNA Infotel:com.h8.dnasubscriber:291.0.0"
+clients_dnainfotel="DNA Infotel:com.h8.dnasubscriber:294.0.0"
 clients_onesevenstar="One Sevenstar:com.spacecom.log2space.onesevenstar:4.0.0"
 
 # Function to build a client

@@ -44,6 +44,11 @@ const fixGeneratedFile = () => {
       content = content.replace(correctMicroscanPattern, 'com.h8.dnasubscriber.BuildConfig');
       content = content.replace(linkwayPattern, 'com.h8.dnasubscriber.BuildConfig');
       console.log('✅ Fixed for DNA Infotel package');
+    } else if (namespace === 'com.spacecom.log2space.linkway') {
+      content = content.replace(oldPackagePattern, 'com.spacecom.log2space.linkway.BuildConfig');
+      content = content.replace(newPackagePattern, 'com.spacecom.log2space.linkway.BuildConfig');
+      content = content.replace(correctMicroscanPattern, 'com.spacecom.log2space.linkway.BuildConfig');
+      console.log('✅ Fixed for Linkway package');
     }
     
     // Write the fixed content back

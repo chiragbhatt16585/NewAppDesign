@@ -208,14 +208,14 @@ const MoreOptionsScreen = ({navigation}: any) => {
       icon: '📱',
       onPress: handlePartnerApps,
     },
-    {
-      id: 'review-ratings',
-      title: t('more.reviewRatings'),
-      subtitle: 'Rate us on Google Play',
-      icon: 'star',
-      iconType: 'feather',
-      onPress: handleReviewRatings,
-    },
+    // {
+    //   id: 'review-ratings',
+    //   title: t('more.reviewRatings'),
+    //   subtitle: 'Rate us on Google Play',
+    //   icon: 'star',
+    //   iconType: 'feather',
+    //   onPress: handleReviewRatings,
+    // },
     {
       id: 'settings',
       title: t('more.settings'),

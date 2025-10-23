@@ -79,7 +79,7 @@
     "amount": "રકમ",
     "balance": "બેલેન્સ",
     "noTransactions": "કોઈ વ્યવહાર મળ્યો નથી",
-    "accountSummary": "એકાઉન્ટ સારાંશ",
+    "accountSummary": "લેજર સારાંશ",
     "openingBalance": "પ્રારંભિક બેલેન્સ",
     "proformaAmount": "પ્રોફોર્મા ચાલાન રકમ",
     "billAmount": "બિલ રકમ",
@@ -319,7 +319,8 @@
     "confirmPaymentMessage": "શું તમે ખરેખર {{plan}} માટે ₹{{amount}} ચુકવણી ચાલુ રાખવા માંગો છો?",
     "proceedToPay": "ચુકવણી માટે આગળ વધો",
     "paymentSuccess": "ચુકવણી સફળ",
-    "paymentSuccessMessage": "તમારો પ્લાન સફળતાપૂર્વક નવીકરણ થયો છે! તમને ટૂંક સમયમાં પુષ્ટિ ઈમેલ મળશે."
+    "paymentSuccessMessage": "તમારો પ્લાન સફળતાપૂર્વક નવીકરણ થયો છે! તમને ટૂંક સમયમાં પુષ્ટિ ઈમેલ મળશે.",
+    "advanceRenewalNote": "નોંધ: તમારો વર્તમાન પ્લાન સક્રિય છે, તેથી આ રીન્યુઅલ એડવાન્સ રીન્યુઅલ પાઇપલાઇનમાં ઉમેરવામાં આવશે."
   },
   "payBill": {
     "title": "બિલ ચૂકવો",
@@ -330,11 +331,14 @@
     "renewDate": "નવીકરણ તારીખ",
     "expDate": "સમાપ્તિ તારીખ",
     "accountSummary": "એકાઉન્ટ સારાંશ",
+    "billingSummary": "બિલિંગ સારાંશ",
     "openingBalance": "પ્રારંભિક બેલેન્સ",
     "billAmount": "બિલ રકમ",
     "amountPaid": "ચૂકવેલી રકમ",
     "proformaInvoiceAmount": "પ્રોફોર્મા ઇન્વોઇસ રકમ",
     "currentBalance": "વર્તમાન બેલેન્સ",
+    "outstandingBalance": "બાકી બેલેન્સ",
+    "creditBalance": "ક્રેડિટ બેલેન્સ",
     "existingDues": "હાલનું બાકી",
     "duesAmount": "બાકી રકમ",
     "payDues": "બાકી ચૂકવો",

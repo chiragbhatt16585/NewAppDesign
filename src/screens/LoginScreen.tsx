@@ -30,6 +30,8 @@ import clientStrings from '../config/client-strings.json';
 import { credentialStorage } from '../services/credentialStorage';
 import { pinStorage } from '../services/pinStorage';
 import biometricAuthService from '../services/biometricAuth';
+import { initializePushNotifications, registerPendingPushToken, registerDeviceManually } from '../services/notificationService';
+import { getClientConfig } from '../config/client-config';
 
 const {width, height} = Dimensions.get('window');
 
@@ -294,6 +296,55 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
     return isValid;
   };
 
+  // Handle device registration after successful login
+  const handleDeviceRegistration = async () => {
+    try {
+      console.log('[LoginScreen] Starting device registration after login...');
+      const realm = getClientConfig().clientId;
+      
+      // Initialize push notifications
+      await initializePushNotifications(realm);
+      
+      // Add longer delay for iOS to ensure FCM token is ready
+      if (Platform.OS === 'ios') {
+        console.log('[LoginScreen] iOS detected, adding delay for FCM token...');
+        await new Promise(resolve => setTimeout(resolve, 3000)); // 3 second delay for iOS
+      }
+      
+      // Register device with multiple attempts
+      console.log('[LoginScreen] Registering device...');
+      let registrationSuccess = false;
+      
+      // Try pending token registration first
+      try {
+        await registerPendingPushToken(realm);
+        registrationSuccess = true;
+        console.log('[LoginScreen] Pending token registration successful');
+      } catch (error) {
+        console.warn('[LoginScreen] Pending token registration failed:', error);
+      }
+      
+      // Try manual registration as backup
+      try {
+        await registerDeviceManually(realm);
+        registrationSuccess = true;
+        console.log('[LoginScreen] Manual device registration successful');
+      } catch (error) {
+        console.warn('[LoginScreen] Manual device registration failed:', error);
+      }
+      
+      if (!registrationSuccess) {
+        console.warn('[LoginScreen] All device registration attempts failed');
+        // Don't block login flow, just log the issue
+      }
+      
+      console.log('[LoginScreen] Device registration process completed');
+    } catch (error) {
+      console.warn('[LoginScreen] Device registration failed:', error);
+      // Don't block login flow if device registration fails
+    }
+  };
+
   const handleLogin = async () => {
     // Validate form before proceeding
     if (!validateForm()) {
@@ -326,6 +377,10 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
           if (success) {
             // Save credentials for session regeneration
             await credentialStorage.saveCredentials(username, password);
+            
+            // Register device for push notifications after successful login
+            await handleDeviceRegistration();
+            
             // Check if user has set up any authentication
             const pin = await pinStorage.getPin();
             const biometricEnabled = await biometricAuthService.isAuthEnabled();
@@ -351,6 +406,9 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
           const success = await loginWithOtp(username, otp);
           
           if (success) {
+            // Register device for push notifications after successful login
+            await handleDeviceRegistration();
+            
             // Check if user has set up any authentication
             const pin = await pinStorage.getPin();
             const biometricEnabled = await biometricAuthService.isAuthEnabled();
@@ -426,6 +484,9 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
           const success = await loginWithOtp(username, otp);
           
           if (success) {
+            // Register device for push notifications after successful login
+            await handleDeviceRegistration();
+            
             // Check if user has set up any authentication
             const pin = await pinStorage.getPin();
             const biometricEnabled = await biometricAuthService.isAuthEnabled();

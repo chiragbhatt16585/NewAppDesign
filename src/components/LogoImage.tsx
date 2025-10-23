@@ -14,10 +14,10 @@ const LogoImage: React.FC<LogoImageProps> = ({style, width, height, type = 'head
     try {
       // Force reload the config file
       const config = require('../config/logo-config.json');
-      console.log('=== LOGO CONFIG DEBUG ===');
-      console.log('Loaded config:', JSON.stringify(config, null, 2));
-      console.log('Type:', type);
-      console.log('Config for type:', config[type]);
+      // console.log('=== LOGO CONFIG DEBUG ===');
+      // console.log('Loaded config:', JSON.stringify(config, null, 2));
+      // console.log('Type:', type);
+      // console.log('Config for type:', config[type]);
       return config;
     } catch (error) {
       // console.log('=== LOGO CONFIG ERROR ===');
@@ -37,8 +37,8 @@ const LogoImage: React.FC<LogoImageProps> = ({style, width, height, type = 'head
   let logoWidth = width || config.width;
   let logoHeight = height || config.height;
 
-  console.log('=== LOGO CONFIG ===', { type, configForType: logoConfig[type], fallbackHeader: logoConfig.header });
-  console.log('=== LOGO DIMENSIONS ===', { width: logoWidth, height: logoHeight });
+  // console.log('=== LOGO CONFIG ===', { type, configForType: logoConfig[type], fallbackHeader: logoConfig.header });
+  // console.log('=== LOGO DIMENSIONS ===', { width: logoWidth, height: logoHeight });
 
   return (
     <View

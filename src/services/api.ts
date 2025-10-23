@@ -35,6 +35,11 @@ export const domain = `https://${domainUrl}`;
 const url = `${domain}/l2s/api`;
 export const ispName = apiConfig.ispName;
 
+// Get KYC document URL dynamically
+export const getKycDocumentUrl = (filename: string): string => {
+  return `${domain}/kyc_docs/${filename}`;
+};
+
 const method = 'POST';
 const fixedHeaders = {
   'cache-control': 'no-cache',
@@ -1170,15 +1175,21 @@ class ApiService {
           if (response.data?.[0]) {
             console.log('=== API SERVICE: Raw plan data sample ===');
             console.log('planname:', response.data[0].planname);
+            console.log('description:', response.data[0].description);
             console.log('download_speed_mb:', response.data[0].download_speed_mb);
             console.log('amount:', response.data[0].amount);
             console.log('validity:', response.data[0].validity);
             console.log('data_xfer:', response.data[0].data_xfer);
+            console.log('ott_plan:', response.data[0].ott_plan);
+            console.log('voice_plan:', response.data[0].voice_plan);
+            console.log('iptv:', response.data[0].iptv);
+            console.log('fup_flag:', response.data[0].fup_flag);
             console.log('content_providers count:', response.data[0].content_providers?.length || 0);
           }
                 const mappedPlans = response.data.map((planObj: any, index: number) => ({
         id: planObj.id || index.toString(),
         name: planObj.planname || planObj.name || '',
+        description: planObj.description || '',
         downloadSpeed: planObj.download_speed_mb || planObj.download || '',
         uploadSpeed: planObj.upload_speed_mb || planObj.upload || '',
         days: parseInt(planObj.validity) || parseInt(planObj.days) || 30,
@@ -1188,16 +1199,25 @@ class ApiService {
         SGSTAmount: parseFloat(planObj.sgst_value) || parseFloat(planObj.SGSTAmount) || 0,
         limit: planObj.data_xfer || 'Unlimited',
         content_providers: planObj.content_providers || [],
+        ott_plan: planObj.ott_plan || 'no',
+        voice_plan: planObj.voice_plan || 'no',
+        iptv: planObj.iptv || 'no',
+        fup_flag: planObj.fup_flag || 'no',
         isExpanded: false
       }));
           console.log('=== API SERVICE: Mapped plans ===', mappedPlans);
           if (mappedPlans?.[0]) {
             console.log('=== API SERVICE: Mapped plan sample ===');
             console.log('Mapped Name:', mappedPlans[0].name);
+            console.log('Mapped Description:', mappedPlans[0].description);
             console.log('Mapped Speed:', mappedPlans[0].downloadSpeed);
             console.log('Mapped Price:', mappedPlans[0].FinalAmount);
             console.log('Mapped Validity:', mappedPlans[0].days);
             console.log('Mapped Data Limit:', mappedPlans[0].limit);
+            console.log('Mapped OTT Plan:', mappedPlans[0].ott_plan);
+            console.log('Mapped Voice Plan:', mappedPlans[0].voice_plan);
+            console.log('Mapped IPTV:', mappedPlans[0].iptv);
+            console.log('Mapped FUP Flag:', mappedPlans[0].fup_flag);
             console.log('Mapped OTT Count:', mappedPlans[0].content_providers?.length || 0);
           }
           return mappedPlans;

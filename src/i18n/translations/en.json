@@ -79,7 +79,7 @@
     "amount": "Amount",
     "balance": "Balance",
     "noTransactions": "No transactions found",
-    "accountSummary": "Account Summary",
+    "accountSummary": "Ledger Summary",
     "openingBalance": "Opening Balance",
     "proformaAmount": "Proforma Invoice Amount",
     "billAmount": "Bill Amount",
@@ -218,7 +218,8 @@
     "confirmPaymentMessage": "Are you sure you want to proceed with payment of ₹{{amount}} for {{plan}}?",
     "proceedToPay": "Proceed to Pay",
     "paymentSuccess": "Payment Successful",
-    "paymentSuccessMessage": "Your plan has been renewed successfully! You will receive a confirmation email shortly."
+    "paymentSuccessMessage": "Your plan has been renewed successfully! You will receive a confirmation email shortly.",
+    "advanceRenewalNote": "Note: Your current plan is active hence this renewal will be added in Advance Renewal pipeline."
   },
   "payBill": {
     "title": "Pay Bill",
@@ -229,11 +230,14 @@
     "renewDate": "Renew Date",
     "expDate": "Expiry Date",
     "accountSummary": "Account Summary",
+    "billingSummary": "Billing Summary",
     "openingBalance": "Opening Balance",
     "billAmount": "Bill Amount",
     "amountPaid": "Amount Paid",
     "proformaInvoiceAmount": "Proforma Invoice Amount",
     "currentBalance": "Current Balance",
+    "outstandingBalance": "Outstanding Balance",
+    "creditBalance": "Credit Balance",
     "existingDues": "Existing Dues",
     "duesAmount": "Dues Amount",
     "payDues": "Pay Dues",

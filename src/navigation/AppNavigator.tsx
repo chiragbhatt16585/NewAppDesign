@@ -35,6 +35,7 @@ import UpdateSSIDScreen from '../screens/UpdateSSIDScreen';
 import OffersScreen from '../screens/OffersScreen';
 import PartnerAppsScreen from '../screens/PartnerAppsScreen';
 import IntroScreen from '../screens/IntroScreen';
+import NotificationTestScreen from '../screens/NotificationTestScreen';
 
 const Stack = createStackNavigator();
 
@@ -154,6 +155,7 @@ const AppNavigator: React.FC<AppNavigatorProps> = ({ initialRoute }) => {
         <Stack.Screen name="ReferFriend" component={ReferFriendScreen} options={{ headerShown: false }} />
         <Stack.Screen name="PaymentLink" component={PaymentLinkScreen} options={{ headerShown: false }} />
         <Stack.Screen name="PaymentResponse" component={PaymentResponseScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="NotificationTest" component={NotificationTestScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

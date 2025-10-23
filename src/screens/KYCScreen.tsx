@@ -17,7 +17,7 @@ import {useTheme} from '../utils/ThemeContext';
 import {getThemeColors} from '../utils/themeStyles';
 import CommonHeader from '../components/CommonHeader';
 import {useTranslation} from 'react-i18next';
-import {apiService} from '../services/api';
+import {apiService, getKycDocumentUrl} from '../services/api';
 import sessionManager from '../services/sessionManager';
 import {useSessionValidation} from '../utils/useSessionValidation';
 import Feather from 'react-native-vector-icons/Feather';
@@ -396,8 +396,13 @@ const KYCScreen = ({navigation}: any) => {
   };
 
   const handleViewDocument = (item: KYCItem) => {
-    const baseUrl = 'https://crm.dnainfotel.com/kyc_docs/';
-    const documentUrl = baseUrl + item.documentName;
+    // Use dynamic URL from API service instead of hardcoded URL
+    const documentUrl = getKycDocumentUrl(item.documentName || '');
+    
+    console.log('=== DOCUMENT URL DEBUG ===');
+    console.log('Document Name:', item.documentName);
+    console.log('Generated URL:', documentUrl);
+    console.log('========================');
     
     // Check if the document is a PDF
     const isPDF = item.documentName?.toLowerCase().endsWith('.pdf');

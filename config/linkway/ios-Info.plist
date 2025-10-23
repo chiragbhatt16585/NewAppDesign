@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleDisplayName</key>
+	<string>Linkway App</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<false/>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string></string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>This app uses Face ID for secure authentication and quick access.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>This app needs access to camera for scanning QR codes and taking photos.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app needs access to photo library for uploading documents and images.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This app needs access to microphone for voice features.</string>
+	<key>RCTNewArchEnabled</key>
+	<true/>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>arm64</string>
+	</array>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<false/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>paymentresponse</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>paymentresponse</string>
+				<string>isp</string>
+				<string>linkway</string>
+			</array>
+		</dict>
+	</array>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<!-- Google Pay / Tez -->
+		<string>googlepay</string>
+		<string>tez</string>
+		<string>gpay</string>
+		
+		<!-- Popular UPI Apps -->
+		<string>phonepe</string>
+		<string>phonepepay</string>
+		<string>cred</string>
+		<string>credpay</string>
+		<string>paytm</string>
+		<string>paytmmoney</string>
+		<string>paytmmp</string>
+		<string>paytmwallet</string>
+		<string>paytmbank</string>
+		<string>amazonpay</string>
+		<string>amazonpaylite</string>
+		<string>bhim</string>
+		<string>bhimupi</string>
+		<string>upi</string>
+		<string>mobikwik</string>
+		<string>freecharge</string>
+		<string>airtelpay</string>
+		<string>airtel</string>
+		<string>jio</string>
+		<string>jiopay</string>
+		<string>jiomoney</string>
+		
+		<!-- International Payment Apps -->
+		<string>razorpay</string>
+		<string>stripe</string>
+		<string>square</string>
+		<string>paypal</string>
+		
+		<!-- Bank Apps -->
+		<string>yono</string>
+		<string>icicibank</string>
+		<string>hdfcbank</string>
+		<string>sbiyono</string>
+		<string>axisbank</string>
+		<string>kotakbank</string>
+		<string>pnb</string>
+		<string>canarabank</string>
+		<string>unionbank</string>
+		<string>idfcbank</string>
+		<string>yesbank</string>
+		<string>indusindbank</string>
+		<string>federalbank</string>
+		<string>karnatakabank</string>
+		<string>southindianbank</string>
+		<string>tmb</string>
+		<string>karurvysyabank</string>
+		<string>lakshmivilasbank</string>
+		<string>dcbbank</string>
+		<string>jammukashmir</string>
+		<string>pandcbank</string>
+		<string>andhrabank</string>
+		<string>corporationbank</string>
+		<string>syndicatebank</string>
+		<string>vijayabank</string>
+		<string>dhanlaxmibank</string>
+		
+		<!-- Android Intent and Market -->
+		<string>intent</string>
+		<string>market</string>
+	</array>
+</dict>
+</plist>

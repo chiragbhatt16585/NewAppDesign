@@ -1132,6 +1132,7 @@ class ApiService {
                 const mappedPlans = response.data.map((planObj: any, index: number) => ({
         id: planObj.id || index.toString(),
         name: planObj.planname || planObj.name || '',
+        description: planObj.description || '',
         downloadSpeed: planObj.download_speed_mb || planObj.download || '',
         uploadSpeed: planObj.upload_speed_mb || planObj.upload || '',
         days: parseInt(planObj.validity) || parseInt(planObj.days) || 30,
@@ -1141,6 +1142,10 @@ class ApiService {
         SGSTAmount: parseFloat(planObj.sgst_value) || parseFloat(planObj.SGSTAmount) || 0,
         limit: planObj.data_xfer || 'Unlimited',
         content_providers: planObj.content_providers || [],
+        ott_plan: planObj.ott_plan || 'no',
+        voice_plan: planObj.voice_plan || 'no',
+        iptv: planObj.iptv || 'no',
+        fup_flag: planObj.fup_flag || 'no',
         isExpanded: false
       }));
           console.log('=== API SERVICE: Mapped plans ===', mappedPlans);
