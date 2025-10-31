@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useMemo} from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import {getThemeColors} from '../utils/themeStyles';
 import {useTranslation} from 'react-i18next';
 import {apiService} from '../services/api';
 import sessionManager from '../services/sessionManager';
+import useMenuSettings from '../hooks/useMenuSettings';
 
 interface AddTicketScreenProps {
   visible: boolean;
@@ -28,6 +29,7 @@ const AddTicketScreen = ({visible, onClose, onTicketCreated}: AddTicketScreenPro
   const {isDark} = useTheme();
   const colors = getThemeColors(isDark);
   const {t} = useTranslation();
+  const { menu } = useMenuSettings();
   
   const [problemTitle, setProblemTitle] = useState('');
   const [problemDescription, setProblemDescription] = useState('');
@@ -36,6 +38,23 @@ const AddTicketScreen = ({visible, onClose, onTicketCreated}: AddTicketScreenPro
   const [showProblemDropdown, setShowProblemDropdown] = useState(false);
   const [loadingProblems, setLoadingProblems] = useState(false);
   const [selectedProblem, setSelectedProblem] = useState<any>(null);
+
+  // Determine if description (remarks) should be shown based on menu settings for Tickets
+  const allowDescription: boolean = useMemo(() => {
+    try {
+      if (!Array.isArray(menu)) return false;
+      const tickets = menu.find((m: any) => (
+        String(m?.menu_label) === 'Tickets' && String(m?.status).toLowerCase() === 'active'
+      ));
+      if (!tickets) return false;
+      const jsonStr = tickets.display_option_json || '';
+      if (!jsonStr || typeof jsonStr !== 'string') return false;
+      const parsed = JSON.parse(jsonStr);
+      return !!parsed?.ticket_settings?.add_remarks_on_create_ticket;
+    } catch {
+      return false;
+    }
+  }, [menu]);
 
   useEffect(() => {
     if (visible) {
@@ -74,7 +93,7 @@ const AddTicketScreen = ({visible, onClose, onTicketCreated}: AddTicketScreenPro
       return;
     }
 
-    if (!problemDescription.trim()) {
+    if (allowDescription && !problemDescription.trim()) {
       Alert.alert('Error', 'Please enter a problem description');
       return;
     }
@@ -94,11 +113,16 @@ const AddTicketScreen = ({visible, onClose, onTicketCreated}: AddTicketScreenPro
       const clientConfig = getClientConfig();
       const realm = clientConfig.clientId;
 
+      // Prepare remarks based on settings
+      const remarksToSend = allowDescription
+        ? problemDescription.trim()
+        : `New ticket from app${selectedProblem?.label ? ` - ${selectedProblem.label}` : ''}`;
+
       // Call API to create ticket
       const response = await apiService.submitComplaint(
         formattedUsername,
         selectedProblem,
-        problemDescription.trim(),
+        remarksToSend,
         realm
       );
 
@@ -167,8 +191,15 @@ const AddTicketScreen = ({visible, onClose, onTicketCreated}: AddTicketScreenPro
         style={[styles.modalOverlay, {backgroundColor: isDark ? 'rgba(0, 0, 0, 0.8)' : 'rgba(0, 0, 0, 0.6)'}]}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <View style={styles.modalContainer}>
-          <View style={[styles.modalContent, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
+        <View style={[
+          styles.modalContainer,
+          allowDescription ? styles.modalContainerTall : styles.modalContainerCompact
+        ]}> 
+          <View style={[
+            styles.modalContent,
+            {backgroundColor: colors.card, shadowColor: colors.shadow},
+            allowDescription ? styles.modalContentTall : styles.modalContentCompact
+          ]}> 
             {/* Header */}
             <View style={[styles.header, {borderBottomColor: colors.border}]}>
               <Text style={[styles.headerTitle, {color: colors.text}]}>📋 Create New Complaint</Text>
@@ -177,7 +208,13 @@ const AddTicketScreen = ({visible, onClose, onTicketCreated}: AddTicketScreenPro
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.formContainer} showsVerticalScrollIndicator={false}>
+            <ScrollView 
+              style={[
+                styles.formContainer,
+                allowDescription ? styles.formContainerTall : styles.formContainerCompact
+              ]}
+              showsVerticalScrollIndicator={false}
+            >
               {/* Problem Title */}
               <View style={styles.inputContainer}>
                 <Text style={[styles.inputLabel, {color: colors.text}]}>Problem Type</Text>
@@ -229,6 +266,7 @@ const AddTicketScreen = ({visible, onClose, onTicketCreated}: AddTicketScreenPro
               </View>
 
               {/* Problem Description */}
+              {allowDescription && (
               <View style={styles.inputContainer}>
                 <Text style={[styles.inputLabel, {color: colors.text}]}>Problem Description</Text>
                 <TextInput
@@ -246,6 +284,7 @@ const AddTicketScreen = ({visible, onClose, onTicketCreated}: AddTicketScreenPro
                   {problemDescription.length}/500
                 </Text>
               </View>
+              )}
             </ScrollView>
 
             {/* Action Buttons */}
@@ -261,7 +300,7 @@ const AddTicketScreen = ({visible, onClose, onTicketCreated}: AddTicketScreenPro
               <TouchableOpacity
                 style={[styles.submitButton, {backgroundColor: colors.primary}]}
                 onPress={handleSubmit}
-                disabled={isSubmitting || !selectedProblem || !problemDescription.trim()}
+                disabled={isSubmitting || !selectedProblem || (allowDescription && !problemDescription.trim())}
               >
                 <Text style={styles.submitButtonText}>
                   {isSubmitting ? 'Creating...' : 'Submit'}
@@ -288,6 +327,12 @@ const styles = StyleSheet.create({
     maxHeight: '90%',
     minHeight: 500,
   },
+  modalContainerTall: {
+    minHeight: 500,
+  },
+  modalContainerCompact: {
+    minHeight: 420,
+  },
   modalContent: {
     borderRadius: 16,
     padding: 20,
@@ -301,6 +346,12 @@ const styles = StyleSheet.create({
     maxHeight: '90%',
     minHeight: 500,
     flex: 1,
+  },
+  modalContentTall: {
+    minHeight: 500,
+  },
+  modalContentCompact: {
+    minHeight: 420,
   },
   header: {
     flexDirection: 'row',
@@ -328,6 +379,12 @@ const styles = StyleSheet.create({
   formContainer: {
     flex: 1,
     minHeight: 300,
+  },
+  formContainerTall: {
+    minHeight: 300,
+  },
+  formContainerCompact: {
+    minHeight: 200,
   },
   inputContainer: {
     marginBottom: 20,
@@ -451,6 +508,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     flex: 1,
     fontWeight: '500',
+    flexShrink: 1,
+    maxWidth: '85%',
   },
   pickerArrow: {
     fontSize: 18,

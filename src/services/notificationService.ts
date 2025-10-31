@@ -4,6 +4,8 @@ import PushNotificationIOS from '@react-native-community/push-notification-ios'
 import DeviceInfo from 'react-native-device-info'
 import { apiService } from './api'
 import messaging from '@react-native-firebase/messaging'
+import firebase from '@react-native-firebase/app'
+import { initializeFirebase, waitForFirebaseAppReady } from './firebaseInit'
 
 let isInitialized = false
 let lastRegisteredToken: string | null = null
@@ -33,6 +35,22 @@ export async function initializePushNotifications(realm?: string): Promise<void>
   // eslint-disable-next-line no-console
   console.log('[Push] notification permission result', { granted: hasPerm })
   try { /* require('react-native').Alert.alert('PushDebug', `Permission: ${hasPerm}`) */ } catch {}
+
+  // Ensure Firebase app is initialized and ready before using messaging
+  try {
+    if (!firebase.apps || firebase.apps.length === 0) {
+      console.warn('[Push] Firebase default app not found, attempting initialization...')
+      initializeFirebase()
+    }
+    const ready = await waitForFirebaseAppReady(7000, 200)
+    if (!ready) {
+      console.warn('[Push] Firebase app not ready yet; deferring FCM setup')
+      return
+    }
+  } catch (e) {
+    console.warn('[Push] Firebase initialization check failed; deferring FCM setup', e)
+    return
+  }
 
   // Firebase Messaging: request permission (iOS), get FCM token, and register
   try {
@@ -235,6 +253,22 @@ export async function registerPendingPushToken(realm?: string): Promise<boolean>
     // Try multiple methods to get FCM token
     console.log('[Push] No pending token, trying to get FCM token directly...');
     
+    // Guard: ensure Firebase app is ready
+    try {
+      if (!firebase.apps || firebase.apps.length === 0) {
+        console.warn('[Push] Firebase not initialized; attempting init before token fetch')
+        initializeFirebase()
+      }
+      const ready = await waitForFirebaseAppReady(7000, 200)
+      if (!ready) {
+        console.warn('[Push] Firebase not ready; deferring token fetch')
+        return true
+      }
+    } catch {
+      console.warn('[Push] Firebase init state unknown; deferring token fetch')
+      return true
+    }
+
     // Method 1: Try to get token directly
     try {
       const directToken = await messaging().getToken();
@@ -338,6 +372,19 @@ export async function registerDeviceManually(realm?: string): Promise<boolean> {
     
     console.log('[Push] === AGGRESSIVE FCM TOKEN GENERATION ===');
     
+    // Guard: ensure Firebase initialized and ready before token attempts
+    try {
+      if (!firebase.apps || firebase.apps.length === 0) {
+        console.warn('[Push] Firebase not initialized; attempting initialization before manual registration...')
+        initializeFirebase()
+      }
+      const ready = await waitForFirebaseAppReady(7000, 200)
+      if (!ready) {
+        console.warn('[Push] Firebase not ready; aborting aggressive token attempts to avoid loops')
+        return false
+      }
+    } catch {}
+
     // Try multiple methods to get FCM token
     let tokenToSend = pendingToken;
     
@@ -453,9 +500,9 @@ export async function registerDeviceManually(realm?: string): Promise<boolean> {
         model: DeviceInfo.getModel(),
       });
       
-      if (isEmulator) {
-        console.log('[Push] 🚨 RUNNING ON SIMULATOR - FCM tokens are not available on simulators');
-        console.log('[Push] 💡 Solution: Test on a real iOS device to get FCM tokens');
+      if (isEmulator && Platform.OS === 'ios') {
+        console.log('[Push] 🚨 Running on iOS Simulator - APNs/FCM tokens are not available');
+        console.log('[Push] 💡 Solution: Test on a real iOS device to get tokens');
       } else {
         console.log('[Push] This might be due to:');
         console.log('[Push] 1. Firebase not properly configured');
@@ -508,6 +555,19 @@ export async function updateDeviceWithRealFCMToken(realm?: string): Promise<bool
     // Try to get FCM token
     let fcmToken: string | null = null;
     
+    // Guard: ensure Firebase initialized and ready
+    try {
+      if (!firebase.apps || firebase.apps.length === 0) {
+        console.warn('[Push] Firebase not initialized; cannot update device with real FCM token yet')
+        initializeFirebase()
+      }
+      const ready = await waitForFirebaseAppReady(7000, 200)
+      if (!ready) {
+        console.warn('[Push] Firebase not ready; aborting update with real token')
+        return false
+      }
+    } catch {}
+
     try {
       fcmToken = await messaging().getToken();
       console.log('[Push] FCM token obtained:', fcmToken ? `${fcmToken.substring(0, 20)}...` : 'null');

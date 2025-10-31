@@ -1,10 +1,11 @@
-import React, {useState, useRef, useEffect} from 'react';
+import React, {useState, useRef, useEffect, useMemo} from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  RefreshControl,
   Alert,
   Linking,
   Image,
@@ -30,7 +31,9 @@ import { getClientConfig } from '../config/client-config';
 import { initializePushNotifications, registerPendingPushToken, registerDeviceManually, updateDeviceWithRealFCMToken } from '../services/notificationService';
 import { debugVersionCheck, quickVersionTest } from '../services/versionDebug';
 import { debugFCMTokenIssues, forceFCMTokenGeneration } from '../services/fcmDebug';
-import { testFirebaseConfiguration, runComprehensiveFirebaseTest } from '../services/firebaseTest';
+//import { testFirebaseConfiguration, runComprehensiveFirebaseTest } from '../services/firebaseTest';
+import useMenuSettings from '../hooks/useMenuSettings';
+import menuService from '../services/menuService';
 // import AIUsageInsights from '../components/AIUsageInsights';
 //import ispLogo from '../assets/isp_logo.png';
 
@@ -64,6 +67,79 @@ const HomeScreen = ({navigation}: any) => {
   const [apiResponse, setApiResponse] = useState<string>('');
   const [banners, setBanners] = useState<any[]>([]);
   const [loadingBanners, setLoadingBanners] = useState(true);
+  const { menu, loading: menuLoading, error: menuError, refresh: refreshMenu } = useMenuSettings();
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Derive dynamic main menu items from API
+  const mainMenuItems = useMemo(() => {
+    const desiredOrder = ['Account', 'Sessions', 'Tickets', 'Ledger'];
+    const iconMap: Record<string, string> = {
+      'Account': '👤',
+      'Sessions': '📊',
+      'Tickets': '📋',
+      'Ledger': '📄',
+      // 'Renew Plan': '🔄',
+      // 'Pay Bill': '💳'
+    };
+    const routeMap: Record<string, () => void> = {
+      'Account': () => navigation.navigate('AccountDetails'),
+      'Sessions': () => navigation.navigate('Sessions'),
+      'Tickets': () => navigation.navigate('Tickets'),
+      'Ledger': () => navigation.navigate('Ledger'),
+      // 'Renew Plan': () => navigation.navigate('RenewPlan'),
+      // 'Pay Bill': () => navigation.navigate('PayBill')
+    };
+
+    const list = Array.isArray(menu)
+      ? menu.filter((m: any) => m?.menu_api_type === 'main' && String(m?.status).toLowerCase() === 'active')
+      : [];
+    const byLabel = new Map<string, any>();
+    list.forEach((item: any) => { if (item?.menu_label) byLabel.set(item.menu_label, item); });
+
+    return desiredOrder
+      .filter(label => byLabel.has(label))
+      .map(label => ({ label, icon: iconMap[label] || '•', onPress: routeMap[label] }));
+  }, [menu, navigation]);
+
+  // Flag for Renew Plan visibility based on menu API
+  const hasRenewPlan = useMemo(() => {
+    if (!Array.isArray(menu)) return false;
+    return menu.some((m: any) => (
+      m?.menu_api_type === 'main' &&
+      m?.menu_label === 'Renew Plan' &&
+      String(m?.status).toLowerCase() === 'active'
+    ));
+  }, [menu]);
+
+  // Flag for Pay Bill visibility based on menu API
+  const hasPayBill = useMemo(() => {
+    if (!Array.isArray(menu)) return false;
+    return menu.some((m: any) => (
+      m?.menu_api_type === 'main' &&
+      m?.menu_label === 'Pay Bill' &&
+      String(m?.status).toLowerCase() === 'active'
+    ));
+  }, [menu]);
+
+  // Flag for Tickets visibility based on menu API
+  const hasTickets = useMemo(() => {
+    if (!Array.isArray(menu)) return false;
+    return menu.some((m: any) => (
+      m?.menu_api_type === 'main' &&
+      m?.menu_label === 'Tickets' &&
+      String(m?.status).toLowerCase() === 'active'
+    ));
+  }, [menu]);
+
+  // Flag for Usage Details visibility based on menu API
+  const hasUsageDetails = useMemo(() => {
+    if (!Array.isArray(menu)) return false;
+    return menu.some((m: any) => (
+      m?.menu_api_type === 'main' &&
+      m?.menu_label === 'Usage Details' &&
+      String(m?.status).toLowerCase() === 'active'
+    ));
+  }, [menu]);
 
   // Component rendering indicator (removed to prevent spam)
 
@@ -115,19 +191,9 @@ const HomeScreen = ({navigation}: any) => {
         
         console.log('[HomeScreen] Trying pending token registration');
         await registerPendingPushToken(realm);
+        // Only attempt manual registration once; avoid repeated retries if Firebase not ready
         console.log('[HomeScreen] Trying manual device registration');
         await registerDeviceManually(realm);
-        
-        // Retry registration after a delay if it failed
-        setTimeout(async () => {
-          try {
-            console.log('[HomeScreen] Retrying device registration after delay...');
-            await registerPendingPushToken(realm);
-            await registerDeviceManually(realm);
-          } catch (retryError) {
-            console.warn('[HomeScreen] Retry registration failed:', retryError);
-          }
-        }, 5000); // Retry after 5 seconds
         
       } catch (e) {
         console.warn('[HomeScreen] Push initialization/registration error', (e as any)?.message || e);
@@ -151,12 +217,39 @@ const HomeScreen = ({navigation}: any) => {
     fetchBanners();
   }, []);
 
-  // Auto reload data when screen comes into focus
+  // Log menu once loaded (for verification)
+  useEffect(() => {
+    if (!menuLoading && menu) {
+      console.log('[MenuSettings] Loaded (hook):', menu);
+    }
+    if (menuError) {
+      console.warn('[MenuSettings] Error (hook):', menuError);
+    }
+    console.log('[MenuSettings] State:', { loading: menuLoading, hasMenu: !!menu });
+  }, [menuLoading, menu, menuError]);
+
+  // Auto reload only screen data on focus (menu refresh via pull-to-refresh)
   useFocusEffect(
     React.useCallback(() => {
       reloadOnFocus();
     }, [reloadOnFocus])
   );
+
+  const onRefresh = React.useCallback(async () => {
+    try {
+      setRefreshing(true);
+      await refreshMenu();
+      await fetchAccountData();
+      // Optionally refresh banners as well
+      try {
+        const realm = getClientConfig().clientId;
+        const bannerData = await apiService.bannerDisplay(realm);
+        setBanners(bannerData);
+      } catch {}
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshMenu]);
 
   // Handle back button press - exit app instead of going back to login
   useFocusEffect(
@@ -277,6 +370,14 @@ const HomeScreen = ({navigation}: any) => {
       } else {
         //console.warn('No auth response received');
         //Alert.alert('No Response', 'No auth response received from API');
+      }
+      // Menu settings load via hook; also fetch latest and log explicitly here
+      await refreshMenu();
+      try {
+        const latestMenu = await menuService.get();
+        console.log('[MenuSettings] Latest (service.get):', latestMenu);
+      } catch (e: any) {
+        console.warn('[MenuSettings] Fetch after auth failed:', e?.message || e);
       }
     } catch (error: any) {
       console.error('🏠 [HomeScreen] Error fetching account data:', error.message || error);
@@ -612,7 +713,17 @@ const HomeScreen = ({navigation}: any) => {
 
   return (
     <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        refreshControl={(
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+          />
+        )}
+      >
         {/* Unified Header */}
         <CommonHeader
           navigation={navigation}
@@ -858,31 +969,21 @@ const HomeScreen = ({navigation}: any) => {
           </View>
         )}
 
-        {/* Quick Menu Section */}
+        {/* Quick Menu Section (dynamic from menu settings) */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, {color: colors.text}]}>{t('home.quickMenu')}</Text>
-          <View style={[styles.quickMenuRow, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
-            <TouchableOpacity 
-              style={styles.quickMenuRowItem} 
-              onPress={() => navigation.navigate('AccountDetails')}>
-              <Text style={styles.quickMenuRowIcon}>👤</Text>
-              <Text style={[styles.quickMenuRowTitle, {color: colors.text}]}>{t('navigation.account')}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.quickMenuRowItem} onPress={() => navigation.navigate('Sessions')}>
-              <Text style={styles.quickMenuRowIcon}>📊</Text>
-              <Text style={[styles.quickMenuRowTitle, {color: colors.text}]}>{t('navigation.sessions')}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.quickMenuRowItem} onPress={() => navigation.navigate('Tickets')}>
-              <Text style={styles.quickMenuRowIcon}>📋</Text>
-              <Text style={[styles.quickMenuRowTitle, {color: colors.text}]}>{t('navigation.tickets')}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.quickMenuRowItem} onPress={() => navigation.navigate('Ledger')}>
-              <Text style={styles.quickMenuRowIcon}>📄</Text>
-              <Text style={[styles.quickMenuRowTitle, {color: colors.text}]}>{t('navigation.ledger')}</Text>
-            </TouchableOpacity>
+          <View style={[styles.quickMenuRow, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>            
+            {mainMenuItems.map(item => (
+              <TouchableOpacity 
+                key={item.label}
+                style={styles.quickMenuRowItem}
+                onPress={item.onPress}
+                disabled={!item.onPress}
+              >
+                <Text style={styles.quickMenuRowIcon}>{item.icon}</Text>
+                <Text style={[styles.quickMenuRowTitle, {color: colors.text}]}>{item.label}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
         </View>
 
@@ -890,35 +991,41 @@ const HomeScreen = ({navigation}: any) => {
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, {color: colors.text}]}>{t('home.quickActions')}</Text>
           <View style={styles.actionGrid}>
-            <TouchableOpacity 
-              style={[styles.actionCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]} 
-              onPress={handleRenew}>
-              <View style={[styles.actionIcon, {backgroundColor: colors.primaryLight}]}>
-                <Text style={styles.iconText}>🔄</Text>
-              </View>
-              <Text style={[styles.actionTitle, {color: colors.text}]}>{t('home.renewPlan')}</Text>
-              <Text style={[styles.actionSubtitle, {color: colors.textSecondary}]}>Extend your plan</Text>
-            </TouchableOpacity>
+            {hasRenewPlan && (
+              <TouchableOpacity 
+                style={[styles.actionCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]} 
+                onPress={handleRenew}>
+                <View style={[styles.actionIcon, {backgroundColor: colors.primaryLight}]}> 
+                  <Text style={styles.iconText}>🔄</Text>
+                </View>
+                <Text style={[styles.actionTitle, {color: colors.text}]}>{t('home.renewPlan')}</Text>
+                <Text style={[styles.actionSubtitle, {color: colors.textSecondary}]}>Extend your plan</Text>
+              </TouchableOpacity>
+            )}
 
-            <TouchableOpacity 
-              style={[styles.actionCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]} 
-              onPress={handlePayBill}>
-              <View style={[styles.actionIcon, {backgroundColor: colors.primaryLight}]}>
-                <Text style={styles.iconText}>💳</Text>
-              </View>
-              <Text style={[styles.actionTitle, {color: colors.text}]}>{t('home.payBill')}</Text>
-              <Text style={[styles.actionSubtitle, {color: colors.textSecondary}]}>{Number(authData?.payment_dues) > 0 ? `₹${authData?.payment_dues}` : 'Fully Paid'}</Text>
-            </TouchableOpacity>
+            {hasPayBill && (
+              <TouchableOpacity 
+                style={[styles.actionCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]} 
+                onPress={handlePayBill}>
+                <View style={[styles.actionIcon, {backgroundColor: colors.primaryLight}]}> 
+                  <Text style={styles.iconText}>💳</Text>
+                </View>
+                <Text style={[styles.actionTitle, {color: colors.text}]}>{t('home.payBill')}</Text>
+                <Text style={[styles.actionSubtitle, {color: colors.textSecondary}]}>{Number(authData?.payment_dues) > 0 ? `₹${authData?.payment_dues}` : 'Fully Paid'}</Text>
+              </TouchableOpacity>
+            )}
 
-            <TouchableOpacity 
-              style={[styles.actionCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]} 
-              onPress={handleSupport}>
-              <View style={[styles.actionIcon, {backgroundColor: colors.primaryLight}]}>
-                <Text style={styles.iconText}>🆘</Text>
-              </View>
-              <Text style={[styles.actionTitle, {color: colors.text}]}>{t('home.support')}</Text>
-              <Text style={[styles.actionSubtitle, {color: colors.textSecondary}]}>Get help</Text>
-            </TouchableOpacity>
+            {hasTickets && (
+              <TouchableOpacity 
+                style={[styles.actionCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]} 
+                onPress={handleSupport}>
+                <View style={[styles.actionIcon, {backgroundColor: colors.primaryLight}]}> 
+                  <Text style={styles.iconText}>🆘</Text>
+                </View>
+                <Text style={[styles.actionTitle, {color: colors.text}]}>{t('home.support')}</Text>
+                <Text style={[styles.actionSubtitle, {color: colors.textSecondary}]}>Get help</Text>
+              </TouchableOpacity>
+            )}
 
 
 
@@ -985,6 +1092,7 @@ const HomeScreen = ({navigation}: any) => {
         </View> 
 
         {/* Usage Statistics */}
+        {hasUsageDetails && (
         <View style={[styles.usageCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
           <View style={styles.usageHeader}>
             <Text style={[styles.usageTitle, {color: colors.text}]}>Usage Statistics</Text>
@@ -1048,6 +1156,7 @@ const HomeScreen = ({navigation}: any) => {
             </>
           )}
         </View>
+        )}
 
         {/* AI Usage Insights - Hidden for now */}
         {/* <AIUsageInsights key="ai-insights" navigation={navigation} /> */}

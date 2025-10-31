@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -7,6 +8,7 @@ import {
   ScrollView,
   Alert,
   Linking,
+  RefreshControl,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useTheme} from '../utils/ThemeContext';
@@ -16,12 +18,28 @@ import {useTranslation} from 'react-i18next';
 import {useAuth} from '../utils/AuthContext';
 import Feather from 'react-native-vector-icons/Feather';
 import {getClientConfig} from '../config/client-config';
+import useMenuSettings from '../hooks/useMenuSettings';
+import menuService from '../services/menuService';
 
 const MoreOptionsScreen = ({navigation}: any) => {
   const {isDark, themeMode, setThemeMode} = useTheme();
   const colors = getThemeColors(isDark);
   const {t} = useTranslation();
   const {logout} = useAuth();
+  const { menu, loading: menuLoading, error: menuError, refresh } = useMenuSettings();
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Removed auto-refresh on focus to avoid unnecessary calls; rely on pull-to-refresh
+
+  const onRefresh = React.useCallback(async () => {
+    try {
+      setRefreshing(true);
+      await menuService.refresh();
+      await refresh();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refresh]);
 
   const handleLedger = () => {
     navigation.navigate('Ledger');
@@ -135,103 +153,94 @@ const MoreOptionsScreen = ({navigation}: any) => {
 
 
 
-  const menuItems = [
-    {
-      id: 'renew',
-      title: t('home.renewPlan'),
-      subtitle: 'Extend your plan',
-      icon: '🔄',
-      onPress: handleRenewPlan,
-    },
-    {
-      id: 'upgrade',
-      title: t('more.upgradePlan'),
-      subtitle: 'Change your plan',
-      icon: '⬆️',
-      onPress: handleUpgradePlan,
-    },
-    {
-      id: 'ledger',
-      title: t('navigation.ledger'),
-      subtitle: 'Transaction history',
-      icon: '📊',
-      onPress: handleLedger,
-    },
-    {
-      id: 'usage',
-      title: t('more.usageDetails'),
-      subtitle: 'Detailed statistics',
-      icon: '📈',
-      onPress: handleUsageDetails,
-    },
-    {
-      id: 'sessions',
-      title: t('navigation.sessions'),
-      subtitle: 'Session history',
-      icon: 'clock',
-      iconType: 'feather',
-      onPress: handleSessions,
-    },
-    {
-      id: 'kyc',
-      title: t('more.kyc'),
-      subtitle: 'Identity verification',
-      icon: '🆔',
-      onPress: handleKYC,
-    },
-    {
-      id: 'refer',
-      title: t('more.referFriend'),
-      subtitle: 'Earn rewards',
-      icon: '👥',
-      onPress: handleReferFriend,
-    },
-    {
-      id: 'update-ssid',
-      title: t('more.updateSSID'),
-      subtitle: 'Configure WiFi settings',
-      icon: 'wifi',
-      iconType: 'feather',
-      onPress: handleUpdateSSID,
-    },
-    {
-      id: 'speedtest',
-      title: t('more.speedTest'),
-      subtitle: 'Test your internet speed',
-      icon: '⚡',
-      onPress: handleSpeedTest,
-    },
-    {
-      id: 'partner-apps',
-      title: t('more.partnerApps'),
-      subtitle: 'Download Partner Apps',
-      icon: '📱',
-      onPress: handlePartnerApps,
-    },
-    // {
-    //   id: 'review-ratings',
-    //   title: t('more.reviewRatings'),
-    //   subtitle: 'Rate us on Google Play',
-    //   icon: 'star',
-    //   iconType: 'feather',
-    //   onPress: handleReviewRatings,
-    // },
-    {
-      id: 'settings',
-      title: t('more.settings'),
-      subtitle: 'Language, Theme & Security',
-      icon: '⚙️',
-      onPress: handleSettings,
-    },
-    {
+  type DynItem = { id: string; title: string; subtitle: string; icon: string; iconType?: 'feather'; onPress: () => void; isLogout?: boolean };
+  const dynamicMenuItems: DynItem[] = useMemo(() => {
+    const desiredOrder = [
+      'Renew Plan',
+      'Upgrade Plan',
+      'Ledger',
+      'Usage Details',
+      'Sessions',
+      'KYC',
+      'Refer Friend',
+      'Update SSID',
+      'Speed Test',
+      'Partner Apps',
+      'Settings',
+    ];
+
+    const iconMap: Record<string, { icon: string; iconType?: 'feather' }> = {
+      'Renew Plan': { icon: '🔄' },
+      'Upgrade Plan': { icon: '⬆️' },
+      'Ledger': { icon: '📊' },
+      'Usage Details': { icon: '📈' },
+      'Sessions': { icon: 'clock', iconType: 'feather' },
+      'KYC': { icon: '🆔' },
+      'Refer Friend': { icon: '👥' },
+      'Update SSID': { icon: 'wifi', iconType: 'feather' },
+      'Speed Test': { icon: '⚡' },
+      'Partner Apps': { icon: '📱' },
+      'Settings': { icon: '⚙️' },
+    };
+
+    const routeMap: Record<string, () => void> = {
+      'Renew Plan': handleRenewPlan,
+      'Upgrade Plan': handleUpgradePlan,
+      'Ledger': handleLedger,
+      'Usage Details': handleUsageDetails,
+      'Sessions': handleSessions,
+      'KYC': handleKYC,
+      'Refer Friend': handleReferFriend,
+      'Update SSID': handleUpdateSSID,
+      'Speed Test': handleSpeedTest,
+      'Partner Apps': handlePartnerApps,
+      'Settings': handleSettings,
+    };
+
+    const subtitleMap: Record<string, string> = {
+      'Renew Plan': 'Extend your plan',
+      'Upgrade Plan': 'Change your plan',
+      'Ledger': 'Transaction history',
+      'Usage Details': 'Detailed statistics',
+      'Sessions': 'Session history',
+      'KYC': 'Identity verification',
+      'Refer Friend': 'Earn rewards',
+      'Update SSID': 'Configure WiFi settings',
+      'Speed Test': 'Test your internet speed',
+      'Partner Apps': 'Download Partner Apps',
+      'Settings': 'Language, Theme & Security',
+    };
+
+    const items = Array.isArray(menu)
+      ? menu.filter((m: any) => String(m?.status).toLowerCase() === 'active')
+      : [];
+
+    const byLabel = new Map<string, any>();
+    items.forEach((m: any) => { if (m?.menu_label) byLabel.set(m.menu_label, m); });
+
+    const built: DynItem[] = desiredOrder
+      .filter(label => byLabel.has(label))
+      .map(label => ({
+        id: label.toLowerCase().replace(/\s+/g, '-'),
+        title: label,
+        subtitle: subtitleMap[label] || '',
+        icon: iconMap[label]?.icon || '•',
+        iconType: iconMap[label]?.iconType,
+        onPress: routeMap[label],
+      }));
+
+    // Append Logout at the end
+    built.push({
       id: 'logout',
       title: t('common.logout'),
       subtitle: 'Sign out of your account',
       icon: '⏏️',
       onPress: handleLogout,
       isLogout: true,
-    },
-  ];
+    });
+
+    return built;
+  }, [menu, t]);
 
   return (
     <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}>
@@ -240,9 +249,19 @@ const MoreOptionsScreen = ({navigation}: any) => {
         //title={t('more.title')}
       />
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        refreshControl={(
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+          />
+        )}
+      >
         <View style={styles.content}>
-          {menuItems.map((item) => (
+          {dynamicMenuItems.map((item) => (
             <TouchableOpacity
               key={item.id}
               style={[

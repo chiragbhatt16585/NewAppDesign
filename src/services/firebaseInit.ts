@@ -15,19 +15,9 @@ export function initializeFirebase() {
     console.log('🔥 Existing Firebase apps:', apps.length);
     
     if (apps.length === 0) {
-      console.log('🔥 No Firebase apps found, Firebase should auto-initialize with config files');
-      
-      // Try to get the default app
-      try {
-        const app = firebase.app();
-        console.log('✅ Firebase app initialized successfully');
-        console.log('📱 App name:', app.name);
-        console.log('📱 Project ID:', app.options.projectId);
-        return true;
-      } catch (error) {
-        console.error('❌ Firebase app initialization failed:', error);
-        return false;
-      }
+      console.log('🔥 No Firebase apps found yet. Native auto-init will occur shortly.');
+      // Do not call firebase.app() here to avoid throwing; let waitForFirebaseAppReady handle readiness
+      return true;
     } else {
       console.log('✅ Firebase already initialized');
       const app = firebase.app();
@@ -39,6 +29,32 @@ export function initializeFirebase() {
     console.error('❌ Firebase initialization error:', error);
     return false;
   }
+}
+
+/**
+ * Wait for Firebase native app to be ready.
+ * Some devices/emulators may take a brief moment after startup before
+ * the default app is accessible from JS. This polls until available or timeout.
+ */
+export async function waitForFirebaseAppReady(timeoutMs: number = 7000, intervalMs: number = 200): Promise<boolean> {
+  const start = Date.now();
+  // Quick fast-path: if already available, return immediately
+  try {
+    const apps = (firebase as any).apps;
+    if (apps && apps.length > 0) {
+      (firebase as any).app();
+      return true;
+    }
+  } catch {}
+
+  while (Date.now() - start < timeoutMs) {
+    try {
+      const app = (firebase as any).app();
+      if (app) return true;
+    } catch {}
+    await new Promise((r) => setTimeout(r, intervalMs));
+  }
+  return false;
 }
 
 /**

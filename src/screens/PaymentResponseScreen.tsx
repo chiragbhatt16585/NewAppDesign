@@ -16,17 +16,17 @@ const PaymentResponseScreen = ({ route, navigation }: any) => {
   
   // Add useEffect to log when component mounts
   React.useEffect(() => {
-    console.log('=== PAYMENT RESPONSE SCREEN MOUNTED ===');
-    console.log('Route object:', route);
-    console.log('Route params:', route.params);
-    console.log('Navigation object:', navigation);
+    // console.log('=== PAYMENT RESPONSE SCREEN MOUNTED ===');
+    // console.log('Route object:', route);
+    // console.log('Route params:', route.params);
+    // console.log('Navigation object:', navigation);
     
     // Check if the entire route object is a JSON string
     if (typeof route === 'string' && (route.includes('"program":"Admin Payment Response"') || route.includes('"program":"Get Transaction Detail"'))) {
-      console.log('Entire route is Payment Response JSON!');
+      //console.log('Entire route is Payment Response JSON!');
       try {
         const parsedRoute = JSON.parse(route);
-        console.log('Parsed entire route:', parsedRoute);
+        //console.log('Parsed entire route:', parsedRoute);
         
         if (parsedRoute.data && parsedRoute.data.txn_status) {
           const txnRef = parsedRoute.data.txn_id;
@@ -99,18 +99,18 @@ const PaymentResponseScreen = ({ route, navigation }: any) => {
   // Parse route params to handle JSON data
   const parseRouteParams = () => {
     const params = route.params || {};
-    console.log('=== PAYMENT RESPONSE SCREEN DEBUG ===');
-    console.log('Raw route params:', params);
-    console.log('Route params type:', typeof params);
-    console.log('Route params keys:', Object.keys(params));
-    console.log('Full route object:', route);
+    // console.log('=== PAYMENT RESPONSE SCREEN DEBUG ===');
+    // console.log('Raw route params:', params);
+    // console.log('Route params type:', typeof params);
+    // console.log('Route params keys:', Object.keys(params));
+    // console.log('Full route object:', route);
     
     // Check if params is actually the JSON response itself
     if (typeof params === 'string' && (params.includes('"program":"Admin Payment Response"') || params.includes('"program":"Get Transaction Detail"'))) {
-      console.log('Detected Payment Response JSON string');
+      //console.log('Detected Payment Response JSON string');
       try {
         const parsedResponse = JSON.parse(params);
-        console.log('Parsed Payment Response:', parsedResponse);
+        //console.log('Parsed Payment Response:', parsedResponse);
         
         // Handle Admin Payment Response format
         if (parsedResponse.data && parsedResponse.data.txn_status) {
@@ -454,10 +454,10 @@ const PaymentResponseScreen = ({ route, navigation }: any) => {
         return;
       }
       
-      console.log('Checking payment status for txnRef:', txnRef, 'username:', username);
+      //console.log('Checking payment status for txnRef:', txnRef, 'username:', username);
       const paymentStatusResponse = await apiService.getPaymentStatus(username, txnRef, realm);
       
-      console.log('Payment status result:', paymentStatusResponse);
+      //console.log('Payment status result:', paymentStatusResponse);
       
       // Extract the actual status from the response
       let actualStatus = '';

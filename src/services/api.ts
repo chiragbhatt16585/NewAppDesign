@@ -346,8 +346,8 @@ class ApiService {
         console.log('Token updated in session manager');
         return true;
       } else {
-        console.log('Token regeneration failed, clearing session');
-        await sessionManager.clearSession();
+        console.log('Token regeneration failed, preserving session for manual logout');
+        // Do not clear session automatically; let user decide to logout
         return false;
       }
     }
@@ -375,8 +375,8 @@ class ApiService {
             await sessionManager.updateActivityTime();
             return await requestFn(regeneratedToken);
           } else {
-            console.log('[API] Token regeneration failed, redirecting to login');
-            await sessionManager.clearSession();
+            console.log('[API] Token regeneration failed, preserving session (no auto-logout)');
+            // Do not clear session automatically; surface error to caller
             throw new Error('Authentication required. Please login again.');
           }
         }
@@ -400,8 +400,8 @@ class ApiService {
             console.log('[API] Token regenerated successfully, retrying request...');
             continue; // Retry with new token
           } else {
-            console.log('[API] Token regeneration failed, redirecting to login...');
-            await sessionManager.clearSession();
+            console.log('[API] Token regeneration failed, preserving session (no auto-logout)');
+            // Do not clear session automatically; surface error to caller
             throw new Error('Session expired. Please login again.');
           }
         } else {
@@ -478,6 +478,93 @@ class ApiService {
       }
     } catch (e: any) {
       const msg = isNetworkError(e) ? networkErrorMsg : e.message;
+      throw new Error(msg);
+    }
+  }
+
+  // Fetch dynamic menu settings
+  async getMenuSettings(): Promise<any> {
+    return this.makeAuthenticatedRequest(async (token) => {
+      let username = await sessionManager.getUsername();
+      if (!username) {
+        const session = await sessionManager.getCurrentSession();
+        username = session?.username || '';
+      }
+      if (!username) {
+        //console.log('[API] /selfcareMenuSettings missing username');
+        throw new Error('No username available for menu request');
+      }
+      const data = {
+        username,
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token || '', ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      } as any;
+
+      ///console.log('[API] POST /selfcareMenuSettings start', { hasToken: !!token, username });
+      const res = await fetch(`${url}/selfcareMenuSettings`, options);
+      const response = await res.json();
+      // console.log('[API] POST /selfcareMenuSettings response', {
+      //   status: response?.status,
+      //   code: response?.code,
+      //   message: response?.message,
+      //   keys: response ? Object.keys(response) : []
+      // });
+
+      // Return full response for visibility even if status !== 'ok'
+      return response?.data ?? response;
+    });
+  }
+
+  // Realm-based variant using credential flow (mirrors bannerDisplay)
+  async menuSettings(realm: string) {
+    try {
+      const { Authentication } = await this.getCredentials(realm);
+      // Ensure username is included
+      let username = await sessionManager.getUsername();
+      if (!username) {
+        const session = await sessionManager.getCurrentSession();
+        username = session?.username || '';
+      }
+      if (!username) {
+        console.warn('[API] menuSettings: username missing');
+        throw new Error('Username missing for menu settings');
+      }
+      const data = {
+        username,
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: headers(Authentication),
+        body: toFormData(data),
+        timeout
+      } as any;
+
+      console.log('[API] POST /selfcareMenuSettings start (realm variant)', { hasToken: !!Authentication, username });
+      const res = await fetch(`${url}/selfcareMenuSettings`, options);
+      const response = await res.json();
+      console.log('[API] POST /selfcareMenuSettings response (realm variant)', {
+        status: response?.status,
+        code: response?.code,
+        message: response?.message,
+      });
+      if (response.status != 'ok' && response.code != 200) {
+        throw new Error(response.message || 'Failed to fetch menu settings');
+      } else {
+        return response.data ?? [];
+      }
+    } catch (e: any) {
+      const msg = isNetworkError(e) ? networkErrorMsg : e.message;
+      console.warn('[API] menuSettings failed', msg);
       throw new Error(msg);
     }
   }
@@ -1522,7 +1609,7 @@ class ApiService {
         timeout
       };
       
-      return fetch(`${url}/bannerDisplay`, options).then(res => {
+      return fetch(`${url}/selfcareDisplayBanner`, options).then(res => {
         setTimeout(() => null, 0);
         return res.json().then(res => {
           setTimeout(() => null, 0);
@@ -1782,15 +1869,15 @@ class ApiService {
       };
 
       try {
-        console.log('=== PAYMENT STATUS CHECK ===');
-        console.log('Username:', username);
-        console.log('Merchant Txn Ref:', merTxnId);
-        console.log('Realm:', realm);
+        // console.log('=== PAYMENT STATUS CHECK ===');
+        // console.log('Username:', username);
+        // console.log('Merchant Txn Ref:', merTxnId);
+        // console.log('Realm:', realm);
         
         const res = await fetch(`${url}/selfcareGetTransactionDetails`, options);
         const response = await res.json();
         
-        console.log('Payment status API response:', response);
+        //console.log('Payment status API response:', response);
         
         if (response.status !== 'ok' && response.code !== 200) {
           console.log('Payment status API error:', response.message);

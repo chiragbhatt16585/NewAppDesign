@@ -17,6 +17,7 @@ import {getThemeColors} from '../utils/themeStyles';
 import CommonHeader from '../components/CommonHeader';
 import {useTranslation} from 'react-i18next';
 import {apiService} from '../services/api';
+import useMenuSettings from '../hooks/useMenuSettings';
 import sessionManager from '../services/sessionManager';
 import {downloadService} from '../services/downloadService';
 import {useSessionValidation} from '../utils/useSessionValidation';
@@ -30,6 +31,7 @@ const LedgerScreen = ({navigation}: any) => {
   const colors = getThemeColors(isDark);
   const {t} = useTranslation();
   const {checkSessionAndHandle} = useSessionValidation();
+  const { menu } = useMenuSettings();
   const [activeTab, setActiveTab] = useState(0);
   const [loading, setLoading] = useState(true);
   const [ledgerData, setLedgerData] = useState<any>(null);
@@ -41,11 +43,43 @@ const LedgerScreen = ({navigation}: any) => {
   const [invoicesGenerated, setInvoicesGenerated] = useState<any[]>([]);
   const [paymentReceived, setPaymentReceived] = useState<any[]>([]);
   const [summaryData, setSummaryData] = useState<any>(null);
+  const [displayFlags, setDisplayFlags] = useState<{ invoice: boolean; receipt: boolean; proforma: boolean }>({ invoice: true, receipt: true, proforma: true });
 
   useEffect(() => {
     // console.log('=== LEDGER SCREEN: useEffect triggered ===');
     checkSessionAndLoadData();
   }, []);
+
+  // Derive display flags from menu settings (similar to AddTicketScreen)
+  useEffect(() => {
+    try {
+      if (!Array.isArray(menu)) return;
+      const ledgerEntry = menu.find((m: any) => (
+        String(m?.menu_label) === 'Ledger' && String(m?.status).toLowerCase() === 'active'
+      ));
+      if (!ledgerEntry) return;
+      console.log('[Ledger][Menu] Raw ledger menu entry:', {
+        menu_label: ledgerEntry?.menu_label,
+        status: ledgerEntry?.status,
+        display_option_json_preview: typeof ledgerEntry?.display_option_json === 'string' ? `${ledgerEntry.display_option_json.slice(0, 120)}...` : ledgerEntry?.display_option_json
+      });
+      const jsonStr = ledgerEntry.display_option_json || '';
+      if (!jsonStr || typeof jsonStr !== 'string') return;
+      const parsed = JSON.parse(jsonStr);
+      console.log('[Ledger][Menu] Parsed display_option_json:', parsed);
+      const ledgerOpts = parsed?.ledger || {};
+      console.log('[Ledger][Menu] Effective ledger flags:', {
+        invoice: ledgerOpts.invoice !== false,
+        receipt: ledgerOpts.receipt !== false,
+        proforma: ledgerOpts.proforma !== false,
+      });
+      setDisplayFlags({
+        invoice: ledgerOpts.invoice !== false,
+        receipt: ledgerOpts.receipt !== false,
+        proforma: ledgerOpts.proforma !== false,
+      });
+    } catch {}
+  }, [menu]);
 
   const checkSessionAndLoadData = async () => {
     try {
@@ -209,15 +243,15 @@ const LedgerScreen = ({navigation}: any) => {
   const getTabs = () => {
     const availableTabs = [];
     
-    if (proformaInvoices.length > 0) {
+    if (displayFlags.proforma && proformaInvoices.length > 0) {
       availableTabs.push({id: availableTabs.length, title: t('ledger.proforma'), originalId: 0});
     }
     
-    if (invoicesGenerated.length > 0) {
+    if (displayFlags.invoice && invoicesGenerated.length > 0) {
       availableTabs.push({id: availableTabs.length, title: t('ledger.invoices'), originalId: 1});
     }
     
-    if (paymentReceived.length > 0) {
+    if (displayFlags.receipt && paymentReceived.length > 0) {
       availableTabs.push({id: availableTabs.length, title: t('ledger.payments'), originalId: 2});
     }
     

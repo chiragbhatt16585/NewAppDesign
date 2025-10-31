@@ -18,6 +18,7 @@ import biometricAuthService from '../services/biometricAuth';
 import { pinStorage } from '../services/pinStorage';
 import DeviceInfo from 'react-native-device-info';
 import versionCheckService from '../services/versionCheck';
+import useMenuSettings from '../hooks/useMenuSettings';
 
 const SettingsScreen = ({ navigation }: any) => {
   const { isDark, themeMode, setThemeMode } = useTheme();
@@ -29,11 +30,47 @@ const SettingsScreen = ({ navigation }: any) => {
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [appVersion, setAppVersion] = useState<string>('1.0.0');
   const [isChecking, setIsChecking] = useState<boolean>(false);
+  const { menu, loading: menuLoading } = useMenuSettings();
+  const [settingsConfig, setSettingsConfig] = useState<any>(null);
 
   useEffect(() => {
     loadSecurityStatus();
     loadAppVersion();
   }, []);
+
+  useEffect(() => {
+    // Build dynamic settings from menu settings
+    try {
+      if (!Array.isArray(menu)) return;
+      // Find entry that contains settings object in display_option_json, or label resembles Settings
+      const entry = menu.find((m: any) => (
+        String(m?.menu_label).trim().toLowerCase() === 'settings'
+      )) || menu.find((m: any) => {
+        try {
+          const jsonVal = m?.display_option_json;
+          const parsed = typeof jsonVal === 'string' ? JSON.parse(jsonVal) : (jsonVal || {});
+          return !!parsed?.settings;
+        } catch { return false; }
+      });
+      if (!entry) {
+        setSettingsConfig(null);
+        return;
+      }
+      const jsonVal = entry.display_option_json;
+      let parsed: any = {};
+      if (typeof jsonVal === 'string') {
+        const trimmed = jsonVal.trim();
+        if (trimmed && (trimmed.startsWith('{') || trimmed.startsWith('['))) {
+          parsed = JSON.parse(trimmed);
+        }
+      } else if (jsonVal && typeof jsonVal === 'object') {
+        parsed = jsonVal;
+      }
+      setSettingsConfig(parsed?.settings || null);
+    } catch {
+      setSettingsConfig(null);
+    }
+  }, [menuLoading, menu]);
 
   const loadSecurityStatus = async () => {
     try {
@@ -174,79 +211,74 @@ const SettingsScreen = ({ navigation }: any) => {
     return '✗';
   };
 
-  const settingsSections = [
-    {
-      title: t('settings.appearance'),
-      items: [
-        {
-          id: 'language',
-          title: t('settings.language'),
-          subtitle: getLanguageDisplayText(),
-          icon: '🌐',
-          onPress: handleLanguageChange,
-        },
-        {
-          id: 'theme',
-          title: t('settings.theme'),
-          subtitle: getThemeDisplayText(),
-          icon: isDark ? '🌙' : '☀️',
-          onPress: handleThemeSettings,
-        },
-      ],
-    },
-    {
-      title: t('settings.security'),
-      items: [
-        {
+  // Build sections dynamically from settingsConfig with sensible defaults
+  const settingsSections = (() => {
+    const cfg = settingsConfig || {};
+    const showLanguage = cfg?.language?.display !== false;
+    const showTheme = cfg?.theme?.display !== false;
+    const showSecurity = cfg?.security_settings?.display !== false;
+    const showFaq = cfg?.faq?.display !== false;
+    const showTerms = cfg?.terms_and_conditions?.display !== false;
+    const showAbout = cfg?.about_company?.display !== false;
+
+    const appearanceItems: any[] = [];
+    if (showLanguage) {
+      appearanceItems.push({
+        id: 'language',
+        title: t('settings.language'),
+        subtitle: getLanguageDisplayText(),
+        icon: '🌐',
+        onPress: handleLanguageChange,
+      });
+    }
+    if (showTheme) {
+      appearanceItems.push({
+        id: 'theme',
+        title: t('settings.theme'),
+        subtitle: getThemeDisplayText(),
+        icon: isDark ? '🌙' : '☀️',
+        onPress: handleThemeSettings,
+      });
+    }
+
+    const sections: any[] = [];
+    if (appearanceItems.length > 0) {
+      sections.push({ title: t('settings.appearance'), items: appearanceItems });
+    }
+
+    if (showSecurity) {
+      sections.push({
+        title: t('settings.security'),
+        items: [{
           id: 'security',
           title: t('settings.securitySettings'),
           subtitle: t('settings.securitySettingsSubtitle'),
           icon: '🔒',
           onPress: handleSecuritySettings,
-        },
-      ],
-    },
-    {
-      title: t('settings.support'),
-      items: [
-        {
-          id: 'faq',
-          title: t('settings.faq'),
-          subtitle: t('settings.faqSubtitle'),
-          icon: '❓',
-          onPress: () => navigation.navigate('FAQScreen'),
-        },
-        {
-          id: 'terms',
-          title: t('settings.terms'),
-          subtitle: t('settings.termsSubtitle'),
-          icon: '📋',
-          onPress: () => navigation.navigate('TermsScreen'),
-        },
-        {
-          id: 'about',
-          title: t('settings.about'),
-          subtitle: t('settings.aboutSubtitle'),
-          icon: '🏢',
-          onPress: () => navigation.navigate('AboutScreen'),
-        },
-        {
-          id: 'version',
-          title: t('settings.version'),
-          subtitle: appVersion,
-          icon: '📱',
-          onPress: () => {}, // No action needed for version
-        },
-        {
-          id: 'checkUpdates',
-          title: t('settings.checkUpdates'),
-          subtitle: isChecking ? t('settings.checkingUpdates') : t('settings.checkUpdatesSubtitle'),
-          icon: '🔄',
-          onPress: handleCheckForUpdates,
-        },
-      ],
-    },
-  ];
+        }],
+      });
+    }
+
+    const supportItems: any[] = [];
+    if (showFaq) {
+      supportItems.push({ id: 'faq', title: t('settings.faq'), subtitle: t('settings.faqSubtitle'), icon: '❓', onPress: () => navigation.navigate('FAQScreen') });
+    }
+    if (showTerms) {
+      supportItems.push({ id: 'terms', title: t('settings.terms'), subtitle: t('settings.termsSubtitle'), icon: '📋', onPress: () => navigation.navigate('TermsScreen') });
+    }
+    if (showAbout) {
+      supportItems.push({ id: 'about', title: t('settings.about'), subtitle: t('settings.aboutSubtitle'), icon: '🏢', onPress: () => navigation.navigate('AboutScreen') });
+    }
+    // Always include version and update check
+    supportItems.push({ id: 'version', title: t('settings.version'), subtitle: appVersion, icon: '📱', onPress: () => {} });
+    supportItems.push({ id: 'checkUpdates', title: t('settings.checkUpdates'), subtitle: isChecking ? t('settings.checkingUpdates') : t('settings.checkUpdatesSubtitle'), icon: '🔄', onPress: handleCheckForUpdates });
+
+    if (supportItems.length > 0) {
+      sections.push({ title: t('settings.support'), items: supportItems });
+    }
+
+    return sections;
+  })();
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -260,7 +292,7 @@ const SettingsScreen = ({ navigation }: any) => {
                 {section.title}
               </Text>
               
-              {section.items.map((item) => (
+              {section.items.map((item: any) => (
                 <TouchableOpacity
                   key={item.id}
                   style={[
@@ -318,12 +350,18 @@ const SettingsScreen = ({ navigation }: any) => {
             </Text>
 
             <View style={styles.languageList}>
-              {[
-                { code: 'en', name: 'English', flag: '🇺🇸', nativeName: 'English' },
-                { code: 'hi', name: 'Hindi', flag: '🇮🇳', nativeName: 'हिंदी' },
-                { code: 'gu', name: 'Gujarati', flag: '🇮🇳', nativeName: 'ગુજરાતી' },
-                { code: 'mr', name: 'Marathi', flag: '🇮🇳', nativeName: 'मराठी' },
-              ].map((language) => (
+              {(() => {
+                const allLangs = [
+                  { code: 'en', name: 'English', flag: '🇺🇸', nativeName: 'English' },
+                  { code: 'hi', name: 'Hindi', flag: '🇮🇳', nativeName: 'हिंदी' },
+                  { code: 'gu', name: 'Gujarati', flag: '🇮🇳', nativeName: 'ગુજરાતી' },
+                  { code: 'mr', name: 'Marathi', flag: '🇮🇳', nativeName: 'मराठी' },
+                ];
+                const allowed = Array.isArray(settingsConfig?.language?.options) && settingsConfig?.language?.options.length > 0
+                  ? allLangs.filter(l => settingsConfig.language.options.includes(l.name))
+                  : allLangs;
+                return allowed;
+              })().map((language) => (
                 <TouchableOpacity
                   key={language.code}
                   style={[

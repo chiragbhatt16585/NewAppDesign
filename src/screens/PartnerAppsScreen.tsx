@@ -15,6 +15,7 @@ import {useTheme} from '../utils/ThemeContext';
 import {getThemeColors} from '../utils/themeStyles';
 import CommonHeader from '../components/CommonHeader';
 import {useTranslation} from 'react-i18next';
+import useMenuSettings from '../hooks/useMenuSettings';
 
 interface PartnerApp {
   id: string;
@@ -35,103 +36,85 @@ const PartnerAppsScreen = ({navigation}: any) => {
   const {isDark} = useTheme();
   const colors = getThemeColors(isDark);
   const {t} = useTranslation();
+  const { menu, loading: menuLoading } = useMenuSettings();
   
   const [isLoading, setIsLoading] = useState(false);
   const [apps, setApps] = useState<PartnerApp[]>([]);
 
   useEffect(() => {
     fetchPartnerApps();
-  }, []);
+  }, [menuLoading, menu]);
 
   const fetchPartnerApps = async () => {
-    setIsLoading(true);
     try {
-      // Mock data - replace with real API call later
-      const mockApps: PartnerApp[] = [
-        {
-          id: '1',
-          name: 'OTTplay',
-          description: 'Smart recommendation engine that handpicks movies and shows from 100,000+ titles across multiple OTT platforms. Find what to watch, where to watch, and when to watch.',
-          icon: '📺',
-          logoUrl: 'https://images.ottplay.com/static/newImages/OTTplayWhiteLogo.svg',
-          color: '#808080',
-          androidUrl: 'https://play.google.com/store/apps/details?id=com.ht.ottplay&hl=en_IN',
-          iosUrl: 'https://apps.apple.com/app/ottplay/id123456789',
-          category: 'ott',
-          rating: 3.7,
-          downloads: '50L+',
-          size: '45 MB',
-        },
-        // {
-        //   id: '2',
-        //   name: 'PlayBox TV',
-        //   description: 'Premium entertainment platform with exclusive movies, web series, and original content. High-quality streaming experience with live TV channels.',
-        //   icon: '📺',
-        //   logoUrl: 'https://www.playboxtv.in/images/playbox-logo.png',
-        //   color: '#4ECDC4',
-        //   androidUrl: 'https://play.google.com/store/apps/details?id=playboxtv.mobile.app.in&hl=en_IN',
-        //   iosUrl: 'https://apps.apple.com/in/app/playboxtv/id1622405621',
-        //   category: 'entertainment',
-        //   rating: 4.3,
-        //   downloads: '5M+',
-        //   size: '38 MB',
-        // },
-        // {
-        //   id: '3',
-        //   name: 'YuppTV',
-        //   description: 'Live TV streaming with 500+ channels including TV9 Telugu, Republic Bharat, NDTV 24x7, and regional content. Watch news, sports, and entertainment live.',
-        //   icon: '📡',
-        //   logoUrl: 'https://www.yupptv.com/fast-tv',
-        //   color: '#45B7D1',
-        //   androidUrl: 'https://play.google.com/store/apps/details?id=com.yupptv',
-        //   iosUrl: 'https://apps.apple.com/app/yupptv/id456789123',
-        //   category: 'ott',
-        //   rating: 4.2,
-        //   downloads: '8M+',
-        //   size: '52 MB',
-        // },
-        // {
-        //   id: '4',
-        //   name: 'NewsHub',
-        //   description: 'Stay updated with latest news from around the world. Personalized news feed with breaking news alerts.',
-        //   icon: '📰',
-        //   color: '#96CEB4',
-        //   androidUrl: 'https://play.google.com/store/apps/details?id=com.newshub',
-        //   iosUrl: 'https://apps.apple.com/app/newshub/id789123456',
-        //   category: 'news',
-        //   rating: 4.1,
-        //   downloads: '3M+',
-        //   size: '28 MB',
-        // },
-        // {
-        //   id: '5',
-        //   name: 'GameZone',
-        //   description: 'Collection of casual and arcade games. Play fun games and compete with friends.',
-        //   icon: '🎮',
-        //   color: '#FFEAA7',
-        //   androidUrl: 'https://play.google.com/store/apps/details?id=com.gamezone',
-        //   iosUrl: 'https://apps.apple.com/app/gamezone/id321654987',
-        //   category: 'gaming',
-        //   rating: 4.4,
-        //   downloads: '15M+',
-        //   size: '65 MB',
-        // },
-        // {
-        //   id: '6',
-        //   name: 'MusicFlow',
-        //   description: 'Stream millions of songs, create playlists, and discover new music. High-quality audio streaming experience.',
-        //   icon: '🎵',
-        //   color: '#DDA0DD',
-        //   androidUrl: 'https://play.google.com/store/apps/details?id=com.musicflow',
-        //   iosUrl: 'https://apps.apple.com/app/musicflow/id654321987',
-        //   category: 'entertainment',
-        //   rating: 4.6,
-        //   downloads: '20M+',
-        //   size: '42 MB',
-        // },
-      ];
+      setIsLoading(true);
 
-      setApps(mockApps);
+      if (Array.isArray(menu)) {
+        //console.log('[PartnerApps] Menu loaded, entries:', menu.length);
+        const partnerEntry = menu.find((m: any) => (
+          String(m?.menu_label).trim().toLowerCase() === 'partner apps'
+        )) || menu.find((m: any) => (
+          String(m?.menu_label).trim().toLowerCase() === 'partnerapps'
+        )) || menu.find((m: any) => {
+          try {
+            const jsonVal = m?.display_option_json;
+            const parsed = typeof jsonVal === 'string' ? JSON.parse(jsonVal) : (jsonVal || {});
+            return Array.isArray(parsed?.partner_apps);
+          } catch { return false; }
+        });
+
+        if (partnerEntry) {
+          ///console.log('[PartnerApps] Found Partner Apps menu entry:', {
+          //  menu_label: partnerEntry?.menu_label,
+          //  status: partnerEntry?.status,
+          //  display_option_json_preview: typeof partnerEntry?.display_option_json === 'string'
+          //    ? String(partnerEntry.display_option_json).slice(0, 160) + '...'
+          //    : partnerEntry?.display_option_json,
+          //});
+          const jsonVal = partnerEntry.display_option_json;
+          try {
+            let parsed: any = {};
+            if (typeof jsonVal === 'string') {
+              const trimmed = jsonVal.trim();
+              if (trimmed && (trimmed.startsWith('{') || trimmed.startsWith('['))) {
+                parsed = JSON.parse(trimmed);
+              } else {
+                //console.warn('[PartnerApps] display_option_json is empty or not JSON string');
+                parsed = {};
+              }
+            } else if (jsonVal && typeof jsonVal === 'object') {
+              parsed = jsonVal;
+            } else {
+              parsed = {};
+            }
+            //console.log('[PartnerApps] Parsed display_option_json:', parsed);
+            const list = Array.isArray(parsed?.partner_apps) ? parsed.partner_apps : [];
+            const mapped: PartnerApp[] = list.map((p: any, idx: number) => ({
+              id: String(idx + 1),
+              name: p?.name || 'App',
+              description: p?.description || '',
+              icon: '📱',
+              logoUrl: p?.logo_url || p?.logoUrl,
+              color: '#808080',
+              androidUrl: p?.android_url || p?.androidUrl || '',
+              iosUrl: p?.ios_url || p?.iosUrl || '',
+              category: 'ott',
+              rating: 0,
+              downloads: '',
+              size: '',
+            }));
+            setApps(mapped);
+            //console.log('[PartnerApps] Apps mapped, count:', mapped.length);
+            setIsLoading(false);
+            return;
+          } catch (e) {
+            //console.warn('[PartnerApps] Failed to parse display_option_json:', e);
+          }
+        }
+      }
+
+      // Fallback: no menu data found
+      setApps([]);
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to fetch partner apps');
     } finally {
@@ -171,7 +154,7 @@ const PartnerAppsScreen = ({navigation}: any) => {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}>
+      <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}> 
         <CommonHeader navigation={navigation} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
@@ -182,20 +165,20 @@ const PartnerAppsScreen = ({navigation}: any) => {
   }
 
   return (
-    <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}>
+    <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}> 
       <CommonHeader navigation={navigation} />
       
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
           {/* Header Section */}
-          <View style={[styles.headerCard, {backgroundColor: colors.card}]}>
+          <View style={[styles.headerCard, {backgroundColor: colors.card}]}> 
             <View style={styles.headerContent}>
               <Text style={[styles.headerTitle, {color: colors.text}]}>Partner Apps</Text>
-              <Text style={[styles.headerSubtitle, {color: colors.textSecondary}]}>
+              <Text style={[styles.headerSubtitle, {color: colors.textSecondary}]}> 
                 Download apps from our trusted partners
               </Text>
             </View>
-            <View style={[styles.headerIcon, {backgroundColor: colors.primaryLight}]}>
+            <View style={[styles.headerIcon, {backgroundColor: colors.primaryLight}]}> 
               <Text style={styles.iconText}>📱</Text>
             </View>
           </View>
@@ -203,82 +186,75 @@ const PartnerAppsScreen = ({navigation}: any) => {
           {/* Apps Section */}
           <View style={styles.appsSection}>
             <Text style={[styles.sectionTitle, {color: colors.text}]}>Available Apps</Text>
-            <Text style={[styles.sectionSubtitle, {color: colors.textSecondary}]}>
+            <Text style={[styles.sectionSubtitle, {color: colors.textSecondary}]}> 
               Tap to download from your preferred platform
             </Text>
           </View>
 
           {/* Apps List */}
+          {apps.length === 0 && (
+            <View style={[styles.appCard, {backgroundColor: colors.card}]}> 
+              <Text style={[styles.appDescription, {color: colors.textSecondary}]}>No partner apps available.</Text>
+            </View>
+          )}
           {apps.map((app) => (
-            <View key={app.id} style={[styles.appCard, {backgroundColor: colors.card}]}>
-                              <View style={styles.appHeader}>
-                  {app.logoUrl ? (
-                    <View style={[styles.appIcon, {backgroundColor: '#1a1a1a'}]}>
-                      <Image 
-                        source={{uri: app.logoUrl}} 
-                        style={styles.appLogo}
-                        resizeMode="contain"
-                        onError={() => {
-                          // Fallback to emoji if image fails to load
-                          console.log('Logo failed to load for:', app.name);
-                        }}
-                      />
-                    </View>
-                  ) : (
-                    <View style={[styles.appIcon, {backgroundColor: app.color + '20'}]}>
-                      <Text style={styles.iconText}>{app.icon}</Text>
-                    </View>
-                  )}
+            <View key={app.id} style={[styles.appCard, {backgroundColor: colors.card}]}> 
+              <View style={styles.appHeader}>
+                {app.logoUrl ? (
+                  <View style={[styles.appIcon, {backgroundColor: '#1a1a1a'}]}> 
+                    <Image 
+                      source={{uri: app.logoUrl}} 
+                      style={styles.appLogo}
+                      resizeMode="contain"
+                      onError={() => {
+                        //console.log('Logo failed to load for:', app.name);
+                      }}
+                    />
+                  </View>
+                ) : (
+                  <View style={[styles.appIcon, {backgroundColor: app.color + '20'}]}> 
+                    <Text style={styles.iconText}>{app.icon}</Text>
+                  </View>
+                )}
                 <View style={styles.appInfo}>
                   <Text style={[styles.appName, {color: colors.text}]}>{app.name}</Text>
-                  <Text style={[styles.appDescription, {color: colors.textSecondary}]}>
+                  <Text style={[styles.appDescription, {color: colors.textSecondary}]}> 
                     {app.description}
                   </Text>
-                  {/* <View style={styles.appMeta}>
-                    <View style={styles.metaItem}>
-                      <Text style={[styles.metaLabel, {color: colors.textSecondary}]}>⭐ {app.rating}</Text>
-                    </View>
-                    <View style={styles.metaItem}>
-                      <Text style={[styles.metaLabel, {color: colors.textSecondary}]}>📥 {app.downloads}</Text>
-                    </View>
-                    <View style={styles.metaItem}>
-                      <Text style={[styles.metaLabel, {color: colors.textSecondary}]}>📱 {app.size}</Text>
-                    </View>
-                  </View> */}
                 </View>
               </View>
 
               <View style={styles.downloadSection}>
                 <Text style={[styles.downloadTitle, {color: colors.textSecondary}]}>Download:</Text>
-                                  <View style={styles.downloadButtons}>
-                    <TouchableOpacity
-                      style={[styles.downloadButton, {backgroundColor: colors.surface, borderColor: colors.border}]}
-                      onPress={() => handleDownloadApp(app, 'android')}
-                    >
-                      <View style={styles.buttonContent}>
-                        <Text style={styles.platformIcon}>📱</Text>
-                        <Text style={[styles.downloadButtonText, {color: colors.text}]}>Android</Text>
-                      </View>
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity
-                      style={[styles.downloadButton, {backgroundColor: colors.surface, borderColor: colors.border}]}
-                      onPress={() => handleDownloadApp(app, 'ios')}
-                    >
-                      <View style={styles.buttonContent}>
-                        <Text style={styles.platformIcon}>📱</Text>
-                        <Text style={[styles.downloadButtonText, {color: colors.text}]}>iOS</Text>
-                      </View>
-                    </TouchableOpacity>
-                  </View>
+                <View style={styles.downloadButtons}>
+                  <TouchableOpacity
+                    style={[styles.downloadButton, {backgroundColor: colors.surface, borderColor: colors.border}]}
+                    onPress={() => handleDownloadApp(app, 'android')}
+                  >
+                    <View style={styles.buttonContent}>
+                      <Text style={styles.platformIcon}>📱</Text>
+                      <Text style={[styles.downloadButtonText, {color: colors.text}]}>Android</Text>
+                    </View>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={[styles.downloadButton, {backgroundColor: colors.surface, borderColor: colors.border}]}
+                    onPress={() => handleDownloadApp(app, 'ios')}
+                  >
+                    <View style={styles.buttonContent}>
+                      <Text style={styles.platformIcon}>📱</Text>
+                      <Text style={[styles.downloadButtonText, {color: colors.text}]}>iOS</Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
           ))}
 
           {/* Info Section */}
-          <View style={[styles.infoCard, {backgroundColor: colors.card}]}>
+          <View style={[styles.infoCard, {backgroundColor: colors.card}]}> 
             <Text style={[styles.infoTitle, {color: colors.text}]}>About Partner Apps</Text>
-            <Text style={[styles.infoText, {color: colors.textSecondary}]}>
+            <Text style={[styles.infoText, {color: colors.textSecondary}]}> 
               These apps are carefully selected by our team to provide you with the best entertainment, news, and utility experiences. All apps are verified and safe to download.
             </Text>
           </View>

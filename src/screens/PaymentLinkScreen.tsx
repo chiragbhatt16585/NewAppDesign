@@ -382,15 +382,15 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
     const checkStatus = async (): Promise<void> => {
       try {
         const paymentStatus = await apiService.getPaymentStatus(username, merTxnId, realm);
-        console.log('Raw Payment Status Response:', {
-          status: paymentStatus,
-          type: typeof paymentStatus,
-          platform: Platform.OS
-        });
+        // console.log('Raw Payment Status Response:', {
+        //   status: paymentStatus,
+        //   type: typeof paymentStatus,
+        //   platform: Platform.OS
+        // });
         
         // Handle full response object from API
         if (typeof paymentStatus === 'object' && paymentStatus.data) {
-          console.log('Full payment status response received:', paymentStatus);
+          //console.log('Full payment status response received:', paymentStatus);
           paymentResponse(paymentStatus);
           return;
         }
