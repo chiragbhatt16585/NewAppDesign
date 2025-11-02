@@ -44,23 +44,135 @@ const AddTicketScreen = ({visible, onClose, onTicketCreated}: AddTicketScreenPro
     try {
       if (!Array.isArray(menu)) return false;
       const tickets = menu.find((m: any) => (
-        String(m?.menu_label) === 'Tickets' && String(m?.status).toLowerCase() === 'active'
-      ));
+        String(m?.menu_label).trim().toLowerCase() === 'tickets'
+      )) || menu.find((m: any) => {
+        try {
+          const jsonVal = m?.display_option_json;
+          const parsed = typeof jsonVal === 'string' ? JSON.parse(String(jsonVal)) : (jsonVal || {});
+          return typeof parsed?.allow_remarks_on_new_ticket !== 'undefined' || parsed?.ticket_settings;
+        } catch { return false; }
+      });
       if (!tickets) return false;
-      const jsonStr = tickets.display_option_json || '';
-      if (!jsonStr || typeof jsonStr !== 'string') return false;
-      const parsed = JSON.parse(jsonStr);
-      return !!parsed?.ticket_settings?.add_remarks_on_create_ticket;
+      const jsonVal = tickets.display_option_json;
+      let parsed: any = {};
+      if (typeof jsonVal === 'string') {
+        const trimmed = jsonVal.trim();
+        if (trimmed && (trimmed.startsWith('{') || trimmed.startsWith('['))) {
+          try {
+            parsed = JSON.parse(trimmed);
+          } catch {
+            // Attempt to repair extra trailing braces
+            const openCount = (trimmed.match(/\{/g) || []).length;
+            let s = trimmed;
+            let closeCount = (s.match(/\}/g) || []).length;
+            while (closeCount > openCount && s.endsWith('}')) {
+              s = s.slice(0, -1);
+              closeCount--;
+            }
+            try { parsed = JSON.parse(s); } catch { parsed = {}; }
+          }
+        }
+      } else if (jsonVal && typeof jsonVal === 'object') {
+        parsed = jsonVal;
+      }
+      const allow = parsed?.allow_remarks_on_new_ticket;
+      const legacy = parsed?.ticket_settings?.add_remarks_on_create_ticket;
+      const result = !!(typeof allow !== 'undefined' ? allow : legacy);
+      // eslint-disable-next-line no-console
+      console.log('[AddTicket] Parsed allow_remarks_on_new_ticket:', allow, 'legacy:', legacy, 'final:', result);
+      return result;
     } catch {
       return false;
     }
   }, [menu]);
 
   useEffect(() => {
+    try {
+      if (!Array.isArray(menu)) return;
+      // eslint-disable-next-line no-console
+      console.log('[AddTicket] Menu loaded, entries:', menu.length);
+      const tickets = menu.find((m: any) => (
+        String(m?.menu_label).trim().toLowerCase() === 'tickets'
+      ));
+      if (!tickets) {
+        // eslint-disable-next-line no-console
+        console.log('[AddTicket] Tickets menu entry not found');
+        return;
+      }
+      const jsonVal = tickets.display_option_json;
+      // eslint-disable-next-line no-console
+      console.log('[AddTicket] Tickets display_option_json preview:', typeof jsonVal === 'string' ? String(jsonVal).slice(0, 200) + '...' : jsonVal);
+      try {
+        let parsed: any = {};
+        if (typeof jsonVal === 'string') {
+          const trimmed = jsonVal.trim();
+          if (trimmed && (trimmed.startsWith('{') || trimmed.startsWith('['))) {
+            parsed = JSON.parse(trimmed);
+          }
+        } else if (jsonVal && typeof jsonVal === 'object') {
+          parsed = jsonVal;
+        }
+        // eslint-disable-next-line no-console
+        console.log('[AddTicket] Parsed tickets settings:', parsed);
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn('[AddTicket] Failed to parse tickets display_option_json:', e);
+      }
+    } catch {}
+  }, [menu]);
+
+  // Read optional count: how many tickets to show (for future use)
+  const showTicketCount: number = useMemo(() => {
+    try {
+      if (!Array.isArray(menu)) return 0;
+      const tickets = menu.find((m: any) => (
+        String(m?.menu_label).trim().toLowerCase() === 'tickets'
+      )) || menu.find((m: any) => {
+        try {
+          const jsonVal = m?.display_option_json;
+          const parsed = typeof jsonVal === 'string' ? JSON.parse(String(jsonVal)) : (jsonVal || {});
+          return typeof parsed?.show_ticket_count !== 'undefined';
+        } catch { return false; }
+      });
+      if (!tickets) return 0;
+      const jsonVal = tickets.display_option_json;
+      let parsed: any = {};
+      if (typeof jsonVal === 'string') {
+        const trimmed = jsonVal.trim();
+        if (trimmed && (trimmed.startsWith('{') || trimmed.startsWith('['))) {
+          try {
+            parsed = JSON.parse(trimmed);
+          } catch {
+            const openCount = (trimmed.match(/\{/g) || []).length;
+            let s = trimmed;
+            let closeCount = (s.match(/\}/g) || []).length;
+            while (closeCount > openCount && s.endsWith('}')) {
+              s = s.slice(0, -1);
+              closeCount--;
+            }
+            try { parsed = JSON.parse(s); } catch { parsed = {}; }
+          }
+        }
+      } else if (jsonVal && typeof jsonVal === 'object') {
+        parsed = jsonVal;
+      }
+      const raw = parsed?.show_ticket_count;
+      const n = typeof raw === 'string' ? parseInt(raw, 10) : Number(raw);
+      return Number.isFinite(n) ? n : 0;
+    } catch {
+      return 0;
+    }
+  }, [menu]);
+
+  useEffect(() => {
     if (visible) {
       loadProblemOptions();
+      if (showTicketCount > 0) {
+        // eslint-disable-next-line no-console
+        console.log('[AddTicket] show_ticket_count from settings:', showTicketCount);
+      }
     }
-  }, [visible]);
+  }, [visible, showTicketCount]);
 
   const loadProblemOptions = async () => {
     try {

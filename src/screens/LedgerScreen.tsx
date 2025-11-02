@@ -44,13 +44,14 @@ const LedgerScreen = ({navigation}: any) => {
   const [paymentReceived, setPaymentReceived] = useState<any[]>([]);
   const [summaryData, setSummaryData] = useState<any>(null);
   const [displayFlags, setDisplayFlags] = useState<{ invoice: boolean; receipt: boolean; proforma: boolean }>({ invoice: true, receipt: true, proforma: true });
+  const [showCounts, setShowCounts] = useState<{ invoice: number; receipt: number; proforma: number }>({ invoice: 0, receipt: 0, proforma: 0 });
 
   useEffect(() => {
     // console.log('=== LEDGER SCREEN: useEffect triggered ===');
     checkSessionAndLoadData();
   }, []);
 
-  // Derive display flags from menu settings (similar to AddTicketScreen)
+  // Derive display flags and per-tab show counts from menu settings
   useEffect(() => {
     try {
       if (!Array.isArray(menu)) return;
@@ -58,26 +59,54 @@ const LedgerScreen = ({navigation}: any) => {
         String(m?.menu_label) === 'Ledger' && String(m?.status).toLowerCase() === 'active'
       ));
       if (!ledgerEntry) return;
-      console.log('[Ledger][Menu] Raw ledger menu entry:', {
-        menu_label: ledgerEntry?.menu_label,
-        status: ledgerEntry?.status,
-        display_option_json_preview: typeof ledgerEntry?.display_option_json === 'string' ? `${ledgerEntry.display_option_json.slice(0, 120)}...` : ledgerEntry?.display_option_json
-      });
-      const jsonStr = ledgerEntry.display_option_json || '';
-      if (!jsonStr || typeof jsonStr !== 'string') return;
-      const parsed = JSON.parse(jsonStr);
-      console.log('[Ledger][Menu] Parsed display_option_json:', parsed);
-      const ledgerOpts = parsed?.ledger || {};
-      console.log('[Ledger][Menu] Effective ledger flags:', {
-        invoice: ledgerOpts.invoice !== false,
-        receipt: ledgerOpts.receipt !== false,
-        proforma: ledgerOpts.proforma !== false,
-      });
-      setDisplayFlags({
-        invoice: ledgerOpts.invoice !== false,
-        receipt: ledgerOpts.receipt !== false,
-        proforma: ledgerOpts.proforma !== false,
-      });
+      const jsonVal = ledgerEntry.display_option_json;
+      let parsed: any = {};
+      if (typeof jsonVal === 'string') {
+        const s = jsonVal.trim();
+        if (s && (s.startsWith('{') || s.startsWith('['))) {
+          try { parsed = JSON.parse(s); } catch { parsed = {}; }
+        }
+      } else if (jsonVal && typeof jsonVal === 'object') {
+        parsed = jsonVal;
+      }
+
+      // New format: { ledger: [ {invoice:true, show_count:"5"}, {receipt:true, show_count:"5"}, {proforma:true, show_count:"5"} ] }
+      // Backward-compatible: { ledger: { invoice:true, receipt:true, proforma:true } }
+      const ledgerConfig = parsed?.ledger;
+      let nextFlags = { invoice: true, receipt: true, proforma: true } as {invoice:boolean;receipt:boolean;proforma:boolean};
+      let nextCounts = { invoice: 0, receipt: 0, proforma: 0 } as {invoice:number;receipt:number;proforma:number};
+
+      if (Array.isArray(ledgerConfig)) {
+        ledgerConfig.forEach((item: any) => {
+          if (item && typeof item === 'object') {
+            if (Object.prototype.hasOwnProperty.call(item, 'invoice')) {
+              nextFlags.invoice = item.invoice !== false;
+              const n = typeof item.show_count === 'string' ? parseInt(item.show_count, 10) : Number(item.show_count);
+              nextCounts.invoice = Number.isFinite(n) ? n : 0;
+            }
+            if (Object.prototype.hasOwnProperty.call(item, 'receipt')) {
+              nextFlags.receipt = item.receipt !== false;
+              const n = typeof item.show_count === 'string' ? parseInt(item.show_count, 10) : Number(item.show_count);
+              nextCounts.receipt = Number.isFinite(n) ? n : 0;
+            }
+            if (Object.prototype.hasOwnProperty.call(item, 'proforma')) {
+              nextFlags.proforma = item.proforma !== false;
+              const n = typeof item.show_count === 'string' ? parseInt(item.show_count, 10) : Number(item.show_count);
+              nextCounts.proforma = Number.isFinite(n) ? n : 0;
+            }
+          }
+        });
+      } else if (ledgerConfig && typeof ledgerConfig === 'object') {
+        nextFlags = {
+          invoice: ledgerConfig.invoice !== false,
+          receipt: ledgerConfig.receipt !== false,
+          proforma: ledgerConfig.proforma !== false,
+        };
+        // No counts provided in legacy format
+      }
+
+      setDisplayFlags(nextFlags);
+      setShowCounts(nextCounts);
     } catch {}
   }, [menu]);
 
@@ -260,6 +289,11 @@ const LedgerScreen = ({navigation}: any) => {
 
   const tabs = getTabs();
 
+  // Apply show_count limits per tab
+  const limitedProforma = showCounts.proforma > 0 ? proformaInvoices.slice(0, showCounts.proforma) : proformaInvoices;
+  const limitedInvoices = showCounts.invoice > 0 ? invoicesGenerated.slice(0, showCounts.invoice) : invoicesGenerated;
+  const limitedReceipts = showCounts.receipt > 0 ? paymentReceived.slice(0, showCounts.receipt) : paymentReceived;
+
   const renderProformaInvoiceItem = ({item}: {item: any}) => (
     <View style={[styles.itemCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
       <View style={styles.itemHeader}>
@@ -347,13 +381,13 @@ const LedgerScreen = ({navigation}: any) => {
       case 0:
         return (
           <FlatList
-            data={proformaInvoices}
+            data={limitedProforma}
             renderItem={renderProformaInvoiceItem}
             keyExtractor={item => item.id}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={[
               styles.listContainer,
-              proformaInvoices.length === 0 && styles.emptyListContainer
+              limitedProforma.length === 0 && styles.emptyListContainer
             ]}
             refreshControl={
               <RefreshControl
@@ -369,13 +403,13 @@ const LedgerScreen = ({navigation}: any) => {
       case 1:
         return (
           <FlatList
-            data={invoicesGenerated}
+            data={limitedInvoices}
             renderItem={renderInvoiceGeneratedItem}
             keyExtractor={item => item.id}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={[
               styles.listContainer,
-              invoicesGenerated.length === 0 && styles.emptyListContainer
+              limitedInvoices.length === 0 && styles.emptyListContainer
             ]}
             refreshControl={
               <RefreshControl
@@ -391,13 +425,13 @@ const LedgerScreen = ({navigation}: any) => {
       case 2:
         return (
           <FlatList
-            data={paymentReceived}
+            data={limitedReceipts}
             renderItem={renderPaymentReceivedItem}
             keyExtractor={item => item.id}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={[
               styles.listContainer,
-              paymentReceived.length === 0 && styles.emptyListContainer
+              limitedReceipts.length === 0 && styles.emptyListContainer
             ]}
             refreshControl={
               <RefreshControl

@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useMemo} from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import {useTranslation} from 'react-i18next';
 import {apiService, Ticket} from '../services/api';
 import sessionManager from '../services/sessionManager';
 import AddTicketScreen from './AddTicketScreen';
+import useMenuSettings from '../hooks/useMenuSettings';
 
 const TicketsScreen = ({navigation}: any) => {
   const {isDark} = useTheme();
@@ -26,7 +27,47 @@ const TicketsScreen = ({navigation}: any) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAddTicket, setShowAddTicket] = useState(false);
+  const { menu } = useMenuSettings();
 
+  const tryParseJson = (val: any): any => {
+    if (val && typeof val === 'object') return val;
+    if (typeof val !== 'string') return {};
+    const trimmed = val.trim();
+    if (!trimmed || (!trimmed.startsWith('{') && !trimmed.startsWith('['))) return {};
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      const openCount = (trimmed.match(/\{/g) || []).length;
+      let s = trimmed;
+      let closeCount = (s.match(/\}/g) || []).length;
+      while (closeCount > openCount && s.endsWith('}')) {
+        s = s.slice(0, -1);
+        closeCount--;
+      }
+      try { return JSON.parse(s); } catch { return {}; }
+    }
+  };
+
+  const showTicketCount: number = useMemo(() => {
+    try {
+      if (!Array.isArray(menu)) return 0;
+      const ticketsEntry = menu.find((m: any) => (
+        String(m?.menu_label).trim().toLowerCase() === 'tickets'
+      )) || menu.find((m: any) => {
+        try {
+          const parsed = tryParseJson(m?.display_option_json);
+          return typeof parsed?.show_ticket_count !== 'undefined';
+        } catch { return false; }
+      });
+      if (!ticketsEntry) return 0;
+      const parsed = tryParseJson(ticketsEntry.display_option_json);
+      const raw = parsed?.show_ticket_count;
+      const n = typeof raw === 'string' ? parseInt(raw, 10) : Number(raw);
+      return Number.isFinite(n) ? n : 0;
+    } catch {
+      return 0;
+    }
+  }, [menu]);
 
   useEffect(() => {
     loadTickets();
@@ -36,22 +77,15 @@ const TicketsScreen = ({navigation}: any) => {
     try {
       setLoading(true);
       setError(null);
-      
       const username = await sessionManager.getUsername();
-      
       if (!username) {
         throw new Error('Username not found');
       }
-
-      // Format username to lowercase and trim (same as other API calls)
       const formattedUsername = username.toLowerCase().trim();
-
-      // Get current client configuration
       const {getClientConfig} = require('../config/client-config');
       const clientConfig = getClientConfig();
       const realm = clientConfig.clientId;
       const ticketsData = await apiService.lastTenComplaints(realm);
-      
       setTickets(ticketsData);
     } catch (err: any) {
       console.error('Error loading tickets:', err);
@@ -109,8 +143,6 @@ const TicketsScreen = ({navigation}: any) => {
     }
   };
 
-
-
   const renderTicketItem = ({item}: {item: Ticket}) => (
     <TouchableOpacity
       style={[styles.ticketCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}
@@ -124,15 +156,10 @@ const TicketsScreen = ({navigation}: any) => {
           <Text style={styles.statusText}>{t(`tickets.${item.status.toLowerCase().replace(' ', '')}`)}</Text>
         </View>
       </View>
-
       <View style={styles.titleRow}>
         <Text style={[styles.titleIcon, {color: colors.textSecondary}]}>📋</Text>
         <Text style={[styles.ticketTitle, {color: colors.textSecondary}]}>{item.title}</Text>
       </View>
-      {/* <Text style={[styles.ticketRemarks, {color: colors.textSecondary}]}>
-        {item.remarks}
-      </Text> */}
-
       <View style={styles.ticketFooter}>
         <View style={styles.dateInfo}>
           <Text style={[styles.dateIcon, {color: colors.textSecondary}]}>📅</Text>
@@ -159,14 +186,16 @@ const TicketsScreen = ({navigation}: any) => {
   };
 
   const handleTicketCreated = () => {
-    // Refresh the tickets list after creating a new ticket
     loadTickets();
   };
 
+  const limitedTickets = useMemo(() => {
+    if (!showTicketCount || showTicketCount <= 0) return tickets;
+    return tickets.slice(0, showTicketCount);
+  }, [tickets, showTicketCount]);
 
   return (
-    <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}>
-      {/* Header */}
+    <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}> 
       <CommonHeader
         navigation={navigation}
         rightComponent={
@@ -183,7 +212,7 @@ const TicketsScreen = ({navigation}: any) => {
           <Text style={[styles.headingIcon, {color: colors.primary}]}>📋</Text>
           <Text style={[styles.pageHeading, {color: colors.text}]}>{t('tickets.title')}</Text>
         </View>
-        <Text style={[styles.pageSubheading, {color: colors.textSecondary}]}>
+        <Text style={[styles.pageSubheading, {color: colors.textSecondary}]}> 
           {t('tickets.subtitle')}
         </Text>
       </View>
@@ -191,7 +220,7 @@ const TicketsScreen = ({navigation}: any) => {
       {loading && (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.loadingText, {color: colors.textSecondary}]}>
+          <Text style={[styles.loadingText, {color: colors.textSecondary}]}> 
             {t('common.loading')}
           </Text>
         </View>
@@ -212,7 +241,7 @@ const TicketsScreen = ({navigation}: any) => {
 
       {!loading && !error && (
         <FlatList
-          data={tickets}
+          data={limitedTickets}
           renderItem={renderTicketItem}
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
@@ -221,7 +250,7 @@ const TicketsScreen = ({navigation}: any) => {
             <View style={styles.emptyContainer}>
               <Text style={[styles.emptyIcon, {color: colors.textSecondary}]}>📋</Text>
               <Text style={[styles.emptyTitle, {color: colors.text}]}>{t('tickets.noTickets')}</Text>
-              <Text style={[styles.emptySubtitle, {color: colors.textSecondary}]}>
+              <Text style={[styles.emptySubtitle, {color: colors.textSecondary}]}> 
                 {t('tickets.noTicketsSubtitle')}
               </Text>
             </View>

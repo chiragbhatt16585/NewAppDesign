@@ -49,7 +49,7 @@ const SettingsScreen = ({ navigation }: any) => {
         try {
           const jsonVal = m?.display_option_json;
           const parsed = typeof jsonVal === 'string' ? JSON.parse(jsonVal) : (jsonVal || {});
-          return !!parsed?.settings;
+          return !!parsed?.settings || !!parsed?.app_settings;
         } catch { return false; }
       });
       if (!entry) {
@@ -66,7 +66,8 @@ const SettingsScreen = ({ navigation }: any) => {
       } else if (jsonVal && typeof jsonVal === 'object') {
         parsed = jsonVal;
       }
-      setSettingsConfig(parsed?.settings || null);
+      // Support both legacy `settings` and new `app_settings`
+      setSettingsConfig(parsed?.app_settings || parsed?.settings || null);
     } catch {
       setSettingsConfig(null);
     }
@@ -214,12 +215,18 @@ const SettingsScreen = ({ navigation }: any) => {
   // Build sections dynamically from settingsConfig with sensible defaults
   const settingsSections = (() => {
     const cfg = settingsConfig || {};
-    const showLanguage = cfg?.language?.display !== false;
-    const showTheme = cfg?.theme?.display !== false;
-    const showSecurity = cfg?.security_settings?.display !== false;
-    const showFaq = cfg?.faq?.display !== false;
-    const showTerms = cfg?.terms_and_conditions?.display !== false;
-    const showAbout = cfg?.about_company?.display !== false;
+    const flag = (obj: any, keyShow: string = 'show', keyDisplay: string = 'display') => {
+      if (!obj) return true; // default to shown
+      const v = (obj as any)[keyShow];
+      const d = (obj as any)[keyDisplay];
+      return (typeof v === 'boolean' ? v : (d !== false));
+    };
+    const showLanguage = flag(cfg?.language);
+    const showTheme = flag(cfg?.theme);
+    const showSecurity = flag(cfg?.auth_settings) || flag(cfg?.security_settings);
+    const showFaq = flag(cfg?.faq);
+    const showTerms = flag(cfg?.tnc) || flag(cfg?.terms_and_conditions);
+    const showAbout = flag(cfg?.about_company);
 
     const appearanceItems: any[] = [];
     if (showLanguage) {
