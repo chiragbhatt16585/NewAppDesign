@@ -36,7 +36,7 @@ const LedgerScreen = ({navigation}: any) => {
   const [loading, setLoading] = useState(true);
   const [ledgerData, setLedgerData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
+  // Summary panel is always visible
 
   // State for different data types
   const [proformaInvoices, setProformaInvoices] = useState<any[]>([]);
@@ -310,7 +310,7 @@ const LedgerScreen = ({navigation}: any) => {
       </View>
       <View style={styles.itemDetails}>
         <Text style={[styles.itemParticulars, {color: colors.text}]}>{item.particulars}</Text>
-        <Text style={[styles.itemAmount, {color: colors.accent}]}>{item.amount}</Text>
+        <Text style={[styles.itemAmount, {color: colors.text}]}>{item.amount}</Text>
       </View>
     </View>
   );
@@ -331,7 +331,7 @@ const LedgerScreen = ({navigation}: any) => {
       </View>
       <View style={styles.itemDetails}>
         <Text style={[styles.itemParticulars, {color: colors.text}]}>{item.particulars}</Text>
-        <Text style={[styles.itemAmount, {color: colors.accent}]}>{item.amount}</Text>
+        <Text style={[styles.itemAmount, {color: colors.text}]}>{item.amount}</Text>
       </View>
     </View>
   );
@@ -352,7 +352,7 @@ const LedgerScreen = ({navigation}: any) => {
       </View>
       <View style={styles.itemDetails}>
         <Text style={[styles.itemParticulars, {color: colors.text}]}>{item.particulars}</Text>
-        <Text style={[styles.itemAmount, {color: colors.accent}]}>{item.amount}</Text>
+        <Text style={[styles.itemAmount, {color: colors.text}]}>{item.amount}</Text>
       </View>
     </View>
   );
@@ -494,6 +494,52 @@ const LedgerScreen = ({navigation}: any) => {
         </Text>
       </View>
 
+      {/* Account Summary (always visible, non-collapsible) */}
+      <View style={[styles.bottomSection, {backgroundColor: colors.card, shadowColor: colors.shadow}]}> 
+        <View style={styles.summaryHeader}>
+          <View style={styles.summaryHeaderContent}>
+            <Text style={[styles.bottomSectionTitle, {color: colors.text}]}>{t('ledger.accountSummary')}</Text>
+          </View>
+        </View>
+        <View style={styles.expandedSummary}>
+          <View style={styles.summaryRow}>
+            <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('ledger.openingBalance')}</Text>
+            <Text style={[styles.summaryValue, {color: colors.text}]}>₹{summaryData?.openingBalance || 0}</Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('ledger.proformaAmount')}</Text>
+            <Text style={[styles.summaryValue, {color: colors.text}]}>₹{summaryData?.proforma_invoice || 0}</Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('ledger.billAmount')}</Text>
+            <Text style={[styles.summaryValue, {color: colors.text}]}>₹{summaryData?.billAmount || 0}</Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('ledger.paidAmount')}</Text>
+            <Text style={[styles.summaryValue, {color: colors.text}]}>₹{summaryData?.paidAmount || 0}</Text>
+          </View>
+          <View style={[styles.summaryRow, {paddingTop: 10, borderTopWidth: 1, borderTopColor: '#e0e0e0'}]}>
+            <Text style={[styles.summaryLabel, {color: colors.textSecondary, fontWeight: '600'}]}>{t('ledger.currentBalance')}</Text>
+            {(() => {
+              const duesRaw = summaryData?.balance ?? 0;
+              const dues = Number(duesRaw) || 0;
+              const isZero = dues === 0;
+              const isDr = dues > 0;
+              const displayValue = Math.abs(dues).toFixed(2);
+              return (
+                <Text style={[styles.summaryValue, {color: colors.text, fontWeight: 'bold'}]}>
+                  ₹{isZero ? '0.00' : displayValue}
+                  {!isZero ? ' ' : ''}
+                  {!isZero ? (
+                    <Text style={{color: isDr ? '#d32f2f' : '#2e7d32'}}>{isDr ? 'DR' : 'CR'}</Text>
+                  ) : null}
+                </Text>
+              );
+            })()}
+          </View>
+        </View>
+      </View>
+
       {/* Tab Navigation */}
       {tabs.length > 0 && (
         <View style={styles.tabContainer}>
@@ -532,60 +578,7 @@ const LedgerScreen = ({navigation}: any) => {
         )}
       </View>
 
-      {/* Collapsible Account Summary */}
-      <View style={[styles.bottomSection, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
-        <TouchableOpacity 
-          style={styles.summaryHeader}
-          onPress={() => setIsSummaryExpanded(!isSummaryExpanded)}
-        >
-          <View style={styles.summaryHeaderContent}>
-            <Text style={[styles.bottomSectionTitle, {color: colors.text}]}>{t('ledger.accountSummary')}</Text>
-            <View style={[styles.currentBalanceRow, styles.compactBalanceRow]}>
-              <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('ledger.currentBalance')}</Text>
-              {(() => {
-                const duesRaw = summaryData?.balance ?? 0;
-                const dues = Number(duesRaw) || 0;
-                const isZero = dues === 0;
-                const isDr = dues > 0; // positive -> Due (DR)
-                const amountColor = isZero ? colors.text : isDr ? '#d32f2f' : '#2e7d32';
-                const displayValue = Math.abs(dues).toFixed(2);
-                return (
-                  <Text style={[styles.summaryValue, {color: amountColor, fontWeight: 'bold'}]}>
-                    ₹{isZero ? '0.00' : displayValue} {isZero ? '' : (isDr ? 'DR' : 'CR')}
-                  </Text>
-                );
-              })()}
-            </View>
-          </View>
-          <Text style={[styles.expandIcon, {color: colors.textSecondary}]}>
-            {isSummaryExpanded ? '▼' : '▶'}
-          </Text>
-        </TouchableOpacity>
-        
-        {isSummaryExpanded && (
-          <View style={styles.expandedSummary}>
-            <View style={styles.summaryRow}>
-              <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('ledger.openingBalance')}</Text>
-              <Text style={[styles.summaryValue, {color: colors.text}]}>₹{summaryData?.openingBalance || 0}</Text>
-            </View>
-            
-            <View style={styles.summaryRow}>
-              <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('ledger.proformaAmount')}</Text>
-              <Text style={[styles.summaryValue, {color: colors.accent}]}>₹{summaryData?.proforma_invoice || 0}</Text>
-            </View>
-            
-            <View style={styles.summaryRow}>
-              <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('ledger.billAmount')}</Text>
-              <Text style={[styles.summaryValue, {color: colors.accent}]}>₹{summaryData?.billAmount || 0}</Text>
-            </View>
-            
-            <View style={styles.summaryRow}>
-              <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('ledger.paidAmount')}</Text>
-              <Text style={[styles.summaryValue, {color: colors.success}]}>₹{summaryData?.paidAmount || 0}</Text>
-            </View>
-          </View>
-        )}
-      </View>
+      {/* Account Summary moved above; bottom section removed */}
     </SafeAreaView>
   );
 };
@@ -702,9 +695,9 @@ const styles = StyleSheet.create({
   },
   bottomSection: {
     marginHorizontal: 20,
-    marginBottom: 20,
-    borderRadius: 16,
-    padding: 16,
+    marginBottom: 12,
+    borderRadius: 12,
+    padding: 12,
     shadowOffset: {
       width: 0,
       height: 2,
@@ -727,32 +720,32 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   expandedSummary: {
-    marginTop: 16,
-    paddingTop: 16,
+    marginTop: 8,
+    paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
   },
   compactBalanceRow: {
-    marginTop: 8,
+    marginTop: 4,
     paddingTop: 0,
     borderTopWidth: 0,
   },
   bottomSectionTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
-    marginBottom: 16,
+    marginBottom: 8,
   },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 6,
   },
   summaryLabel: {
-    fontSize: 14,
+    fontSize: 13,
   },
   summaryValue: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
   currentBalanceRow: {

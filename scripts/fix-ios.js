@@ -52,6 +52,37 @@ const fixIOSIssues = () => {
       console.log(`✅ Updated Info.plist app name to '${appName}'`);
     }
 
+    // Fix Xcode project file (project.pbxproj)
+    const projectPbxprojPath = './ios/ISPApp.xcodeproj/project.pbxproj';
+    if (fs.existsSync(projectPbxprojPath)) {
+      let content = fs.readFileSync(projectPbxprojPath, 'utf8');
+      const displayName = appJson.expo?.name || appName;
+      
+      // Update PRODUCT_NAME
+      content = content.replace(/PRODUCT_NAME\s*=\s*DNAInfotelApp;/g, `PRODUCT_NAME = ${appName};`);
+      
+      // Update INFOPLIST_KEY_CFBundleDisplayName
+      content = content.replace(
+        /INFOPLIST_KEY_CFBundleDisplayName\s*=\s*"[^"]*";/g,
+        `INFOPLIST_KEY_CFBundleDisplayName = "${displayName}";`
+      );
+      
+      // Update app file reference (if it exists as DNAInfotelApp.app)
+      content = content.replace(/DNAInfotelApp\.app/g, `${appName}.app`);
+      
+      fs.writeFileSync(projectPbxprojPath, content);
+      console.log(`✅ Updated Xcode project.pbxproj for '${appName}'`);
+    }
+
+    // Fix Xcode scheme file
+    const schemePath = './ios/ISPApp.xcodeproj/xcshareddata/xcschemes/ISPApp.xcscheme';
+    if (fs.existsSync(schemePath)) {
+      let content = fs.readFileSync(schemePath, 'utf8');
+      content = content.replace(/DNAInfotelApp\.app/g, `${appName}.app`);
+      fs.writeFileSync(schemePath, content);
+      console.log(`✅ Updated Xcode scheme file for '${appName}'`);
+    }
+
     console.log('✅ iOS issues fixed successfully!');
     console.log('📱 You can now run the iOS app from Xcode');
 

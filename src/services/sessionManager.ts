@@ -44,13 +44,25 @@ export class SessionManager {
         // console.log('Session isLoggedIn:', this.currentSession?.isLoggedIn);
         // console.log('Session client:', this.currentSession?.clientName);
         
-        // Check if session is still valid
-        if (this.currentSession && this.isSessionValid()) {
+        // Only clear session if username is missing - preserve session even if token is missing
+        // Token can be regenerated automatically
+        if (this.currentSession && this.currentSession.username) {
+          // Ensure isLoggedIn flag is set for backwards compatibility
+          if (!this.currentSession.isLoggedIn) {
+            this.currentSession.isLoggedIn = true;
+            await AsyncStorage.setItem(this.SESSION_KEY, JSON.stringify(this.currentSession));
+          }
           // console.log('✅ Valid session found, user is logged in');
+          
+          // If token is missing, it will be regenerated automatically on next API call
+          if (!this.currentSession.token) {
+            console.log('⚠️ Session found but token missing - will regenerate automatically');
+          }
           
           // Note: API configuration is handled by build scripts, no dynamic update needed
         } else {
-          // console.log('❌ Session invalid, clearing session');
+          // Only clear if username is missing - this means session is truly invalid
+          console.log('❌ Session invalid (no username), clearing session');
           await this.clearSession();
         }
       } else {
@@ -60,7 +72,10 @@ export class SessionManager {
       // console.log('=== SESSION MANAGER INITIALIZATION COMPLETE ===');
     } catch (error) {
       console.error('Failed to initialize session manager:', error);
-      await this.clearSession();
+      // Only clear on parse errors - don't clear on other errors
+      if (error instanceof SyntaxError) {
+        await this.clearSession();
+      }
     }
   }
 
@@ -144,8 +159,14 @@ export class SessionManager {
         this.currentSession = JSON.parse(savedSession);
       }
       
-      // Return session if it exists and has required fields
-      if (this.currentSession && this.currentSession.username && this.currentSession.isLoggedIn) {
+      // Return session if username exists - token can be regenerated automatically
+      // Don't require isLoggedIn flag - it will be set automatically if username exists
+      if (this.currentSession && this.currentSession.username) {
+        // Ensure isLoggedIn flag is set for backwards compatibility
+        if (!this.currentSession.isLoggedIn) {
+          this.currentSession.isLoggedIn = true;
+          await AsyncStorage.setItem(this.SESSION_KEY, JSON.stringify(this.currentSession));
+        }
         return this.currentSession;
       }
       
@@ -160,7 +181,8 @@ export class SessionManager {
     try {
       const session = await this.getCurrentSession();
       
-      if (session && session.username && session.isLoggedIn) {
+      // User is logged in if username exists - token can be regenerated
+      if (session && session.username) {
         return true;
       }
       
@@ -315,20 +337,15 @@ export class SessionManager {
       return false;
     }
 
-    // Check if username exists
+    // Only check if username exists - token can be regenerated automatically
     if (!this.currentSession.username) {
       // console.log('No username in session');
       return false;
     }
 
-    // Check if session is marked as logged in
-    if (!this.currentSession.isLoggedIn) {
-      // console.log('Session marked as not logged in');
-      return false;
-    }
-
-    // Session is valid (no automatic logout) - token can be regenerated
-    // console.log('✅ Session is valid');
+    // Session is valid if username exists - token missing is OK (will regenerate)
+    // Don't check isLoggedIn flag - it will be set automatically if username exists
+    // console.log('✅ Session is valid (username exists, token can be regenerated)');
     return true;
   }
 

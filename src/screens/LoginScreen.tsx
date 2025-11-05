@@ -32,6 +32,7 @@ import { pinStorage } from '../services/pinStorage';
 import biometricAuthService from '../services/biometricAuth';
 import { initializePushNotifications, registerPendingPushToken, registerDeviceManually } from '../services/notificationService';
 import { getClientConfig } from '../config/client-config';
+import { getWebsite } from '../config';
 
 const {width, height} = Dimensions.get('window');
 
@@ -40,6 +41,10 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
   const colors = getThemeColors(isDark);
   const { currentLanguage, changeLanguage, availableLanguages } = useLanguage();
   const { login, loginWithOtp } = useAuth();
+  
+  // Check if current client is Microscan
+  const clientConfig = getClientConfig();
+  const isMicroscan = clientConfig.clientId === 'microscan';
   
   // Animation refs
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -555,6 +560,34 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
     }
   };
 
+  // Handle Speed Test
+  const handleSpeedTest = () => {
+    navigation.navigate('WebView', {
+      url: 'https://www.speedtest.net',
+      title: 'Speed Test'
+    });
+  };
+
+  // Handle Support
+  const handleSupport = () => {
+    navigation.navigate('ContactUs');
+  };
+
+  // Handle Company Website
+  const handleCompanyWebsite = async () => {
+    try {
+      const websiteUrl = getWebsite();
+      if (websiteUrl) {
+        await Linking.openURL(websiteUrl);
+      } else {
+        Alert.alert('Error', 'Website URL not available');
+      }
+    } catch (error) {
+      console.error('Failed to open website:', error);
+      Alert.alert('Error', 'Failed to open website. Please try again.');
+    }
+  };
+
   return (
     <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}> 
       <StatusBar 
@@ -859,43 +892,57 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
 
           {/* Features Display - Compact Style */}
           <View style={styles.featuresContainer}>
-            <View style={[styles.featureCard, {backgroundColor: colors.card, borderColor: colors.border}]}> 
+            <TouchableOpacity 
+              style={[styles.featureCard, {backgroundColor: colors.card, borderColor: colors.border}]}
+              onPress={handleSpeedTest}
+              activeOpacity={0.7}
+            > 
               <View style={[styles.featureIcon, {backgroundColor: isDark ? 'rgba(255, 0, 128, 0.2)' : '#f0f9ff'}]}> 
                 <Text style={styles.featureEmoji}>⚡</Text> 
               </View> 
-              <Text style={[styles.featureText, {color: colors.text}]}>High Speed</Text> 
-            </View>
-            <View style={[styles.featureCard, {backgroundColor: colors.card, borderColor: colors.border}]}> 
+              <Text style={[styles.featureText, {color: colors.text}]}>Speed Test</Text> 
+            </TouchableOpacity>
+            {/* <View style={[styles.featureCard, {backgroundColor: colors.card, borderColor: colors.border}]}> 
               <View style={[styles.featureIcon, {backgroundColor: isDark ? 'rgba(255, 0, 128, 0.2)' : '#f0f9ff'}]}> 
                 <Text style={styles.featureEmoji}>🛡️</Text> 
               </View> 
               <Text style={[styles.featureText, {color: colors.text}]}>Secure</Text> 
-            </View>
-            <View style={[styles.featureCard, {backgroundColor: colors.card, borderColor: colors.border}]}> 
+            </View> */}
+            <TouchableOpacity 
+              style={[styles.featureCard, {backgroundColor: colors.card, borderColor: colors.border}]}
+              onPress={handleSupport}
+              activeOpacity={0.7}
+            > 
               <View style={[styles.featureIcon, {backgroundColor: isDark ? 'rgba(255, 0, 128, 0.2)' : '#f0f9ff'}]}> 
                 <Text style={styles.featureEmoji}>📞</Text> 
               </View> 
               <Text style={[styles.featureText, {color: colors.text}]}>Support</Text> 
-            </View>
-            <View style={[styles.featureCard, {backgroundColor: colors.card, borderColor: colors.border}]}> 
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.featureCard, {backgroundColor: colors.card, borderColor: colors.border}]}
+              onPress={handleCompanyWebsite}
+              activeOpacity={0.7}
+            > 
               <View style={[styles.featureIcon, {backgroundColor: isDark ? 'rgba(255, 0, 128, 0.2)' : '#f0f9ff'}]}> 
                 <Text style={styles.featureEmoji}>🌐</Text> 
               </View> 
-              <Text style={[styles.featureText, {color: colors.text}]}>Reliable</Text> 
-            </View>
+              <Text style={[styles.featureText, {color: colors.text}]}>Website</Text> 
+            </TouchableOpacity>
           </View>
 
-          {/* Language & Theme Row (moved here) */}
-          <View style={{ width: '100%', alignItems: 'center', marginBottom: 8 }}>
-            <View style={{ flexDirection: 'row', gap: 16 }}>
-              <TouchableOpacity onPress={handleLanguageIconPress} accessibilityLabel="Change Language">
-                <Text style={{ fontSize: 22 }} role="img" aria-label="language">🌐</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleThemeToggle} accessibilityLabel="Toggle Theme">
-                <Text style={{ fontSize: 22 }} role="img" aria-label="theme">{isDark ? '☀️' : '🌙'}</Text>
-              </TouchableOpacity>
+          {/* Language & Theme Row (hidden for Microscan) */}
+          {!isMicroscan && (
+            <View style={{ width: '100%', alignItems: 'center', marginBottom: 8 }}>
+              <View style={{ flexDirection: 'row', gap: 16 }}>
+                <TouchableOpacity onPress={handleLanguageIconPress} accessibilityLabel="Change Language">
+                  <Text style={{ fontSize: 22 }} role="img" aria-label="language">🌐</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleThemeToggle} accessibilityLabel="Toggle Theme">
+                  <Text style={{ fontSize: 22 }} role="img" aria-label="theme">{isDark ? '☀️' : '🌙'}</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
+          )}
 
           {/* Powered By Info */}
           <Text style={[styles.poweredByText, {color: colors.textSecondary}]}> 

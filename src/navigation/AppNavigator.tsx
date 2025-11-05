@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {NavigationContainer} from '@react-navigation/native';
 import {createStackNavigator} from '@react-navigation/stack';
+import MainTabs from './MainTabs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import LoginScreen from '../screens/LoginScreen';
 import HomeScreen from '../screens/HomeScreen';
@@ -44,6 +45,7 @@ interface AppNavigatorProps {
 }
 
 const AppNavigator: React.FC<AppNavigatorProps> = ({ initialRoute }) => {
+  // Tabs styling handled inside MainTabs
   const [isReady, setIsReady] = useState(false);
   const [initialState, setInitialState] = useState();
   const [currentInitialRoute, setCurrentInitialRoute] = useState('Intro');
@@ -124,7 +126,7 @@ const AppNavigator: React.FC<AppNavigatorProps> = ({ initialRoute }) => {
         }}>
         <Stack.Screen name="Intro" component={IntroScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="Home" component={HomeScreen} />
+        <Stack.Screen name="Home" component={MainTabs} />
         <Stack.Screen name="SetPinScreen" component={SetPinScreen} options={{ headerShown: false }} />
         <Stack.Screen name="SecuritySettingsScreen" component={SecuritySettingsScreen} options={{ headerShown: false }} />
         <Stack.Screen name="AuthSetupScreen" component={AuthSetupScreen} options={{ headerShown: false }} />

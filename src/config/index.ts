@@ -26,7 +26,7 @@ const clientConfigs: Record<string, ClientConfig> = {
     companyName: 'Microscan Internet Private Limited',
     apiUrl: 'https://mydesk.microscan.co.in',
     supportEmail: 'support@microscan.in',
-    website: 'https://microscan.in',
+    website: 'https://www.microscan.co.in/',
     poweredBy: 'Spacecom Software LLP',
     poweredByWebsite: 'https://spacecom.in',
     bundleId: 'com.microscan.app',

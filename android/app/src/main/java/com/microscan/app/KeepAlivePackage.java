@@ -1,4 +1,4 @@
-package com.h8.dnasubscriber;
+package com.microscan.app;
 
 import com.facebook.react.ReactPackage;
 import com.facebook.react.bridge.NativeModule;

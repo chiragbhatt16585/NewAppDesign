@@ -2,7 +2,7 @@ module.exports = {
   dependencies: {
     'react-native-vector-icons': {
       platforms: {
-        ios: null,
+        // Enable iOS autolinking for fonts; Android remains manually configured
         android: null,
       },
     },

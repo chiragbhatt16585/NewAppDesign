@@ -7,7 +7,6 @@ import {
   ScrollView,
   FlatList,
   Dimensions,
-  Modal,
   Alert,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
@@ -133,8 +132,7 @@ const SessionsScreen = ({navigation}: any) => {
   const {t} = useTranslation();
   const {userData} = useAuth();
   const {checkSessionAndHandle} = useSessionValidation();
-  const [selectedSession, setSelectedSession] = useState<SessionData | null>(null);
-  const [showSessionModal, setShowSessionModal] = useState(false);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [sessionsData, setSessionsData] = useState<SessionData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -256,45 +254,68 @@ const SessionsScreen = ({navigation}: any) => {
     );
   }
 
-  const handleSessionPress = (session: SessionData) => {
-    setSelectedSession(session);
-    setShowSessionModal(true);
+  const toggleExpanded = (id: string) => {
+    setExpandedIds(prev => {
+      const isOpen = prev.has(id);
+      if (isOpen) {
+        return new Set(); // close if already open
+      }
+      // open only this id and close others
+      return new Set([id]);
+    });
   };
 
   const renderSessionItem = ({item}: {item: SessionData}) => {
     return (
       <TouchableOpacity
         style={[styles.sessionCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}
-        onPress={() => handleSessionPress(item)}>
+        onPress={() => toggleExpanded(item.id)}>
         <View style={styles.sessionHeader}>
           <Text style={[styles.sessionDate, {color: colors.text}]}>{item.date}</Text>
           <View style={[styles.durationBadge, {backgroundColor: colors.primary + '20'}]}>
             <Text style={[styles.durationText, {color: colors.primary}]}>{item.totalDuration}</Text>
           </View>
         </View>
-        
-        <View style={styles.sessionDetails}>
-          <View style={styles.detailRow}>
-            <View style={styles.detailItem}>
-              <View style={[styles.detailIconContainer, {backgroundColor: colors.primary + '15'}]}>
-                <Text style={[styles.detailIcon, {color: colors.primary}]}>↑</Text>
+
+        {expandedIds.has(item.id) && (
+          <View style={styles.sessionDetails}>
+            <View style={styles.collapsedStatsRow}>
+              <View style={styles.collapsedStatItem}>
+                <View style={[styles.collapsedIconContainer, {backgroundColor: colors.accent + '15'}]}>
+                  <Text style={[styles.collapsedIcon, {color: colors.accent}]}>↑</Text>
+                </View>
+                <Text style={[styles.collapsedValue, {color: colors.text}]}>{item.totalUpload}</Text>
               </View>
-              <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>
-                {t('sessions.upload')}
-              </Text>
-              <Text style={[styles.detailValue, {color: colors.text}]}>{item.totalUpload}</Text>
+
+              <View style={styles.collapsedStatItem}>
+                <View style={[styles.collapsedIconContainer, {backgroundColor: colors.success + '15'}]}>
+                  <Text style={[styles.collapsedIcon, {color: colors.success}]}>↓</Text>
+                </View>
+                <Text style={[styles.collapsedValue, {color: colors.text}]}>{item.totalDownload}</Text>
+              </View>
+
+              <View style={styles.collapsedStatItem}>
+                <View style={[styles.collapsedIconContainer, {backgroundColor: colors.primary + '15'}]}>
+                  <Text style={[styles.collapsedIcon, {color: colors.primary}]}>⇅</Text>
+                </View>
+                <Text style={[styles.collapsedValue, {color: colors.text}]}>{item.totalDataGB}</Text>
+              </View>
             </View>
-            <View style={styles.detailItem}>
-              <View style={[styles.detailIconContainer, {backgroundColor: colors.success + '15'}]}>
-                <Text style={[styles.detailIcon, {color: colors.success}]}>↓</Text>
-              </View>
-              <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>
-                {t('sessions.download')}
-              </Text>
-              <Text style={[styles.detailValue, {color: colors.text}]}>{item.totalDownload}</Text>
+
+            <View style={styles.detailRow}>
+              <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>{t('sessions.ipAddress')}</Text>
+              <Text style={[styles.detailValue, {color: colors.text}]}>{item.ipAddress}</Text>
+            </View>
+            <View style={styles.detailRow}>
+              <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>{t('sessions.loginTime')}</Text>
+              <Text style={[styles.detailValue, {color: colors.text}]}>{item.loginTime}</Text>
+            </View>
+            <View style={styles.detailRow}>
+              <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>{t('sessions.logoutTime')}</Text>
+              <Text style={[styles.detailValue, {color: colors.text}]}>{item.logoutTime}</Text>
             </View>
           </View>
-        </View>
+        )}
       </TouchableOpacity>
     );
   };
@@ -495,58 +516,7 @@ const SessionsScreen = ({navigation}: any) => {
         }
       />
 
-      {/* Session Detail Modal */}
-      <Modal
-        visible={showSessionModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowSessionModal(false)}
-      >
-        <View style={[styles.modalOverlay, {backgroundColor: isDark ? 'rgba(0, 0, 0, 0.8)' : 'rgba(0, 0, 0, 0.6)'}]}>
-          <View style={[styles.modalContent, {backgroundColor: colors.card, shadowColor: colors.shadow}]}> 
-            <Text style={[styles.modalTitle, {color: colors.text}]}>{t('sessions.sessionDetails')}</Text>
-            {selectedSession && (
-              <>
-                <View style={styles.modalRow}>
-                  <Text style={[styles.modalLabel, {color: colors.textSecondary}]}>{t('sessions.sessionTime')}</Text>
-                  <Text style={[styles.modalValue, {color: colors.text}]}>{selectedSession.totalDuration}</Text>
-                </View>
-                <View style={styles.modalRow}>
-                  <Text style={[styles.modalLabel, {color: colors.textSecondary}]}>{t('sessions.downloadsGB')}</Text>
-                  <Text style={[styles.modalValue, {color: colors.text}]}>{selectedSession.downloadsGB}</Text>
-                </View>
-                <View style={styles.modalRow}>
-                  <Text style={[styles.modalLabel, {color: colors.textSecondary}]}>{t('sessions.uploadsGB')}</Text>
-                  <Text style={[styles.modalValue, {color: colors.text}]}>{selectedSession.uploadsGB}</Text>
-                </View>
-                <View style={styles.modalRow}>
-                  <Text style={[styles.modalLabel, {color: colors.textSecondary}]}>{t('sessions.totalDataGB')}</Text>
-                  <Text style={[styles.modalValue, {color: colors.text}]}>{selectedSession.totalDataGB}</Text>
-                </View>
-                <View style={styles.modalRow}>
-                  <Text style={[styles.modalLabel, {color: colors.textSecondary}]}>{t('sessions.ipAddress')}</Text>
-                  <Text style={[styles.modalValue, {color: colors.text}]}>{selectedSession.ipAddress}</Text>
-                </View>
-                <View style={styles.modalRow}>
-                  <Text style={[styles.modalLabel, {color: colors.textSecondary}]}>Date</Text>
-                  <Text style={[styles.modalValue, {color: colors.text}]}>{selectedSession.date}</Text>
-                </View>
-                <View style={styles.modalRow}>
-                  <Text style={[styles.modalLabel, {color: colors.textSecondary}]}>{t('sessions.loginTime')}</Text>
-                  <Text style={[styles.modalValue, {color: colors.text}]}>{selectedSession.loginTime}</Text>
-                </View>
-                <View style={styles.modalRow}>
-                  <Text style={[styles.modalLabel, {color: colors.textSecondary}]}>{t('sessions.logoutTime')}</Text>
-                  <Text style={[styles.modalValue, {color: colors.text}]}>{selectedSession.logoutTime}</Text>
-                </View>
-              </>
-            )}
-            <TouchableOpacity style={[styles.closeButton, {backgroundColor: colors.primary}]} onPress={() => setShowSessionModal(false)}>
-              <Text style={styles.closeButtonText}>{t('common.ok')}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+      {/* Modal removed; using inline expand/collapse per row */}
     </SafeAreaView>
   );
 };
@@ -705,6 +675,32 @@ const styles = StyleSheet.create({
   },
   sessionDetails: {
     gap: 8,
+  },
+  collapsedStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  collapsedStatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  collapsedIconContainer: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  collapsedIcon: {
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  collapsedValue: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   detailRow: {
     flexDirection: 'row',

@@ -28,6 +28,10 @@ const MoreOptionsScreen = ({navigation}: any) => {
   const {logout} = useAuth();
   const { menu, loading: menuLoading, error: menuError, refresh } = useMenuSettings();
   const [refreshing, setRefreshing] = useState(false);
+  
+  // Check if current client is microscan
+  const clientConfig = getClientConfig();
+  const isMicroscan = clientConfig.clientId === 'microscan';
 
   // Removed auto-refresh on focus to avoid unnecessary calls; rely on pull-to-refresh
 
@@ -261,39 +265,121 @@ const MoreOptionsScreen = ({navigation}: any) => {
         )}
       >
         <View style={styles.content}>
-          {dynamicMenuItems.map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              style={[
-                styles.menuItem, 
-                {backgroundColor: colors.card, shadowColor: colors.shadow},
-                item.isLogout && styles.logoutMenuItem
-              ]}
-              onPress={item.onPress}>
-              <View style={[
-                styles.menuIcon, 
-                {backgroundColor: item.isLogout ? colors.accentLight : colors.primaryLight}
-              ]}>
-                {item.iconType === 'feather' ? (
-                  <Feather 
-                    name={item.icon} 
-                    size={24} 
-                    color={item.isLogout ? colors.accent : colors.primary} 
-                  />
-                ) : (
-                  <Text style={styles.iconText}>{item.icon}</Text>
-                )}
-              </View>
-              <View style={styles.menuContent}>
-                <Text style={[
-                  styles.menuTitle, 
-                  {color: item.isLogout ? colors.accent : colors.text}
-                ]}>{item.title}</Text>
-                <Text style={[styles.menuSubtitle, {color: colors.textSecondary}]}>{item.subtitle}</Text>
-              </View>
-              <Text style={[styles.arrowText, {color: colors.textSecondary}]}>›</Text>
-            </TouchableOpacity>
-          ))}
+          {isMicroscan ? (
+            // 2-column grid layout for Microscan
+            <>
+              {(() => {
+                const regularItems = dynamicMenuItems.filter(item => !item.isLogout);
+                const logoutItem = dynamicMenuItems.find(item => item.isLogout);
+                const rows = [];
+                
+                // Group items into pairs
+                for (let i = 0; i < regularItems.length; i += 2) {
+                  rows.push(regularItems.slice(i, i + 2));
+                }
+                
+                return (
+                  <>
+                    {rows.map((row, rowIndex) => (
+                      <View key={`row-${rowIndex}`} style={styles.gridRow}>
+                        {row.map((item) => (
+                          <TouchableOpacity
+                            key={item.id}
+                            style={[
+                              styles.gridMenuItem, 
+                              {backgroundColor: colors.card, shadowColor: colors.shadow}
+                            ]}
+                            onPress={item.onPress}>
+                            <View style={[
+                              styles.gridMenuIcon, 
+                              {backgroundColor: colors.primaryLight}
+                            ]}>
+                              {item.iconType === 'feather' ? (
+                                <Feather 
+                                  name={item.icon} 
+                                  size={18} 
+                                  color={colors.primary} 
+                                />
+                              ) : (
+                                <Text style={styles.gridIconText}>{item.icon}</Text>
+                              )}
+                            </View>
+                            <Text style={[styles.gridMenuTitle, {color: colors.text}]} numberOfLines={1}>
+                              {item.title}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                        {/* Add empty space if row has only one item */}
+                        {row.length === 1 && <View style={styles.gridPlaceholder} />}
+                      </View>
+                    ))}
+                    {/* Logout button - full width */}
+                    {logoutItem && (
+                      <TouchableOpacity
+                        style={[
+                          styles.menuItem, 
+                          {backgroundColor: colors.card, shadowColor: colors.shadow},
+                          styles.logoutMenuItem
+                        ]}
+                        onPress={logoutItem.onPress}>
+                        <View style={[
+                          styles.menuIcon, 
+                          {backgroundColor: colors.accentLight}
+                        ]}>
+                          <Text style={styles.iconText}>{logoutItem.icon}</Text>
+                        </View>
+                        <View style={styles.menuContent}>
+                          <Text style={[
+                            styles.menuTitle, 
+                            {color: colors.accent}
+                          ]}>{logoutItem.title}</Text>
+                          <Text style={[styles.menuSubtitle, {color: colors.textSecondary}]}>{logoutItem.subtitle}</Text>
+                        </View>
+                        <Text style={[styles.arrowText, {color: colors.textSecondary}]}>›</Text>
+                      </TouchableOpacity>
+                    )}
+                  </>
+                );
+              })()}
+            </>
+          ) : (
+            // Single column layout for other clients
+            <>
+              {dynamicMenuItems.map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={[
+                    styles.menuItem, 
+                    {backgroundColor: colors.card, shadowColor: colors.shadow},
+                    item.isLogout && styles.logoutMenuItem
+                  ]}
+                  onPress={item.onPress}>
+                  <View style={[
+                    styles.menuIcon, 
+                    {backgroundColor: item.isLogout ? colors.accentLight : colors.primaryLight}
+                  ]}>
+                    {item.iconType === 'feather' ? (
+                      <Feather 
+                        name={item.icon} 
+                        size={24} 
+                        color={item.isLogout ? colors.accent : colors.primary} 
+                      />
+                    ) : (
+                      <Text style={styles.iconText}>{item.icon}</Text>
+                    )}
+                  </View>
+                  <View style={styles.menuContent}>
+                    <Text style={[
+                      styles.menuTitle, 
+                      {color: item.isLogout ? colors.accent : colors.text}
+                    ]}>{item.title}</Text>
+                    <Text style={[styles.menuSubtitle, {color: colors.textSecondary}]}>{item.subtitle}</Text>
+                  </View>
+                  <Text style={[styles.arrowText, {color: colors.textSecondary}]}>›</Text>
+                </TouchableOpacity>
+              ))}
+            </>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -353,6 +439,47 @@ const styles = StyleSheet.create({
   },
   arrowText: {
     fontSize: 18,
+  },
+  // Grid layout styles for Microscan
+  gridRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  gridMenuItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    padding: 12,
+    marginHorizontal: 6,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  gridMenuIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  gridIconText: {
+    fontSize: 18,
+  },
+  gridMenuTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    flex: 1,
+  },
+  gridPlaceholder: {
+    flex: 1,
+    marginHorizontal: 6,
   },
 });
 

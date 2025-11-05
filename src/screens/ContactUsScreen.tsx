@@ -170,6 +170,64 @@ const ContactUsScreen = ({navigation}: any) => {
       {/* Content */}
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
+          {(contactInfo.tollFree || contactInfo.landline) && (
+            <View style={[styles.contactNumbersCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
+              <Text style={[styles.sectionTitle, {color: colors.text}]}> 
+                Call Us
+              </Text>
+              {contactInfo.tollFree && (
+                <TouchableOpacity
+                  style={[styles.contactNumberItem, {backgroundColor: colors.primaryLight}]}
+                  onPress={() => handlePhoneCall(contactInfo.tollFree!)}>
+                  <Text style={styles.contactNumberIcon}>📞</Text>
+                  <View style={styles.contactNumberInfo}>
+                    <Text style={[styles.contactNumberTitle, {color: colors.text}]}>Toll-Free</Text>
+                    <Text style={[styles.contactNumberValue, {color: colors.primary}]}> {contactInfo.tollFree} </Text>
+                  </View>
+                  <Text style={[styles.contactNumberArrow, {color: colors.primary}]}>›</Text>
+                </TouchableOpacity>
+              )}
+
+              {contactInfo.landline && (
+                <TouchableOpacity
+                  style={[styles.contactNumberItem, {backgroundColor: colors.primaryLight}]}
+                  onPress={() => handlePhoneCall(contactInfo.landline!)}>
+                  <Text style={styles.contactNumberIcon}>📞</Text>
+                  <View style={styles.contactNumberInfo}>
+                    <Text style={[styles.contactNumberTitle, {color: colors.text}]}>Landline</Text>
+                    <Text style={[styles.contactNumberValue, {color: colors.primary}]}> {contactInfo.landline} </Text>
+                  </View>
+                  <Text style={[styles.contactNumberArrow, {color: colors.primary}]}>›</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
+          {contactInfo.emails && (
+            <View style={[styles.emailCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
+              <Text style={[styles.sectionTitle, {color: colors.text}]}>Email Us</Text>
+
+              {contactInfo.emails.inquiries && (
+                <View style={styles.emailItem}>
+                  <Text style={styles.emailIcon}>📧</Text>
+                  <View style={styles.emailInfo}>
+                    <Text style={[styles.emailTitle, {color: colors.text}]}>Inquiries/Support</Text>
+                    <Text style={[styles.emailValue, {color: colors.primary}]}> {contactInfo.emails.inquiries} </Text>
+                  </View>
+                </View>
+              )}
+
+              {contactInfo.emails.sales && (
+                <View style={styles.emailItem}>
+                  <Text style={styles.emailIcon}>📧</Text>
+                  <View style={styles.emailInfo}>
+                    <Text style={[styles.emailTitle, {color: colors.text}]}>New Connection</Text>
+                    <Text style={[styles.emailValue, {color: colors.primary}]}> {contactInfo.emails.sales} </Text>
+                  </View>
+                </View>
+              )}
+            </View>
+          )}
           {/* Company Info Card */}
           <View style={[styles.companyCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
             <View style={styles.companyHeader}>
@@ -189,26 +247,6 @@ const ContactUsScreen = ({navigation}: any) => {
               </View>
             </View>
           </View>
-
-          {/* Head Office */}
-          <View style={styles.officeSection}>
-            <Text style={[styles.sectionTitle, {color: colors.text}]}>
-              {t('contactUs.headOffice')}
-            </Text>
-            <OfficeCard office={contactInfo.headOffice} isHeadOffice={true} />
-          </View>
-
-          {/* Branch Offices */}
-          {contactInfo.branchOffices && contactInfo.branchOffices.length > 0 && (
-            contactInfo.branchOffices.map((branchOffice, index) => (
-              <View key={index} style={styles.officeSection}>
-                <Text style={[styles.sectionTitle, {color: colors.text}]}>
-                  {branchOffice.title}
-                </Text>
-                <OfficeCard office={branchOffice} isHeadOffice={false} />
-              </View>
-            ))
-          )}
 
           {/* Internet Support Inquiries */}
           {contactInfo.headOffice.customerSupport && (
@@ -233,6 +271,28 @@ const ContactUsScreen = ({navigation}: any) => {
             </View>
           )}
 
+          {/* Head Office */}
+          <View style={styles.officeSection}>
+            {/* <Text style={[styles.sectionTitle, {color: colors.text}]}>
+              {t('contactUs.headOffice')}
+            </Text> */}
+            <OfficeCard office={contactInfo.headOffice} isHeadOffice={true} />
+          </View>
+
+          {/* Branch Offices */}
+          {contactInfo.branchOffices && contactInfo.branchOffices.length > 0 && (
+            contactInfo.branchOffices.map((branchOffice, index) => (
+              <View key={index} style={styles.officeSection}>
+                <Text style={[styles.sectionTitle, {color: colors.text}]}>
+                  {branchOffice.title}
+                </Text>
+                <OfficeCard office={branchOffice} isHeadOffice={false} />
+              </View>
+            ))
+          )}
+
+          
+
           {/* Enterprise Escalation Matrix */}
           {contactInfo.enterpriseEscalation && (
             <TouchableOpacity
@@ -254,85 +314,7 @@ const ContactUsScreen = ({navigation}: any) => {
             </TouchableOpacity>
           )}
 
-          {/* Contact Numbers */}
-          {(contactInfo.tollFree || contactInfo.landline) && (
-            <View style={[styles.contactNumbersCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
-              <Text style={[styles.sectionTitle, {color: colors.text}]}>
-                Call Us
-              </Text>
-              
-              {contactInfo.tollFree && (
-                <TouchableOpacity
-                  style={[styles.contactNumberItem, {backgroundColor: colors.primaryLight}]}
-                  onPress={() => handlePhoneCall(contactInfo.tollFree!)}>
-                  <Text style={styles.contactNumberIcon}>📞</Text>
-                  <View style={styles.contactNumberInfo}>
-                    <Text style={[styles.contactNumberTitle, {color: colors.text}]}>
-                      Toll-Free
-                    </Text>
-                    <Text style={[styles.contactNumberValue, {color: colors.primary}]}>
-                      {contactInfo.tollFree}
-                    </Text>
-                  </View>
-                  <Text style={[styles.contactNumberArrow, {color: colors.primary}]}>›</Text>
-                </TouchableOpacity>
-              )}
 
-              {contactInfo.landline && (
-                <TouchableOpacity
-                  style={[styles.contactNumberItem, {backgroundColor: colors.primaryLight}]}
-                  onPress={() => handlePhoneCall(contactInfo.landline!)}>
-                  <Text style={styles.contactNumberIcon}>📞</Text>
-                  <View style={styles.contactNumberInfo}>
-                    <Text style={[styles.contactNumberTitle, {color: colors.text}]}>
-                      Landline
-                    </Text>
-                    <Text style={[styles.contactNumberValue, {color: colors.primary}]}>
-                      {contactInfo.landline}
-                    </Text>
-                  </View>
-                  <Text style={[styles.contactNumberArrow, {color: colors.primary}]}>›</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
-
-          {/* Email Contact */}
-          {contactInfo.emails && (
-            <View style={[styles.emailCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
-              <Text style={[styles.sectionTitle, {color: colors.text}]}>
-                Email Us
-              </Text>
-              
-              {contactInfo.emails.inquiries && (
-                <View style={styles.emailItem}>
-                  <Text style={styles.emailIcon}>📧</Text>
-                  <View style={styles.emailInfo}>
-                    <Text style={[styles.emailTitle, {color: colors.text}]}>
-                      Inquiries/Support
-                    </Text>
-                    <Text style={[styles.emailValue, {color: colors.primary}]}>
-                      {contactInfo.emails.inquiries}
-                    </Text>
-                  </View>
-                </View>
-              )}
-
-              {contactInfo.emails.sales && (
-                <View style={styles.emailItem}>
-                  <Text style={styles.emailIcon}>📧</Text>
-                  <View style={styles.emailInfo}>
-                    <Text style={[styles.emailTitle, {color: colors.text}]}>
-                      New Connection
-                    </Text>
-                    <Text style={[styles.emailValue, {color: colors.primary}]}>
-                      {contactInfo.emails.sales}
-                    </Text>
-                  </View>
-                </View>
-              )}
-            </View>
-          )}
 
           {/* WhatsApp Contact */}
           {contactInfo.whatsappNumber && (

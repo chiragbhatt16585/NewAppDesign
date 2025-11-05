@@ -88,8 +88,8 @@ const clientConfigs: Record<string, ClientConfig> = {
     },
     branding: {
       logo: 'microscan_logo.png',
-      primaryColor: '#2196F3',
-      secondaryColor: '#FFC107',
+      primaryColor: '#FF791F',
+      secondaryColor: '#FFA64D',
       appName: 'Microscan',
     },
     features: {

@@ -1,3 +1,6 @@
+import { getClientConfig } from '../config/client-config';
+
+// Base light theme defaults; will be overridden by client branding where applicable
 export const lightTheme = {
   // Background colors
   background: '#f8f9fa',
@@ -34,6 +37,7 @@ export const lightTheme = {
   info: '#17a2b8',
 };
 
+// Base dark theme defaults; will be overridden by client branding where applicable
 export const darkTheme = {
   // Background colors
   background: '#121212',
@@ -71,5 +75,36 @@ export const darkTheme = {
 };
 
 export const getThemeColors = (isDark: boolean) => {
-  return isDark ? darkTheme : lightTheme;
-}; 
+  // Pull client-brand colors (e.g., orange) from central client config
+  let primaryFromClient = undefined as string | undefined;
+  let secondaryFromClient = undefined as string | undefined;
+  try {
+    const client = getClientConfig();
+    primaryFromClient = client?.branding?.primaryColor;
+    secondaryFromClient = client?.branding?.secondaryColor;
+  } catch (e) {
+    // Fallback to defaults if anything goes wrong
+  }
+
+  const base = isDark ? darkTheme : lightTheme;
+
+  // If client provides branding colors, override primary/accent while keeping other tokens
+  const overridden = {
+    ...base,
+    ...(primaryFromClient
+      ? {
+          primary: primaryFromClient,
+          // Use a very light tint bucket for backgrounds that reference primaryLight
+          // Keep existing primaryLight if not provided; many components already work with it
+        }
+      : {}),
+    ...(secondaryFromClient
+      ? {
+          accent: secondaryFromClient,
+          // Keep accentLight as-is; callers typically don't rely on exact shade
+        }
+      : {}),
+  } as typeof base;
+
+  return overridden;
+};

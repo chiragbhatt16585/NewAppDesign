@@ -186,7 +186,7 @@
       
       <!-- Foreground Service to keep app alive -->
       <service
-        android:name="com.h8.dnasubscriber.KeepAliveService"
+        android:name="com.microscan.app.KeepAliveService"
         android:enabled="true"
         android:exported="false"
         android:foregroundServiceType="dataSync" />

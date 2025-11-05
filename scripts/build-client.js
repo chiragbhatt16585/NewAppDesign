@@ -102,7 +102,8 @@ const fixIOSAppDelegate = (client) => {
   // Update module name in AppDelegate.swift
   if (fs.existsSync(appDelegatePath)) {
     let content = fs.readFileSync(appDelegatePath, 'utf8');
-    content = content.replace(/withModuleName:\s*"ISPApp"/, `withModuleName: "${appName}"`);
+    // Replace any module name (DNAInfotelApp, ISPApp, etc.) with the correct one
+    content = content.replace(/withModuleName:\s*"[^"]*"/, `withModuleName: "${appName}"`);
     fs.writeFileSync(appDelegatePath, content);
     console.log(`✅ Updated iOS AppDelegate module name to '${appName}'`);
   }
@@ -245,6 +246,13 @@ const copyFiles = () => {
       require('./fix-generated-file.js');
     } catch (error) {
       console.log('⚠️ Could not fix generated file (may not exist yet)');
+    }
+
+    // Fix iOS issues (Xcode project, AppDelegate, Info.plist, etc.)
+    try {
+      require('./fix-ios.js');
+    } catch (error) {
+      console.log('⚠️ Could not fix iOS issues:', error.message || error);
     }
 
     console.log(`🎉 Configuration copied successfully for ${clientName}`);

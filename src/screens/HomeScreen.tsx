@@ -36,6 +36,7 @@ import useMenuSettings from '../hooks/useMenuSettings';
 import menuService from '../services/menuService';
 // import AIUsageInsights from '../components/AIUsageInsights';
 //import ispLogo from '../assets/isp_logo.png';
+import Feather from 'react-native-vector-icons/Feather';
 
 const {width: screenWidth} = Dimensions.get('window');
 
@@ -67,19 +68,35 @@ const HomeScreen = ({navigation}: any) => {
   const [apiResponse, setApiResponse] = useState<string>('');
   const [banners, setBanners] = useState<any[]>([]);
   const [loadingBanners, setLoadingBanners] = useState(true);
+
+  // Debug: log next renewal date value when it changes
+  useEffect(() => {
+    console.log('Next Renewal debug =>', authData?.next_renewal_date, 'type:', typeof authData?.next_renewal_date);
+  }, [authData?.next_renewal_date]);
+
+  // Normalize next renewal value and filter placeholders like 'N/A', 'NA', '-', 'null'
+  const nextRenewalValue = useMemo(() => {
+    const raw = (authData?.next_renewal_date ?? '').toString().trim();
+    const invalids = ['N/A', 'NA', '-', 'NULL', 'UNDEFINED', ''];
+    return invalids.includes(raw.toUpperCase()) ? '' : raw;
+  }, [authData?.next_renewal_date]);
   const { menu, loading: menuLoading, error: menuError, refresh: refreshMenu } = useMenuSettings();
   const [refreshing, setRefreshing] = useState(false);
+  const isMicroscan = getClientConfig().clientId === 'microscan';
 
   // Derive dynamic main menu items from API
   const mainMenuItems = useMemo(() => {
+    console.log('🔍 [mainMenuItems] === RECOMPUTING MAIN MENU ITEMS ===');
+    console.log('🔍 [mainMenuItems] Menu input:', menu);
+    console.log('🔍 [mainMenuItems] Menu is array:', Array.isArray(menu));
+    
     const desiredOrder = ['Account', 'Sessions', 'Tickets', 'Ledger'];
-    const iconMap: Record<string, string> = {
-      'Account': '👤',
-      'Sessions': '📊',
-      'Tickets': '📋',
-      'Ledger': '📄',
-      // 'Renew Plan': '🔄',
-      // 'Pay Bill': '💳'
+    // Use vector icons so we can tint them with theme primary (orange)
+    const iconMap: Record<string, { icon: string; iconType: 'feather' }> = {
+      'Account': { icon: 'user', iconType: 'feather' },
+      'Sessions': { icon: 'bar-chart-2', iconType: 'feather' },
+      'Tickets': { icon: 'clipboard', iconType: 'feather' },
+      'Ledger': { icon: 'book', iconType: 'feather' },
     };
     const routeMap: Record<string, () => void> = {
       'Account': () => navigation.navigate('AccountDetails'),
@@ -91,14 +108,53 @@ const HomeScreen = ({navigation}: any) => {
     };
 
     const list = Array.isArray(menu)
-      ? menu.filter((m: any) => m?.menu_api_type === 'main' && String(m?.status).toLowerCase() === 'active')
+      ? menu.filter((m: any) => {
+          const isMain = m?.menu_api_type === 'main';
+          const isActive = String(m?.status).toLowerCase() === 'active';
+          const result = isMain && isActive;
+          console.log('🔍 [mainMenuItems] Filtering item:', {
+            menu_label: m?.menu_label,
+            menu_api_type: m?.menu_api_type,
+            status: m?.status,
+            isMain,
+            isActive,
+            passes: result
+          });
+          return result;
+        })
       : [];
+    
+    console.log('🔍 [mainMenuItems] Filtered list:', list);
+    console.log('🔍 [mainMenuItems] Filtered list length:', list.length);
+    
     const byLabel = new Map<string, any>();
-    list.forEach((item: any) => { if (item?.menu_label) byLabel.set(item.menu_label, item); });
+    list.forEach((item: any) => { 
+      if (item?.menu_label) {
+        console.log('🔍 [mainMenuItems] Adding to map:', item.menu_label, item);
+        byLabel.set(item.menu_label, item);
+      }
+    });
 
-    return desiredOrder
-      .filter(label => byLabel.has(label))
-      .map(label => ({ label, icon: iconMap[label] || '•', onPress: routeMap[label] }));
+    console.log('🔍 [mainMenuItems] Labels in map:', Array.from(byLabel.keys()));
+
+    const result = desiredOrder
+      .filter(label => {
+        const hasLabel = byLabel.has(label);
+        console.log('🔍 [mainMenuItems] Checking desired label:', label, 'exists:', hasLabel);
+        return hasLabel;
+      })
+      .map(label => ({ 
+        label, 
+        icon: iconMap[label]?.icon || 'circle', 
+        iconType: iconMap[label]?.iconType || 'feather', 
+        onPress: routeMap[label] 
+      }));
+    
+    console.log('🔍 [mainMenuItems] Final result:', result);
+    console.log('🔍 [mainMenuItems] Final result length:', result.length);
+    console.log('🔍 [mainMenuItems] === END RECOMPUTATION ===');
+    
+    return result;
   }, [menu, navigation]);
 
   // Flag for Renew Plan visibility based on menu API
@@ -219,21 +275,44 @@ const HomeScreen = ({navigation}: any) => {
 
   // Log menu once loaded (for verification)
   useEffect(() => {
-    if (!menuLoading && menu) {
-      console.log('[MenuSettings] Loaded (hook):', menu);
+    console.log('🔍 [MenuSettings] === DETAILED MENU DEBUG ===');
+    console.log('🔍 [MenuSettings] Loading state:', menuLoading);
+    console.log('🔍 [MenuSettings] Error:', menuError);
+    console.log('🔍 [MenuSettings] Menu exists:', !!menu);
+    console.log('🔍 [MenuSettings] Menu type:', typeof menu);
+    console.log('🔍 [MenuSettings] Is array:', Array.isArray(menu));
+    
+    if (menu) {
+      console.log('🔍 [MenuSettings] Full menu array:', JSON.stringify(menu, null, 2));
+      console.log('🔍 [MenuSettings] Menu length:', Array.isArray(menu) ? menu.length : 'Not an array');
+      
+      if (Array.isArray(menu)) {
+        console.log('🔍 [MenuSettings] Menu items:');
+        menu.forEach((item: any, index: number) => {
+          console.log(`🔍 [MenuSettings] Item ${index}:`, {
+            menu_label: item?.menu_label,
+            menu_api_type: item?.menu_api_type,
+            status: item?.status,
+            full_item: item
+          });
+        });
+        
+        const mainItems = menu.filter((m: any) => m?.menu_api_type === 'main' && String(m?.status).toLowerCase() === 'active');
+        console.log('🔍 [MenuSettings] Filtered main items:', mainItems);
+        console.log('🔍 [MenuSettings] Filtered main items count:', mainItems.length);
+      }
+    } else {
+      console.log('🔍 [MenuSettings] Menu is null/undefined/empty');
     }
-    if (menuError) {
-      console.warn('[MenuSettings] Error (hook):', menuError);
-    }
-    console.log('[MenuSettings] State:', { loading: menuLoading, hasMenu: !!menu });
+    console.log('🔍 [MenuSettings] === END DEBUG ===');
   }, [menuLoading, menu, menuError]);
 
-  // Auto reload only screen data on focus (menu refresh via pull-to-refresh)
-  useFocusEffect(
-    React.useCallback(() => {
-      reloadOnFocus();
-    }, [reloadOnFocus])
-  );
+  // Disabled: Auto reload on focus to prevent unintended refreshes when switching tabs
+  // useFocusEffect(
+  //   React.useCallback(() => {
+  //     reloadOnFocus();
+  //   }, [reloadOnFocus])
+  // );
 
   const onRefresh = React.useCallback(async () => {
     try {
@@ -375,7 +454,12 @@ const HomeScreen = ({navigation}: any) => {
       await refreshMenu();
       try {
         const latestMenu = await menuService.get();
-        console.log('[MenuSettings] Latest (service.get):', latestMenu);
+        console.log('🔍 [MenuSettings] Latest (service.get):', latestMenu);
+        console.log('🔍 [MenuSettings] Latest menu type:', typeof latestMenu);
+        console.log('🔍 [MenuSettings] Latest menu is array:', Array.isArray(latestMenu));
+        if (latestMenu) {
+          console.log('🔍 [MenuSettings] Latest menu JSON:', JSON.stringify(latestMenu, null, 2));
+        }
       } catch (e: any) {
         console.warn('[MenuSettings] Fetch after auth failed:', e?.message || e);
       }
@@ -879,8 +963,12 @@ const HomeScreen = ({navigation}: any) => {
         <View style={[styles.accountCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
           <View style={styles.cardHeader}>
             <Text style={[styles.cardTitle, {color: colors.text}]}>{t('home.accountSummary')}</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('AccountDetails')}>
-              <Text style={[styles.editText, {color: colors.primary}]}>{t('common.viewDetails')}</Text>
+            <TouchableOpacity 
+              style={[styles.viewDetailsButton, {backgroundColor: colors.primary}]}
+              onPress={() => navigation.navigate('AccountDetails')}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.viewDetailsText}>{t('common.viewDetails')}</Text>
             </TouchableOpacity>
           </View>
           
@@ -970,9 +1058,9 @@ const HomeScreen = ({navigation}: any) => {
         )}
 
         {/* Quick Menu Section (dynamic from menu settings) */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, {color: colors.text}]}>{t('home.quickMenu')}</Text>
-          <View style={[styles.quickMenuRow, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>            
+        <View style={[styles.quickMenuCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
+          <Text style={[styles.quickMenuTitle, {color: colors.text}]}>{t('home.quickMenu')}</Text>
+          <View style={styles.quickMenuRow}>            
             {mainMenuItems.map(item => (
               <TouchableOpacity 
                 key={item.label}
@@ -980,14 +1068,19 @@ const HomeScreen = ({navigation}: any) => {
                 onPress={item.onPress}
                 disabled={!item.onPress}
               >
-                <Text style={styles.quickMenuRowIcon}>{item.icon}</Text>
+                {item.iconType === 'feather' ? (
+                  <Feather name={item.icon} size={24} color={colors.primary} />
+                ) : (
+                  <Text style={styles.quickMenuRowIcon}>{item.icon}</Text>
+                )}
                 <Text style={[styles.quickMenuRowTitle, {color: colors.text}]}>{item.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
-        {/* Quick Actions */}
+        {/* Quick Actions (hidden for Microscan) */}
+        {!isMicroscan && (
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, {color: colors.text}]}>{t('home.quickActions')}</Text>
           <View style={styles.actionGrid}>
@@ -1040,6 +1133,7 @@ const HomeScreen = ({navigation}: any) => {
             </TouchableOpacity>
           </View>
         </View>
+        )}
 
         {/* Bill Information */}
         <View style={[styles.billCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
@@ -1058,10 +1152,12 @@ const HomeScreen = ({navigation}: any) => {
                   <Text style={[styles.billLabel, {color: colors.textSecondary}]}>Expiry Date</Text>
                   <Text style={[styles.billDate, {color: colors.text}]}>{authData?.exp_date || 'N/A'}</Text>
                 </View>
-                <View style={styles.billRow}>
-                  <Text style={[styles.billLabel, {color: colors.textSecondary}]}>Next Renewal</Text>
-                  <Text style={[styles.billDate, {color: colors.text}]}>{authData?.next_renewal_date || 'N/A'}</Text>
-                </View>
+                {nextRenewalValue ? (
+                  <View style={styles.billRow}>
+                    <Text style={[styles.billLabel, {color: colors.textSecondary}]}>Next Renewal</Text>
+                    <Text style={[styles.billDate, {color: colors.text}]}>{nextRenewalValue}</Text>
+                  </View>
+                ) : null}
                 <View style={styles.billRow}>
                   <Text style={[styles.billLabel, {color: colors.textSecondary}]}>Payment Dues</Text>
                   <Text style={[styles.billAmount, {color: authData?.payment_dues > 0 ? '#F44336' : '#4CAF50'}]}>
@@ -1082,14 +1178,14 @@ const HomeScreen = ({navigation}: any) => {
         </View>
 
         {/* More Options*/}
-        <View style={styles.section}>
+        {/* <View style={styles.section}>
           <TouchableOpacity 
             style={[styles.moreOptionsButton, {backgroundColor: colors.card, shadowColor: colors.shadow}]} 
             onPress={handleMore}>
             <Text style={[styles.moreOptionsButtonText, {color: colors.text}]}>{t('more.title')}</Text>
             <Text style={[styles.arrowText, {color: colors.textSecondary}]}>›</Text>
           </TouchableOpacity>
-        </View> 
+        </View>  */}
 
         {/* Usage Statistics */}
         {hasUsageDetails && (
@@ -1300,6 +1396,16 @@ const styles = StyleSheet.create({
   editText: {
     fontSize: 14,
     fontWeight: '500',
+  },
+  viewDetailsButton: {
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  viewDetailsText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   detailRow: {
     flexDirection: 'row',
@@ -1607,16 +1713,11 @@ const styles = StyleSheet.create({
   quickMenuIconText: {
     fontSize: 24,
   },
-  quickMenuTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  quickMenuRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    borderRadius: 12,
-    padding: 16,
+  quickMenuCard: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+    borderRadius: 16,
+    padding: 20,
     shadowOffset: {
       width: 0,
       height: 2,
@@ -1624,6 +1725,15 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3.84,
     elevation: 5,
+  },
+  quickMenuTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 16,
+  },
+  quickMenuRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
   quickMenuRowItem: {
     alignItems: 'center',

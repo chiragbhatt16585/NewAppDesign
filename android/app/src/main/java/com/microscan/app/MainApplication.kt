@@ -1,4 +1,4 @@
-package com.h8.dnasubscriber
+package com.microscan.app
 
 import android.app.Application
 import com.facebook.react.PackageList
@@ -36,4 +36,5 @@ class MainApplication : Application(), ReactApplication {
     super.onCreate()
     ReactNativeApplicationEntryPoint.loadReactNative(this)
   }
-} 
+}
+
