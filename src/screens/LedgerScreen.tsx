@@ -16,6 +16,7 @@ import {useTheme} from '../utils/ThemeContext';
 import {getThemeColors} from '../utils/themeStyles';
 import CommonHeader from '../components/CommonHeader';
 import {useTranslation} from 'react-i18next';
+import Feather from 'react-native-vector-icons/Feather';
 import {apiService} from '../services/api';
 import useMenuSettings from '../hooks/useMenuSettings';
 import sessionManager from '../services/sessionManager';
@@ -268,20 +269,20 @@ const LedgerScreen = ({navigation}: any) => {
     }
   };
 
-  // Create dynamic tabs based on available data
+  // Create dynamic tabs based on available data and display flags
   const getTabs = () => {
-    const availableTabs = [];
-    
-    if (displayFlags.proforma && proformaInvoices.length > 0) {
-      availableTabs.push({id: availableTabs.length, title: t('ledger.proforma'), originalId: 0});
-    }
+    const availableTabs: { id: number; title: string; originalId: number }[] = [];
     
     if (displayFlags.invoice && invoicesGenerated.length > 0) {
-      availableTabs.push({id: availableTabs.length, title: t('ledger.invoices'), originalId: 1});
+      availableTabs.push({ id: availableTabs.length, title: t('ledger.invoices'), originalId: 1 });
     }
     
     if (displayFlags.receipt && paymentReceived.length > 0) {
-      availableTabs.push({id: availableTabs.length, title: t('ledger.payments'), originalId: 2});
+      availableTabs.push({ id: availableTabs.length, title: t('ledger.payments'), originalId: 2 });
+    }
+    
+    if (displayFlags.proforma && proformaInvoices.length > 0) {
+      availableTabs.push({ id: availableTabs.length, title: t('ledger.proforma'), originalId: 0 });
     }
     
     return availableTabs;
@@ -305,7 +306,7 @@ const LedgerScreen = ({navigation}: any) => {
           style={styles.downloadButton}
           onPress={() => handleDownload(item)}
         >
-          <Text style={[styles.downloadIcon, {color: '#4caf50'}]}>📄</Text>
+          <Feather name="download" size={20} color="#4caf50" />
         </TouchableOpacity>
       </View>
       <View style={styles.itemDetails}>
@@ -319,18 +320,26 @@ const LedgerScreen = ({navigation}: any) => {
     <View style={[styles.itemCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
       <View style={styles.itemHeader}>
         <View style={styles.itemInfo}>
-          <Text style={[styles.itemNo, {color: colors.text}]}>{item.no}</Text>
-          <Text style={[styles.itemDate, {color: colors.textSecondary}]}>{item.date}</Text>
+          <View style={styles.itemTitleRow}>
+            <Text style={[styles.itemNo, {color: colors.text}]}>{item.particulars}</Text>
+            <Text style={[styles.itemMetaValue, {color: colors.textSecondary}]}>Invoice No.: {item.no}</Text>
+            <Text style={[styles.itemMetaValue, {color: colors.textSecondary}]}>Date : {item.date}</Text>
+          </View>
         </View>
         <TouchableOpacity 
           style={styles.downloadButton}
           onPress={() => handleDownload(item)}
         >
-          <Text style={[styles.downloadIcon, {color: '#4caf50'}]}>📄</Text>
+          <Feather name="download" size={20} color="#4caf50" />
         </TouchableOpacity>
       </View>
       <View style={styles.itemDetails}>
-        <Text style={[styles.itemParticulars, {color: colors.text}]}>{item.particulars}</Text>
+        <View style={{flex: 1, marginRight: 12}}>
+          {/* <View style={styles.itemMetaRow}>
+            <Text style={[styles.itemMetaLabel, {color: colors.textSecondary}]}>Date:</Text>
+            <Text style={[styles.itemMetaValue, {color: colors.textSecondary}]}>{item.date}</Text>
+          </View> */}
+        </View>
         <Text style={[styles.itemAmount, {color: colors.text}]}>{item.amount}</Text>
       </View>
     </View>
@@ -347,7 +356,7 @@ const LedgerScreen = ({navigation}: any) => {
           style={styles.downloadButton}
           onPress={() => handleDownload(item)}
         >
-          <Text style={[styles.downloadIcon, {color: '#4caf50'}]}>📄</Text>
+          <Feather name="download" size={20} color="#4caf50" />
         </TouchableOpacity>
       </View>
       <View style={styles.itemDetails}>
@@ -372,6 +381,63 @@ const LedgerScreen = ({navigation}: any) => {
     );
   };
 
+  // Header that scrolls with the list (title + summary)
+  const renderScrollableHeader = () => (
+    <View>
+      <View style={styles.headingContainer}>
+        <Text style={[styles.pageHeading, {color: colors.text}]}>{t('ledger.title')}</Text>
+        <Text style={[styles.pageSubheading, {color: colors.textSecondary}]}>
+          {t('ledger.subtitle')}
+        </Text>
+      </View>
+
+      <View style={[styles.bottomSection, {backgroundColor: colors.card, shadowColor: colors.shadow}]}> 
+        <View style={styles.summaryHeader}>
+          <View style={styles.summaryHeaderContent}>
+            <Text style={[styles.bottomSectionTitle, {color: colors.text}]}>{t('ledger.accountSummary')}</Text>
+          </View>
+        </View>
+        <View style={styles.expandedSummary}>
+          <View style={styles.summaryRow}>
+            <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('ledger.openingBalance')}</Text>
+            <Text style={[styles.summaryValue, {color: colors.text}]}>₹{summaryData?.openingBalance || 0}</Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('ledger.proformaAmount')}</Text>
+            <Text style={[styles.summaryValue, {color: colors.text}]}>₹{summaryData?.proforma_invoice || 0}</Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('ledger.billAmount')}</Text>
+            <Text style={[styles.summaryValue, {color: colors.text}]}>₹{summaryData?.billAmount || 0}</Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('ledger.paidAmount')}</Text>
+            <Text style={[styles.summaryValue, {color: colors.text}]}>₹{summaryData?.paidAmount || 0}</Text>
+          </View>
+          <View style={[styles.summaryRow, {paddingTop: 10, borderTopWidth: 1, borderTopColor: '#e0e0e0'}]}>
+            <Text style={[styles.summaryLabel, {color: colors.textSecondary, fontWeight: '600'}]}>{t('ledger.currentBalance')}</Text>
+            {(() => {
+              const duesRaw = summaryData?.balance ?? 0;
+              const dues = Number(duesRaw) || 0;
+              const isZero = dues === 0;
+              const isDr = dues > 0;
+              const displayValue = Math.abs(dues).toFixed(2);
+              return (
+                <Text style={[styles.summaryValue, {color: colors.text, fontWeight: 'bold'}]}>
+                  ₹{isZero ? '0.00' : displayValue}
+                  {!isZero ? ' ' : ''}
+                  {!isZero ? (
+                    <Text style={{color: isDr ? '#d32f2f' : '#2e7d32'}}>{isDr ? 'DR' : 'CR'}</Text>
+                  ) : null}
+                </Text>
+              );
+            })()}
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+
   const renderContent = () => {
     // Get the current tab's original ID to determine which data to show
     const currentTab = tabs[activeTab];
@@ -389,6 +455,7 @@ const LedgerScreen = ({navigation}: any) => {
               styles.listContainer,
               limitedProforma.length === 0 && styles.emptyListContainer
             ]}
+            ListHeaderComponent={renderScrollableHeader}
             refreshControl={
               <RefreshControl
                 refreshing={loading}
@@ -411,6 +478,7 @@ const LedgerScreen = ({navigation}: any) => {
               styles.listContainer,
               limitedInvoices.length === 0 && styles.emptyListContainer
             ]}
+            ListHeaderComponent={renderScrollableHeader}
             refreshControl={
               <RefreshControl
                 refreshing={loading}
@@ -433,6 +501,7 @@ const LedgerScreen = ({navigation}: any) => {
               styles.listContainer,
               limitedReceipts.length === 0 && styles.emptyListContainer
             ]}
+            ListHeaderComponent={renderScrollableHeader}
             refreshControl={
               <RefreshControl
                 refreshing={loading}
@@ -486,59 +555,7 @@ const LedgerScreen = ({navigation}: any) => {
         navigation={navigation}
       />
 
-      {/* Page Heading */}
-      <View style={styles.headingContainer}>
-        <Text style={[styles.pageHeading, {color: colors.text}]}>{t('ledger.title')}</Text>
-        <Text style={[styles.pageSubheading, {color: colors.textSecondary}]}>
-          {t('ledger.subtitle')}
-        </Text>
-      </View>
-
-      {/* Account Summary (always visible, non-collapsible) */}
-      <View style={[styles.bottomSection, {backgroundColor: colors.card, shadowColor: colors.shadow}]}> 
-        <View style={styles.summaryHeader}>
-          <View style={styles.summaryHeaderContent}>
-            <Text style={[styles.bottomSectionTitle, {color: colors.text}]}>{t('ledger.accountSummary')}</Text>
-          </View>
-        </View>
-        <View style={styles.expandedSummary}>
-          <View style={styles.summaryRow}>
-            <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('ledger.openingBalance')}</Text>
-            <Text style={[styles.summaryValue, {color: colors.text}]}>₹{summaryData?.openingBalance || 0}</Text>
-          </View>
-          <View style={styles.summaryRow}>
-            <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('ledger.proformaAmount')}</Text>
-            <Text style={[styles.summaryValue, {color: colors.text}]}>₹{summaryData?.proforma_invoice || 0}</Text>
-          </View>
-          <View style={styles.summaryRow}>
-            <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('ledger.billAmount')}</Text>
-            <Text style={[styles.summaryValue, {color: colors.text}]}>₹{summaryData?.billAmount || 0}</Text>
-          </View>
-          <View style={styles.summaryRow}>
-            <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('ledger.paidAmount')}</Text>
-            <Text style={[styles.summaryValue, {color: colors.text}]}>₹{summaryData?.paidAmount || 0}</Text>
-          </View>
-          <View style={[styles.summaryRow, {paddingTop: 10, borderTopWidth: 1, borderTopColor: '#e0e0e0'}]}>
-            <Text style={[styles.summaryLabel, {color: colors.textSecondary, fontWeight: '600'}]}>{t('ledger.currentBalance')}</Text>
-            {(() => {
-              const duesRaw = summaryData?.balance ?? 0;
-              const dues = Number(duesRaw) || 0;
-              const isZero = dues === 0;
-              const isDr = dues > 0;
-              const displayValue = Math.abs(dues).toFixed(2);
-              return (
-                <Text style={[styles.summaryValue, {color: colors.text, fontWeight: 'bold'}]}>
-                  ₹{isZero ? '0.00' : displayValue}
-                  {!isZero ? ' ' : ''}
-                  {!isZero ? (
-                    <Text style={{color: isDr ? '#d32f2f' : '#2e7d32'}}>{isDr ? 'DR' : 'CR'}</Text>
-                  ) : null}
-                </Text>
-              );
-            })()}
-          </View>
-        </View>
-      </View>
+      {/* Heading and Summary moved into ListHeaderComponent to scroll with content */}
 
       {/* Tab Navigation */}
       {tabs.length > 0 && (
@@ -643,7 +660,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 8,
+    marginBottom: 4,
+  },
+  itemTitleRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'baseline',
   },
   itemInfo: {
     flex: 1,
@@ -652,7 +674,13 @@ const styles = StyleSheet.create({
   itemNo: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: 0,
+    marginRight: 2,
+  },
+  itemMetaInline: {
+    fontSize: 14,
+    marginLeft: 4,
+    marginRight: 8,
   },
   itemDate: {
     fontSize: 14,
@@ -683,6 +711,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  itemMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  itemMetaLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginRight: 6,
+  },
+  itemMetaValue: {
+    fontSize: 14,
+    flexShrink: 1,
+    marginLeft: 2,
   },
   statusBadge: {
     paddingHorizontal: 8,

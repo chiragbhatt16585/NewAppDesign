@@ -255,6 +255,7 @@ const MoreOptionsScreen = ({navigation}: any) => {
 
       <ScrollView 
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 90 }}
         refreshControl={(
           <RefreshControl 
             refreshing={refreshing} 
@@ -265,123 +266,72 @@ const MoreOptionsScreen = ({navigation}: any) => {
         )}
       >
         <View style={styles.content}>
-          {isMicroscan ? (
-            // 2-column grid layout for Microscan
-            <>
-              {(() => {
-                const regularItems = dynamicMenuItems.filter(item => !item.isLogout);
-                const logoutItem = dynamicMenuItems.find(item => item.isLogout);
-                const rows = [];
-                
-                // Group items into pairs
-                for (let i = 0; i < regularItems.length; i += 2) {
-                  rows.push(regularItems.slice(i, i + 2));
-                }
-                
-                return (
-                  <>
-                    {rows.map((row, rowIndex) => (
-                      <View key={`row-${rowIndex}`} style={styles.gridRow}>
-                        {row.map((item) => (
-                          <TouchableOpacity
-                            key={item.id}
-                            style={[
-                              styles.gridMenuItem, 
-                              {backgroundColor: colors.card, shadowColor: colors.shadow}
-                            ]}
-                            onPress={item.onPress}>
-                            <View style={[
-                              styles.gridMenuIcon, 
-                              {backgroundColor: colors.primaryLight}
-                            ]}>
-                              {item.iconType === 'feather' ? (
-                                <Feather 
-                                  name={item.icon} 
-                                  size={18} 
-                                  color={colors.primary} 
-                                />
-                              ) : (
-                                <Text style={styles.gridIconText}>{item.icon}</Text>
-                              )}
-                            </View>
-                            <Text style={[styles.gridMenuTitle, {color: colors.text}]} numberOfLines={1}>
-                              {item.title}
-                            </Text>
-                          </TouchableOpacity>
-                        ))}
-                        {/* Add empty space if row has only one item */}
-                        {row.length === 1 && <View style={styles.gridPlaceholder} />}
-                      </View>
-                    ))}
-                    {/* Logout button - full width */}
-                    {logoutItem && (
+          {(() => {
+            const nonLogoutItems = dynamicMenuItems.filter(item => !item.isLogout);
+            const rows: any[] = [];
+            for (let i = 0; i < nonLogoutItems.length; i += 2) {
+              rows.push(nonLogoutItems.slice(i, i + 2));
+            }
+            return (
+              <>
+                {rows.map((row: DynItem[], rowIndex: number) => (
+                  <View key={`row-${rowIndex}`} style={styles.gridRow}>
+                    {row.map((item: DynItem) => (
                       <TouchableOpacity
+                        key={item.id}
                         style={[
-                          styles.menuItem, 
-                          {backgroundColor: colors.card, shadowColor: colors.shadow},
-                          styles.logoutMenuItem
+                          styles.gridMenuItem, 
+                          {backgroundColor: colors.card, shadowColor: colors.shadow}
                         ]}
-                        onPress={logoutItem.onPress}>
+                        onPress={item.onPress}>
                         <View style={[
-                          styles.menuIcon, 
-                          {backgroundColor: colors.accentLight}
+                          styles.gridMenuIcon, 
+                          {backgroundColor: colors.primaryLight}
                         ]}>
-                          <Text style={styles.iconText}>{logoutItem.icon}</Text>
+                          {item.iconType === 'feather' ? (
+                            <Feather 
+                              name={item.icon} 
+                              size={18} 
+                              color={colors.primary} 
+                            />
+                          ) : (
+                            <Text style={styles.gridIconText}>{item.icon}</Text>
+                          )}
                         </View>
-                        <View style={styles.menuContent}>
-                          <Text style={[
-                            styles.menuTitle, 
-                            {color: colors.accent}
-                          ]}>{logoutItem.title}</Text>
-                          <Text style={[styles.menuSubtitle, {color: colors.textSecondary}]}>{logoutItem.subtitle}</Text>
-                        </View>
-                        <Text style={[styles.arrowText, {color: colors.textSecondary}]}>›</Text>
+                        <Text style={[styles.gridMenuTitle, {color: colors.text}]} numberOfLines={1}>
+                          {item.title}
+                        </Text>
                       </TouchableOpacity>
-                    )}
-                  </>
-                );
-              })()}
-            </>
-          ) : (
-            // Single column layout for other clients
-            <>
-              {dynamicMenuItems.map((item) => (
-                <TouchableOpacity
-                  key={item.id}
-                  style={[
-                    styles.menuItem, 
-                    {backgroundColor: colors.card, shadowColor: colors.shadow},
-                    item.isLogout && styles.logoutMenuItem
-                  ]}
-                  onPress={item.onPress}>
-                  <View style={[
-                    styles.menuIcon, 
-                    {backgroundColor: item.isLogout ? colors.accentLight : colors.primaryLight}
-                  ]}>
-                    {item.iconType === 'feather' ? (
-                      <Feather 
-                        name={item.icon} 
-                        size={24} 
-                        color={item.isLogout ? colors.accent : colors.primary} 
-                      />
-                    ) : (
-                      <Text style={styles.iconText}>{item.icon}</Text>
-                    )}
+                    ))}
+                    {row.length === 1 && <View style={styles.gridPlaceholder} />}
                   </View>
-                  <View style={styles.menuContent}>
-                    <Text style={[
-                      styles.menuTitle, 
-                      {color: item.isLogout ? colors.accent : colors.text}
-                    ]}>{item.title}</Text>
-                    <Text style={[styles.menuSubtitle, {color: colors.textSecondary}]}>{item.subtitle}</Text>
-                  </View>
-                  <Text style={[styles.arrowText, {color: colors.textSecondary}]}>›</Text>
-                </TouchableOpacity>
-              ))}
-            </>
-          )}
+                ))}
+              </>
+            );
+          })()}
         </View>
       </ScrollView>
+      {/* Bottom Logout Footer */}
+      {(() => {
+        const logoutItem = dynamicMenuItems.find(item => item.isLogout);
+        if (!logoutItem) return null;
+        return (
+          <View style={[styles.bottomFooter, {backgroundColor: colors.card, shadowColor: colors.shadow}]}> 
+            <TouchableOpacity
+              style={[styles.gridMenuItem, styles.logoutFullWidth]}
+              onPress={logoutItem.onPress}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.gridMenuIcon, {backgroundColor: colors.accentLight}]}> 
+                <Text style={styles.gridIconText}>{logoutItem.icon}</Text>
+              </View>
+              <Text style={[styles.gridMenuTitle, {color: colors.text}]} numberOfLines={1}>
+                {logoutItem.title}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        );
+      })()}
     </SafeAreaView>
   );
 };
@@ -414,6 +364,8 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
     paddingTop: 20,
+    height: 60,
+    alignItems: 'center',
   },
   menuIcon: {
     width: 50,
@@ -447,11 +399,13 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   gridMenuItem: {
-    flex: 1,
+    width: '48%',
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: 12,
-    padding: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    height: 60,
     marginHorizontal: 6,
     shadowOffset: {
       width: 0,
@@ -476,10 +430,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     flex: 1,
+    lineHeight: 16,
   },
   gridPlaceholder: {
-    flex: 1,
+    width: '48%',
     marginHorizontal: 6,
+    height: 60,
+  },
+  logoutFullWidth: {
+    width: '100%',
+    marginHorizontal: 0,
+  },
+  bottomFooter: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 16,
   },
 });
 
