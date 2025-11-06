@@ -454,17 +454,17 @@ const HomeScreen = ({navigation}: any) => {
       await refreshMenu();
       try {
         const latestMenu = await menuService.get();
-        console.log('🔍 [MenuSettings] Latest (service.get):', latestMenu);
-        console.log('🔍 [MenuSettings] Latest menu type:', typeof latestMenu);
-        console.log('🔍 [MenuSettings] Latest menu is array:', Array.isArray(latestMenu));
+        // console.log('🔍 [MenuSettings] Latest (service.get):', latestMenu);
+        // console.log('🔍 [MenuSettings] Latest menu type:', typeof latestMenu);
+        // console.log('🔍 [MenuSettings] Latest menu is array:', Array.isArray(latestMenu));
         if (latestMenu) {
-          console.log('🔍 [MenuSettings] Latest menu JSON:', JSON.stringify(latestMenu, null, 2));
+          //console.log('🔍 [MenuSettings] Latest menu JSON:', JSON.stringify(latestMenu, null, 2));
         }
       } catch (e: any) {
-        console.warn('[MenuSettings] Fetch after auth failed:', e?.message || e);
+        //console.warn('[MenuSettings] Fetch after auth failed:', e?.message || e);
       }
     } catch (error: any) {
-      console.error('🏠 [HomeScreen] Error fetching account data:', error.message || error);
+      //console.error('🏠 [HomeScreen] Error fetching account data:', error.message || error);
       //Alert.alert('Error', `Failed to load account data: ${error.message}`);
     } finally {
       // console.log('🏠 [HomeScreen] fetchAccountData completed, setting loading to false');
@@ -1079,8 +1079,8 @@ const HomeScreen = ({navigation}: any) => {
           </View>
         </View>
 
-        {/* Quick Actions (hidden for Microscan) */}
-        {!isMicroscan && (
+        {/* Quick Actions (hidden for all clients per request) */}
+        {false && (
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, {color: colors.text}]}>{t('home.quickActions')}</Text>
           <View style={styles.actionGrid}>
@@ -1168,7 +1168,7 @@ const HomeScreen = ({navigation}: any) => {
               {/* Only show Pay Now button if there are payment dues */}
               {authData?.payment_dues > 0 && (
                 <TouchableOpacity 
-                  style={[styles.payNowButton, {backgroundColor: colors.accent}]} 
+                  style={[styles.payNowButton, {backgroundColor: colors.primary}]} 
                   onPress={handlePayBill}>
                   <Text style={styles.payNowText}>Pay Now</Text>
                 </TouchableOpacity>

@@ -269,22 +269,18 @@ const LedgerScreen = ({navigation}: any) => {
     }
   };
 
-  // Create dynamic tabs based on available data and display flags
+  // Create dynamic tabs based on display flags (show even if list is empty)
   const getTabs = () => {
     const availableTabs: { id: number; title: string; originalId: number }[] = [];
-    
-    if (displayFlags.invoice && invoicesGenerated.length > 0) {
+    if (displayFlags.invoice) {
       availableTabs.push({ id: availableTabs.length, title: t('ledger.invoices'), originalId: 1 });
     }
-    
-    if (displayFlags.receipt && paymentReceived.length > 0) {
+    if (displayFlags.receipt) {
       availableTabs.push({ id: availableTabs.length, title: t('ledger.payments'), originalId: 2 });
     }
-    
-    if (displayFlags.proforma && proformaInvoices.length > 0) {
+    if (displayFlags.proforma) {
       availableTabs.push({ id: availableTabs.length, title: t('ledger.proforma'), originalId: 0 });
     }
-    
     return availableTabs;
   };
 

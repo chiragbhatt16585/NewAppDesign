@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { getClientConfig } from './client-config';
 
 // Client configuration interface
 export interface ClientConfig {
@@ -14,9 +15,17 @@ export interface ClientConfig {
 
 // Detect current client based on bundle ID
 const getCurrentClient = (): string => {
-  // This would be determined by the bundle ID or build configuration
-  // For now, we'll use a simple approach
-  return 'microscan'; // Default to microscan
+  try {
+    const cfg = getClientConfig();
+    return cfg.clientId;
+  } catch (e) {
+    try {
+      const raw = require('./current-client.json');
+      return raw?.clientId || 'microscan';
+    } catch {
+      return 'microscan';
+    }
+  }
 };
 
 // Client configurations
@@ -51,6 +60,16 @@ const clientConfigs: Record<string, ClientConfig> = {
     poweredByWebsite: 'https://spacecom.in',
     bundleId: 'com.spacecom.log2space.onesevenstar',
   },
+  linkway: {
+    name: 'Linkway',
+    companyName: 'Linkway Internet Private Limited',
+    apiUrl: 'https://linkway.l2s.biz',
+    supportEmail: 'linkwaybrodband@gmail.com',
+    website: 'https://www.linkway.co.in/',
+    poweredBy: 'Spacecom Software LLP',
+    poweredByWebsite: 'https://spacecom.in',
+    bundleId: 'com.spacecom.log2space.linkway',
+  },
 };
 
 // Export current client configuration
@@ -61,6 +80,10 @@ export const getClientName = (): string => CLIENT_CONFIG.name;
 export const getCompanyName = (): string => CLIENT_CONFIG.companyName;
 export const getApiUrl = (): string => CLIENT_CONFIG.apiUrl;
 export const getSupportEmail = (): string => CLIENT_CONFIG.supportEmail;
-export const getWebsite = (): string => CLIENT_CONFIG.website;
+export const getWebsite = (): string => {
+  const id = getCurrentClient();
+  const cfg = clientConfigs[id] || CLIENT_CONFIG;
+  return cfg.website;
+};
 export const getPoweredBy = (): string => CLIENT_CONFIG.poweredBy;
 export const getPoweredByWebsite = (): string => CLIENT_CONFIG.poweredByWebsite; 

@@ -299,7 +299,7 @@ const SessionsScreen = ({navigation}: any) => {
                   <Text style={[styles.collapsedIcon, {color: colors.primary}]}>⇅</Text>
                 </View>
                 <Text style={[styles.collapsedValue, {color: colors.text}]}>{item.totalDataGB}</Text>
-              </View>
+            </View>
             </View>
 
             <View style={styles.detailRow}>

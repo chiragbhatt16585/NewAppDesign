@@ -621,7 +621,7 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
               style={[styles.confirmButton, {backgroundColor: colors.primary}]}
               onPress={handleConfirmPayment}>
               <Text style={styles.confirmButtonText}>
-                {t('planConfirmation.confirmAndPay')} - ₹{calculateFinalAmount()}
+                {t('planConfirmation.confirmAndPay')} ₹ {calculateFinalAmount()}
               </Text>
             </TouchableOpacity>
           </View>
@@ -681,7 +681,7 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
                   styles.paymentGatewayButtonText, 
                   {color: selectedGateway ? '#fff' : colors.textSecondary}
                 ]}>
-                  Pay ₹{calculateFinalAmount()} with {selectedGateway ? paymentGateways.find(g => g.id === selectedGateway)?.gw_display_name : ''}
+                  Pay ₹ {calculateFinalAmount()} with {selectedGateway ? paymentGateways.find(g => g.id === selectedGateway)?.gw_display_name : ''}
                 </Text>
               </TouchableOpacity>
             </View>

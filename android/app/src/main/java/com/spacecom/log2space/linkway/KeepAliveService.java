@@ -1,4 +1,4 @@
-package com.microscan.app;
+package com.spacecom.log2space.linkway;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -27,14 +27,16 @@ public class KeepAliveService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.d(TAG, "KeepAliveService started");
-        
-        // Create notification for foreground service
+        // On Android 14+ (SDK 34+), avoid running as a foreground service
+        if (Build.VERSION.SDK_INT >= 34) {
+            stopSelf();
+            return START_NOT_STICKY;
+        }
         Intent notificationIntent = new Intent(this, MainActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(
             this, 0, notificationIntent, 
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0
         );
-        
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("ISP App Running")
             .setContentText("App is running in background")
@@ -44,18 +46,12 @@ public class KeepAliveService extends Service {
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .build();
-        
-        // Start as foreground service
         startForeground(NOTIFICATION_ID, notification);
-        
-        // Return START_STICKY to restart service if killed
         return START_STICKY;
     }
     
     @Override
-    public IBinder onBind(Intent intent) {
-        return null;
-    }
+    public IBinder onBind(Intent intent) { return null; }
     
     @Override
     public void onDestroy() {
@@ -66,7 +62,6 @@ public class KeepAliveService extends Service {
     @Override
     public void onTaskRemoved(Intent rootIntent) {
         Log.d(TAG, "Task removed, restarting service");
-        // Restart service when task is removed
         Intent restartServiceIntent = new Intent(getApplicationContext(), this.getClass());
         restartServiceIntent.setPackage(getPackageName());
         startService(restartServiceIntent);
@@ -82,12 +77,10 @@ public class KeepAliveService extends Service {
             );
             channel.setDescription("Keeps the ISP app running in background");
             channel.setShowBadge(false);
-            
             NotificationManager manager = getSystemService(NotificationManager.class);
-            if (manager != null) {
-                manager.createNotificationChannel(channel);
-            }
+            if (manager != null) manager.createNotificationChannel(channel);
         }
     }
 }
+
 

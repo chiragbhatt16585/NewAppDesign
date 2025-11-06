@@ -1,4 +1,4 @@
-package com.microscan.app;
+package com.spacecom.log2space.linkway;
 
 import com.facebook.react.ReactPackage;
 import com.facebook.react.bridge.NativeModule;
@@ -10,12 +10,11 @@ import java.util.Collections;
 import java.util.List;
 
 public class KeepAlivePackage implements ReactPackage {
-    
     @Override
     public List<ViewManager> createViewManagers(ReactApplicationContext reactContext) {
         return Collections.emptyList();
     }
-    
+
     @Override
     public List<NativeModule> createNativeModules(ReactApplicationContext reactContext) {
         List<NativeModule> modules = new ArrayList<>();
@@ -23,4 +22,5 @@ public class KeepAlivePackage implements ReactPackage {
         return modules;
     }
 }
+
 

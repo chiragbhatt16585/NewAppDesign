@@ -316,18 +316,19 @@ const MoreOptionsScreen = ({navigation}: any) => {
         const logoutItem = dynamicMenuItems.find(item => item.isLogout);
         if (!logoutItem) return null;
         return (
-          <View style={[styles.bottomFooter, {backgroundColor: colors.card, shadowColor: colors.shadow}]}> 
+          <View style={[styles.bottomFooter, {backgroundColor: 'transparent'}]}> 
             <TouchableOpacity
-              style={[styles.gridMenuItem, styles.logoutFullWidth]}
+              style={[
+                styles.logoutButton,
+                {backgroundColor: colors.card, shadowColor: colors.shadow, borderColor: colors.accent}
+              ]}
               onPress={logoutItem.onPress}
-              activeOpacity={0.8}
+              activeOpacity={0.85}
             >
-              <View style={[styles.gridMenuIcon, {backgroundColor: colors.accentLight}]}> 
+              <View style={[styles.logoutIcon, {backgroundColor: colors.accentLight}]}> 
                 <Text style={styles.gridIconText}>{logoutItem.icon}</Text>
               </View>
-              <Text style={[styles.gridMenuTitle, {color: colors.text}]} numberOfLines={1}>
-                {logoutItem.title}
-              </Text>
+              <Text style={[styles.logoutTitle, {color: colors.text}]}> {logoutItem.title}</Text>
             </TouchableOpacity>
           </View>
         );
@@ -403,7 +404,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: 12,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 10,
     height: 60,
     marginHorizontal: 6,
@@ -431,6 +432,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     flex: 1,
     lineHeight: 16,
+    textAlign: 'left',
   },
   gridPlaceholder: {
     width: '48%',
@@ -446,9 +448,37 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 16,
+  },
+  logoutButton: {
+    height: 60,
+    width: '100%',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    borderWidth: 1,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  logoutIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logoutTitle: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

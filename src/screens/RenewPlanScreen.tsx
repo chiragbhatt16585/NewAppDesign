@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useMemo} from 'react';
 import {useFocusEffect} from '@react-navigation/native';
 import {
   View,
@@ -29,6 +29,7 @@ interface Plan {
   uploadSpeed: string;
   days: number;
   FinalAmount: number;
+  user_mrp?: number;
   amt: number;
   CGSTAmount: number;
   SGSTAmount: number;
@@ -145,51 +146,94 @@ const RenewPlanScreen = ({navigation}: any) => {
           false, // is_dashboard
           'default'
         );
+        // FULL RAW RESPONSE (Plan List)
+        try {
+          // console.log('=== FULL PLAN LIST RAW RESPONSE START ===');
+          // console.log(JSON.stringify(planList, null, 2));
+          // console.log('=== FULL PLAN LIST RAW RESPONSE END ===');
+        } catch (e) {}
         
-        console.log('=== PLAN API RESPONSE SUCCESS ===');
-        console.log('Plan Count:', planList?.length || 0);
+        // console.log('=== PLAN API RESPONSE SUCCESS ===');
+        // console.log('Plan Count:', planList?.length || 0);
         if (planList?.[0]) {
-          console.log('First Plan Name:', planList[0].name);
-          console.log('First Plan Speed:', planList[0].downloadSpeed);
-          console.log('First Plan Price:', planList[0].FinalAmount);
-          console.log('First Plan Validity:', planList[0].days);
-          console.log('First Plan Data Limit:', planList[0].limit);
-          console.log('First Plan OTT Count:', planList[0].content_providers?.length || 0);
+          // console.log('First Plan Name:', planList[0].name);
+          // console.log('First Plan Speed:', planList[0].downloadSpeed);
+          // console.log('First Plan Price:', planList[0].FinalAmount);
+          // console.log('First Plan Validity:', planList[0].days);
+          // console.log('First Plan Data Limit:', planList[0].limit);
+          // console.log('First Plan OTT Count:', planList[0].content_providers?.length || 0);
         }
-        console.log('=== END PLAN API RESPONSE ===');
+        //console.log('=== END PLAN API RESPONSE ===');
+        // Debug: print raw plan API payload (first item and count)
+        try {
+          //console.log('RAW planList length =>', Array.isArray(planList) ? planList.length : 'not array');
+          if (Array.isArray(planList) && planList.length > 0) {
+            //console.log('RAW planList[0] =>', JSON.stringify(planList[0], null, 2));
+          }
+        } catch (e) {}
+        try {
+          // Alert.alert(
+          //   'Plan API Debug',
+          //   `Count: ${Array.isArray(planList) ? planList.length : 0}\nFirst: ${Array.isArray(planList) && planList[0] ? JSON.stringify({
+          //     id: planList[0].id,
+          //     name: planList[0].name,
+          //     user_mrp: planList[0].user_mrp,
+          //     FinalAmount: planList[0].FinalAmount,
+          //     amt: planList[0].amt,
+          //   }) : 'N/A'}`
+          // );
+        } catch (e) {}
         
         // Print plan list array for debugging
-        console.log('=== PLAN LIST ARRAY DEBUG ===');
-        console.log('Total Plans:', planList?.length || 0);
+        //console.log('=== PLAN LIST ARRAY DEBUG ===');
+        //console.log('Total Plans:', planList?.length || 0);
         if (planList && planList.length > 0) {
-          console.log('First Plan Object:', JSON.stringify(planList[0], null, 2));
-          console.log('All Plan Names:', planList.map(plan => plan.name));
-          console.log('Sample Plan Fields:', {
-            id: planList[0].id,
-            name: planList[0].name,
-            downloadSpeed: planList[0].downloadSpeed,
-            uploadSpeed: planList[0].uploadSpeed,
-            days: planList[0].days,
-            FinalAmount: planList[0].FinalAmount,
-            amt: planList[0].amt,
-            CGSTAmount: planList[0].CGSTAmount,
-            SGSTAmount: planList[0].SGSTAmount,
-            limit: planList[0].limit,
-            ott_plan: planList[0].ott_plan,
-            voice_plan: planList[0].voice_plan,
-            fup_flag: planList[0].fup_flag,
-            iptv: planList[0].iptv,
-            content_providers: planList[0].content_providers
-          });
-          console.log('=== PLAN FILTER DEBUG ===');
-          console.log('Voice plan value:', planList[0].voice_plan);
-          console.log('OTT plan value:', planList[0].ott_plan);
-          console.log('IPTV value:', planList[0].iptv);
-          console.log('FUP flag value:', planList[0].fup_flag);
+          // console.log('First Plan Object:', JSON.stringify(planList[0], null, 2));
+          // console.log('All Plan Names:', planList.map(plan => plan.name));
+          // console.log('Sample Plan Fields:', {
+          //   id: planList[0].id,
+          //   name: planList[0].name,
+          //   downloadSpeed: planList[0].downloadSpeed,
+          //   uploadSpeed: planList[0].uploadSpeed,
+          //   days: planList[0].days,
+          //   FinalAmount: planList[0].FinalAmount,
+          //   amt: planList[0].amt,
+          //   CGSTAmount: planList[0].CGSTAmount,
+          //   SGSTAmount: planList[0].SGSTAmount,
+          //   limit: planList[0].limit,
+          //   ott_plan: planList[0].ott_plan,
+          //   voice_plan: planList[0].voice_plan,
+          //   fup_flag: planList[0].fup_flag,
+          //   iptv: planList[0].iptv,
+          //   content_providers: planList[0].content_providers
+          // });
+          // console.log('=== PLAN FILTER DEBUG ===');
+          // console.log('Voice plan value:', planList[0].voice_plan);
+          // console.log('OTT plan value:', planList[0].ott_plan);
+          // console.log('IPTV value:', planList[0].iptv);
+          // console.log('FUP flag value:', planList[0].fup_flag);
         }
-        console.log('=== END PLAN LIST ARRAY DEBUG ===');
+        //console.log('=== END PLAN LIST ARRAY DEBUG ===');
         
-        setPlansData(planList);
+        // Normalize numeric amounts to ensure UI shows correct values
+        const normalizedPlans = Array.isArray(planList)
+          ? planList.map((p: any) => {
+              const finalAmtRaw = p?.FinalAmount ?? p?.finalAmount ?? p?.mrp ?? p?.amt;
+              const finalAmtNum = Number(finalAmtRaw);
+              const userMrpNum = Number(p?.user_mrp);
+              return {
+                ...p,
+                FinalAmount: Number.isFinite(finalAmtNum) ? finalAmtNum : 0,
+                user_mrp: Number.isFinite(userMrpNum)
+                  ? userMrpNum
+                  : (Number.isFinite(Number(p?.mrp)) ? Number(p?.mrp) : undefined),
+                amt: Number.isFinite(Number(p?.amt)) ? Number(p?.amt) : p?.amt,
+                CGSTAmount: Number.isFinite(Number(p?.CGSTAmount)) ? Number(p?.CGSTAmount) : p?.CGSTAmount,
+                SGSTAmount: Number.isFinite(Number(p?.SGSTAmount)) ? Number(p?.SGSTAmount) : p?.SGSTAmount,
+              };
+            })
+          : [];
+        setPlansData(normalizedPlans);
       } catch (planError: any) {
         console.error('=== PLAN API ERROR ===');
         console.error('Error:', planError);
@@ -205,14 +249,14 @@ const RenewPlanScreen = ({navigation}: any) => {
       // Cache the data
       await dataCache.setUserData({
         authData: authResponse,
-        plansData: planList,
+        plansData: plansData,
         taxInfo: taxInfo,
         payDues: payDuesAmount,
         lastUpdated: Date.now()
       });
 
       // Set current plan as selected by default
-      const currentPlan = planList.find((plan: any) => plan.name === authResponse.current_plan || plan.name === authResponse.current_plan1);
+      const currentPlan = plansData.find((plan: any) => plan.name === authResponse.current_plan || plan.name === authResponse.current_plan1);
       if (currentPlan) {
         setSelectedPlan(currentPlan);
       }
@@ -295,9 +339,8 @@ const RenewPlanScreen = ({navigation}: any) => {
       });
     }
     if (filters.validity) {
-      filteredPlans = filteredPlans.filter(plan => 
-        plan.days.toString().includes(filters.validity)
-      );
+      const selValidity = parseInt(filters.validity);
+      filteredPlans = filteredPlans.filter(plan => plan.days === selValidity);
     }
     if (filters.price) {
       const priceRange = filters.price.split('-');
@@ -397,13 +440,24 @@ const RenewPlanScreen = ({navigation}: any) => {
     return filteredPlans;
   };
 
+  // Dynamic filter options derived from plan API data
+  const availableValidities = useMemo(() => {
+    const vals = Array.from(new Set(plansData.map(p => p.days).filter(v => Number.isFinite(v)))) as number[];
+    return vals.sort((a, b) => a - b).map(v => v.toString());
+  }, [plansData]);
+
+  
+
+  
+
   const handlePayNow = () => {
     if (!selectedPlan) {
       Alert.alert('Error', 'Please select a plan first');
       return;
     }
 
-    const totalAmount = payDues > 0 ? selectedPlan.FinalAmount + payDues : selectedPlan.FinalAmount;
+    const basePrice = (selectedPlan.user_mrp ?? selectedPlan.FinalAmount) || 0;
+    const totalAmount = payDues > 0 ? basePrice + payDues : basePrice;
 
     // Map the selected plan to the expected structure for confirmation screen
     const planForConfirmation = {
@@ -413,11 +467,11 @@ const RenewPlanScreen = ({navigation}: any) => {
       upload: selectedPlan.uploadSpeed || '-',
       download: selectedPlan.downloadSpeed || '-',
       validity: selectedPlan.days ? `${selectedPlan.days} Days` : '-',
-      price: selectedPlan.FinalAmount,
+      price: basePrice,
       baseAmount: selectedPlan.amt,
       cgst: selectedPlan.CGSTAmount,
       sgst: selectedPlan.SGSTAmount,
-      mrp: selectedPlan.FinalAmount,
+      mrp: basePrice,
       dues: !payDues || isNaN(payDues) ? 0 : payDues,
       gbLimit: selectedPlan.limit === 'Unlimited' ? -1 : selectedPlan.limit,
       isCurrentPlan: selectedPlan.name === authData?.current_plan || selectedPlan.name === authData?.current_plan1,
@@ -476,15 +530,21 @@ const RenewPlanScreen = ({navigation}: any) => {
 
   const renderPlanItem = ({item}: {item: Plan}) => {
     try {
-      console.log('Rendering plan item:', item.name);
+      //console.log('Rendering plan item:', item.name);
       return (
-    <View
-      style={[
-        styles.planCard,
-        {backgroundColor: colors.card, shadowColor: colors.shadow},
-        selectedPlan?.id === item.id && {borderColor: colors.primary, borderWidth: 2},
-        (item.name === authData?.current_plan || item.name === authData?.current_plan1) && {borderColor: colors.success, borderWidth: 2},
-      ]}>
+    <View style={styles.planCardWrapper}>
+      {(item.name === authData?.current_plan || item.name === authData?.current_plan1) && (
+        <View style={[styles.currentPlanTopBadge, {backgroundColor: colors.success}]}>
+          <Text style={styles.currentPlanTopText}>{t('renewPlan.currentPlan')}</Text>
+        </View>
+      )}
+      <View
+        style={[
+          styles.planCard,
+          {backgroundColor: colors.card, shadowColor: colors.shadow},
+          selectedPlan?.id === item.id && {borderColor: colors.primaryLight, borderWidth: 1},
+          (item.name === authData?.current_plan || item.name === authData?.current_plan1) && {borderColor: colors.successLight, borderWidth: 1},
+        ]}>
       
       {/* Compact Plan Header */}
       <TouchableOpacity 
@@ -499,11 +559,6 @@ const RenewPlanScreen = ({navigation}: any) => {
                 <Text style={[styles.planDescription, {color: colors.textSecondary}]}>{item.description}</Text>
               )}
               <View style={styles.planBadges}>
-                {(item.name === authData?.current_plan || item.name === authData?.current_plan1) && (
-                  <View style={[styles.currentPlanBadge, {backgroundColor: colors.success}]}>
-                    <Text style={styles.currentPlanText}>{t('renewPlan.currentPlan')}</Text>
-                  </View>
-                )}
               </View>
             </View>
           </View>
@@ -555,7 +610,7 @@ const RenewPlanScreen = ({navigation}: any) => {
         </View>
         <View style={styles.planPriceContainer}>
           <View style={[styles.priceBadge, {backgroundColor: colors.primaryLight}]}>
-            <Text style={[styles.priceText, {color: colors.primary}]}>₹{item.FinalAmount}</Text>
+            <Text style={[styles.priceText, {color: colors.primary}]}>₹ {(item.user_mrp ?? item.FinalAmount) || 0}</Text>
           </View>
           <TouchableOpacity 
             style={styles.expandButton}
@@ -649,6 +704,7 @@ const RenewPlanScreen = ({navigation}: any) => {
           ) : null}
         </View>
       )}
+      </View>
     </View>
     );
     } catch (error) {
@@ -694,7 +750,7 @@ const RenewPlanScreen = ({navigation}: any) => {
       {/* Filter and Sort Buttons */}
       <View style={styles.filterContainer}>
         <TouchableOpacity
-          style={[styles.filterButton, {backgroundColor: colors.card}]}
+          style={[styles.filterButton, {backgroundColor: colors.card, borderColor: colors.border}]}
           onPress={() => setShowFilterModal(true)}>
           <Text style={styles.filterButtonIcon}>🔍</Text>
           <Text style={[styles.filterButtonText, {color: colors.text}]}>
@@ -702,7 +758,7 @@ const RenewPlanScreen = ({navigation}: any) => {
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.filterButton, {backgroundColor: colors.card}]}
+          style={[styles.filterButton, {backgroundColor: colors.card, borderColor: colors.border}]}
           onPress={() => setShowSortModal(true)}>
           <Text style={styles.filterButtonIcon}>📊</Text>
           <Text style={[styles.filterButtonText, {color: colors.text}]}>
@@ -854,8 +910,12 @@ const RenewPlanScreen = ({navigation}: any) => {
           <TouchableOpacity
             style={[styles.payButton, {backgroundColor: colors.primary}]}
             onPress={handlePayNow}>
-                         <Text style={[styles.payButtonText, {color: '#ffffff'}]}>
-              {t('renewPlan.payNow')} ₹{payDues > 0 ? selectedPlan.FinalAmount + payDues : selectedPlan.FinalAmount}
+                        <Text style={[styles.payButtonText, {color: '#ffffff'}]}>
+              {(() => {
+                const displayBase = (selectedPlan.user_mrp ?? selectedPlan.FinalAmount) || 0;
+                const displayTotal = payDues > 0 ? displayBase + payDues : displayBase;
+                return `${t('renewPlan.payNow')} ₹ ${displayTotal}`;
+              })()}
             </Text>
           </TouchableOpacity>
         </View>
@@ -878,37 +938,13 @@ const RenewPlanScreen = ({navigation}: any) => {
             </View>
             
             <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-              {/* Speed Filter */}
-              <View style={styles.filterSection}>
-                <Text style={[styles.filterSectionTitle, {color: colors.text}]}>Speed</Text>
-                <View style={styles.filterOptions}>
-                  {['10 to 50 Mbps', '50 to 100 Mbps', '100 to 200 Mbps', '200 to 350 Mbps', '350 to 500 Mbps', '500 to 1000 Mbps', '1000+ Mbps'].map((speed) => (
-                    <TouchableOpacity
-                      key={speed}
-                      style={[
-                        styles.filterOption,
-                        {borderColor: colors.border},
-                        filters.speed === speed && {backgroundColor: colors.primary, borderColor: colors.primary}
-                      ]}
-                      onPress={() => setFilters(prev => ({...prev, speed: prev.speed === speed ? '' : speed}))}>
-                      <Text style={[
-                        styles.filterOptionText,
-                        {color: filters.speed === speed ? '#fff' : colors.text}
-                      ]}>
-                        {speed}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              {/* Validity Filter */}
+              {/* Validity Filter (Dynamic) */}
               <View style={styles.filterSection}>
                 <Text style={[styles.filterSectionTitle, {color: colors.text}]}>Validity</Text>
                 <View style={styles.filterOptions}>
-                  {['30', '90'].map((validity) => (
+                  {availableValidities.map((validity) => (
                     <TouchableOpacity
-                      key={validity}
+                      key={`val-${validity}`}
                       style={[
                         styles.filterOption,
                         {borderColor: colors.border},
@@ -926,13 +962,13 @@ const RenewPlanScreen = ({navigation}: any) => {
                 </View>
               </View>
 
-              {/* Price Filter */}
+              {/* Price Filter (Static) */}
               <View style={styles.filterSection}>
                 <Text style={[styles.filterSectionTitle, {color: colors.text}]}>Price Range</Text>
                 <View style={styles.filterOptions}>
-                  {['0-1000', '1000-2000', '2000-5000', '5000+'].map((price) => (
+                  {['0-1000', '1000-2000', '2000-5000', '5000-10000'].map((price) => (
                     <TouchableOpacity
-                      key={price}
+                      key={`pr-${price}`}
                       style={[
                         styles.filterOption,
                         {borderColor: colors.border},
@@ -944,6 +980,30 @@ const RenewPlanScreen = ({navigation}: any) => {
                         {color: filters.price === price ? '#fff' : colors.text}
                       ]}>
                         ₹{price}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Speed Filter (Static) */}
+              <View style={styles.filterSection}>
+                <Text style={[styles.filterSectionTitle, {color: colors.text}]}>Speed</Text>
+                <View style={styles.filterOptions}>
+                  {['10 to 50 Mbps', '50 to 100 Mbps', '100 to 200 Mbps', '200 to 350 Mbps', '350 to 500 Mbps', '500 to 1000 Mbps', '1000+ Mbps'].map((speed) => (
+                    <TouchableOpacity
+                      key={`sp-${speed}`}
+                      style={[
+                        styles.filterOption,
+                        {borderColor: colors.border},
+                        filters.speed === speed && {backgroundColor: colors.primary, borderColor: colors.primary}
+                      ]}
+                      onPress={() => setFilters(prev => ({...prev, speed: prev.speed === speed ? '' : speed}))}>
+                      <Text style={[
+                        styles.filterOptionText,
+                        {color: filters.speed === speed ? '#fff' : colors.text}
+                      ]}>
+                        {speed}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -1091,6 +1151,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
+    position: 'relative',
+    overflow: 'visible',
     shadowOffset: {
       width: 0,
       height: 2,
@@ -1130,6 +1192,29 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 10,
     fontWeight: '600',
+  },
+  planCardWrapper: {
+    position: 'relative',
+    marginTop: 16,
+  },
+  currentPlanTopBadge: {
+    position: 'absolute',
+    top: -14,
+    left: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    zIndex: 2,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  currentPlanTopText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
   planBadges: {
     flexDirection: 'row',
@@ -1473,9 +1558,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 12,
-    borderWidth: 1,
+    borderWidth: 0.5,
     shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 3,
   },

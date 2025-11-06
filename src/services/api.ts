@@ -1232,9 +1232,9 @@ class ApiService {
         data.online_renewal_plan_list = 'yes';
       }
 
-      console.log('=== API SERVICE: Plan list data ===', data);
-      console.log('=== API SERVICE: Making request to ===', `${url}/selfcareGetPlanAmount`);
-      console.log('=== API SERVICE: Token available ===', !!token);
+      // console.log('=== API SERVICE: Plan list data ===', data);
+      // console.log('=== API SERVICE: Making request to ===', `${url}/selfcareGetPlanAmount`);
+      // console.log('=== API SERVICE: Token available ===', !!token);
 
       const options = {
         method,
@@ -1273,7 +1273,7 @@ class ApiService {
             console.log('fup_flag:', response.data[0].fup_flag);
             console.log('content_providers count:', response.data[0].content_providers?.length || 0);
           }
-                const mappedPlans = response.data.map((planObj: any, index: number) => ({
+        const mappedPlans = response.data.map((planObj: any, index: number) => ({
         id: planObj.id || index.toString(),
         name: planObj.planname || planObj.name || '',
         description: planObj.description || '',
@@ -1281,7 +1281,12 @@ class ApiService {
         uploadSpeed: planObj.upload_speed_mb || planObj.upload || '',
         days: parseInt(planObj.validity) || parseInt(planObj.days) || 30,
         FinalAmount: parseFloat(planObj.amount) || parseFloat(planObj.FinalAmount) || 0,
-        amt: parseFloat(planObj.base_price) || parseFloat(planObj.amt) || 0,
+        // Set user_base_price as MRP for display; keep amt as base amount for breakdown
+        user_mrp: (planObj.user_base_price !== undefined ? parseFloat(planObj.user_base_price) : NaN) ||
+                  (planObj.base_price !== undefined ? parseFloat(planObj.base_price) : NaN) || undefined,
+        mrp: (planObj.user_base_price !== undefined ? parseFloat(planObj.user_base_price) : NaN) ||
+             (planObj.base_price !== undefined ? parseFloat(planObj.base_price) : NaN) || undefined,
+        amt: parseFloat(planObj.user_base_price) || parseFloat(planObj.amt) || 0,
         CGSTAmount: parseFloat(planObj.cgst_value) || parseFloat(planObj.CGSTAmount) || 0,
         SGSTAmount: parseFloat(planObj.sgst_value) || parseFloat(planObj.SGSTAmount) || 0,
         limit: planObj.data_xfer || 'Unlimited',

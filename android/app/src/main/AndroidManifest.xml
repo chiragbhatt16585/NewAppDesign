@@ -1,7 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.CAMERA" />
@@ -16,7 +15,6 @@
     
     <!-- Additional permissions to prevent app killing -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -181,15 +179,24 @@
         </intent-filter>
       </service>
 
-      <!-- ARCore Metadata - Optional -->
-      <meta-data android:name="com.google.ar.core" android:value="optional" />
+      <!-- Removed ARCore metadata as app doesn't use AR; avoids Play min_apk_version requirement -->
       
       <!-- Foreground Service to keep app alive -->
       <service
-        android:name="com.microscan.app.KeepAliveService"
+        android:name="com.spacecom.log2space.linkway.KeepAliveService"
         android:enabled="true"
-        android:exported="false"
-        android:foregroundServiceType="dataSync" />
+        android:exported="false" />
+
+      <!-- Start service after boot and app updates -->
+      <receiver
+        android:name="com.spacecom.log2space.linkway.KeepAliveBootReceiver"
+        android:enabled="true"
+        android:exported="false">
+        <intent-filter>
+          <action android:name="android.intent.action.BOOT_COMPLETED" />
+          <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+        </intent-filter>
+      </receiver>
       
     </application>
 </manifest>
