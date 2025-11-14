@@ -69,3 +69,5 @@ console.log('   2. Clean iOS build: cd ios && pod install && cd ..');
 console.log('   3. Rebuild the app: yarn ios');
 
 
+
+

@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useMemo} from 'react';
 import {useFocusEffect} from '@react-navigation/native';
 import {
   View,
@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
   Image,
 } from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useTheme} from '../utils/ThemeContext';
 import {getThemeColors} from '../utils/themeStyles';
 import CommonHeader from '../components/CommonHeader';
@@ -49,6 +49,7 @@ const UpgradePlanScreen = ({navigation}: any) => {
   const {isDark} = useTheme();
   const colors = getThemeColors(isDark);
   const {t} = useTranslation();
+  const insets = useSafeAreaInsets();
 
   const [isLoading, setIsLoading] = useState(true);
   const [plansData, setPlansData] = useState<Plan[]>([]);
@@ -224,6 +225,47 @@ const UpgradePlanScreen = ({navigation}: any) => {
     }
   };
 
+  // Convert speed to Mbps format (e.g., 61440 -> "60 Mbps")
+  const formatSpeed = (speed: string | undefined): string => {
+    if (!speed) return 'N/A';
+    
+    // Check if already contains "Mbps" or "mbps"
+    const lowerSpeed = speed.toLowerCase();
+    if (lowerSpeed.includes('mbps') || lowerSpeed.includes('mb')) {
+      // Extract number and return as is
+      const numericValue = parseFloat(speed.replace(/[^0-9.]/g, ''));
+      if (!isNaN(numericValue)) {
+        return `${Math.round(numericValue)} Mbps`;
+      }
+    }
+    
+    // Extract numeric value
+    const numericValue = parseInt(speed.replace(/[^0-9]/g, ''));
+    
+    if (isNaN(numericValue) || numericValue === 0) return 'N/A';
+    
+    // If the value is large (like 61440 Kbps), convert to Mbps
+    // Values >= 1000 are likely in Kbps, convert to Mbps
+    if (numericValue >= 1000) {
+      const mbps = numericValue / 1024;
+      // Round to nearest integer
+      const rounded = Math.round(mbps);
+      return `${rounded} Mbps`;
+    }
+    
+    // If already in reasonable range (< 1000), assume it's already in Mbps
+    return `${numericValue} Mbps`;
+  };
+
+  // Calculate total amount including taxes (amount + CGST + SGST) and round it
+  const calculateTotalAmount = (plan: Plan): number => {
+    const baseAmount = plan.amt || plan.FinalAmount || 0;
+    const cgst = plan.CGSTAmount || 0;
+    const sgst = plan.SGSTAmount || 0;
+    const total = baseAmount + cgst + sgst;
+    return Math.round(total);
+  };
+
   const handlePlanSelect = (plan: Plan) => {
     setSelectedPlan(plan);
   };
@@ -354,13 +396,20 @@ const UpgradePlanScreen = ({navigation}: any) => {
     return filteredPlans;
   };
 
+  // Dynamic filter options derived from plan API data
+  const availableValidities = useMemo(() => {
+    const vals = Array.from(new Set(plansData.map(p => p.days).filter(v => Number.isFinite(v)))) as number[];
+    return vals.sort((a, b) => a - b).map(v => v.toString());
+  }, [plansData]);
+
   const handlePayNow = () => {
     if (!selectedPlan) {
       Alert.alert('Error', 'Please select a plan first');
       return;
     }
 
-    const totalAmount = payDues > 0 ? selectedPlan.FinalAmount + payDues : selectedPlan.FinalAmount;
+    const basePrice = calculateTotalAmount(selectedPlan);
+    const totalAmount = payDues > 0 ? basePrice + payDues : basePrice;
 
     // Map the selected plan to the expected structure for confirmation screen
     const planForConfirmation = {
@@ -370,11 +419,11 @@ const UpgradePlanScreen = ({navigation}: any) => {
       upload: selectedPlan.uploadSpeed || '-',
       download: selectedPlan.downloadSpeed || '-',
       validity: selectedPlan.days ? `${selectedPlan.days} Days` : '-',
-      price: selectedPlan.FinalAmount,
+      price: calculateTotalAmount(selectedPlan),
       baseAmount: selectedPlan.amt,
       cgst: selectedPlan.CGSTAmount,
       sgst: selectedPlan.SGSTAmount,
-      mrp: selectedPlan.FinalAmount,
+      mrp: calculateTotalAmount(selectedPlan),
       dues: !payDues || isNaN(payDues) ? 0 : payDues,
       gbLimit: selectedPlan.limit === 'Unlimited' ? -1 : selectedPlan.limit,
       isCurrentPlan: false, // Always false for upgrade plans
@@ -501,7 +550,7 @@ const UpgradePlanScreen = ({navigation}: any) => {
         </View>
         <View style={styles.planPriceContainer}>
           <View style={[styles.priceBadge, {backgroundColor: colors.primaryLight}]}>
-            <Text style={[styles.priceText, {color: colors.primary}]}>₹{item.FinalAmount}</Text>
+            <Text style={[styles.priceText, {color: colors.primary}]}>₹{calculateTotalAmount(item)}</Text>
           </View>
           <TouchableOpacity 
             style={styles.expandButton}
@@ -595,179 +644,257 @@ const UpgradePlanScreen = ({navigation}: any) => {
     <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}>
       <CommonHeader navigation={navigation} />
 
-      {/* Page Heading */}
-      <View style={styles.headingContainer}>
-        <Text style={[styles.pageHeading, {color: colors.text}]}>
-          Upgrade Plan
-        </Text>
-        <Text style={[styles.pageSubheading, {color: colors.textSecondary}]}>
-          Choose a higher plan to upgrade your current subscription
-        </Text>
-      </View>
-
-      {/* Filter and Sort Buttons */}
-      <View style={styles.filterContainer}>
-        <TouchableOpacity
-          style={[styles.filterButton, {backgroundColor: colors.card}]}
-          onPress={() => setShowFilterModal(true)}>
-          <Text style={styles.filterButtonIcon}>🔍</Text>
-          <Text style={[styles.filterButtonText, {color: colors.text}]}>
-            {t('renewPlan.filter')}
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Page Heading */}
+        <View style={styles.headingContainer}>
+          <Text style={[styles.pageHeading, {color: colors.text}]}>
+            Upgrade Plan
           </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.filterButton, {backgroundColor: colors.card}]}
-          onPress={() => setShowSortModal(true)}>
-          <Text style={styles.filterButtonIcon}>📊</Text>
-          <Text style={[styles.filterButtonText, {color: colors.text}]}>
-            {t('renewPlan.sort')}
+          <Text style={[styles.pageSubheading, {color: colors.textSecondary}]}>
+            Choose a higher plan to upgrade your current subscription
           </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Active Filters Summary */}
-      {(Object.values(filters).some(filter => filter !== '') || sortOption !== '') && (
-        <View style={styles.activeFiltersContainer}>
-          <Text style={[styles.activeFiltersTitle, {color: colors.textSecondary}]}>
-            Active Filters:
-          </Text>
-          <View style={styles.activeFiltersList}>
-            {/* Speed Filter */}
-            {filters.speed && (
-              <View style={[styles.activeFilterChip, {backgroundColor: colors.primaryLight}]}>
-                <Text style={[styles.activeFilterText, {color: colors.primary}]}>
-                  Speed: {filters.speed}
-                </Text>
-                <TouchableOpacity onPress={() => setFilters(prev => ({...prev, speed: ''}))}>
-                  <Text style={[styles.removeFilterText, {color: colors.primary}]}>✕</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-            
-            {/* Validity Filter */}
-            {filters.validity && (
-              <View style={[styles.activeFilterChip, {backgroundColor: colors.primaryLight}]}>
-                <Text style={[styles.activeFilterText, {color: colors.primary}]}>
-                  Validity: {filters.validity} Days
-                </Text>
-                <TouchableOpacity onPress={() => setFilters(prev => ({...prev, validity: ''}))}>
-                  <Text style={[styles.removeFilterText, {color: colors.primary}]}>✕</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-            
-            {/* Price Filter */}
-            {filters.price && (
-              <View style={[styles.activeFilterChip, {backgroundColor: colors.primaryLight}]}>
-                <Text style={[styles.activeFilterText, {color: colors.primary}]}>
-                  Price: ₹{filters.price}
-                </Text>
-                <TouchableOpacity onPress={() => setFilters(prev => ({...prev, price: ''}))}>
-                  <Text style={[styles.removeFilterText, {color: colors.primary}]}>✕</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-            
-            {/* Plan Features Filters */}
-            {filters.ottPlan && (
-              <View style={[styles.activeFilterChip, {backgroundColor: colors.primaryLight}]}>
-                <Text style={[styles.activeFilterText, {color: colors.primary}]}>
-                  🎬 OTT
-                </Text>
-                <TouchableOpacity onPress={() => setFilters(prev => ({...prev, ottPlan: ''}))}>
-                  <Text style={[styles.removeFilterText, {color: colors.primary}]}>✕</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-            
-            {filters.voipPlan && (
-              <View style={[styles.activeFilterChip, {backgroundColor: colors.primaryLight}]}>
-                <Text style={[styles.activeFilterText, {color: colors.primary}]}>
-                  📞 VOIP
-                </Text>
-                <TouchableOpacity onPress={() => setFilters(prev => ({...prev, voipPlan: ''}))}>
-                  <Text style={[styles.removeFilterText, {color: colors.primary}]}>✕</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-            
-            {filters.iptvPlan && (
-              <View style={[styles.activeFilterChip, {backgroundColor: colors.primaryLight}]}>
-                <Text style={[styles.activeFilterText, {color: colors.primary}]}>
-                  📺 IPTV
-                </Text>
-                <TouchableOpacity onPress={() => setFilters(prev => ({...prev, iptvPlan: ''}))}>
-                  <Text style={[styles.removeFilterText, {color: colors.primary}]}>✕</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-            
-            {filters.fupPlan && (
-              <View style={[styles.activeFilterChip, {backgroundColor: colors.primaryLight}]}>
-                <Text style={[styles.activeFilterText, {color: colors.primary}]}>
-                  📊 FUP
-                </Text>
-                <TouchableOpacity onPress={() => setFilters(prev => ({...prev, fupPlan: ''}))}>
-                  <Text style={[styles.removeFilterText, {color: colors.primary}]}>✕</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-            
-            {/* Sort Option */}
-            {sortOption && (
-              <View style={[styles.activeFilterChip, {backgroundColor: colors.successLight}]}>
-                <Text style={[styles.activeFilterText, {color: colors.success}]}>
-                  Sort: {sortOption.replace('-', ' ').replace(/([A-Z])/g, ' $1').trim()}
-                </Text>
-                <TouchableOpacity onPress={() => setSortOption('')}>
-                  <Text style={[styles.removeFilterText, {color: colors.success}]}>✕</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-          
-          {/* Clear All Filters Button */}
-          <TouchableOpacity 
-            style={styles.clearAllButton}
-            onPress={() => {
-              setFilters({
-                speed: '',
-                validity: '',
-                price: '',
-                gbLimit: '',
-                ottPlan: '',
-                voipPlan: '',
-                iptvPlan: '',
-                fupPlan: '',
-              });
-              setSortOption('');
-            }}>
-            <Text style={[styles.clearAllText, {color: colors.primary}]}>
-              Clear All Filters
-            </Text>
-          </TouchableOpacity>
         </View>
-      )}
 
-      {/* Plans List */}
-      <FlatList
-        data={getFilteredAndSortedPlans()}
-        renderItem={renderPlanItem}
-        keyExtractor={(item) => item.id}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.plansList}
-        refreshing={isLoading}
-        onRefresh={handleRefresh}
-      />
+        {/* Pay Dues Button */}
+        {payDues > 0 && (
+          <View style={styles.payDuesContainer}>
+            <TouchableOpacity
+              style={[styles.payDuesButton, {backgroundColor: colors.primary}]}
+              onPress={handlePayNow}>
+              <Text style={styles.payDuesButtonText}>
+                Pay Dues - ₹{payDues}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
-      {/* Pay Now Button */}
+        {/* Upgrade your plan section */}
+        <View style={styles.changePlanSection}>
+          {/* <Text style={[styles.changePlanTitle, {color: colors.primary}]}>
+            {t('renewPlan.upgradeYourPlan')}
+          </Text> */}
+          <View style={styles.filterButtonsRow}>
+            <TouchableOpacity
+              style={[styles.filterButtonNew, {backgroundColor: colors.card, borderColor: colors.border}]}
+              onPress={() => setShowFilterModal(true)}>
+              <Text style={styles.filterButtonIconNew}>🔍</Text>
+              <Text style={[styles.filterButtonTextNew, {color: colors.text}]}>
+                Filter
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.filterButtonNew, {backgroundColor: colors.card, borderColor: colors.border}]}
+              onPress={() => setShowSortModal(true)}>
+              <Text style={styles.filterButtonIconNew}>⇅</Text>
+              <Text style={[styles.filterButtonTextNew, {color: colors.text}]}>
+                Sort
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+
+        {/* Other Plans List */}
+        {getFilteredAndSortedPlans().map((plan: Plan) => (
+          <View key={plan.id} style={styles.otherPlanSection}>
+            <View style={[styles.planCardNew, styles.otherPlanCard, {borderColor: colors.border, backgroundColor: colors.card}]}>
+              <View style={styles.planCardContent}>
+                <View style={styles.planCardLeft}>
+                  <Text style={[styles.planNameNew, {color: colors.text}]}>
+                    {plan.name}
+                  </Text>
+                  {plan.content_providers && plan.content_providers.length > 0 && (
+                    <View style={styles.planDetailsRow}>
+                      <Text style={[styles.planDetailText, {color: colors.textSecondary}]}>
+                        {plan.content_providers.length}+
+                      </Text>
+                    </View>
+                  )}
+                  <View style={styles.speedValiditySection}>
+                    <View style={styles.speedValidityHeaders}>
+                      <Text style={[styles.speedValidityLabel, {color: colors.textSecondary}]}>Speed</Text>
+                      <Text style={[styles.speedValidityLabel, {color: colors.textSecondary}]}>Validity</Text>
+                    </View>
+                    <View style={styles.speedValidityValues}>
+                      <Text style={[styles.speedValidityValue, {color: colors.text}]}>
+                        {formatSpeed(plan.downloadSpeed)}
+                      </Text>
+                      <Text style={[styles.speedValidityValue, {color: colors.text}]}>
+                        {plan.days || 0} Days
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+                <View style={styles.planCardRight}>
+                  <Text style={[styles.planPriceNew, {color: colors.primary}]}>
+                    ₹{calculateTotalAmount(plan)}
+                  </Text>
+                  <TouchableOpacity
+                    style={[
+                      styles.planActionButton, 
+                      {
+                        backgroundColor: selectedPlan?.id === plan.id ? colors.success : colors.primary
+                      }
+                    ]}
+                    onPress={() => handlePlanSelect(plan)}>
+                    <Text style={styles.planActionButtonText}>
+                      {selectedPlan?.id === plan.id ? 'Selected' : 'Select'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </View>
+        ))}
+
+        {/* Active Filters Summary */}
+        {(Object.values(filters).some(filter => filter !== '') || sortOption !== '') && (
+          <View style={styles.activeFiltersContainer}>
+            <Text style={[styles.activeFiltersTitle, {color: colors.textSecondary}]}>
+              Active Filters:
+            </Text>
+            <View style={styles.activeFiltersList}>
+              {/* Speed Filter */}
+              {filters.speed && (
+                <View style={[styles.activeFilterChip, {backgroundColor: colors.primaryLight}]}>
+                  <Text style={[styles.activeFilterText, {color: colors.primary}]}>
+                    Speed: {filters.speed}
+                  </Text>
+                  <TouchableOpacity onPress={() => setFilters(prev => ({...prev, speed: ''}))}>
+                    <Text style={[styles.removeFilterText, {color: colors.primary}]}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* Validity Filter */}
+              {filters.validity && (
+                <View style={[styles.activeFilterChip, {backgroundColor: colors.primaryLight}]}>
+                  <Text style={[styles.activeFilterText, {color: colors.primary}]}>
+                    Validity: {filters.validity} Days
+                  </Text>
+                  <TouchableOpacity onPress={() => setFilters(prev => ({...prev, validity: ''}))}>
+                    <Text style={[styles.removeFilterText, {color: colors.primary}]}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* Price Filter */}
+              {filters.price && (
+                <View style={[styles.activeFilterChip, {backgroundColor: colors.primaryLight}]}>
+                  <Text style={[styles.activeFilterText, {color: colors.primary}]}>
+                    Price: ₹{filters.price}
+                  </Text>
+                  <TouchableOpacity onPress={() => setFilters(prev => ({...prev, price: ''}))}>
+                    <Text style={[styles.removeFilterText, {color: colors.primary}]}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* Plan Features Filters */}
+              {filters.ottPlan && (
+                <View style={[styles.activeFilterChip, {backgroundColor: colors.primaryLight}]}>
+                  <Text style={[styles.activeFilterText, {color: colors.primary}]}>
+                    🎬 OTT
+                  </Text>
+                  <TouchableOpacity onPress={() => setFilters(prev => ({...prev, ottPlan: ''}))}>
+                    <Text style={[styles.removeFilterText, {color: colors.primary}]}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {filters.voipPlan && (
+                <View style={[styles.activeFilterChip, {backgroundColor: colors.primaryLight}]}>
+                  <Text style={[styles.activeFilterText, {color: colors.primary}]}>
+                    📞 VOIP
+                  </Text>
+                  <TouchableOpacity onPress={() => setFilters(prev => ({...prev, voipPlan: ''}))}>
+                    <Text style={[styles.removeFilterText, {color: colors.primary}]}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {filters.iptvPlan && (
+                <View style={[styles.activeFilterChip, {backgroundColor: colors.primaryLight}]}>
+                  <Text style={[styles.activeFilterText, {color: colors.primary}]}>
+                    📺 IPTV
+                  </Text>
+                  <TouchableOpacity onPress={() => setFilters(prev => ({...prev, iptvPlan: ''}))}>
+                    <Text style={[styles.removeFilterText, {color: colors.primary}]}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {filters.fupPlan && (
+                <View style={[styles.activeFilterChip, {backgroundColor: colors.primaryLight}]}>
+                  <Text style={[styles.activeFilterText, {color: colors.primary}]}>
+                    📊 FUP
+                  </Text>
+                  <TouchableOpacity onPress={() => setFilters(prev => ({...prev, fupPlan: ''}))}>
+                    <Text style={[styles.removeFilterText, {color: colors.primary}]}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* Sort Option */}
+              {sortOption && (
+                <View style={[styles.activeFilterChip, {backgroundColor: colors.successLight}]}>
+                  <Text style={[styles.activeFilterText, {color: colors.success}]}>
+                    Sort: {sortOption.replace('-', ' ').replace(/([A-Z])/g, ' $1').trim()}
+                  </Text>
+                  <TouchableOpacity onPress={() => setSortOption('')}>
+                    <Text style={[styles.removeFilterText, {color: colors.success}]}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+
+            {/* Clear All Filters Button */}
+            <TouchableOpacity 
+              style={styles.clearAllButton}
+              onPress={() => {
+                setFilters({
+                  speed: '',
+                  validity: '',
+                  price: '',
+                  gbLimit: '',
+                  ottPlan: '',
+                  voipPlan: '',
+                  iptvPlan: '',
+                  fupPlan: '',
+                });
+                setSortOption('');
+              }}>
+              <Text style={[styles.clearAllText, {color: colors.primary}]}>
+                Clear All Filters
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Add bottom padding to prevent content from being hidden behind fixed button */}
+        {selectedPlan && <View style={{ height: 140 }} />}
+      </ScrollView>
+
+      {/* Pay Now Button - Fixed at bottom, above tab bar */}
       {selectedPlan && (
-        <View style={styles.payButtonContainer}>
+        <View style={[
+          styles.payButtonContainer, 
+          {
+            backgroundColor: colors.background, 
+            borderTopColor: colors.border,
+            bottom: 60 + Math.max(insets.bottom, 0), // Position above tab bar (60px) + safe area
+            paddingBottom: 12,
+          }
+        ]}>
           <TouchableOpacity
             style={[styles.payButton, {backgroundColor: colors.primary}]}
             onPress={handlePayNow}>
-                         <Text style={[styles.payButtonText, {color: '#ffffff'}]}>
-              {t('renewPlan.payNow')} ₹{payDues > 0 ? selectedPlan.FinalAmount + payDues : selectedPlan.FinalAmount}
+            <Text style={[styles.payButtonText, {color: '#ffffff'}]}>
+              {(() => {
+                const displayBase = calculateTotalAmount(selectedPlan);
+                const displayTotal = payDues > 0 ? displayBase + payDues : displayBase;
+                return `Pay Now ₹ ${displayTotal}`;
+              })()}
             </Text>
           </TouchableOpacity>
         </View>
@@ -789,38 +916,14 @@ const UpgradePlanScreen = ({navigation}: any) => {
               </TouchableOpacity>
             </View>
             
-            <View style={styles.modalBody}>
-              {/* Speed Filter */}
-              <View style={styles.filterSection}>
-                <Text style={[styles.filterSectionTitle, {color: colors.text}]}>Speed</Text>
-                <View style={styles.filterOptions}>
-                  {['10 to 50 Mbps', '50 to 100 Mbps', '100 to 200 Mbps', '200 to 350 Mbps', '350 to 500 Mbps', '500 to 1000 Mbps', '1000+ Mbps'].map((speed) => (
-                    <TouchableOpacity
-                      key={speed}
-                      style={[
-                        styles.filterOption,
-                        {borderColor: colors.border},
-                        filters.speed === speed && {backgroundColor: colors.primary, borderColor: colors.primary}
-                      ]}
-                      onPress={() => setFilters(prev => ({...prev, speed: prev.speed === speed ? '' : speed}))}>
-                      <Text style={[
-                        styles.filterOptionText,
-                        {color: filters.speed === speed ? '#fff' : colors.text}
-                      ]}>
-                        {speed}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              {/* Validity Filter */}
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              {/* Validity Filter (Dynamic) */}
               <View style={styles.filterSection}>
                 <Text style={[styles.filterSectionTitle, {color: colors.text}]}>Validity</Text>
                 <View style={styles.filterOptions}>
-                  {['30', '90'].map((validity) => (
+                  {availableValidities.map((validity) => (
                     <TouchableOpacity
-                      key={validity}
+                      key={`val-${validity}`}
                       style={[
                         styles.filterOption,
                         {borderColor: colors.border},
@@ -838,13 +941,13 @@ const UpgradePlanScreen = ({navigation}: any) => {
                 </View>
               </View>
 
-              {/* Price Filter */}
+              {/* Price Filter (Static) */}
               <View style={styles.filterSection}>
                 <Text style={[styles.filterSectionTitle, {color: colors.text}]}>Price Range</Text>
                 <View style={styles.filterOptions}>
-                  {['0-1000', '1000-2000', '2000-5000', '5000+'].map((price) => (
+                  {['0-1000', '1000-2000', '2000-5000', '5000-10000'].map((price) => (
                     <TouchableOpacity
-                      key={price}
+                      key={`pr-${price}`}
                       style={[
                         styles.filterOption,
                         {borderColor: colors.border},
@@ -856,6 +959,30 @@ const UpgradePlanScreen = ({navigation}: any) => {
                         {color: filters.price === price ? '#fff' : colors.text}
                       ]}>
                         ₹{price}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Speed Filter (Static) */}
+              <View style={styles.filterSection}>
+                <Text style={[styles.filterSectionTitle, {color: colors.text}]}>Speed</Text>
+                <View style={styles.filterOptions}>
+                  {['10 to 50 Mbps', '50 to 100 Mbps', '100 to 200 Mbps', '200 to 350 Mbps', '350 to 500 Mbps', '500 to 1000 Mbps', '1000+ Mbps'].map((speed) => (
+                    <TouchableOpacity
+                      key={`sp-${speed}`}
+                      style={[
+                        styles.filterOption,
+                        {borderColor: colors.border},
+                        filters.speed === speed && {backgroundColor: colors.primary, borderColor: colors.primary}
+                      ]}
+                      onPress={() => setFilters(prev => ({...prev, speed: prev.speed === speed ? '' : speed}))}>
+                      <Text style={[
+                        styles.filterOptionText,
+                        {color: filters.speed === speed ? '#fff' : colors.text}
+                      ]}>
+                        {speed}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -899,7 +1026,7 @@ const UpgradePlanScreen = ({navigation}: any) => {
                   ))}
                 </View>
               </View>
-            </View>
+            </ScrollView>
             
             <View style={styles.modalFooter}>
               <TouchableOpacity
@@ -1508,9 +1635,160 @@ const styles = StyleSheet.create({
   },
   payButtonContainer: {
     position: 'absolute',
-    bottom: 20,
-    left: 20,
-    right: 20,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  // New Redesigned Styles
+  payDuesContainer: {
+    paddingHorizontal: 20,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  payDuesButton: {
+    width: '100%',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  payDuesButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  otherPlanSection: {
+    paddingHorizontal: 20,
+    marginBottom: 12,
+  },
+  planCardNew: {
+    borderRadius: 12,
+    borderWidth: 2,
+    padding: 16,
+    minHeight: 140,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  otherPlanCard: {
+    borderColor: '#e0e0e0',
+  },
+  planCardContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginTop: 8,
+    flex: 1,
+  },
+  planCardLeft: {
+    flex: 1,
+    marginRight: 16,
+  },
+  planCardRight: {
+    alignItems: 'flex-end',
+    justifyContent: 'flex-start',
+  },
+  planNameNew: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  planDetailsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  planDetailText: {
+    fontSize: 13,
+  },
+  planPriceNew: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  planActionButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 80,
+  },
+  planActionButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  changePlanSection: {
+    paddingHorizontal: 20,
+    marginTop: 12,
+    marginBottom: 16,
+  },
+  changePlanTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  filterButtonsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  filterButtonNew: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: 8,
+  },
+  filterButtonIconNew: {
+    fontSize: 18,
+  },
+  filterButtonTextNew: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  speedValiditySection: {
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  speedValidityHeaders: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  speedValidityLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    flex: 1,
+  },
+  speedValidityValues: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  speedValidityValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    flex: 1,
   },
   expandedRow: {
     flexDirection: 'row',

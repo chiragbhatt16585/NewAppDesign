@@ -1,40 +1,33 @@
 #!/bin/bash
 
-echo "🔧 Fixing iOS Assets for Linkway"
-echo "=================================="
-echo ""
+# Script to fix iOS image assets
+# This ensures images are properly linked in the Xcode project
 
-# 1. Clear Metro bundler cache
-echo "1️⃣  Clearing Metro bundler cache..."
-rm -rf ${TMPDIR%/}/metro-* 2>/dev/null || true
-rm -rf /tmp/metro-* 2>/dev/null || true
-rm -rf $HOME/.metro 2>/dev/null || true
-echo "✅ Metro cache cleared"
-echo ""
+echo "🔧 Fixing iOS Image Assets..."
 
-# 2. Clear React Native cache
-echo "2️⃣  Clearing React Native cache..."
-rm -rf node_modules/.cache 2>/dev/null || true
-echo "✅ React Native cache cleared"
-echo ""
+# Navigate to project root
+cd "$(dirname "$0")/.."
 
-# 3. Sync assets
-echo "3️⃣  Syncing Linkway assets..."
-node scripts/sync-linkway-assets.js
-echo ""
+# Check if we're in the right directory
+if [ ! -f "package.json" ]; then
+  echo "❌ Error: package.json not found. Please run this script from the project root."
+  exit 1
+fi
 
-# 4. Clean iOS build
-echo "4️⃣  Cleaning iOS build..."
-cd ios
-rm -rf build
-rm -rf Pods
-rm -rf Podfile.lock
-pod cache clean --all 2>/dev/null || true
-pod install
-cd ..
-echo "✅ iOS build cleaned"
-echo ""
+echo "📦 Linking assets using react-native-asset..."
+npx react-native-asset
 
-echo "✅ All done! Now run:"
-echo "   yarn start --reset-cache"
-echo "   (In another terminal) yarn ios"
+echo "✅ Assets linked successfully!"
+echo ""
+echo "📱 Next steps:"
+echo "1. Open ios/ISPApp.xcworkspace in Xcode"
+echo "2. In Xcode, select the ISPApp project in the navigator"
+echo "3. Go to Build Phases > Copy Bundle Resources"
+echo "4. Make sure all images from src/assets/ are listed"
+echo "5. If not, click '+' and add them manually"
+echo "6. Clean build folder: Product > Clean Build Folder (Shift+Cmd+K)"
+echo "7. Rebuild the app"
+echo ""
+echo "Alternatively, you can run:"
+echo "  cd ios && pod install && cd .."
+echo "  npx react-native run-ios"

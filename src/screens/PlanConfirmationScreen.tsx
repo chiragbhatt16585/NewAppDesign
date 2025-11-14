@@ -127,26 +127,64 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
     }
   };
 
+  // Convert speed to Mbps format (e.g., 61440 -> "60 Mbps")
+  const formatSpeed = (speed: string | undefined): string => {
+    if (!speed) return 'N/A';
+    
+    // Check if already contains "Mbps" or "mbps"
+    const lowerSpeed = speed.toLowerCase();
+    if (lowerSpeed.includes('mbps') || lowerSpeed.includes('mb')) {
+      // Extract number and return as is
+      const numericValue = parseFloat(speed.replace(/[^0-9.]/g, ''));
+      if (!isNaN(numericValue)) {
+        return `${Math.round(numericValue)} Mbps`;
+      }
+    }
+    
+    // Extract numeric value
+    const numericValue = parseInt(speed.replace(/[^0-9]/g, ''));
+    
+    if (isNaN(numericValue) || numericValue === 0) return 'N/A';
+    
+    // If the value is large (like 61440 Kbps), convert to Mbps
+    // Values >= 1000 are likely in Kbps, convert to Mbps
+    if (numericValue >= 1000) {
+      const mbps = numericValue / 1024;
+      // Round to nearest integer
+      const rounded = Math.round(mbps);
+      return `${rounded} Mbps`;
+    }
+    
+    // If already in reasonable range (< 1000), assume it's already in Mbps
+    return `${numericValue} Mbps`;
+  };
+
+  // Calculate total amount including taxes (amount + CGST + SGST) and round it
+  const calculateTotalAmount = (plan: PlanData): number => {
+    const baseAmount = plan.baseAmount || plan.price || 0;
+    const cgst = plan.cgst || 0;
+    const sgst = plan.sgst || 0;
+    const total = baseAmount + cgst + sgst;
+    return Math.round(total);
+  };
+
   const calculateFinalAmount = () => {
-    // Use the totalAmount from route params (which should already include mrp + dues)
-    // But also calculate it from plan data as a fallback
-    const routeTotalAmount = totalAmount || 0;
-    const calculatedTotalAmount = (selectedPlan?.mrp || 0) + (selectedPlan?.dues || 0);
+    // Calculate total amount with taxes (baseAmount + CGST + SGST)
+    const planTotal = calculateTotalAmount(selectedPlan);
     
-    // Use the route totalAmount if it exists, otherwise use calculated
-    const baseAmount = routeTotalAmount > 0 ? routeTotalAmount : calculatedTotalAmount;
-    
-    let finalAmount = baseAmount;
+    // Add dues
+    const totalWithDues = planTotal + (selectedPlan?.dues || 0);
     
     // Subtract coupon discount
-    finalAmount -= couponDiscount;
+    const finalAmount = totalWithDues - couponDiscount;
     
     // console.log('=== CALCULATE FINAL AMOUNT DEBUG ===');
-    // console.log('totalAmount from route:', totalAmount);
-    // console.log('selectedPlan.mrp:', selectedPlan?.mrp);
-    // console.log('selectedPlan.dues:', selectedPlan?.dues);
-    // console.log('calculatedTotalAmount (mrp + dues):', calculatedTotalAmount);
-    // console.log('baseAmount used:', baseAmount);
+    // console.log('baseAmount:', selectedPlan?.baseAmount);
+    // console.log('cgst:', selectedPlan?.cgst);
+    // console.log('sgst:', selectedPlan?.sgst);
+    // console.log('planTotal (with taxes):', planTotal);
+    // console.log('dues:', selectedPlan?.dues);
+    // console.log('totalWithDues:', totalWithDues);
     // console.log('couponDiscount:', couponDiscount);
     // console.log('Final amount after discount:', finalAmount);
     // console.log('=== END CALCULATE FINAL AMOUNT DEBUG ===');
@@ -386,105 +424,55 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
       {/* Content */}
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
-          {/* Plan Summary Card */}
-          <View style={[styles.planSummaryCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
-            <View style={styles.planHeader}>
-              <View style={styles.planInfo}>
-                {/* Price and Current Plan Badge Row */}
-                <View style={styles.planBadgesRow}>
-                  <View style={styles.planBadgesLeft}>
-                    {selectedPlan.isCurrentPlan && (
-                      <View style={[styles.currentPlanBadge, {backgroundColor: colors.success}]}>
-                        <Text style={styles.currentPlanText}>{t('planConfirmation.currentPlan')}</Text>
-                      </View>
-                    )}
+          {/* Plan Summary Card - Redesigned to match RenewPlanScreen */}
+          <View style={[styles.planCardNew, {borderColor: selectedPlan.isCurrentPlan ? '#4CAF50' : colors.border, backgroundColor: colors.card}]}>
+            {selectedPlan.isCurrentPlan && (
+              <View style={[styles.planTag, {backgroundColor: '#4CAF50'}]}>
+                <Text style={styles.planTagText}>Current Plan</Text>
+              </View>
+            )}
+            <View style={styles.planCardContent}>
+              <View style={styles.planCardLeft}>
+                <Text style={[styles.planNameNew, {color: colors.text}]}>
+                  {selectedPlan.name}
+                </Text>
+                {selectedPlan.ottServices && selectedPlan.ottServices.length > 0 && (
+                  <View style={styles.planDetailsRow}>
+                    <Text style={[styles.planDetailText, {color: colors.textSecondary}]}>
+                      {selectedPlan.ottServices.length} OTTs
+                    </Text>
                   </View>
-                  <View style={[styles.priceBadge, {backgroundColor: colors.primaryLight}]}>
-                    <Text style={[styles.priceText, {color: colors.primary}]}>₹{selectedPlan.mrp}</Text>
+                )}
+                <View style={styles.speedValiditySection}>
+                  <View style={styles.speedValidityHeaders}>
+                    <Text style={[styles.speedValidityLabel, {color: colors.textSecondary}]}>Speed</Text>
+                    <Text style={[styles.speedValidityLabel, {color: colors.textSecondary}]}>Validity</Text>
                   </View>
-                </View>
-                
-                {/* Plan Name Row */}
-                <View style={styles.planTitleRow}>
-                  <Text style={styles.planIcon}>🚀</Text>
-                  <View style={styles.planTitleContainer}>
-                    <Text style={[styles.planName, {color: colors.textSecondary}]} numberOfLines={2}>
-                      {selectedPlan.name}
+                  <View style={styles.speedValidityValues}>
+                    <Text style={[styles.speedValidityValue, {color: colors.text}]}>
+                      {formatSpeed(selectedPlan.speed)}
+                    </Text>
+                    <Text style={[styles.speedValidityValue, {color: colors.text}]}>
+                      {selectedPlan.validity}
                     </Text>
                   </View>
                 </View>
+                {selectedPlan.ottServices && selectedPlan.ottServices.length > 0 && (
+                  <View style={styles.ottLogosContainer}>
+                    {selectedPlan.ottServices.slice(0, 4).map((provider: any, index: number) => (
+                      <View key={index} style={styles.ottLogoWrapper}>
+                        {renderOTTIcon(provider)}
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+              <View style={styles.planCardRight}>
+                <Text style={[styles.planPriceNew, {color: colors.primary}]}>
+                  ₹{calculateTotalAmount(selectedPlan)}
+                </Text>
               </View>
             </View>
-
-            {/* Plan Details */}
-            <View style={styles.planDetails}>
-              <View style={styles.detailRow}>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailIcon}>⚡</Text>
-                  <Text style={[styles.detailValue, {color: colors.text}]}>{selectedPlan.speed}</Text>
-                </View>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailIcon}>💾</Text>
-                  <Text style={[styles.detailValue, {color: colors.text}]}>
-                    {selectedPlan.gbLimit === -1 ? 'Unlimited' : `${selectedPlan.gbLimit} GB`}
-                  </Text>
-                </View>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailIcon}>⏰</Text>
-                  <Text style={[styles.detailValue, {color: colors.text}]}>{selectedPlan.validity}</Text>
-                </View>
-              </View>
-              
-              {/* Plan Features */}
-              <View style={styles.planFeaturesRow}>
-                {selectedPlan.ott_plan?.toLowerCase() === 'yes' && (
-                  <View style={[styles.featureBadge, {backgroundColor: colors.successLight}]}>
-                    <Text style={[styles.featureIcon, {color: colors.success}]}>🎬</Text>
-                    <Text style={[styles.featureText, {color: colors.success}]}>OTT</Text>
-                  </View>
-                )}
-                {selectedPlan.voice_plan?.toLowerCase() === 'yes' && (
-                  <View style={[styles.featureBadge, {backgroundColor: colors.accentLight}]}>
-                    <Text style={[styles.featureIcon, {color: colors.accent}]}>📞</Text>
-                    <Text style={[styles.featureText, {color: colors.accent}]}>VOIP</Text>
-                  </View>
-                )}
-                {selectedPlan.iptv?.toLowerCase() === 'yes' && (
-                  <View style={[styles.featureBadge, {backgroundColor: colors.primaryLight}]}>
-                    <Text style={[styles.featureIcon, {color: colors.primary}]}>📺</Text>
-                    <Text style={[styles.featureText, {color: colors.primary}]}>IPTV</Text>
-                  </View>
-                )}
-                {selectedPlan.fup_flag?.toLowerCase() === 'yes' && (
-                  <View style={[styles.featureBadge, {backgroundColor: colors.surface}]}>
-                    <Text style={[styles.featureIcon, {color: colors.text}]}>📊</Text>
-                    <Text style={[styles.featureText, {color: colors.text}]}>FUP</Text>
-                  </View>
-                )}
-              </View>
-            </View>
-
-            {/* OTT Services */}
-            {selectedPlan.ottServices && selectedPlan.ottServices.length > 0 && (
-              <View style={styles.ottSection}>
-                <Text style={[styles.ottTitle, {color: colors.textSecondary}]}>🎬 {t('planConfirmation.ottServices')}</Text>
-                <ScrollView 
-                  horizontal 
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.ottScrollContainer}
-                  nestedScrollEnabled={true}
-                  scrollEnabled={true}>
-                  {selectedPlan.ottServices.map((service: any, index: number) => (
-                    <View key={index} style={styles.ottItem}>
-                      {renderOTTIcon(service)}
-                      <Text style={[styles.ottServiceName, {color: colors.textSecondary}]}>
-                        {service.content_provider}
-                      </Text>
-                    </View>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
           </View>
 
           {/* Advance Renewal Note (only if account status is active) */}
@@ -569,27 +557,27 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
             
             <View style={styles.pricingRow}>
               <Text style={[styles.pricingLabel, {color: colors.textSecondary}]}>{t('planConfirmation.baseAmount')}</Text>
-              <Text style={[styles.pricingValue, {color: colors.text}]}>₹{selectedPlan.baseAmount.toFixed(2)}</Text>
+              <Text style={[styles.pricingValue, {color: colors.text}]}>₹{Math.round(selectedPlan.baseAmount || 0)}</Text>
             </View>
             
             <View style={styles.pricingRow}>
               <Text style={[styles.pricingLabel, {color: colors.textSecondary}]}>{t('planConfirmation.cgst')} (9%)</Text>
-              <Text style={[styles.pricingValue, {color: colors.text}]}>₹{selectedPlan.cgst.toFixed(2)}</Text>
+              <Text style={[styles.pricingValue, {color: colors.text}]}>₹{Math.round(selectedPlan.cgst || 0)}</Text>
             </View>
             
             <View style={styles.pricingRow}>
               <Text style={[styles.pricingLabel, {color: colors.textSecondary}]}>{t('planConfirmation.sgst')} (9%)</Text>
-              <Text style={[styles.pricingValue, {color: colors.text}]}>₹{selectedPlan.sgst.toFixed(2)}</Text>
+              <Text style={[styles.pricingValue, {color: colors.text}]}>₹{Math.round(selectedPlan.sgst || 0)}</Text>
             </View>
             
             <View style={[styles.pricingRow, styles.totalRow]}>
               <Text style={[styles.pricingLabel, styles.totalLabel, {color: colors.text}]}>{t('planConfirmation.planMRP')}</Text>
-              <Text style={[styles.pricingValue, styles.totalValue, {color: colors.accent}]}>₹{selectedPlan.mrp}</Text>
+              <Text style={[styles.pricingValue, styles.totalValue, {color: colors.accent}]}>₹{calculateTotalAmount(selectedPlan)}</Text>
             </View>
 
             <View style={styles.pricingRow}>
               <Text style={[styles.pricingLabel, {color: colors.textSecondary}]}>{t('planConfirmation.previousDues')}</Text>
-              <Text style={[styles.pricingValue, {color: colors.text}]}>₹{selectedPlan.dues}</Text>
+              <Text style={[styles.pricingValue, {color: colors.text}]}>₹{Math.round(selectedPlan.dues || 0)}</Text>
             </View>
 
 
@@ -597,7 +585,7 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
             {selectedCoupon && couponDiscount > 0 && (
               <View style={styles.pricingRow}>
                 <Text style={[styles.pricingLabel, {color: colors.textSecondary}]}>Coupon Discount</Text>
-                <Text style={[styles.pricingValue, {color: colors.success}]}>-₹{couponDiscount}</Text>
+                <Text style={[styles.pricingValue, {color: colors.success}]}>-₹{Math.round(couponDiscount)}</Text>
               </View>
             )}
 
@@ -1117,6 +1105,105 @@ const styles = StyleSheet.create({
   featureText: {
     fontSize: 12,
     fontWeight: '600',
+  },
+  // New styles matching RenewPlanScreen design
+  planCardNew: {
+    borderRadius: 12,
+    borderWidth: 2,
+    padding: 16,
+    minHeight: 140,
+    marginBottom: 16,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  planTag: {
+    position: 'absolute',
+    top: -12,
+    left: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    zIndex: 1,
+  },
+  planTagText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  planCardContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginTop: 8,
+    flex: 1,
+  },
+  planCardLeft: {
+    flex: 1,
+    marginRight: 16,
+  },
+  planCardRight: {
+    alignItems: 'flex-end',
+    justifyContent: 'flex-start',
+  },
+  planNameNew: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  planDetailsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  planDetailText: {
+    fontSize: 13,
+  },
+  speedValiditySection: {
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  speedValidityHeaders: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  speedValidityLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    flex: 1,
+  },
+  speedValidityValues: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  speedValidityValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    flex: 1,
+  },
+  ottLogosContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    gap: 12,
+  },
+  ottLogoWrapper: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  planPriceNew: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 8,
   },
 
 });

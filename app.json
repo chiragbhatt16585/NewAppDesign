@@ -1,9 +1,9 @@
 {
-  "name": "LinkwayApp",
+  "name": "MicroscanApp",
   "expo": {
-    "name": "Linkway",
-    "slug": "linkway",
-    "version": "1.0.0",
+    "name": "Microscan",
+    "slug": "microscan",
+    "version": "4.0.0",
     "orientation": "portrait",
     "icon": "./app-icons/icon.png",
     "userInterfaceStyle": "light",
@@ -17,19 +17,19 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.spacecom.log2space.linkway",
-      "buildNumber": "1"
+      "bundleIdentifier": "com.spacecom.log2space.microscan",
+      "buildNumber": "4"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./app-icons/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
       },
-      "package": "com.spacecom.log2space.linkway",
-      "versionCode": 1
+      "package": "com.spacecom.log2space.microscan",
+      "versionCode": 4
     },
     "web": {
       "favicon": "./app-icons/favicon.png"
     }
   }
-}
+} 

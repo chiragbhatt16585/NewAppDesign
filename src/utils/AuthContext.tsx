@@ -5,6 +5,8 @@ import sessionManager from '../services/sessionManager';
 import dataCache from '../services/dataCache';
 import { pinStorage } from '../services/pinStorage';
 import biometricAuthService from '../services/biometricAuth';
+import menuService from '../services/menuService';
+import realmAuthService from '../services/realmAuthService';
 // Session monitoring disabled for persistent login
 // import sessionMonitor from '../services/sessionMonitor';
 
@@ -120,6 +122,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       
+      console.log('[AuthContext] Starting login process for:', username);
+      
+      // Check if this is a different user logging in
+      const previousUsername = await AsyncStorage.getItem('last_logged_in_username');
+      const isDifferentUser = previousUsername && previousUsername !== username;
+      
+      if (isDifferentUser) {
+        console.log('[AuthContext] Different user detected! Previous:', previousUsername, 'New:', username);
+        console.log('[AuthContext] Performing full cache clear for user switch...');
+      }
+      
+      // Clear all cached data before login to ensure fresh data for new user
+      await dataCache.clearAllCache();
+      menuService.clearCache();
+      
+      // If different user, also clear Realm data
+      if (isDifferentUser) {
+        try {
+          await realmAuthService.logout();
+          console.log('[AuthContext] Realm data cleared for user switch');
+        } catch (realmError) {
+          console.warn('[AuthContext] Error clearing Realm data:', realmError);
+        }
+      }
+      
+      console.log('[AuthContext] Caches cleared before login');
+      
       // Get current client from storage
       const clientName = await AsyncStorage.getItem('current_client') || 'dna-infotel';
       console.log('Using client for login:', clientName);
@@ -128,11 +157,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       if (response && response.token) {
         await sessionManager.createSession(username, response.token, password, clientName);
+        
+        // Store current username for next login comparison
+        await AsyncStorage.setItem('last_logged_in_username', username);
+        
         setIsAuthenticated(true);
         setUserData({
           username,
           token: response.token,
         });
+        console.log('[AuthContext] Login successful, session created');
         // Session monitoring disabled for persistent login
         // sessionMonitor.startMonitoring();
         return true;
@@ -150,6 +184,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       
+      console.log('[AuthContext] Starting OTP login process for:', phoneNumber);
+      
+      // Check if this is a different user logging in
+      const previousUsername = await AsyncStorage.getItem('last_logged_in_username');
+      const isDifferentUser = previousUsername && previousUsername !== phoneNumber;
+      
+      if (isDifferentUser) {
+        console.log('[AuthContext] Different user detected! Previous:', previousUsername, 'New:', phoneNumber);
+        console.log('[AuthContext] Performing full cache clear for user switch...');
+      }
+      
+      // Clear all cached data before login to ensure fresh data for new user
+      await dataCache.clearAllCache();
+      menuService.clearCache();
+      
+      // If different user, also clear Realm data
+      if (isDifferentUser) {
+        try {
+          await realmAuthService.logout();
+          console.log('[AuthContext] Realm data cleared for user switch');
+        } catch (realmError) {
+          console.warn('[AuthContext] Error clearing Realm data:', realmError);
+        }
+      }
+      
+      console.log('[AuthContext] Caches cleared before OTP login');
+      
       // Get current client from storage
       const clientName = await AsyncStorage.getItem('current_client') || 'dna-infotel';
       console.log('Using client for OTP login:', clientName);
@@ -158,11 +219,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       if (response && response.token) {
         await sessionManager.createSession(phoneNumber, response.token, undefined, clientName);
+        
+        // Store current username for next login comparison
+        await AsyncStorage.setItem('last_logged_in_username', phoneNumber);
+        
         setIsAuthenticated(true);
         setUserData({
           username: phoneNumber,
           token: response.token,
         });
+        console.log('[AuthContext] OTP login successful, session created');
         // Session monitoring disabled for persistent login
         // sessionMonitor.startMonitoring();
         return true;
@@ -180,8 +246,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       
+      console.log('[AuthContext] Starting logout process...');
+      
       // Clear all cached data first
       await dataCache.clearAllCache();
+      console.log('[AuthContext] Data cache cleared');
+      
+      // Clear menu service cache (in-memory cache)
+      try {
+        menuService.clearCache();
+        console.log('[AuthContext] Menu service cache cleared');
+      } catch (menuError) {
+        console.warn('[AuthContext] Error clearing menu cache:', menuError);
+      }
+      
+      // Clear Realm data if available
+      try {
+        await realmAuthService.logout();
+        console.log('[AuthContext] Realm data cleared');
+      } catch (realmError) {
+        console.warn('[AuthContext] Error clearing Realm data:', realmError);
+      }
       
       // Clear any other stored data
       await AsyncStorage.multiRemove([
@@ -192,50 +277,80 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         'showBiometricAfterLogin',
         'domainName',
         'user_pin',
-        'biometricAuthConfig'
+        'biometricAuthConfig',
+        'last_logged_in_username' // Clear username tracking
       ]);
+      console.log('[AuthContext] AsyncStorage cleared');
       
       // Clear PIN storage
       await pinStorage.clearPin();
+      console.log('[AuthContext] PIN cleared');
       
       // Disable biometric auth
       await biometricAuthService.disableAuth();
+      console.log('[AuthContext] Biometric auth disabled');
       
       // Perform API logout
       await apiService.logout();
+      console.log('[AuthContext] API logout completed');
       
       // Clear session
       await sessionManager.logout();
+      console.log('[AuthContext] Session cleared');
       
       // Reset auth state
       setIsAuthenticated(false);
       setUserData(null);
+      console.log('[AuthContext] Auth state reset');
       
       // Session monitoring disabled for persistent login
       // sessionMonitor.stopMonitoring();
+      
+      console.log('[AuthContext] Logout process completed successfully');
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('[AuthContext] Logout error:', error);
       // Even if API logout fails, clear all local data
-      await dataCache.clearAllCache();
-      await AsyncStorage.multiRemove([
-        'userData',
-        'plansData', 
-        'authData',
-        'navigationState',
-        'showBiometricAfterLogin',
-        'domainName',
-        'user_pin',
-        'biometricAuthConfig'
-      ]);
-      
-      // Clear PIN storage
-      await pinStorage.clearPin();
-      
-      // Disable biometric auth
-      await biometricAuthService.disableAuth();
-      await sessionManager.logout();
-      setIsAuthenticated(false);
-      setUserData(null);
+      try {
+        await dataCache.clearAllCache();
+        
+        // Clear menu service cache
+        try {
+          menuService.clearCache();
+        } catch (menuError) {
+          console.warn('[AuthContext] Error clearing menu cache in error handler:', menuError);
+        }
+        
+        // Clear Realm data
+        try {
+          await realmAuthService.logout();
+        } catch (realmError) {
+          console.warn('[AuthContext] Error clearing Realm data in error handler:', realmError);
+        }
+        
+        await AsyncStorage.multiRemove([
+          'userData',
+          'plansData', 
+          'authData',
+          'navigationState',
+          'showBiometricAfterLogin',
+          'domainName',
+          'user_pin',
+          'biometricAuthConfig',
+          'last_logged_in_username' // Clear username tracking
+        ]);
+        
+        // Clear PIN storage
+        await pinStorage.clearPin();
+        
+        // Disable biometric auth
+        await biometricAuthService.disableAuth();
+        await sessionManager.logout();
+        setIsAuthenticated(false);
+        setUserData(null);
+        console.log('[AuthContext] Fallback logout cleanup completed');
+      } catch (cleanupError) {
+        console.error('[AuthContext] Error during fallback cleanup:', cleanupError);
+      }
       // sessionMonitor.stopMonitoring();
     } finally {
       setLoading(false);

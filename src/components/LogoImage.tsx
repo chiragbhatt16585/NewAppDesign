@@ -1,5 +1,5 @@
-import React from 'react';
-import {Image, StyleSheet, Text, View} from 'react-native';
+import React, { useState } from 'react';
+import {Image, StyleSheet, Text, View, Platform} from 'react-native';
 
 interface LogoImageProps {
   style?: any;
@@ -9,6 +9,8 @@ interface LogoImageProps {
 }
 
 const LogoImage: React.FC<LogoImageProps> = ({style, width, height, type = 'header'}) => {
+  const [imageError, setImageError] = useState(false);
+  
   // Load logo config
   const getLogoConfig = () => {
     try {
@@ -37,6 +39,33 @@ const LogoImage: React.FC<LogoImageProps> = ({style, width, height, type = 'head
   let logoWidth = width || config.width;
   let logoHeight = height || config.height;
 
+  // Get image source - try multiple paths for iOS compatibility
+  const getImageSource = () => {
+    if (imageError) {
+      // If image failed to load, return null to show fallback
+      return null;
+    }
+    
+    try {
+      // Primary path - should work on both platforms
+      return require('../assets/isp_logo.png');
+    } catch (error) {
+      console.warn('[LogoImage] Failed to require primary logo path:', error);
+      // Try alternative paths for iOS
+      if (Platform.OS === 'ios') {
+        try {
+          // Try iOS-specific path
+          return require('../../ios/ISPApp/isp_logo.png');
+        } catch (iosError) {
+          console.warn('[LogoImage] Failed to require iOS logo path:', iosError);
+        }
+      }
+      return null;
+    }
+  };
+
+  const imageSource = getImageSource();
+
   // console.log('=== LOGO CONFIG ===', { type, configForType: logoConfig[type], fallbackHeader: logoConfig.header });
   // console.log('=== LOGO DIMENSIONS ===', { width: logoWidth, height: logoHeight });
 
@@ -48,17 +77,35 @@ const LogoImage: React.FC<LogoImageProps> = ({style, width, height, type = 'head
         console.log('=== LOGO ONLAYOUT SIZE ===', { width: w, height: h, type });
       }}
     >
-      <Image
-        source={require('../assets/isp_logo.png')}
-        style={{
+      {imageSource ? (
+        <Image
+          source={imageSource}
+          style={{
+            width: '100%',
+            height: '100%',
+            resizeMode: 'contain',
+          }}
+          onError={(error) => {
+            console.error('[LogoImage] Failed to load logo image:', error);
+            setImageError(true);
+          }}
+          onLoad={() => {
+            console.log('[LogoImage] Logo image loaded successfully');
+            setImageError(false);
+          }}
+        />
+      ) : (
+        // Fallback: Show text or placeholder
+        <View style={{
           width: '100%',
           height: '100%',
-          resizeMode: 'contain',
-        }}
-        onError={() => {
-          console.log('Failed to load logo image');
-        }}
-      />
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: 'transparent',
+        }}>
+          <Text style={{ fontSize: 12, color: '#999' }}>Logo</Text>
+        </View>
+      )}
     </View>
   );
 };

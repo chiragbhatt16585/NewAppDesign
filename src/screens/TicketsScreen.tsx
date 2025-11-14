@@ -163,13 +163,17 @@ const TicketsScreen = ({navigation}: any) => {
       <View style={styles.ticketFooter}>
         <View style={styles.dateInfo}>
           <Text style={[styles.dateIcon, {color: colors.textSecondary}]}>📅</Text>
-          <Text style={[styles.dateLabel, {color: colors.textSecondary}]}>{t('tickets.created')}:</Text>
+          <View style={styles.dateLabelContainer}>
+            <Text style={[styles.dateLabel, {color: colors.textSecondary}]}>{t('tickets.created')}:</Text>
+          </View>
           <Text style={[styles.dateValue, {color: colors.text}]}>{item.dateCreated}</Text>
         </View>
         {item.dateClosed && (
           <View style={styles.dateInfo}>
             <Text style={[styles.dateIcon, {color: colors.textSecondary}]}>✅</Text>
-            <Text style={[styles.dateLabel, {color: colors.textSecondary}]}>{t('tickets.closed')}:</Text>
+            <View style={styles.dateLabelContainer}>
+              <Text style={[styles.dateLabel, {color: colors.textSecondary}]}>{t('tickets.closed')}:</Text>
+            </View>
             <Text style={[styles.dateValue, {color: colors.text}]}>{item.dateClosed}</Text>
           </View>
         )}
@@ -396,19 +400,25 @@ const styles = StyleSheet.create({
   dateInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 8,
+    paddingVertical: 2,
   },
   dateIcon: {
     fontSize: 14,
     marginRight: 6,
   },
+  dateLabelContainer: {
+    width: 70,
+    alignItems: 'flex-end',
+    marginRight: 8,
+  },
   dateLabel: {
     fontSize: 12,
-    marginRight: 8,
   },
   dateValue: {
     fontSize: 12,
     fontWeight: '500',
+    flex: 1,
   },
   emptyContainer: {
     alignItems: 'center',

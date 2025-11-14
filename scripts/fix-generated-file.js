@@ -35,6 +35,9 @@ const fixGeneratedFile = () => {
     const linkwayPattern = /com\.spacecom\.log2space\.linkway\.BuildConfig/g;
     
     if (namespace === 'com.microscan.app') {
+      // Replace any BuildConfig reference with the correct namespace
+      content = content.replace(/com\.\w+\.\w+\.\w+\.BuildConfig/g, 'com.microscan.app.BuildConfig');
+      content = content.replace(/com\.\w+\.\w+\.BuildConfig/g, 'com.microscan.app.BuildConfig');
       content = content.replace(oldPackagePattern, 'com.microscan.app.BuildConfig');
       content = content.replace(newPackagePattern, 'com.microscan.app.BuildConfig');
       content = content.replace(linkwayPattern, 'com.microscan.app.BuildConfig');

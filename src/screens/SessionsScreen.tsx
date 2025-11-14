@@ -302,7 +302,7 @@ const SessionsScreen = ({navigation}: any) => {
             </View>
             </View>
 
-            <View style={styles.detailRow}>
+            <View style={[styles.detailRow, styles.firstDetailRow]}>
               <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>{t('sessions.ipAddress')}</Text>
               <Text style={[styles.detailValue, {color: colors.text}]}>{item.ipAddress}</Text>
             </View>
@@ -674,13 +674,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   sessionDetails: {
-    gap: 8,
+    gap: 4,
   },
   collapsedStatsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 4,
+    marginTop: 12,
   },
   collapsedStatItem: {
     flexDirection: 'row',
@@ -705,6 +705,11 @@ const styles = StyleSheet.create({
   detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  firstDetailRow: {
+    marginTop: 12,
   },
   detailItem: {
     flex: 1,
@@ -723,14 +728,16 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   detailLabel: {
-    fontSize: 12,
-    marginBottom: 4,
-    textAlign: 'center',
+    fontSize: 13,
+    fontWeight: '500',
+    flex: 1,
+    textAlign: 'left',
   },
   detailValue: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
-    textAlign: 'center',
+    flex: 1,
+    textAlign: 'right',
   },
   emptyContainer: {
     alignItems: 'center',

@@ -733,10 +733,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   bottomSection: {
-    marginHorizontal: 20,
     marginBottom: 12,
     borderRadius: 12,
-    padding: 12,
+    padding: 16,
     shadowOffset: {
       width: 0,
       height: 2,

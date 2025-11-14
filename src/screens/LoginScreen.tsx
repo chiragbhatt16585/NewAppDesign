@@ -33,6 +33,7 @@ import biometricAuthService from '../services/biometricAuth';
 import { initializePushNotifications, registerPendingPushToken, registerDeviceManually } from '../services/notificationService';
 import { getClientConfig } from '../config/client-config';
 import { getWebsite } from '../config';
+import menuService from '../services/menuService';
 
 const {width, height} = Dimensions.get('window');
 
@@ -350,6 +351,132 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
     }
   };
 
+  // Fetch and print menu settings after successful login
+  const fetchMenuSettings = async () => {
+    try {
+      console.log('[LoginScreen] === FETCHING MENU SETTINGS AFTER LOGIN ===');
+      const menuData = await menuService.refresh();
+      
+      console.log('[LoginScreen] === MENU SETTINGS DATA ===');
+      console.log('[LoginScreen] Menu Settings Type:', typeof menuData);
+      console.log('[LoginScreen] Is Array:', Array.isArray(menuData));
+      
+      // Safe JSON stringify with error handling
+      try {
+        const jsonString = JSON.stringify(menuData, null, 2);
+        console.log('[LoginScreen] Full Menu Data:', jsonString);
+      } catch (stringifyError) {
+        console.log('[LoginScreen] Could not stringify menu data (may contain circular refs), logging object directly');
+        console.log('[LoginScreen] Menu Data:', menuData);
+      }
+      
+      if (Array.isArray(menuData)) {
+        console.log('[LoginScreen] Menu Items Count:', menuData.length);
+        menuData.forEach((item: any, index: number) => {
+          try {
+            console.log(`[LoginScreen] Menu Item ${index}:`, {
+              menu_label: item?.menu_label,
+              menu_api_type: item?.menu_api_type,
+              status: item?.status,
+              display_option_json: item?.display_option_json,
+            });
+          } catch (itemError) {
+            console.log(`[LoginScreen] Menu Item ${index}: Error logging item`);
+          }
+        });
+      } else if (menuData && typeof menuData === 'object') {
+        try {
+          console.log('[LoginScreen] Menu Data Keys:', Object.keys(menuData));
+          console.log('[LoginScreen] Menu Data:', menuData);
+        } catch (objError) {
+          console.log('[LoginScreen] Error logging menu data object');
+        }
+      }
+      
+      console.log('[LoginScreen] === END MENU SETTINGS DATA ===');
+      
+      return menuData;
+    } catch (error: any) {
+      console.error('[LoginScreen] Error fetching menu settings:', error);
+      console.error('[LoginScreen] Error message:', error?.message || 'Unknown error');
+      console.error('[LoginScreen] Error stack:', error?.stack);
+      return null;
+    }
+  };
+
+  // Check if auth settings should be shown based on menu settings
+  const shouldShowAuthSetup = async (menuData: any): Promise<boolean> => {
+    try {
+      if (!menuData) {
+        console.log('[LoginScreen] No menu data, defaulting to show auth setup');
+        return true; // Default to showing if no menu data
+      }
+      
+      // Find Settings menu item
+      let settingsItem = null;
+      try {
+        if (Array.isArray(menuData)) {
+          settingsItem = menuData.find((item: any) => {
+            try {
+              const label = String(item?.menu_label || '').trim().toLowerCase();
+              const status = String(item?.status || '').toLowerCase();
+              return label === 'settings' && status === 'active';
+            } catch (findError) {
+              return false;
+            }
+          });
+        }
+      } catch (findError) {
+        console.error('[LoginScreen] Error finding settings item:', findError);
+      }
+      
+      if (!settingsItem) {
+        console.log('[LoginScreen] Settings menu item not found, defaulting to show auth setup');
+        return true; // Default to showing if settings not found
+      }
+      
+      // Parse display_option_json safely
+      let parsed: any = {};
+      try {
+        const jsonVal = settingsItem.display_option_json;
+        if (typeof jsonVal === 'string') {
+          const trimmed = jsonVal.trim();
+          if (trimmed && (trimmed.startsWith('{') || trimmed.startsWith('['))) {
+            parsed = JSON.parse(trimmed);
+          }
+        } else if (jsonVal && typeof jsonVal === 'object') {
+          parsed = jsonVal;
+        }
+      } catch (parseError) {
+        console.error('[LoginScreen] Error parsing display_option_json:', parseError);
+        return true; // Default to showing on parse error
+      }
+      
+      // Check auth_settings.show
+      const authSettings = parsed?.app_settings?.auth_settings || parsed?.settings?.auth_settings;
+      const showAuthSettings = authSettings?.show;
+      
+      console.log('[LoginScreen] Auth Settings Config:', {
+        show: showAuthSettings,
+        hasAuthSettings: !!authSettings
+      });
+      
+      // If show is explicitly false, don't show auth setup
+      if (showAuthSettings === false) {
+        console.log('[LoginScreen] auth_settings.show is false, skipping AuthSetupScreen');
+        return false;
+      }
+      
+      // Default to showing auth setup
+      return true;
+    } catch (error: any) {
+      console.error('[LoginScreen] Error checking auth settings:', error);
+      console.error('[LoginScreen] Error message:', error?.message || 'Unknown error');
+      console.error('[LoginScreen] Error stack:', error?.stack);
+      return true; // Default to showing on error
+    }
+  };
+
   const handleLogin = async () => {
     // Validate form before proceeding
     if (!validateForm()) {
@@ -380,27 +507,54 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
           const success = await login(username, password);
           
           if (success) {
-            // Save credentials for session regeneration
-            await credentialStorage.saveCredentials(username, password);
-            
-            // Register device for push notifications after successful login
-            await handleDeviceRegistration();
-            
-            // Check if user has set up any authentication
-            const pin = await pinStorage.getPin();
-            const biometricEnabled = await biometricAuthService.isAuthEnabled();
-            console.log('[DEBUG] PIN from storage:', pin);
-            console.log('[DEBUG] Biometric enabled:', biometricEnabled);
-            
-            if (!pin && !biometricEnabled) {
-              // No authentication set up, show setup screen
-              navigation.replace('AuthSetupScreen');
-            } else {
-              // Authentication is set up, set flag to show biometric auth and navigate to home
-              await AsyncStorage.setItem('showBiometricAfterLogin', 'true');
-              navigation.replace('Home');
+            try {
+              // Save credentials for session regeneration
+              await credentialStorage.saveCredentials(username, password);
+              
+              // Register device for push notifications after successful login
+              await handleDeviceRegistration();
+              
+              // Fetch and print menu settings after successful login
+              const menuData = await fetchMenuSettings();
+              
+              // Check if auth setup should be shown based on menu settings
+              const showAuthSetup = await shouldShowAuthSetup(menuData);
+              
+              if (!showAuthSetup) {
+                // auth_settings.show is false, go directly to home
+                await AsyncStorage.setItem('showBiometricAfterLogin', 'true');
+                navigation.replace('Home');
+              } else {
+                // Check if user has set up any authentication
+                const pin = await pinStorage.getPin();
+                const biometricEnabled = await biometricAuthService.isAuthEnabled();
+                console.log('[DEBUG] PIN from storage:', pin);
+                console.log('[DEBUG] Biometric enabled:', biometricEnabled);
+                
+                if (!pin && !biometricEnabled) {
+                  // No authentication set up, show setup screen
+                  navigation.replace('AuthSetupScreen');
+                } else {
+                  // Authentication is set up, set flag to show biometric auth and navigate to home
+                  await AsyncStorage.setItem('showBiometricAfterLogin', 'true');
+                  navigation.replace('Home');
+                }
+              }
+              
+              // Show success alert after navigation setup
+              setTimeout(() => {
+                try {
+                  Alert.alert('Success', 'Login successful!');
+                } catch (alertError) {
+                  console.error('[LoginScreen] Error showing alert:', alertError);
+                }
+              }, 100);
+            } catch (navError: any) {
+              console.error('[LoginScreen] Error during post-login navigation:', navError);
+              console.error('[LoginScreen] Error message:', navError?.message);
+              console.error('[LoginScreen] Error stack:', navError?.stack);
+              Alert.alert('Error', 'Login successful but navigation failed. Please restart the app.');
             }
-            Alert.alert('Success', 'Login successful!');
             return;
           }
         }
@@ -411,23 +565,49 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
           const success = await loginWithOtp(username, otp);
           
           if (success) {
-            // Register device for push notifications after successful login
-            await handleDeviceRegistration();
-            
-            // Check if user has set up any authentication
-            const pin = await pinStorage.getPin();
-            const biometricEnabled = await biometricAuthService.isAuthEnabled();
-            console.log('[DEBUG] PIN from storage:', pin);
-            console.log('[DEBUG] Biometric enabled:', biometricEnabled);
-            
-            if (!pin && !biometricEnabled) {
-              // No authentication set up, show setup screen
-              navigation.replace('AuthSetupScreen');
-            } else {
-              // Authentication is set up, navigate to home (biometric will be handled by App.tsx)
-              navigation.replace('Home');
+            try {
+              // Register device for push notifications after successful login
+              await handleDeviceRegistration();
+              
+              // Fetch and print menu settings after successful login
+              const menuData = await fetchMenuSettings();
+              
+              // Check if auth setup should be shown based on menu settings
+              const showAuthSetup = await shouldShowAuthSetup(menuData);
+              
+              if (!showAuthSetup) {
+                // auth_settings.show is false, go directly to home
+                navigation.replace('Home');
+              } else {
+                // Check if user has set up any authentication
+                const pin = await pinStorage.getPin();
+                const biometricEnabled = await biometricAuthService.isAuthEnabled();
+                console.log('[DEBUG] PIN from storage:', pin);
+                console.log('[DEBUG] Biometric enabled:', biometricEnabled);
+                
+                if (!pin && !biometricEnabled) {
+                  // No authentication set up, show setup screen
+                  navigation.replace('AuthSetupScreen');
+                } else {
+                  // Authentication is set up, navigate to home (biometric will be handled by App.tsx)
+                  navigation.replace('Home');
+                }
+              }
+              
+              // Show success alert after navigation setup
+              setTimeout(() => {
+                try {
+                  Alert.alert('Success', 'Login successful!');
+                } catch (alertError) {
+                  console.error('[LoginScreen] Error showing alert:', alertError);
+                }
+              }, 100);
+            } catch (navError: any) {
+              console.error('[LoginScreen] Error during post-login navigation:', navError);
+              console.error('[LoginScreen] Error message:', navError?.message);
+              console.error('[LoginScreen] Error stack:', navError?.stack);
+              Alert.alert('Error', 'Login successful but navigation failed. Please restart the app.');
             }
-            Alert.alert('Success', 'Login successful!');
             return;
           }
         }
@@ -452,25 +632,56 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
           const success = await login(username, password);
           
           if (success) {
-            console.log('=== LOGIN SUCCESS ===');
-            console.log('=== LOGIN RESPONSE ===');
-            console.log('Response:', success);
-            // Save credentials for session regeneration
-            await credentialStorage.saveCredentials(username, password);
-            // Check if user has set up any authentication
-            const pin = await pinStorage.getPin();
-            const biometricEnabled = await biometricAuthService.isAuthEnabled();
-            console.log('[DEBUG] PIN from storage:', pin);
-            console.log('[DEBUG] Biometric enabled:', biometricEnabled);
-            
-            if (!pin && !biometricEnabled) {
-              // No authentication set up, show setup screen
-              navigation.replace('AuthSetupScreen');
-            } else {
-              // Authentication is set up, navigate to home (biometric will be handled by App.tsx)
-              navigation.replace('Home');
+            try {
+              console.log('=== LOGIN SUCCESS ===');
+              console.log('=== LOGIN RESPONSE ===');
+              console.log('Response:', success);
+              // Save credentials for session regeneration
+              await credentialStorage.saveCredentials(username, password);
+              
+              // Register device for push notifications after successful login
+              await handleDeviceRegistration();
+              
+              // Fetch and print menu settings after successful login
+              const menuData = await fetchMenuSettings();
+              
+              // Check if auth setup should be shown based on menu settings
+              const showAuthSetup = await shouldShowAuthSetup(menuData);
+              
+              if (!showAuthSetup) {
+                // auth_settings.show is false, go directly to home
+                await AsyncStorage.setItem('showBiometricAfterLogin', 'true');
+                navigation.replace('Home');
+              } else {
+                // Check if user has set up any authentication
+                const pin = await pinStorage.getPin();
+                const biometricEnabled = await biometricAuthService.isAuthEnabled();
+                console.log('[DEBUG] PIN from storage:', pin);
+                console.log('[DEBUG] Biometric enabled:', biometricEnabled);
+                
+                if (!pin && !biometricEnabled) {
+                  // No authentication set up, show setup screen
+                  navigation.replace('AuthSetupScreen');
+                } else {
+                  // Authentication is set up, navigate to home (biometric will be handled by App.tsx)
+                  navigation.replace('Home');
+                }
+              }
+              
+              // Show success alert after navigation setup
+              setTimeout(() => {
+                try {
+                  Alert.alert('Success', 'Login successful!');
+                } catch (alertError) {
+                  console.error('[LoginScreen] Error showing alert:', alertError);
+                }
+              }, 100);
+            } catch (navError: any) {
+              console.error('[LoginScreen] Error during post-login navigation:', navError);
+              console.error('[LoginScreen] Error message:', navError?.message);
+              console.error('[LoginScreen] Error stack:', navError?.stack);
+              Alert.alert('Error', 'Login successful but navigation failed. Please restart the app.');
             }
-            Alert.alert('Success', 'Login successful!');
           } else {
             console.log('=== LOGIN FAILED ===');
             Alert.alert('Error', 'Login failed. Please check your credentials.');
@@ -489,23 +700,49 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
           const success = await loginWithOtp(username, otp);
           
           if (success) {
-            // Register device for push notifications after successful login
-            await handleDeviceRegistration();
-            
-            // Check if user has set up any authentication
-            const pin = await pinStorage.getPin();
-            const biometricEnabled = await biometricAuthService.isAuthEnabled();
-            console.log('[DEBUG] PIN from storage:', pin);
-            console.log('[DEBUG] Biometric enabled:', biometricEnabled);
-            
-            if (!pin && !biometricEnabled) {
-              // No authentication set up, show setup screen
-              navigation.replace('AuthSetupScreen');
-            } else {
-              // Authentication is set up, navigate to home (biometric will be handled by App.tsx)
-              navigation.replace('Home');
+            try {
+              // Register device for push notifications after successful login
+              await handleDeviceRegistration();
+              
+              // Fetch and print menu settings after successful login
+              const menuData = await fetchMenuSettings();
+              
+              // Check if auth setup should be shown based on menu settings
+              const showAuthSetup = await shouldShowAuthSetup(menuData);
+              
+              if (!showAuthSetup) {
+                // auth_settings.show is false, go directly to home
+                navigation.replace('Home');
+              } else {
+                // Check if user has set up any authentication
+                const pin = await pinStorage.getPin();
+                const biometricEnabled = await biometricAuthService.isAuthEnabled();
+                console.log('[DEBUG] PIN from storage:', pin);
+                console.log('[DEBUG] Biometric enabled:', biometricEnabled);
+                
+                if (!pin && !biometricEnabled) {
+                  // No authentication set up, show setup screen
+                  navigation.replace('AuthSetupScreen');
+                } else {
+                  // Authentication is set up, navigate to home (biometric will be handled by App.tsx)
+                  navigation.replace('Home');
+                }
+              }
+              
+              // Show success alert after navigation setup
+              setTimeout(() => {
+                try {
+                  Alert.alert('Success', 'Login successful!');
+                } catch (alertError) {
+                  console.error('[LoginScreen] Error showing alert:', alertError);
+                }
+              }, 100);
+            } catch (navError: any) {
+              console.error('[LoginScreen] Error during post-login navigation:', navError);
+              console.error('[LoginScreen] Error message:', navError?.message);
+              console.error('[LoginScreen] Error stack:', navError?.stack);
+              Alert.alert('Error', 'Login successful but navigation failed. Please restart the app.');
             }
-            Alert.alert('Success', 'Login successful!');
           } else {
             Alert.alert('Error', 'Invalid OTP. Please try again.');
           }
