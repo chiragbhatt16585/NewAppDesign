@@ -11,7 +11,7 @@ import android.os.IBinder;
 import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
-import com.microscan.app.R;
+import com.h8.dnasubscriber.R;
 
 public class KeepAliveService extends Service {
     private static final String TAG = "KeepAliveService";

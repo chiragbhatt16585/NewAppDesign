@@ -699,49 +699,101 @@ const UpgradePlanScreen = ({navigation}: any) => {
           <View key={plan.id} style={styles.otherPlanSection}>
             <View style={[styles.planCardNew, styles.otherPlanCard, {borderColor: colors.border, backgroundColor: colors.card}]}>
               <View style={styles.planCardContent}>
-                <View style={styles.planCardLeft}>
-                  <Text style={[styles.planNameNew, {color: colors.text}]}>
-                    {plan.name}
-                  </Text>
-                  {plan.content_providers && plan.content_providers.length > 0 && (
-                    <View style={styles.planDetailsRow}>
-                      <Text style={[styles.planDetailText, {color: colors.textSecondary}]}>
-                        {plan.content_providers.length}+
+                <View style={styles.planCardTopRow}>
+                  <View style={styles.planCardLeft}>
+                    <Text style={[styles.planNameNew, {color: colors.text}]}>
+                      {plan.name}
+                    </Text>
+                    {plan.description && (
+                      <Text style={[styles.planDescriptionNew, {color: colors.textSecondary}]}>
+                        {plan.description}
                       </Text>
-                    </View>
-                  )}
-                  <View style={styles.speedValiditySection}>
-                    <View style={styles.speedValidityHeaders}>
-                      <Text style={[styles.speedValidityLabel, {color: colors.textSecondary}]}>Speed</Text>
-                      <Text style={[styles.speedValidityLabel, {color: colors.textSecondary}]}>Validity</Text>
-                    </View>
-                    <View style={styles.speedValidityValues}>
-                      <Text style={[styles.speedValidityValue, {color: colors.text}]}>
-                        {formatSpeed(plan.downloadSpeed)}
+                    )}
+                  </View>
+                  <View style={styles.planCardRight}>
+                    <Text style={[styles.planPriceNew, {color: colors.primary}]}>
+                      ₹{calculateTotalAmount(plan)}
+                    </Text>
+                    <TouchableOpacity
+                      style={[
+                        styles.planActionButton, 
+                        {
+                          backgroundColor: selectedPlan?.id === plan.id ? colors.success : colors.primary
+                        }
+                      ]}
+                      onPress={() => handlePlanSelect(plan)}>
+                      <Text style={styles.planActionButtonText}>
+                        {selectedPlan?.id === plan.id ? 'Selected' : 'Select'}
                       </Text>
-                      <Text style={[styles.speedValidityValue, {color: colors.text}]}>
-                        {plan.days || 0} Days
-                      </Text>
-                    </View>
+                    </TouchableOpacity>
                   </View>
                 </View>
-                <View style={styles.planCardRight}>
-                  <Text style={[styles.planPriceNew, {color: colors.primary}]}>
-                    ₹{calculateTotalAmount(plan)}
-                  </Text>
-                  <TouchableOpacity
-                    style={[
-                      styles.planActionButton, 
-                      {
-                        backgroundColor: selectedPlan?.id === plan.id ? colors.success : colors.primary
-                      }
-                    ]}
-                    onPress={() => handlePlanSelect(plan)}>
-                    <Text style={styles.planActionButtonText}>
-                      {selectedPlan?.id === plan.id ? 'Selected' : 'Select'}
+                <View style={styles.speedValiditySection}>
+                  <View style={styles.speedValidityHeaders}>
+                    <Text style={[styles.speedValidityLabel, {color: colors.textSecondary}]}>Speed</Text>
+                    <Text style={[styles.speedValidityLabel, {color: colors.textSecondary}]}>Validity</Text>
+                    {plan.content_providers && Array.isArray(plan.content_providers) && plan.content_providers.length > 0 && (
+                      <Text style={[styles.speedValidityLabel, {color: colors.textSecondary}]}>OTTs</Text>
+                    )}
+                    {plan.voice_plan?.toLowerCase() === 'yes' && (
+                      <Text style={[styles.speedValidityLabel, {color: colors.textSecondary}]}>VOICE</Text>
+                    )}
+                    {plan.iptv?.toLowerCase() === 'yes' && (
+                      <Text style={[styles.speedValidityLabel, {color: colors.textSecondary}]}>IPTV</Text>
+                    )}
+                    {plan.fup_flag?.toLowerCase() === 'yes' && (
+                      <Text style={[styles.speedValidityLabel, {color: colors.textSecondary}]}>FUP</Text>
+                    )}
+                  </View>
+                  <View style={styles.speedValidityValues}>
+                    <Text style={[styles.speedValidityValue, {color: colors.text}]}>
+                      {formatSpeed(plan.downloadSpeed)}
                     </Text>
-                  </TouchableOpacity>
+                    <Text style={[styles.speedValidityValue, {color: colors.text}]}>
+                      {plan.days || 0} Days
+                    </Text>
+                    {plan.content_providers && Array.isArray(plan.content_providers) && plan.content_providers.length > 0 && (
+                      <Text style={[styles.speedValidityValue, {color: colors.text}]}>
+                        {plan.content_providers.length}
+                      </Text>
+                    )}
+                    {plan.voice_plan?.toLowerCase() === 'yes' && (
+                      <Text style={[styles.speedValidityValue, {color: colors.text}]}>Yes</Text>
+                    )}
+                    {plan.iptv?.toLowerCase() === 'yes' && (
+                      <Text style={[styles.speedValidityValue, {color: colors.text}]}>Yes</Text>
+                    )}
+                    {plan.fup_flag?.toLowerCase() === 'yes' && (
+                      <Text style={[styles.speedValidityValue, {color: colors.text}]}>Yes</Text>
+                    )}
+                  </View>
                 </View>
+                {plan.content_providers && Array.isArray(plan.content_providers) && plan.content_providers.length > 0 && (
+                  <View style={styles.ottLogosSection}>
+                    <ScrollView 
+                      horizontal 
+                      showsHorizontalScrollIndicator={true}
+                      contentContainerStyle={styles.ottLogosScrollContainer}
+                      style={styles.ottLogosScrollView}
+                      nestedScrollEnabled={true}>
+                      {plan.content_providers.map((provider: any, index: number) => (
+                        <View key={index} style={styles.ottLogoItem}>
+                          <View style={styles.ottLogoWrapper}>
+                            {renderOTTIcon(provider)}
+                          </View>
+                          <Text style={[styles.ottServiceName, {color: colors.textSecondary}]} numberOfLines={1}>
+                            {provider.content_provider || 'OTT'}
+                          </Text>
+                        </View>
+                      ))}
+                    </ScrollView>
+                    {plan.content_providers.length > 5 && (
+                      <Text style={[styles.scrollHint, {color: colors.textSecondary}]}>
+                        ← Scroll to see more →
+                      </Text>
+                    )}
+                  </View>
+                )}
               </View>
             </View>
           </View>
@@ -872,20 +924,12 @@ const UpgradePlanScreen = ({navigation}: any) => {
         )}
 
         {/* Add bottom padding to prevent content from being hidden behind fixed button */}
-        {selectedPlan && <View style={{ height: 140 }} />}
+        {selectedPlan && <View style={{ height: 80 }} />}
       </ScrollView>
 
-      {/* Pay Now Button - Fixed at bottom, above tab bar */}
+      {/* Pay Now Button - Fixed at bottom */}
       {selectedPlan && (
-        <View style={[
-          styles.payButtonContainer, 
-          {
-            backgroundColor: colors.background, 
-            borderTopColor: colors.border,
-            bottom: 60 + Math.max(insets.bottom, 0), // Position above tab bar (60px) + safe area
-            paddingBottom: 12,
-          }
-        ]}>
+        <View style={[styles.payButtonContainer, {backgroundColor: colors.background, borderTopColor: colors.border}]}>
           <TouchableOpacity
             style={[styles.payButton, {backgroundColor: colors.primary}]}
             onPress={handlePayNow}>
@@ -1640,6 +1684,7 @@ const styles = StyleSheet.create({
     right: 0,
     paddingHorizontal: 20,
     paddingTop: 12,
+    paddingBottom: 20,
     borderTopWidth: 1,
     shadowOffset: {
       width: 0,
@@ -1648,6 +1693,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 5,
+  },
+  payButton: {
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  payButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
   // New Redesigned Styles
   payDuesContainer: {
@@ -1688,11 +1744,15 @@ const styles = StyleSheet.create({
     borderColor: '#e0e0e0',
   },
   planCardContent: {
+    flexDirection: 'column',
+    marginTop: 8,
+    flex: 1,
+  },
+  planCardTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginTop: 8,
-    flex: 1,
+    marginBottom: 8,
   },
   planCardLeft: {
     flex: 1,
@@ -1701,11 +1761,18 @@ const styles = StyleSheet.create({
   planCardRight: {
     alignItems: 'flex-end',
     justifyContent: 'flex-start',
+    marginLeft: 8,
   },
   planNameNew: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
+    marginBottom: 4,
+  },
+  planDescriptionNew: {
+    fontSize: 12,
+    fontWeight: '400',
     marginBottom: 8,
+    lineHeight: 16,
   },
   planDetailsRow: {
     flexDirection: 'row',
@@ -1717,21 +1784,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   planPriceNew: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     marginBottom: 8,
   },
   planActionButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 80,
+    minWidth: 70,
   },
   planActionButtonText: {
     color: '#ffffff',
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
   },
   changePlanSection: {
@@ -1768,27 +1835,72 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   speedValiditySection: {
-    marginTop: 8,
+    marginTop: 4,
     marginBottom: 8,
   },
   speedValidityHeaders: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 4,
+    gap: 12,
   },
   speedValidityLabel: {
     fontSize: 12,
     fontWeight: '500',
     flex: 1,
+    marginHorizontal: 6,
   },
   speedValidityValues: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    gap: 12,
   },
   speedValidityValue: {
     fontSize: 14,
     fontWeight: '600',
     flex: 1,
+    marginHorizontal: 6,
+  },
+  ottLogosSection: {
+    marginTop: 8,
+    marginBottom: 4,
+    width: '100%',
+  },
+  ottLogosScrollView: {
+    maxHeight: 90,
+    paddingVertical: 4,
+    width: '100%',
+  },
+  ottLogosScrollContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingRight: 4,
+    paddingLeft: 0,
+    gap: 4,
+  },
+  ottLogoItem: {
+    alignItems: 'center',
+    width: 48,
+    marginRight: 0,
+  },
+  scrollHint: {
+    fontSize: 10,
+    textAlign: 'center',
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
+  ottLogoWrapper: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 2,
+  },
+  ottServiceName: {
+    fontSize: 9,
+    textAlign: 'center',
+    fontWeight: '500',
+    marginTop: 2,
   },
   expandedRow: {
     flexDirection: 'row',

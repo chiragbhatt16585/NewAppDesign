@@ -233,6 +233,43 @@ const RenewPlanScreen = ({navigation}: any) => {
               };
             })
           : [];
+        
+        // Debug: Print plan array with OTT information
+        console.log('=== PLAN ARRAY DEBUG ===');
+        console.log('Total Plans:', normalizedPlans.length);
+        normalizedPlans.forEach((plan: any, index: number) => {
+          console.log(`\n--- Plan ${index + 1}: ${plan.name} ---`);
+          console.log('Plan ID:', plan.id);
+          console.log('Plan Name:', plan.name);
+          console.log('Plan Description:', plan.description);
+          console.log('Download Speed:', plan.downloadSpeed);
+          console.log('Days:', plan.days);
+          console.log('Amount:', plan.amt);
+          console.log('Final Amount:', plan.FinalAmount);
+          console.log('CGST Amount:', plan.CGSTAmount);
+          console.log('SGST Amount:', plan.SGSTAmount);
+          console.log('Content Providers (OTT):', plan.content_providers);
+          console.log('Content Providers Type:', typeof plan.content_providers);
+          console.log('Content Providers Is Array:', Array.isArray(plan.content_providers));
+          console.log('Content Providers Length:', plan.content_providers?.length || 0);
+          if (plan.content_providers && Array.isArray(plan.content_providers) && plan.content_providers.length > 0) {
+            console.log('Content Providers Details:');
+            plan.content_providers.forEach((provider: any, pIndex: number) => {
+              console.log(`  Provider ${pIndex + 1}:`, {
+                content_provider: provider.content_provider,
+                app_logo_file: provider.app_logo_file,
+                full_path_app_logo_file: provider.full_path_app_logo_file,
+              });
+            });
+          }
+          console.log('OTT Plan:', plan.ott_plan);
+          console.log('Voice Plan:', plan.voice_plan);
+          console.log('IPTV:', plan.iptv);
+          console.log('FUP Flag:', plan.fup_flag);
+          console.log('Limit:', plan.limit);
+        });
+        console.log('=== END PLAN ARRAY DEBUG ===\n');
+        
         setPlansData(normalizedPlans);
       } catch (planError: any) {
         console.error('=== PLAN API ERROR ===');
@@ -815,56 +852,115 @@ const RenewPlanScreen = ({navigation}: any) => {
         {/* Current Plan Card */}
         {currentPlan && (
           <View style={styles.currentPlanSection}>
+            {(() => {
+              console.log('=== CURRENT PLAN DEBUG ===');
+              console.log('Current Plan Name:', currentPlan.name);
+              console.log('Current Plan Content Providers:', currentPlan.content_providers);
+              console.log('Current Plan Content Providers Type:', typeof currentPlan.content_providers);
+              console.log('Current Plan Content Providers Is Array:', Array.isArray(currentPlan.content_providers));
+              console.log('Current Plan Content Providers Length:', currentPlan.content_providers?.length || 0);
+              if (currentPlan.content_providers) {
+                console.log('Current Plan Content Providers Full:', JSON.stringify(currentPlan.content_providers, null, 2));
+              }
+              console.log('=== END CURRENT PLAN DEBUG ===');
+              return null;
+            })()}
             <View style={[styles.planCardNew, styles.currentPlanCard, {borderColor: '#4CAF50', backgroundColor: colors.card}]}>
               <View style={[styles.planTag, {backgroundColor: '#4CAF50'}]}>
                 <Text style={styles.planTagText}>Current Plan</Text>
               </View>
               <View style={styles.planCardContent}>
-                <View style={styles.planCardLeft}>
-                  <Text style={[styles.planNameNew, {color: colors.text}]}>
-                    {currentPlan.name}
-                  </Text>
-                  {currentPlan.content_providers && currentPlan.content_providers.length > 0 && (
-                    <View style={styles.planDetailsRow}>
-                      <Text style={[styles.planDetailText, {color: colors.textSecondary}]}>
-                        {currentPlan.content_providers.length} OTTs
+                <View style={styles.planCardTopRow}>
+                  <View style={styles.planCardLeft}>
+                    <Text style={[styles.planNameNew, {color: colors.text}]}>
+                      {currentPlan.name}
+                    </Text>
+                    {currentPlan.description && (
+                      <Text style={[styles.planDescriptionNew, {color: colors.textSecondary}]}>
+                        {currentPlan.description}
                       </Text>
-                    </View>
-                  )}
-                  <View style={styles.speedValiditySection}>
-                    <View style={styles.speedValidityHeaders}>
-                      <Text style={[styles.speedValidityLabel, {color: colors.textSecondary}]}>Speed</Text>
-                      <Text style={[styles.speedValidityLabel, {color: colors.textSecondary}]}>Validity</Text>
-                    </View>
-                    <View style={styles.speedValidityValues}>
-                      <Text style={[styles.speedValidityValue, {color: colors.text}]}>
-                        {formatSpeed(currentPlan.downloadSpeed)}
-                      </Text>
-                      <Text style={[styles.speedValidityValue, {color: colors.text}]}>
-                        {currentPlan.days || 0} Days
-                      </Text>
-                    </View>
+                    )}
                   </View>
-                  {currentPlan.content_providers && currentPlan.content_providers.length > 0 && (
-                    <View style={styles.ottLogosContainer}>
-                      {currentPlan.content_providers.slice(0, 4).map((provider: any, index: number) => (
-                        <View key={index} style={styles.ottLogoWrapper}>
-                          {renderOTTIcon(provider)}
-                        </View>
-                      ))}
-                    </View>
-                  )}
+                  <View style={styles.planCardRight}>
+                    <Text style={[styles.planPriceNew, {color: colors.primary}]}>
+                      ₹{calculateTotalAmount(currentPlan)}
+                    </Text>
+                    <TouchableOpacity
+                      style={[styles.planActionButton, {backgroundColor: colors.primary}]}
+                      onPress={() => handlePlanSelect(currentPlan)}>
+                      <Text style={styles.planActionButtonText}>Renew</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-                <View style={styles.planCardRight}>
-                  <Text style={[styles.planPriceNew, {color: colors.primary}]}>
-                    ₹{calculateTotalAmount(currentPlan)}
-                  </Text>
-                  <TouchableOpacity
-                    style={[styles.planActionButton, {backgroundColor: colors.primary}]}
-                    onPress={() => handlePlanSelect(currentPlan)}>
-                    <Text style={styles.planActionButtonText}>Renew</Text>
-                  </TouchableOpacity>
+                <View style={styles.speedValiditySection}>
+                  <View style={styles.speedValidityHeaders}>
+                    <Text style={[styles.speedValidityLabel, {color: colors.textSecondary}]}>Speed</Text>
+                    <Text style={[styles.speedValidityLabel, {color: colors.textSecondary}]}>Validity</Text>
+                    {currentPlan.content_providers && Array.isArray(currentPlan.content_providers) && currentPlan.content_providers.length > 0 && (
+                      <Text style={[styles.speedValidityLabel, {color: colors.textSecondary}]}>OTTs</Text>
+                    )}
+                    {currentPlan.voice_plan?.toLowerCase() === 'yes' && (
+                      <Text style={[styles.speedValidityLabel, {color: colors.textSecondary}]}>VOICE</Text>
+                    )}
+                    {currentPlan.iptv?.toLowerCase() === 'yes' && (
+                      <Text style={[styles.speedValidityLabel, {color: colors.textSecondary}]}>IPTV</Text>
+                    )}
+                    {currentPlan.fup_flag?.toLowerCase() === 'yes' && (
+                      <Text style={[styles.speedValidityLabel, {color: colors.textSecondary}]}>FUP</Text>
+                    )}
+                  </View>
+                  <View style={styles.speedValidityValues}>
+                    <Text style={[styles.speedValidityValue, {color: colors.text}]}>
+                      {formatSpeed(currentPlan.downloadSpeed)}
+                    </Text>
+                    <Text style={[styles.speedValidityValue, {color: colors.text}]}>
+                      {currentPlan.days || 0} Days
+                    </Text>
+                    {currentPlan.content_providers && Array.isArray(currentPlan.content_providers) && currentPlan.content_providers.length > 0 && (
+                      <Text style={[styles.speedValidityValue, {color: colors.text}]}>
+                        {currentPlan.content_providers.length}
+                      </Text>
+                    )}
+                    {currentPlan.voice_plan?.toLowerCase() === 'yes' && (
+                      <Text style={[styles.speedValidityValue, {color: colors.text}]}>Yes</Text>
+                    )}
+                    {currentPlan.iptv?.toLowerCase() === 'yes' && (
+                      <Text style={[styles.speedValidityValue, {color: colors.text}]}>Yes</Text>
+                    )}
+                    {currentPlan.fup_flag?.toLowerCase() === 'yes' && (
+                      <Text style={[styles.speedValidityValue, {color: colors.text}]}>Yes</Text>
+                    )}
+                  </View>
                 </View>
+                {currentPlan.content_providers && Array.isArray(currentPlan.content_providers) && currentPlan.content_providers.length > 0 && (
+                  <View style={styles.ottLogosSection}>
+                    <ScrollView 
+                      horizontal 
+                      showsHorizontalScrollIndicator={true}
+                      contentContainerStyle={styles.ottLogosScrollContainer}
+                      style={styles.ottLogosScrollView}
+                      nestedScrollEnabled={true}>
+                      {currentPlan.content_providers.map((provider: any, index: number) => {
+                        console.log(`Rendering OTT Provider ${index + 1}:`, provider);
+                        return (
+                          <View key={index} style={styles.ottLogoItem}>
+                            <View style={styles.ottLogoWrapper}>
+                              {renderOTTIcon(provider)}
+                            </View>
+                            <Text style={[styles.ottServiceName, {color: colors.textSecondary}]} numberOfLines={1}>
+                              {provider.content_provider || 'OTT'}
+                            </Text>
+                          </View>
+                        );
+                      })}
+                    </ScrollView>
+                    {currentPlan.content_providers.length > 5 && (
+                      <Text style={[styles.scrollHint, {color: colors.textSecondary}]}>
+                        ← Scroll to see more →
+                      </Text>
+                    )}
+                  </View>
+                )}
               </View>
             </View>
           </View>
@@ -977,49 +1073,104 @@ const RenewPlanScreen = ({navigation}: any) => {
             <View key={plan.id} style={styles.otherPlanSection}>
               <View style={[styles.planCardNew, styles.otherPlanCard, {borderColor: colors.border, backgroundColor: colors.card}]}>
                 <View style={styles.planCardContent}>
-                  <View style={styles.planCardLeft}>
-                    <Text style={[styles.planNameNew, {color: colors.text}]}>
-                      {plan.name}
-                    </Text>
-                    <View style={styles.planDetailsRow}>
-                      {plan.content_providers && plan.content_providers.length > 0 && (
-                        <Text style={[styles.planDetailText, {color: colors.textSecondary}]}>
-                          {plan.content_providers.length}+
+                  <View style={styles.planCardTopRow}>
+                    <View style={styles.planCardLeft}>
+                      <Text style={[styles.planNameNew, {color: colors.text}]}>
+                        {plan.name}
+                      </Text>
+                      {plan.description && (
+                        <Text style={[styles.planDescriptionNew, {color: colors.textSecondary}]}>
+                          {plan.description}
                         </Text>
                       )}
                     </View>
-                    <View style={styles.speedValiditySection}>
-                      <View style={styles.speedValidityHeaders}>
-                        <Text style={[styles.speedValidityLabel, {color: colors.textSecondary}]}>Speed</Text>
-                        <Text style={[styles.speedValidityLabel, {color: colors.textSecondary}]}>Validity</Text>
-                      </View>
-                      <View style={styles.speedValidityValues}>
-                        <Text style={[styles.speedValidityValue, {color: colors.text}]}>
-                          {formatSpeed(plan.downloadSpeed)}
+                    <View style={styles.planCardRight}>
+                      <Text style={[styles.planPriceNew, {color: colors.primary}]}>
+                        ₹{calculateTotalAmount(plan)}
+                      </Text>
+                      <TouchableOpacity
+                        style={[
+                          styles.planActionButton, 
+                          {
+                            backgroundColor: selectedPlan?.id === plan.id ? colors.success : colors.primary
+                          }
+                        ]}
+                        onPress={() => handlePlanSelect(plan)}>
+                        <Text style={styles.planActionButtonText}>
+                          {selectedPlan?.id === plan.id ? 'Selected' : 'Select'}
                         </Text>
-                        <Text style={[styles.speedValidityValue, {color: colors.text}]}>
-                          {plan.days || 0} Days
-                        </Text>
-                      </View>
+                      </TouchableOpacity>
                     </View>
                   </View>
-                  <View style={styles.planCardRight}>
-                    <Text style={[styles.planPriceNew, {color: colors.primary}]}>
-                      ₹{calculateTotalAmount(plan)}
-                    </Text>
-                    <TouchableOpacity
-                      style={[
-                        styles.planActionButton, 
-                        {
-                          backgroundColor: selectedPlan?.id === plan.id ? colors.success : colors.primary
-                        }
-                      ]}
-                      onPress={() => handlePlanSelect(plan)}>
-                      <Text style={styles.planActionButtonText}>
-                        {selectedPlan?.id === plan.id ? 'Selected' : 'Select'}
+                  <View style={styles.speedValiditySection}>
+                    <View style={styles.speedValidityHeaders}>
+                      <Text style={[styles.speedValidityLabel, {color: colors.textSecondary}]}>Speed</Text>
+                      <Text style={[styles.speedValidityLabel, {color: colors.textSecondary}]}>Validity</Text>
+                      {plan.content_providers && Array.isArray(plan.content_providers) && plan.content_providers.length > 0 && (
+                        <Text style={[styles.speedValidityLabel, {color: colors.textSecondary}]}>OTTs</Text>
+                      )}
+                      {plan.voice_plan?.toLowerCase() === 'yes' && (
+                        <Text style={[styles.speedValidityLabel, {color: colors.textSecondary}]}>VOICE</Text>
+                      )}
+                      {plan.iptv?.toLowerCase() === 'yes' && (
+                        <Text style={[styles.speedValidityLabel, {color: colors.textSecondary}]}>IPTV</Text>
+                      )}
+                      {plan.fup_flag?.toLowerCase() === 'yes' && (
+                        <Text style={[styles.speedValidityLabel, {color: colors.textSecondary}]}>FUP</Text>
+                      )}
+                    </View>
+                    <View style={styles.speedValidityValues}>
+                      <Text style={[styles.speedValidityValue, {color: colors.text}]}>
+                        {formatSpeed(plan.downloadSpeed)}
                       </Text>
-                    </TouchableOpacity>
+                      <Text style={[styles.speedValidityValue, {color: colors.text}]}>
+                        {plan.days || 0} Days
+                      </Text>
+                      {plan.content_providers && Array.isArray(plan.content_providers) && plan.content_providers.length > 0 && (
+                        <Text style={[styles.speedValidityValue, {color: colors.text}]}>
+                          {plan.content_providers.length}
+                        </Text>
+                      )}
+                      {plan.voice_plan?.toLowerCase() === 'yes' && (
+                        <Text style={[styles.speedValidityValue, {color: colors.text}]}>Yes</Text>
+                      )}
+                      {plan.iptv?.toLowerCase() === 'yes' && (
+                        <Text style={[styles.speedValidityValue, {color: colors.text}]}>Yes</Text>
+                      )}
+                      {plan.fup_flag?.toLowerCase() === 'yes' && (
+                        <Text style={[styles.speedValidityValue, {color: colors.text}]}>Yes</Text>
+                      )}
+                    </View>
                   </View>
+                  {plan.content_providers && Array.isArray(plan.content_providers) && plan.content_providers.length > 0 && (
+                    <View style={styles.ottLogosSection}>
+                      <ScrollView 
+                        horizontal 
+                        showsHorizontalScrollIndicator={true}
+                        contentContainerStyle={styles.ottLogosScrollContainer}
+                        style={styles.ottLogosScrollView}
+                        nestedScrollEnabled={true}>
+                        {plan.content_providers.map((provider: any, index: number) => {
+                          console.log(`Rendering Other Plan OTT Provider ${index + 1} for plan ${plan.name}:`, provider);
+                          return (
+                            <View key={index} style={styles.ottLogoItem}>
+                              <View style={styles.ottLogoWrapper}>
+                                {renderOTTIcon(provider)}
+                              </View>
+                              <Text style={[styles.ottServiceName, {color: colors.textSecondary}]} numberOfLines={1}>
+                                {provider.content_provider || 'OTT'}
+                              </Text>
+                            </View>
+                          );
+                        })}
+                      </ScrollView>
+                      {plan.content_providers.length > 5 && (
+                        <Text style={[styles.scrollHint, {color: colors.textSecondary}]}>
+                          ← Scroll to see more →
+                        </Text>
+                      )}
+                    </View>
+                  )}
                 </View>
               </View>
             </View>
@@ -1558,10 +1709,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     marginBottom: 4,
   },
-  ottServiceName: {
-    fontSize: 10,
-    textAlign: 'center',
-  },
   priceBreakdownSection: {
     marginTop: 12,
     paddingTop: 12,
@@ -1920,6 +2067,12 @@ const styles = StyleSheet.create({
     fontSize: 10,
     textAlign: 'center',
   },
+  ottServiceName: {
+    fontSize: 9,
+    textAlign: 'center',
+    fontWeight: '500',
+    marginTop: 2,
+  },
   selectPlanText: {
     fontSize: 14,
     fontWeight: '600',
@@ -2122,11 +2275,15 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   planCardContent: {
+    flexDirection: 'column',
+    marginTop: 8,
+    flex: 1,
+  },
+  planCardTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginTop: 8,
-    flex: 1,
+    marginBottom: 8,
   },
   planCardLeft: {
     flex: 1,
@@ -2135,11 +2292,18 @@ const styles = StyleSheet.create({
   planCardRight: {
     alignItems: 'flex-end',
     justifyContent: 'flex-start',
+    marginLeft: 8,
   },
   planNameNew: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
+    marginBottom: 4,
+  },
+  planDescriptionNew: {
+    fontSize: 12,
+    fontWeight: '400',
     marginBottom: 8,
+    lineHeight: 16,
   },
   planDetailsRow: {
     flexDirection: 'row',
@@ -2156,18 +2320,48 @@ const styles = StyleSheet.create({
   },
   ottLogosContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginTop: 8,
     gap: 12,
+    flexWrap: 'wrap',
+  },
+  ottLogosSection: {
+    marginTop: 8,
+    marginBottom: 4,
+    width: '100%',
+  },
+  ottLogosScrollView: {
+    maxHeight: 90,
+    paddingVertical: 4,
+    width: '100%',
+  },
+  ottLogosScrollContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingRight: 4,
+    paddingLeft: 0,
+    gap: 4,
+  },
+  ottLogoItem: {
+    alignItems: 'center',
+    width: 48,
+    marginRight: 0,
+  },
+  scrollHint: {
+    fontSize: 10,
+    textAlign: 'center',
+    marginTop: 4,
+    fontStyle: 'italic',
   },
   ottLogoWrapper: {
     width: 32,
     height: 32,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 2,
   },
   planPriceNew: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     marginBottom: 8,
   },
@@ -2177,16 +2371,16 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   planActionButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 80,
+    minWidth: 70,
   },
   planActionButtonText: {
     color: '#ffffff',
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
   },
   changePlanSection: {
@@ -2230,27 +2424,31 @@ const styles = StyleSheet.create({
     fontSize: 24,
   },
   speedValiditySection: {
-    marginTop: 8,
+    marginTop: 4,
     marginBottom: 8,
   },
   speedValidityHeaders: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 4,
+    gap: 12,
   },
   speedValidityLabel: {
     fontSize: 12,
     fontWeight: '500',
     flex: 1,
+    marginHorizontal: 6,
   },
   speedValidityValues: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    gap: 12,
   },
   speedValidityValue: {
     fontSize: 14,
     fontWeight: '600',
     flex: 1,
+    marginHorizontal: 6,
   },
 });
 

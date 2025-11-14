@@ -177,7 +177,7 @@ const clientConfigs: Record<string, ClientConfig> = {
       },
       branding: {
         logo: 'dna_logo.png',
-        primaryColor: '#4CAF50',
+        primaryColor: '#1976D2',
         secondaryColor: '#FF9800',
         appName: 'DNA Infotel',
       },
