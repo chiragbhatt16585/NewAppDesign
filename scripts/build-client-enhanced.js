@@ -87,13 +87,9 @@ function copyClientConfig(clientId) {
     logSuccess('Copied app.json');
   }
 
-  // Copy API configuration
-  const apiSrc = path.join(configDir, 'api.ts');
-  const apiDest = path.join(appDir, 'src', 'services', 'api.ts');
-  if (fs.existsSync(apiSrc)) {
-    fs.copyFileSync(apiSrc, apiDest);
-    logSuccess('Copied api.ts');
-  }
+  // NOTE: api.ts is no longer copied per client.
+  // The shared src/services/api.ts dynamically handles client configuration.
+  log('ℹ️  Skipping api.ts copy (shared dynamic API in use)', 'blue');
 
   // Copy assets
   const assetsSrc = path.join(configDir, 'assets');

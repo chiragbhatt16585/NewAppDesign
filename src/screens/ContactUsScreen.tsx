@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useMemo, useState} from 'react';
 import {
   View,
   Text,
@@ -15,12 +15,15 @@ import {getThemeColors} from '../utils/themeStyles';
 import CommonHeader from '../components/CommonHeader';
 import {useTranslation} from 'react-i18next';
 import {getClientConfig} from '../config/client-config';
+import Feather from 'react-native-vector-icons/Feather';
 
 const ContactUsScreen = ({navigation}: any) => {
   const {isDark} = useTheme();
   const colors = getThemeColors(isDark);
   const {t} = useTranslation();
   const [showEscalationModal, setShowEscalationModal] = useState(false);
+
+  const tr = (key: string, fallback: string) => t(key, {defaultValue: fallback});
 
   // Get client configuration
   const clientConfig = getClientConfig();
@@ -36,13 +39,31 @@ const ContactUsScreen = ({navigation}: any) => {
     });
   };
 
-  const handleAddress = (address: string) => {
+  const openMapsForAddress = (address: string) => {
     const encodedAddress = encodeURIComponent(address);
-    Linking.canOpenURL(`https://maps.google.com/?q=${encodedAddress}`).then(supported => {
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
+    Linking.canOpenURL(url).then(supported => {
       if (supported) {
-        Linking.openURL(`https://maps.google.com/?q=${encodedAddress}`);
+        Linking.openURL(url);
       } else {
         Alert.alert(t('contactUs.error'), t('contactUs.mapsNotSupported'));
+      }
+    });
+  };
+
+  const openEmail = (email: string) => {
+    Linking.openURL(`mailto:${email}`).catch(() => {
+      Alert.alert(t('contactUs.error'), t('contactUs.emailNotSupported'));
+    });
+  };
+
+  const openWebsite = (url: string) => {
+    const normalized = url.startsWith('http') ? url : `https://${url}`;
+    Linking.canOpenURL(normalized).then(supported => {
+      if (supported) {
+        Linking.openURL(normalized);
+      } else {
+        Alert.alert(t('contactUs.error'), t('contactUs.websiteNotSupported'));
       }
     });
   };
@@ -77,306 +98,180 @@ const ContactUsScreen = ({navigation}: any) => {
     setShowEscalationModal(true);
   };
 
-  const ContactItem = ({icon, title, value, onPress, subtitle}: any) => (
-    <TouchableOpacity
-      style={[
-        styles.contactItem,
-        {backgroundColor: colors.card, shadowColor: colors.shadow},
-        onPress && styles.clickableItem
-      ]}
-      onPress={onPress}
-      disabled={!onPress}>
-      <View style={styles.contactItemLeft}>
-        <Text style={styles.contactIcon}>{icon}</Text>
-        <View style={styles.contactTextContainer}>
-          <Text style={[styles.contactTitle, {color: colors.text}]}>{title}</Text>
-          <Text style={[styles.contactValue, {color: colors.textSecondary}]}>{value}</Text>
-          {subtitle && (
-            <Text style={[styles.contactSubtitle, {color: colors.textSecondary}]}>{subtitle}</Text>
-          )}
-        </View>
-      </View>
-      {onPress && (
-        <Text style={[styles.arrowIcon, {color: colors.primary}]}>›</Text>
-      )}
-    </TouchableOpacity>
-  );
+  const defaultWebsite = useMemo(() => {
+    const sanitizedName = clientConfig.clientName.replace(/\s+/g, '').toLowerCase();
+    const configuredWebsite = (contactInfo as any)?.website;
+    return configuredWebsite || `www.${sanitizedName}.com`;
+  }, [clientConfig.clientName, contactInfo]);
 
-  const OfficeCard = ({office, isHeadOffice = false}: any) => (
-    <View style={[styles.officeCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
-      <View style={styles.officeHeader}>
-        <Text style={styles.officeIcon}>{isHeadOffice ? '🏢' : '🏛️'}</Text>
-        <View style={styles.officeInfo}>
-          <Text style={[styles.officeTitle, {color: colors.text}]}>
-            {office.title}
+  const bestEmail =
+    contactInfo.emails?.support ||
+    contactInfo.emails?.inquiries ||
+    contactInfo.emails?.sales;
+
+  const primaryPhone =
+    contactInfo.headOffice.customerSupport ||
+    contactInfo.tollFree ||
+    contactInfo.landline;
+
+  const contactRows = [
+    {
+      icon: '📞',
+      label: tr('contactUs.callSupport', 'Call Support'),
+      value: primaryPhone,
+      onPress: primaryPhone ? () => handlePhoneCall(primaryPhone) : undefined,
+    },
+    {
+      icon: '✉️',
+      label: tr('contactUs.email', 'Email'),
+      value: bestEmail,
+      onPress: bestEmail ? () => openEmail(bestEmail) : undefined,
+    },
+    {
+      icon: '🌐',
+      label: tr('contactUs.website', 'Website'),
+      value: defaultWebsite,
+      onPress: () => openWebsite(defaultWebsite),
+    },
+    {
+      icon: '🗓️',
+      label: tr('contactUs.supportHours', 'Support Hours'),
+      value: contactInfo.headOffice.customerSupportHours || 'Monday - Sunday | 24×7',
+    },
+    {
+      icon: '🛠️',
+      label: tr('contactUs.escalationMatrix', 'Escalation Matrix'),
+      value: tr('contactUs.viewDetails', 'View details'),
+      onPress: contactInfo.enterpriseEscalation ? handleEscalationMatrix : undefined,
+    },
+  ].filter(row => row.value);
+
+  const locations = [
+    { ...contactInfo.headOffice, isPrimary: true },
+    ...(contactInfo.branchOffices || []).map(office => ({ ...office, isPrimary: false })),
+  ];
+
+  const getLocationCityLabel = (location: any) => {
+    const titleParts = location.title?.split('-');
+    const lastPart = titleParts?.[titleParts.length - 1]?.trim();
+    if (lastPart && lastPart.length >= 3) {
+      return lastPart;
+    }
+
+    const cityMatch = location.address?.match(/([A-Za-z\s]+),(?:\s*[A-Za-z\s]+)?$/);
+    if (cityMatch?.[1]) {
+      return cityMatch[1].trim();
+    }
+
+    return tr('contactUs.location', 'Location');
+  };
+
+  const LocationCard = ({location}: any) => {
+    const cityLabel = getLocationCityLabel(location);
+    return (
+    <View style={[styles.locationCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
+      <View style={styles.locationContentRow}>
+        <View style={styles.locationInfoBlock}>
+          <Text style={[styles.locationTitle, {color: colors.text}]}>
+            {location.title}
           </Text>
+          <Text style={[styles.locationAddress, {color: colors.textSecondary}]}>
+            {location.address}
+          </Text>
+
+          {(location.corporateLandline || location.customerSupport) && (
+          <TouchableOpacity
+            style={[styles.locationContactRow, {borderColor: colors.border || '#eee'}]}
+            onPress={() => handlePhoneCall(location.corporateLandline || location.customerSupport)}>
+              <Text style={styles.locationContactIcon}>📞</Text>
+              <View style={{flex: 1}}>
+                <Text style={[styles.locationContactLabel, {color: colors.text}]}>
+                  {tr('contactUs.callOffice', 'Call office')}
+                </Text>
+                <Text style={[styles.locationContactValue, {color: colors.primary}]}>
+                  {location.corporateLandline || location.customerSupport}
+                </Text>
+              </View>
+              <Text style={[styles.locationContactArrow, {color: colors.primary}]}>›</Text>
+            </TouchableOpacity>
+          )}
+
         </View>
+
+        <TouchableOpacity
+          activeOpacity={0.8}
+          style={[styles.locationMapThumb, {backgroundColor: colors.primaryLight || '#f0f5ff'}]}
+          onPress={() => openMapsForAddress(location.address)}>
+          <View style={styles.mapPinBubble}>
+            <Feather name="map-pin" size={24} color="#FF3B30" />
+          </View>
+          <Text style={styles.mapThumbText}>{tr('contactUs.viewMap', 'View map')}</Text>
+        </TouchableOpacity>
       </View>
-
-      <ContactItem
-        icon="📍"
-        title={t('contactUs.address')}
-        value={office.address}
-        onPress={() => handleAddress(office.address)}
-      />
-
-      {isHeadOffice && office.customerSupport && (
-        <ContactItem
-          icon="📞"
-          title={t('contactUs.customerSupport')}
-          value={office.customerSupport}
-          subtitle={office.customerSupportHours}
-          onPress={() => handlePhoneCall(office.customerSupport)}
-        />
-      )}
-
-      {isHeadOffice && office.corporateLandline && (
-        <ContactItem
-          icon="🏢"
-          title={t('contactUs.corporateLandline')}
-          value={office.corporateLandline}
-          subtitle={office.corporateHours}
-          onPress={() => handlePhoneCall(office.corporateLandline)}
-        />
-      )}
-
-      {!isHeadOffice && office.corporateLandline && (
-        <ContactItem
-          icon="🏢"
-          title={t('contactUs.corporateLandline')}
-          value={office.corporateLandline}
-          subtitle={office.corporateHours}
-          onPress={() => handlePhoneCall(office.corporateLandline)}
-        />
-      )}
     </View>
   );
+  };
 
   return (
     <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}>
       {/* Header */}
       <CommonHeader navigation={navigation} />
 
-      {/* Page Heading */}
-      <View style={styles.headingContainer}>
-        <Text style={[styles.pageHeading, {color: colors.text}]}>
-          {t('contactUs.title')}
-        </Text>
-        <Text style={[styles.pageSubheading, {color: colors.textSecondary}]}>
-          {t('contactUs.subtitle')}
-        </Text>
-      </View>
-
-      {/* Content */}
       <ScrollView showsVerticalScrollIndicator={false}>
+        <View style={styles.headingContainer}>
+          <Text style={[styles.pageHeading, {color: colors.text}]}>
+            {tr('contactUs.title', 'Support')}
+          </Text>
+          <Text style={[styles.pageSubheading, {color: colors.textSecondary}]}>
+            {tr('contactUs.subtitle', 'Get in touch with us')}
+          </Text>
+        </View>
+
         <View style={styles.content}>
-          {(contactInfo.tollFree || contactInfo.landline) && (
-            <View style={[styles.contactNumbersCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
-              <Text style={[styles.sectionTitle, {color: colors.text}]}> 
-                Call Us
-              </Text>
-              {contactInfo.tollFree && (
-                <TouchableOpacity
-                  style={[styles.contactNumberItem, {backgroundColor: colors.primaryLight}]}
-                  onPress={() => handlePhoneCall(contactInfo.tollFree!)}>
-                  <Text style={styles.contactNumberIcon}>📞</Text>
-                  <View style={styles.contactNumberInfo}>
-                    <Text style={[styles.contactNumberTitle, {color: colors.text}]}>Toll-Free</Text>
-                    <Text style={[styles.contactNumberValue, {color: colors.primary}]}> {contactInfo.tollFree} </Text>
+          <View style={[styles.heroCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
+            {contactRows.map((row, index) => (
+              <TouchableOpacity
+                key={`${row.label}-${index}`}
+                style={[
+                  styles.heroRow,
+                  index !== contactRows.length - 1 && styles.heroRowDivider,
+                ]}
+                disabled={!row.onPress}
+                onPress={row.onPress}>
+                <View style={styles.heroRowLeft}>
+                  <View style={styles.heroIconBubble}>
+                    <Text style={styles.heroIcon}>{row.icon}</Text>
                   </View>
-                  <Text style={[styles.contactNumberArrow, {color: colors.primary}]}>›</Text>
-                </TouchableOpacity>
-              )}
-
-              {contactInfo.landline && (
-                <TouchableOpacity
-                  style={[styles.contactNumberItem, {backgroundColor: colors.primaryLight}]}
-                  onPress={() => handlePhoneCall(contactInfo.landline!)}>
-                  <Text style={styles.contactNumberIcon}>📞</Text>
-                  <View style={styles.contactNumberInfo}>
-                    <Text style={[styles.contactNumberTitle, {color: colors.text}]}>Landline</Text>
-                    <Text style={[styles.contactNumberValue, {color: colors.primary}]}> {contactInfo.landline} </Text>
-                  </View>
-                  <Text style={[styles.contactNumberArrow, {color: colors.primary}]}>›</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
-
-          {contactInfo.emails && (
-            <View style={[styles.emailCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
-              <Text style={[styles.sectionTitle, {color: colors.text}]}>Email Us</Text>
-
-              {contactInfo.emails.inquiries && (
-                <View style={styles.emailItem}>
-                  <Text style={styles.emailIcon}>📧</Text>
-                  <View style={styles.emailInfo}>
-                    <Text style={[styles.emailTitle, {color: colors.text}]}>Inquiries/Support</Text>
-                    <Text style={[styles.emailValue, {color: colors.primary}]}> {contactInfo.emails.inquiries} </Text>
+                  <View style={{flex: 1}}>
+                    <Text style={[styles.heroLabel, {color: colors.text}]}>{row.label}</Text>
+                    <Text style={[styles.heroValue, {color: colors.textSecondary}]}>
+                      {row.value}
+                    </Text>
                   </View>
                 </View>
-              )}
-
-              {contactInfo.emails.sales && (
-                <View style={styles.emailItem}>
-                  <Text style={styles.emailIcon}>📧</Text>
-                  <View style={styles.emailInfo}>
-                    <Text style={[styles.emailTitle, {color: colors.text}]}>New Connection</Text>
-                    <Text style={[styles.emailValue, {color: colors.primary}]}> {contactInfo.emails.sales} </Text>
-                  </View>
-                </View>
-              )}
-            </View>
-          )}
-          {/* Company Info Card */}
-          <View style={[styles.companyCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
-            <View style={styles.companyHeader}>
-              <Text style={styles.companyIcon}>🏢</Text>
-              <View style={styles.companyInfo}>
-                <Text style={[styles.companyName, {color: colors.text}]}>
-                  {clientConfig.clientName}
-                </Text>
-                <Text style={[styles.companyTagline, {color: colors.textSecondary}]}>
-                  {t('contactUs.tagline')}
-                </Text>
-                {contactInfo.gstin && (
-                  <Text style={[styles.gstinText, {color: colors.textSecondary}]}>
-                    GSTIN: {contactInfo.gstin}
-                  </Text>
-                )}
-              </View>
-            </View>
+                {row.onPress && <Text style={[styles.heroArrow, {color: colors.primary}]}>›</Text>}
+              </TouchableOpacity>
+            ))}
           </View>
 
-          {/* Internet Support Inquiries */}
-          {contactInfo.headOffice.customerSupport && (
-            <View style={[styles.escalationCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
-              <Text style={[styles.sectionTitle, {color: colors.text}]}>
-                {t('contactUs.internetSupport')}
-              </Text>
-              
-              <View style={styles.escalationItem}>
-                <Text style={[styles.escalationTitle, {color: colors.text}]}>
-                  {t('contactUs.customerSupport')}
-                </Text>
-                <Text style={[styles.escalationNumber, {color: colors.primary}]}>
-                  {contactInfo.headOffice.customerSupport}
-                </Text>
-                {contactInfo.headOffice.customerSupportHours && (
-                  <Text style={[styles.escalationHours, {color: colors.textSecondary}]}>
-                    {contactInfo.headOffice.customerSupportHours}
-                  </Text>
-                )}
-              </View>
-            </View>
-          )}
-
-          {/* Head Office */}
-          <View style={styles.officeSection}>
-            {/* <Text style={[styles.sectionTitle, {color: colors.text}]}>
-              {t('contactUs.headOffice')}
-            </Text> */}
-            <OfficeCard office={contactInfo.headOffice} isHeadOffice={true} />
-          </View>
-
-          {/* Branch Offices */}
-          {contactInfo.branchOffices && contactInfo.branchOffices.length > 0 && (
-            contactInfo.branchOffices.map((branchOffice, index) => (
-              <View key={index} style={styles.officeSection}>
-                <Text style={[styles.sectionTitle, {color: colors.text}]}>
-                  {branchOffice.title}
-                </Text>
-                <OfficeCard office={branchOffice} isHeadOffice={false} />
-              </View>
-            ))
-          )}
-
-          
-
-          {/* Enterprise Escalation Matrix */}
-          {contactInfo.enterpriseEscalation && (
+          {contactInfo.whatsappNumber && (
             <TouchableOpacity
-              style={[styles.escalationCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}
-              onPress={handleEscalationMatrix}>
-              <Text style={[styles.sectionTitle, {color: colors.text}]}>
-                {contactInfo.enterpriseEscalation.title}
+              style={[styles.whatsappPill, {backgroundColor: colors.primary}]}
+              onPress={handleWhatsApp}>
+              <Text style={styles.whatsappPillIcon}>💬</Text>
+              <Text style={styles.whatsappPillText}>
+                {t('contactUs.whatsapp')} {contactInfo.whatsappNumber}
               </Text>
-              
-              <View style={styles.escalationItem}>
-                <Text style={[styles.escalationTitle, {color: colors.text}]}>
-                  {t('contactUs.enterpriseSupport')}
-                </Text>
-                <Text style={[styles.escalationSubtitle, {color: colors.textSecondary}]}>
-                  {t('contactUs.enterpriseEscalationSubtitle')}
-                </Text>
-              </View>
-              <Text style={[styles.escalationArrow, {color: colors.primary}]}>›</Text>
             </TouchableOpacity>
           )}
 
+          <Text style={[styles.sectionHeading, {color: colors.text}]}>
+            {tr('contactUs.locationsHeading', 'Our locations')}
+          </Text>
 
-
-          {/* WhatsApp Contact */}
-          {contactInfo.whatsappNumber && (
-            <View style={[styles.whatsappCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
-              <Text style={[styles.sectionTitle, {color: colors.text}]}>
-                {t('contactUs.whatsappSupport')}
-              </Text>
-              
-              <TouchableOpacity
-                style={[styles.whatsappItem, {backgroundColor: colors.primaryLight}]}
-                onPress={handleWhatsApp}>
-                <Text style={styles.whatsappIcon}>💬</Text>
-                <View style={styles.whatsappInfo}>
-                  <Text style={[styles.whatsappTitle, {color: colors.text}]}>
-                    {t('contactUs.whatsapp')}
-                  </Text>
-                  <Text style={[styles.whatsappNumber, {color: colors.primary}]}>
-                    {contactInfo.whatsappNumber}
-                  </Text>
-                  <Text style={[styles.whatsappSubtitle, {color: colors.textSecondary}]}>
-                    {t('contactUs.whatsappSubtitle')}
-                  </Text>
-                </View>
-                <Text style={[styles.whatsappArrow, {color: colors.primary}]}>›</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* Quick Actions */}
-          <View style={styles.quickActionsSection}>
-            <Text style={[styles.sectionTitle, {color: colors.text}]}>
-              {t('contactUs.quickActions')}
-            </Text>
-
-            <View style={styles.quickActionsGrid}>
-              {contactInfo.headOffice.customerSupport && (
-                <TouchableOpacity
-                  style={[styles.quickActionCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}
-                  onPress={() => handlePhoneCall(contactInfo.headOffice.customerSupport!)}>
-                  <Text style={styles.quickActionIcon}>📞</Text>
-                  <Text style={[styles.quickActionTitle, {color: colors.text}]}>
-                    {t('contactUs.callSupport')}
-                  </Text>
-                  <Text style={[styles.quickActionSubtitle, {color: colors.textSecondary}]}>
-                    {t('contactUs.callSupportSubtitle')}
-                  </Text>
-                </TouchableOpacity>
-              )}
-
-              <TouchableOpacity
-                style={[styles.quickActionCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}
-                onPress={() => handleAddress(contactInfo.headOffice.address)}>
-                <Text style={styles.quickActionIcon}>🗺️</Text>
-                <Text style={[styles.quickActionTitle, {color: colors.text}]}>
-                  {t('contactUs.directions')}
-                </Text>
-                <Text style={[styles.quickActionSubtitle, {color: colors.textSecondary}]}>
-                  {t('contactUs.directionsSubtitle')}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+          {locations.map((location, index) => (
+            <LocationCard key={`${location.title}-${index}`} location={location} />
+          ))}
         </View>
       </ScrollView>
 
@@ -485,6 +380,180 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 20,
     paddingBottom: 20,
+  },
+  heroCard: {
+    borderRadius: 20,
+    paddingVertical: 4,
+    marginBottom: 24,
+    shadowOffset: {width: 0, height: 3},
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  heroRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+  },
+  heroRowDivider: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#ececec',
+  },
+  heroRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  heroIconBubble: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#E5F1FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  heroIcon: {
+    fontSize: 18,
+  },
+  heroLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  heroValue: {
+    fontSize: 14,
+  },
+  heroArrow: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginLeft: 12,
+  },
+  whatsappPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    marginBottom: 24,
+  },
+  whatsappPillIcon: {
+    fontSize: 18,
+    marginRight: 10,
+    color: '#fff',
+  },
+  whatsappPillText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  sectionHeading: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 16,
+  },
+  locationCard: {
+    borderRadius: 18,
+    padding: 20,
+    marginBottom: 20,
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.08,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  locationContentRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+  },
+  locationInfoBlock: {
+    flex: 1,
+    marginRight: 16,
+  },
+  locationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  locationTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  locationTag: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  locationAddress: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 14,
+  },
+  locationContactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  locationContactIcon: {
+    fontSize: 18,
+    marginRight: 12,
+  },
+  locationContactLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  locationContactValue: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  locationContactArrow: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  mapContainer: {
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  mapPlaceholder: {
+    height: 150,
+    borderRadius: 12,
+    backgroundColor: '#e6f0ff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  mapPlaceholderText: {
+    color: '#5b6c8f',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  locationMapThumb: {
+    width: 110,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 10,
+  },
+  mapPinBubble: {
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+    paddingHorizontal: 6,
+  },
+  mapThumbText: {
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+    color: '#324156',
   },
   companyCard: {
     borderRadius: 16,

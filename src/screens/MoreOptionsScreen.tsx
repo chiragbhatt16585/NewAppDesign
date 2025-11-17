@@ -320,12 +320,19 @@ const MoreOptionsScreen = ({navigation}: any) => {
             <TouchableOpacity
               style={[
                 styles.logoutButton,
-                {backgroundColor: colors.card, shadowColor: colors.shadow, borderColor: colors.accent}
+                {
+                  backgroundColor: colors.card,
+                  shadowColor: colors.shadow,
+                  borderColor: colors.primary || '#0E5EF7',
+                }
               ]}
               onPress={logoutItem.onPress}
               activeOpacity={0.85}
             >
-              <View style={[styles.logoutIcon, {backgroundColor: colors.accentLight}]}> 
+              <View style={[
+                styles.logoutIcon,
+                {backgroundColor: colors.primaryLight || '#E5F1FF'}
+              ]}> 
                 <Text style={styles.gridIconText}>{logoutItem.icon}</Text>
               </View>
               <Text style={[styles.logoutTitle, {color: colors.text}]}> {logoutItem.title}</Text>
