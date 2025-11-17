@@ -109,10 +109,10 @@ const AddressProofScreen = ({ navigation, route }: AddressProofScreenProps) => {
       
       try {
         const dropdownRes = await apiService.Staticdropdown(dropdownData, realm);
-        console.log('Address proof options from API:', dropdownRes);
-        console.log('API response type:', typeof dropdownRes);
-        console.log('API response keys:', Object.keys(dropdownRes || {}));
-        console.log('address_proof data:', dropdownRes?.address_proof);
+        // console.log('Address proof options from API:', dropdownRes);
+        // console.log('API response type:', typeof dropdownRes);
+        // console.log('API response keys:', Object.keys(dropdownRes || {}));
+        // console.log('address_proof data:', dropdownRes?.address_proof);
         
         if (dropdownRes && dropdownRes.address_proof && Array.isArray(dropdownRes.address_proof)) {
           const formattedOptions = dropdownRes.address_proof.map((item: any) => ({

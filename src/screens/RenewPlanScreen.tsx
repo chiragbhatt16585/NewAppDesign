@@ -968,9 +968,11 @@ const RenewPlanScreen = ({navigation}: any) => {
 
         {/* Change your plan section */}
         <View style={styles.changePlanSection}>
-          <Text style={[styles.changePlanTitle, {color: colors.primary}]}>
-            Change your plan
-          </Text>
+          {currentPlan && (
+            <Text style={[styles.changePlanTitle, {color: colors.primary}]}>
+              Change your plan
+            </Text>
+          )}
           <View style={styles.filterButtonsRow}>
             <TouchableOpacity
               style={[styles.filterButtonNew, {backgroundColor: colors.card, borderColor: colors.border}]}

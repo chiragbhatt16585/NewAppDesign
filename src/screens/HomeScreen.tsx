@@ -86,9 +86,9 @@ const HomeScreen = ({navigation}: any) => {
 
   // Derive dynamic main menu items from API
   const mainMenuItems = useMemo(() => {
-    console.log('🔍 [mainMenuItems] === RECOMPUTING MAIN MENU ITEMS ===');
-    console.log('🔍 [mainMenuItems] Menu input:', menu);
-    console.log('🔍 [mainMenuItems] Menu is array:', Array.isArray(menu));
+        // console.log('🔍 [mainMenuItems] === RECOMPUTING MAIN MENU ITEMS ===');
+        // console.log('🔍 [mainMenuItems] Menu input:', menu);
+        // console.log('🔍 [mainMenuItems] Menu is array:', Array.isArray(menu));
     
     const desiredOrder = ['Account', 'Sessions', 'Tickets', 'Ledger'];
     // Use vector icons so we can tint them with theme primary (orange)
@@ -112,35 +112,35 @@ const HomeScreen = ({navigation}: any) => {
           const isMain = m?.menu_api_type === 'main';
           const isActive = String(m?.status).toLowerCase() === 'active';
           const result = isMain && isActive;
-          console.log('🔍 [mainMenuItems] Filtering item:', {
-            menu_label: m?.menu_label,
-            menu_api_type: m?.menu_api_type,
-            status: m?.status,
-            isMain,
-            isActive,
-            passes: result
-          });
+          // console.log('🔍 [mainMenuItems] Filtering item:', {
+          //   menu_label: m?.menu_label,
+          //   menu_api_type: m?.menu_api_type,
+          //   status: m?.status,
+          //   isMain,
+          //   isActive,
+          //   passes: result
+          // });
           return result;
         })
       : [];
     
-    console.log('🔍 [mainMenuItems] Filtered list:', list);
-    console.log('🔍 [mainMenuItems] Filtered list length:', list.length);
+    // console.log('🔍 [mainMenuItems] Filtered list:', list);
+    // console.log('🔍 [mainMenuItems] Filtered list length:', list.length);
     
     const byLabel = new Map<string, any>();
     list.forEach((item: any) => { 
       if (item?.menu_label) {
-        console.log('🔍 [mainMenuItems] Adding to map:', item.menu_label, item);
+        // console.log('🔍 [mainMenuItems] Adding to map:', item.menu_label, item);
         byLabel.set(item.menu_label, item);
       }
     });
 
-    console.log('🔍 [mainMenuItems] Labels in map:', Array.from(byLabel.keys()));
+    // console.log('🔍 [mainMenuItems] Labels in map:', Array.from(byLabel.keys()));
 
     const result = desiredOrder
       .filter(label => {
         const hasLabel = byLabel.has(label);
-        console.log('🔍 [mainMenuItems] Checking desired label:', label, 'exists:', hasLabel);
+        // console.log('🔍 [mainMenuItems] Checking desired label:', label, 'exists:', hasLabel);
         return hasLabel;
       })
       .map(label => ({ 
@@ -150,9 +150,9 @@ const HomeScreen = ({navigation}: any) => {
         onPress: routeMap[label] 
       }));
     
-    console.log('🔍 [mainMenuItems] Final result:', result);
-    console.log('🔍 [mainMenuItems] Final result length:', result.length);
-    console.log('🔍 [mainMenuItems] === END RECOMPUTATION ===');
+    // console.log('🔍 [mainMenuItems] Final result:', result);
+    // console.log('🔍 [mainMenuItems] Final result length:', result.length);
+    // console.log('🔍 [mainMenuItems] === END RECOMPUTATION ===');
     
     return result;
   }, [menu, navigation]);
@@ -231,31 +231,49 @@ const HomeScreen = ({navigation}: any) => {
     //console.warn('=== HOMESCREEN MOUNTED ===');
     //Alert.alert('HomeScreen', 'Component mounted');
     fetchAccountData();
-    // Initialize push registration similar to old app behavior
-    (async () => {
-      try {
-        const realm = getClientConfig().clientId;
-        console.log('[HomeScreen] Initializing push notifications for realm:', realm);
-        //Alert.alert('PushDebug', `Home init for realm: ${realm}`);
-        await initializePushNotifications(realm);
-        
-        // Add delay for iOS to ensure FCM token is ready
-        if (Platform.OS === 'ios') {
-          console.log('[HomeScreen] iOS detected, adding delay for FCM token...');
-          await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay
+    
+    // Initialize push registration in background - don't block UI
+    // Use setTimeout to ensure it doesn't block the main thread
+    setTimeout(() => {
+      (async () => {
+        try {
+          const realm = getClientConfig().clientId;
+          console.log('[HomeScreen] Initializing push notifications for realm:', realm);
+          //Alert.alert('PushDebug', `Home init for realm: ${realm}`);
+          
+          // Set a timeout for Firebase initialization to prevent hanging
+          const initPromise = initializePushNotifications(realm);
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Firebase init timeout')), 10000)
+          );
+          
+          await Promise.race([initPromise, timeoutPromise]).catch(e => {
+            console.warn('[HomeScreen] Firebase init timeout or error:', e);
+          });
+          
+          // Add delay for iOS to ensure FCM token is ready
+          if (Platform.OS === 'ios') {
+            console.log('[HomeScreen] iOS detected, adding delay for FCM token...');
+            await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay
+          }
+          
+          console.log('[HomeScreen] Trying pending token registration');
+          await registerPendingPushToken(realm).catch(e => {
+            console.warn('[HomeScreen] Pending token registration error:', e);
+          });
+          
+          // Only attempt manual registration once; avoid repeated retries if Firebase not ready
+          console.log('[HomeScreen] Trying manual device registration');
+          await registerDeviceManually(realm).catch(e => {
+            console.warn('[HomeScreen] Manual device registration error:', e);
+          });
+          
+        } catch (e) {
+          console.warn('[HomeScreen] Push initialization/registration error', (e as any)?.message || e);
+          //Alert.alert('PushDebug', `Home init error: ${(e as any)?.message || e}`);
         }
-        
-        console.log('[HomeScreen] Trying pending token registration');
-        await registerPendingPushToken(realm);
-        // Only attempt manual registration once; avoid repeated retries if Firebase not ready
-        console.log('[HomeScreen] Trying manual device registration');
-        await registerDeviceManually(realm);
-        
-      } catch (e) {
-        console.warn('[HomeScreen] Push initialization/registration error', (e as any)?.message || e);
-        //Alert.alert('PushDebug', `Home init error: ${(e as any)?.message || e}`);
-      }
-    })();
+      })();
+    }, 100); // Small delay to let UI render first
   }, []);
 
   useEffect(() => {
@@ -275,36 +293,36 @@ const HomeScreen = ({navigation}: any) => {
 
   // Log menu once loaded (for verification)
   useEffect(() => {
-    console.log('🔍 [MenuSettings] === DETAILED MENU DEBUG ===');
-    console.log('🔍 [MenuSettings] Loading state:', menuLoading);
-    console.log('🔍 [MenuSettings] Error:', menuError);
-    console.log('🔍 [MenuSettings] Menu exists:', !!menu);
-    console.log('🔍 [MenuSettings] Menu type:', typeof menu);
-    console.log('🔍 [MenuSettings] Is array:', Array.isArray(menu));
+    // console.log('🔍 [MenuSettings] === DETAILED MENU DEBUG ===');
+    // console.log('🔍 [MenuSettings] Loading state:', menuLoading);
+    // console.log('🔍 [MenuSettings] Error:', menuError);
+    // console.log('🔍 [MenuSettings] Menu exists:', !!menu);
+    // console.log('🔍 [MenuSettings] Menu type:', typeof menu);
+    // console.log('🔍 [MenuSettings] Is array:', Array.isArray(menu));
     
     if (menu) {
-      console.log('🔍 [MenuSettings] Full menu array:', JSON.stringify(menu, null, 2));
-      console.log('🔍 [MenuSettings] Menu length:', Array.isArray(menu) ? menu.length : 'Not an array');
+      // console.log('🔍 [MenuSettings] Full menu array:', JSON.stringify(menu, null, 2));
+      // console.log('🔍 [MenuSettings] Menu length:', Array.isArray(menu) ? menu.length : 'Not an array');
       
       if (Array.isArray(menu)) {
-        console.log('🔍 [MenuSettings] Menu items:');
+        //console.log('🔍 [MenuSettings] Menu items:');
         menu.forEach((item: any, index: number) => {
-          console.log(`🔍 [MenuSettings] Item ${index}:`, {
-            menu_label: item?.menu_label,
-            menu_api_type: item?.menu_api_type,
-            status: item?.status,
-            full_item: item
-          });
+          // console.log(`🔍 [MenuSettings] Item ${index}:`, {
+          //   menu_label: item?.menu_label,
+          //   menu_api_type: item?.menu_api_type,
+          //   status: item?.status,
+          //   full_item: item
+          // });
         });
         
         const mainItems = menu.filter((m: any) => m?.menu_api_type === 'main' && String(m?.status).toLowerCase() === 'active');
-        console.log('🔍 [MenuSettings] Filtered main items:', mainItems);
-        console.log('🔍 [MenuSettings] Filtered main items count:', mainItems.length);
+        // console.log('🔍 [MenuSettings] Filtered main items:', mainItems);
+        // // console.log('🔍 [MenuSettings] Filtered main items count:', mainItems.length);
       }
     } else {
-      console.log('🔍 [MenuSettings] Menu is null/undefined/empty');
+      // console.log('🔍 [MenuSettings] Menu is null/undefined/empty');
     }
-    console.log('🔍 [MenuSettings] === END DEBUG ===');
+    // console.log('🔍 [MenuSettings] === END DEBUG ===');
   }, [menuLoading, menu, menuError]);
 
   // Disabled: Auto reload on focus to prevent unintended refreshes when switching tabs
@@ -368,15 +386,7 @@ const HomeScreen = ({navigation}: any) => {
       // console.log('🏠 [HomeScreen] fetchAccountData started');
       setIsLoading(true);
       
-      // Check session validity before making API call
-      const isSessionValid = await checkSessionAndHandle(navigation);
-      // console.log('🏠 [HomeScreen] Session validation result:', isSessionValid);
-      
-      if (!isSessionValid) {
-        // console.log('🏠 [HomeScreen] Session validation failed, but continuing with API call');
-      }
-      
-      // Get current session data
+      // Get current session data first (faster check)
       const session = await sessionManager.getCurrentSession();
       // console.log('🏠 [HomeScreen] Current session:', {
       //   username: session?.username,
@@ -387,15 +397,27 @@ const HomeScreen = ({navigation}: any) => {
       if (!session) {
         // console.log('🏠 [HomeScreen] No session found, stopping');
         setIsLoading(false);
+        isFetchingRef.current = false;
         return;
       }
 
       const { username } = session;
       // console.log('🏠 [HomeScreen] Making API call for username:', username);
 
+      // Check session validity with timeout to prevent hanging
+      const sessionCheckPromise = checkSessionAndHandle(navigation);
+      const sessionTimeoutPromise = new Promise<boolean>((resolve) => 
+        setTimeout(() => resolve(true), 3000) // 3 second timeout
+      );
+      await Promise.race([sessionCheckPromise, sessionTimeoutPromise]);
+      
       // Use the enhanced API service with automatic token regeneration
-      // console.log('🏠 [HomeScreen] Calling makeAuthenticatedRequest...');
-      const authResponse = await apiService.authUser(username);
+      // Add timeout to prevent hanging
+      const apiCallPromise = apiService.authUser(username);
+      const apiTimeoutPromise = new Promise<any>((_, reject) => 
+        setTimeout(() => reject(new Error('API call timeout')), 15000) // 15 second timeout
+      );
+      const authResponse = await Promise.race([apiCallPromise, apiTimeoutPromise]);
       // console.log('🏠 [HomeScreen] API call completed, response received:', !!authResponse);
       
       // console.warn('=== AUTH USER API RESPONSE ===');
@@ -464,8 +486,11 @@ const HomeScreen = ({navigation}: any) => {
         //console.warn('[MenuSettings] Fetch after auth failed:', e?.message || e);
       }
     } catch (error: any) {
-      //console.error('🏠 [HomeScreen] Error fetching account data:', error.message || error);
-      //Alert.alert('Error', `Failed to load account data: ${error.message}`);
+      console.error('🏠 [HomeScreen] Error fetching account data:', error.message || error);
+      // Don't show alert for timeout errors to avoid annoying users
+      if (error.message !== 'API call timeout' && error.message !== 'Firebase init timeout') {
+        //Alert.alert('Error', `Failed to load account data: ${error.message}`);
+      }
     } finally {
       // console.log('🏠 [HomeScreen] fetchAccountData completed, setting loading to false');
       setIsLoading(false);

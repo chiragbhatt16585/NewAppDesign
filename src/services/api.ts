@@ -131,12 +131,12 @@ const toFormData = (data: any): FormData => {
         const fileType = file.type || 'image/jpeg';
         const fileName = file.fileName || file.name || `document.${fileType.split('/')[1] || 'jpg'}`;
         
-        console.log('=== FILE UPLOAD DEBUG ===');
-        console.log('File key:', key);
-        console.log('File object:', file);
-        console.log('File type:', fileType);
-        console.log('File name:', fileName);
-        console.log('========================');
+        // console.log('=== FILE UPLOAD DEBUG ===');
+        // console.log('File key:', key);
+        // console.log('File object:', file);
+        // console.log('File type:', fileType);
+        // console.log('File name:', fileName);
+        // console.log('========================');
         
         formData.append(key, {
           uri: file.uri,
@@ -144,18 +144,18 @@ const toFormData = (data: any): FormData => {
           name: fileName,
         } as any);
       } else {
-        console.log(`Adding to FormData - ${key}:`, data[key]);
+        //console.log(`Adding to FormData - ${key}:`, data[key]);
         formData.append(key, data[key]);
       }
     } else {
-      console.log(`Skipping ${key} - value is undefined or null:`, data[key]);
+      //console.log(`Skipping ${key} - value is undefined or null:`, data[key]);
     }
   });
   
-  console.log('=== FINAL FORM DATA CONTENTS ===');
+  //console.log('=== FINAL FORM DATA CONTENTS ===');
   // Log what's actually in the FormData
-  console.log('FormData created with keys:', Object.keys(data).filter(key => data[key] !== undefined && data[key] !== null));
-  console.log('=== END FORM DATA DEBUG ===');
+  //console.log('FormData created with keys:', Object.keys(data).filter(key => data[key] !== undefined && data[key] !== null));
+  // console.log('=== END FORM DATA DEBUG ===');
   
   return formData;
 };
@@ -2156,6 +2156,12 @@ class ApiService {
       formData.append('request_source', 'app');
       formData.append('username', username);
       formData.append('request_app', 'user_app');
+      console.log('=== STATICDROPDOWN REQUEST DATA ===');
+      console.log('Data:', JSON.stringify(dataObj, null, 2));
+      console.log('Request Source:', 'app');
+      console.log('Username:', username);
+      console.log('Request App:', 'user_app');
+      console.log('=== END STATICDROPDOWN REQUEST DATA ===');
 
       const options = {
         method,
@@ -2167,6 +2173,14 @@ class ApiService {
       try {
         const res = await fetch(`${url}/selfcareStaticdropdown`, options);
         const response = await res.json();
+        
+        console.log('=== STATICDROPDOWN RAW RESPONSE ===');
+        console.log('Status:', response.status);
+        console.log('Code:', response.code);
+        console.log('Has Data:', !!response.data);
+        console.log('Data Type:', typeof response.data);
+        console.log('Full Response:', JSON.stringify(response, null, 2));
+        console.log('=== END STATICDROPDOWN RAW RESPONSE ===');
         
         if (response.status != 'ok' && response.code != 200) {
           throw new Error('Invalid username or password');
