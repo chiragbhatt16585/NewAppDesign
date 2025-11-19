@@ -32,6 +32,15 @@ const CLIENTS = {
     keystore: 'debug.keystore',
     configDir: 'config/logon-broadband',
   },
+  'dna-goa': {
+    name: 'DNA Goa',
+    packageName: 'com.dnagoa',
+    namespace: 'com.dnagoa',
+    versionCode: 4,
+    versionName: '4.0.0',
+    keystore: 'Log2spaceDNAGoaAppKey.jks',
+    configDir: 'config/dna-goa',
+  },
 };
 
 function switchClient(clientId) {

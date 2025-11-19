@@ -50,6 +50,16 @@ const clientConfigs: Record<string, ClientConfig> = {
     poweredByWebsite: 'https://spacecom.in',
     bundleId: 'com.h8.dnasubscriber',
   },
+  'dna-goa': {
+    name: 'DNA Goa',
+    companyName: 'DNA Goa',
+    apiUrl: 'https://crm.dnagoa.com',
+    supportEmail: 'sales@dnagoa.com',
+    website: 'https://dnagoa.com',
+    poweredBy: 'Spacecom Software LLP',
+    poweredByWebsite: 'https://spacecom.in',
+    bundleId: 'com.dnagoa',
+  },
   'one-sevenstar': {
     name: 'One Seven Star',
     companyName: 'Seven Star Balaji Broadband Pvt Ltd',

@@ -1,11 +1,44 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import sessionManager from '../../src/services/sessionManager';
+import { getClientConfig } from '../config/client-config';
 
-// API Configuration
-export const domainUrl = "crm.linkway.com";
+// Dynamic API configuration based on client
+const getApiConfig = () => {
+  try {
+    const clientConfig = getClientConfig();
+    const baseURL = clientConfig.api.baseURL;
+    
+    // Extract domain from baseURL
+    let domainUrl: string;
+    if (baseURL.startsWith('https://')) {
+      domainUrl = baseURL.replace('https://', '').replace('/l2s/api', '');
+    } else {
+      domainUrl = baseURL.replace('/l2s/api', '');
+    }
+    
+    return {
+      domainUrl: domainUrl,
+      ispName: clientConfig.clientName
+    };
+  } catch (error) {
+    console.error('Error getting client config, falling back to dna-infotel:', error);
+    return {
+      domainUrl: "crm.dnainfotel.com",
+      ispName: 'DNA Infotel'
+    };
+  }
+};
+
+const apiConfig = getApiConfig();
+export const domainUrl = apiConfig.domainUrl;
 export const domain = `https://${domainUrl}`;
 const url = `${domain}/l2s/api`;
-export const ispName = 'Linkway';
+export const ispName = apiConfig.ispName;
+
+// Get KYC document URL dynamically
+export const getKycDocumentUrl = (filename: string): string => {
+  return `${domain}/kyc_docs/${filename}`;
+};
 
 const method = 'POST';
 const fixedHeaders = {
@@ -87,11 +120,43 @@ export interface Ticket {
 // Utility function to convert object to FormData
 const toFormData = (data: any): FormData => {
   const formData = new FormData();
+  console.log('=== TO FORM DATA DEBUG ===');
+  console.log('Input data object:', data);
+  
   Object.keys(data).forEach(key => {
     if (data[key] !== undefined && data[key] !== null) {
-      formData.append(key, data[key]);
+      // Handle file uploads from react-native-image-picker
+      if (key.includes('_file') && data[key] && typeof data[key] === 'object' && data[key].uri) {
+        const file = data[key];
+        const fileType = file.type || 'image/jpeg';
+        const fileName = file.fileName || file.name || `document.${fileType.split('/')[1] || 'jpg'}`;
+        
+        console.log('=== FILE UPLOAD DEBUG ===');
+        console.log('File key:', key);
+        console.log('File object:', file);
+        console.log('File type:', fileType);
+        console.log('File name:', fileName);
+        console.log('========================');
+        
+        formData.append(key, {
+          uri: file.uri,
+          type: fileType,
+          name: fileName,
+        } as any);
+      } else {
+        console.log(`Adding to FormData - ${key}:`, data[key]);
+        formData.append(key, data[key]);
+      }
+    } else {
+      console.log(`Skipping ${key} - value is undefined or null:`, data[key]);
     }
   });
+  
+  console.log('=== FINAL FORM DATA CONTENTS ===');
+  // Log what's actually in the FormData
+  console.log('FormData created with keys:', Object.keys(data).filter(key => data[key] !== undefined && data[key] !== null));
+  console.log('=== END FORM DATA DEBUG ===');
+  
   return formData;
 };
 
@@ -116,6 +181,9 @@ const isTokenExpiredError = (error: any): boolean => {
 class ApiService {
   private isRegeneratingToken = false;
   private tokenRegenerationPromise: Promise<string | false> | null = null;
+  private authUserInFlight: Promise<any> | null = null;
+  private authUserCache: { data: any; ts: number } | null = null;
+  private readonly AUTHUSER_TTL_MS = 60 * 1000;
 
   abortController() {
     const abortController = new AbortController();
@@ -140,38 +208,44 @@ class ApiService {
   }
 
   async checkAuthTokenValidity() {
-    const token = await sessionManager.getToken();
-    if (!token) return false;
-
-    const username = await sessionManager.getUsername();
-    if (!username) return false;
-
-    const data = {
-      username: username.toLowerCase().trim(),
-      fetch_company_details: 'yes',
-      request_source: 'app',
-      request_app: 'user_app' 
-    };
-
-    const options = {
-      method,
-      headers: new Headers({ Authentication: token, ...fixedHeaders }),
-      body: toFormData(data),
-      timeout
-    };
-
+    console.log('=== CHECK AUTH TOKEN VALIDITY DEBUG ===');
     try {
-      const res = await fetch(`${url}/selfcareHelpdesk`, options);
-      const response = await res.json();
+      const token = await sessionManager.getToken();
+      console.log('Token from session manager:', token ? 'exists' : 'missing');
       
-      if (response.status === 'ok') {
-        return true;
-      } else if (response.status === 'error') {
+      if (!token) {
+        console.log('No token found, returning false');
         return false;
       }
-      return false;
-    } catch (error) {
-      console.error('Token validity check error:', error);
+
+      const data = {
+        username: await sessionManager.getUsername(),
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+      console.log('Username for validation:', data.username);
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+
+      console.log('Making token validation request...');
+      const res = await fetch(`${url}/selfcareCheckTokenValidity`, options);
+      const response = await res.json();
+      console.log('Token validation response:', response);
+      
+      if (response.status === 'ok' && response.code === 200) {
+        console.log('Token is valid');
+        return true;
+      } else {
+        console.log('Token validation failed:', response.message);
+        return false;
+      }
+    } catch (e: any) {
+      console.error('Token validation error:', e);
       return false;
     }
   }
@@ -256,17 +330,24 @@ class ApiService {
   }
 
   async handleTokenUpdate() {
+    console.log('=== HANDLE TOKEN UPDATE DEBUG ===');
     const isValid = await this.checkAuthTokenValidity();
+    console.log('Token validity check result:', isValid);
 
     if (isValid) {
+      console.log('Token is valid, returning true');
       return true;
     } else {
+      console.log('Token is invalid, attempting regeneration...');
       const newToken = await this.regenerateToken();
+      console.log('Token regeneration result:', newToken ? 'success' : 'failed');
       if (newToken) {
         await sessionManager.updateToken(newToken);
+        console.log('Token updated in session manager');
         return true;
       } else {
-        await sessionManager.clearSession();
+        console.log('Token regeneration failed, preserving session for manual logout');
+        // Do not clear session automatically; let user decide to logout
         return false;
       }
     }
@@ -281,47 +362,57 @@ class ApiService {
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
+        console.log(`[API] Attempt ${attempt + 1}/${maxRetries + 1} - Getting token...`);
         const token = await sessionManager.getToken();
+        
         if (!token) {
-          console.log('No token available, redirecting to login');
-          await sessionManager.clearSession();
-          throw new Error('Authentication required. Please login again.');
+          console.log('[API] No token available, attempting token regeneration...');
+          
+          // Try to regenerate token before giving up
+          const regeneratedToken = await sessionManager.regenerateToken();
+          if (regeneratedToken) {
+            console.log('[API] Token regenerated successfully, retrying request...');
+            await sessionManager.updateActivityTime();
+            return await requestFn(regeneratedToken);
+          } else {
+            console.log('[API] Token regeneration failed, preserving session (no auto-logout)');
+            // Do not clear session automatically; surface error to caller
+            throw new Error('Authentication required. Please login again.');
+          }
         }
 
+        console.log(`[API] Using existing token for attempt ${attempt + 1}`);
         // Update activity time on every API call
         await sessionManager.updateActivityTime();
 
         return await requestFn(token);
       } catch (error: any) {
         lastError = error;
+        console.log(`[API] Attempt ${attempt + 1} failed:`, error.message || error);
         
         // Check if it's a token expiration error
         if (isTokenExpiredError(error) && attempt < maxRetries) {
-          console.log('Token expired, attempting to regenerate...');
+          console.log('[API] Token expired, attempting regeneration...');
           
-          try {
-            const newToken = await this.regenerateToken();
-            if (newToken) {
-              await sessionManager.updateToken(newToken);
-              console.log('Token regenerated successfully, retrying request...');
-              continue; // Retry the request with new token
-            } else {
-              console.log('Failed to regenerate token, clearing session');
-              await sessionManager.clearSession();
-              throw new Error('Authentication failed. Please login again.');
-            }
-          } catch (regenerationError) {
-            console.error('Token regeneration failed:', regenerationError);
-            await sessionManager.clearSession();
-            throw new Error('Authentication failed. Please login again.');
+          // Try to regenerate token
+          const regeneratedToken = await sessionManager.regenerateToken();
+          if (regeneratedToken) {
+            console.log('[API] Token regenerated successfully, retrying request...');
+            continue; // Retry with new token
+          } else {
+            console.log('[API] Token regeneration failed, preserving session (no auto-logout)');
+            // Do not clear session automatically; surface error to caller
+            throw new Error('Session expired. Please login again.');
           }
         } else {
           // Not a token error or max retries reached
+          console.log('[API] Not a token error or max retries reached, throwing error');
           throw error;
         }
       }
     }
 
+    console.log('[API] All attempts failed');
     throw lastError || new Error('Request failed after retries');
   }
 
@@ -391,6 +482,93 @@ class ApiService {
     }
   }
 
+  // Fetch dynamic menu settings
+  async getMenuSettings(): Promise<any> {
+    return this.makeAuthenticatedRequest(async (token) => {
+      let username = await sessionManager.getUsername();
+      if (!username) {
+        const session = await sessionManager.getCurrentSession();
+        username = session?.username || '';
+      }
+      if (!username) {
+        //console.log('[API] /selfcareMenuSettings missing username');
+        throw new Error('No username available for menu request');
+      }
+      const data = {
+        username,
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token || '', ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      } as any;
+
+      ///console.log('[API] POST /selfcareMenuSettings start', { hasToken: !!token, username });
+      const res = await fetch(`${url}/selfcareMenuSettings`, options);
+      const response = await res.json();
+      // console.log('[API] POST /selfcareMenuSettings response', {
+      //   status: response?.status,
+      //   code: response?.code,
+      //   message: response?.message,
+      //   keys: response ? Object.keys(response) : []
+      // });
+
+      // Return full response for visibility even if status !== 'ok'
+      return response?.data ?? response;
+    });
+  }
+
+  // Realm-based variant using credential flow (mirrors bannerDisplay)
+  async menuSettings(realm: string) {
+    try {
+      const { Authentication } = await this.getCredentials(realm);
+      // Ensure username is included
+      let username = await sessionManager.getUsername();
+      if (!username) {
+        const session = await sessionManager.getCurrentSession();
+        username = session?.username || '';
+      }
+      if (!username) {
+        console.warn('[API] menuSettings: username missing');
+        throw new Error('Username missing for menu settings');
+      }
+      const data = {
+        username,
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: headers(Authentication),
+        body: toFormData(data),
+        timeout
+      } as any;
+
+      console.log('[API] POST /selfcareMenuSettings start (realm variant)', { hasToken: !!Authentication, username });
+      const res = await fetch(`${url}/selfcareMenuSettings`, options);
+      const response = await res.json();
+      console.log('[API] POST /selfcareMenuSettings response (realm variant)', {
+        status: response?.status,
+        code: response?.code,
+        message: response?.message,
+      });
+      if (response.status != 'ok' && response.code != 200) {
+        throw new Error(response.message || 'Failed to fetch menu settings');
+      } else {
+        return response.data ?? [];
+      }
+    } catch (e: any) {
+      const msg = isNetworkError(e) ? networkErrorMsg : e.message;
+      console.warn('[API] menuSettings failed', msg);
+      throw new Error(msg);
+    }
+  }
+
   async authenticate(username: string, password: string, otp: string = '', resend_otp: string = 'none', phone_no?: string): Promise<LoginResponse> {
     const data: LoginRequest = {
       username: username.toLowerCase().trim(),
@@ -436,13 +614,21 @@ class ApiService {
     }
   }
 
-  async authUser(user_id: string, Authentication: string) {
-    return this.makeAuthenticatedRequest(async (token: string) => {
+  async authUser(user_id: string) {
+    // TTL cache check
+    if (this.authUserCache && Date.now() - this.authUserCache.ts < this.AUTHUSER_TTL_MS) {
+      return this.authUserCache.data
+    }
+    // in-flight dedupe
+    if (this.authUserInFlight) {
+      return this.authUserInFlight
+    }
+    this.authUserInFlight = this.makeAuthenticatedRequest(async (token: string) => {
       const data = {
         username: user_id.toLowerCase().trim(),
         fetch_company_details: 'yes',
         request_source: 'app',
-        request_app: 'user_app' 
+        request_app: 'user_app'
       };
 
       const options = {
@@ -455,17 +641,21 @@ class ApiService {
       try {
         const res = await fetch(`${url}/selfcareHelpdesk`, options);
         const response = await res.json();
-        
         if (response.status !== 'ok' && response.code !== 200) {
           throw new Error('Invalid username or password');
         } else {
+          this.authUserCache = { data: response.data, ts: Date.now() }
           return response.data;
         }
       } catch (e: any) {
         const msg = isNetworkError(e) ? networkErrorMsg : e.message;
         throw new Error(msg);
+      } finally {
+        this.authUserInFlight = null
       }
-    });
+    })
+
+    return this.authUserInFlight
   }
 
   async logout() {
@@ -513,6 +703,10 @@ class ApiService {
 
   async userLedger(username: string, realm: string) {
     return this.makeAuthenticatedRequest(async (token: string) => {
+      // console.log('=== API SERVICE: userLedger called with ===', { username, realm });
+      
+      // console.log('=== API SERVICE: Got authentication token ===', !!token);
+      
       const data = {
         username: username,
         get_user_invoice: true,
@@ -524,6 +718,8 @@ class ApiService {
         request_app: 'user_app' 
       };
 
+      // console.log('=== API SERVICE: Request data ===', data);
+
       const options = {
         method,
         headers: headers(token),
@@ -531,20 +727,31 @@ class ApiService {
         timeout
       };
 
+      // console.log('=== API SERVICE: Making API call to ===', `${url}/selfcareGetUserInformation`);
+
       try {
         const res = await fetch(`${url}/selfcareGetUserInformation`, options);
+        // console.log('=== API SERVICE: Response status ===', res.status);
+        
         const response = await res.json();
+        // console.log('=== API SERVICE: Raw API response ===', response);
         
         if (response.status !== 'ok' && response.code !== 200) {
+          // console.log('=== API SERVICE: API returned error ===', response);
           throw new Error(response.message);
         } else {
+          // console.log('=== API SERVICE: Processing successful response ===');
           const resArr: any = [];
           
+          // Add proforma invoices
           resArr.proforma_payment = response.data.user_profoma_invoice || [];
           
+          // Add receipts (payments)
           if (response.data.user_receipt) {
+            // console.log('=== API SERVICE: Processing receipts ===', response.data.user_receipt);
             resArr.push(
               response.data.user_receipt.map((data: any, index: number) => {
+                // console.log('=== API SERVICE: Receipt date ===', data.receipt_date);
                 return {
                   index,
                   no: data.receipt_prefix + data.receipt_no,
@@ -561,9 +768,12 @@ class ApiService {
             resArr.push([]);
           }
           
+          // Add invoices
           if (response.data.user_invoice) {
+            // console.log('=== API SERVICE: Processing invoices ===', response.data.user_invoice);
             resArr.push(
               response.data.user_invoice.map((data: any, index: number) => {
+                // console.log('=== API SERVICE: Invoice date ===', data.invoice_date);
                 return {
                   index,
                   no: data.invoice_prefix + data.invoice_no,
@@ -580,9 +790,12 @@ class ApiService {
             resArr.push([]);
           }
           
+          // Add proforma invoices
           if (response.data.user_profoma_invoice) {
+            // console.log('=== API SERVICE: Processing proforma invoices ===', response.data.user_profoma_invoice);
             resArr.push(
               response.data.user_profoma_invoice.map((data: any, index: number) => {
+                // console.log('=== API SERVICE: Proforma invoice date ===', data.invoice_date);
                 return {
                   index,
                   no: data.proforma_ref_no,
@@ -599,6 +812,7 @@ class ApiService {
             resArr.push([]);
           }
           
+          // Add summary data
           resArr.push({
             openingBalance: response.data.user_opening_balance?.[0] ? Math.round(response.data.user_opening_balance[0].opening_balance) : 0,
             billAmount: Math.round(response.data.user_invoice_total || 0),
@@ -607,6 +821,7 @@ class ApiService {
             balance: Math.round(response.data.user_payment_dues || 0)
           });
           
+          // console.log('=== API SERVICE: Final processed data ===', resArr);
           return resArr;
         }
       } catch (e: any) {
@@ -617,6 +832,7 @@ class ApiService {
     });
   }
 
+  // Enhanced download PDF with automatic token regeneration
   async downloadInvoicePDF(id: string, invoiceNo: string) {
     return this.makeAuthenticatedRequest(async (token: string) => {
       const data = {
@@ -670,6 +886,8 @@ class ApiService {
   }
 
   private async getCredentials(realm: string) {
+    // This would need to be implemented based on your authentication system
+    // For now, we'll use the session token
     const token = await sessionManager.getToken();
     if (!token) {
       throw new Error('No authentication token available');
@@ -678,20 +896,31 @@ class ApiService {
   }
 
   private formatDate(dateString: string, format: string): string {
+    // console.log('=== API SERVICE: Formatting date ===', { dateString, format });
+    
     try {
+      // Handle the specific format 'DD-MMM,YY HH:mm' (e.g., "15-Jul,24 14:30")
       if (format === 'DD-MMM,YY HH:mm') {
+        // Parse the date string manually
         const parts = dateString.split(' ');
         if (parts.length >= 2) {
-          const datePart = parts[0];
+          const datePart = parts[0]; // "15-Jul,24"
+          const timePart = parts[1]; // "14:30"
+          
           const dateComponents = datePart.split('-');
           if (dateComponents.length >= 2) {
-            const day = dateComponents[0];
-            const monthYear = dateComponents[1];
+            const day = dateComponents[0]; // "15"
+            const monthYear = dateComponents[1]; // "Jul,24"
+            
             const monthYearParts = monthYear.split(',');
             if (monthYearParts.length >= 2) {
-              const month = monthYearParts[0];
-              const year = monthYearParts[1];
+              const month = monthYearParts[0]; // "Jul"
+              const year = monthYearParts[1]; // "24"
+              
+              // Convert to full year
               const fullYear = year.length === 2 ? `20${year}` : year;
+              
+              // Create a proper date string
               const properDateString = `${day} ${month} ${fullYear}`;
               const date = new Date(properDateString);
               
@@ -707,6 +936,7 @@ class ApiService {
         }
       }
       
+      // Fallback: try to parse as regular date
       const date = new Date(dateString);
       if (!isNaN(date.getTime())) {
         return date.toLocaleDateString('en-GB', {
@@ -716,11 +946,17 @@ class ApiService {
         });
       }
       
+      // If all else fails, return the original string
+      // console.log('=== API SERVICE: Could not parse date, returning original ===', dateString);
       return dateString;
     } catch (error) {
+      // console.error('=== API SERVICE: Error formatting date ===', error);
       return dateString;
     }
   }
+
+  // Additional methods can be added here following the same pattern
+  // For example: planList, userPaymentDues, submitComplaint, etc.
 
   async lastTenSessions(username: string, accountStatus: string, realm: string) {
     return this.makeAuthenticatedRequest(async (token: string) => {
@@ -741,10 +977,17 @@ class ApiService {
 
       try {
         const res = await fetch(`${url}/selfcareUsageDetails`, options);
+        console.log('Response status:', res.status);
+        
         const response = await res.json();
+        console.log('=== SESSIONS API RESPONSE ===');
+        console.log('Status:', response.status, 'Code:', response.code);
+        console.log('Sessions found:', response.data?.length || 0);
         
         if (response.status === 'ok' && response.data) {
           if (Array.isArray(response.data)) {
+            console.log('✅ Processing', response.data.length, 'sessions');
+            
             const units = ['download', 'upload', 'total_upload_download'];
             const processedSessions = response.data.map((s: any, index: number) => {
               var result = s.login_time.split(" ");
@@ -771,13 +1014,20 @@ class ApiService {
               return session;
             });
             
+            console.log('✅ Sessions processed successfully');
             return processedSessions;
           } else {
+            console.log('❌ No sessions array in response');
+            console.log('Response data type:', typeof response.data);
+            console.log('Response data:', response.data);
             return [];
           }
         } else if (response.status === 'error') {
+          console.log('❌ API error:', response.message);
           throw new Error(response.message || 'Failed to fetch sessions');
         } else {
+          console.log('❌ Unexpected response format');
+          console.log('Response:', response);
           return [];
         }
       } catch (error: any) {
@@ -789,6 +1039,7 @@ class ApiService {
 
   async lastTenComplaints(realm: string = 'default') {
     return this.makeAuthenticatedRequest(async (token: string) => {
+      // Get username from session manager
       const username = await sessionManager.getUsername();
       if (!username) {
         throw new Error('No username found in session');
@@ -981,6 +1232,10 @@ class ApiService {
         data.online_renewal_plan_list = 'yes';
       }
 
+      // console.log('=== API SERVICE: Plan list data ===', data);
+      // console.log('=== API SERVICE: Making request to ===', `${url}/selfcareGetPlanAmount`);
+      // console.log('=== API SERVICE: Token available ===', !!token);
+
       const options = {
         method,
         headers: new Headers({ Authentication: token, ...fixedHeaders }),
@@ -990,31 +1245,74 @@ class ApiService {
 
       try {
         const res = await fetch(`${url}/selfcareGetPlanAmount`, options);
+        console.log('=== API SERVICE: Response status ===', res.status);
         const response = await res.json();
+        console.log('=== API SERVICE: Response body ===', response);
+
+        //Alert.alert('Plan list response:', JSON.stringify(response));
         
         if (response.status !== 'ok' && response.code !== 200) {
+          console.log('=== API SERVICE: Error response ===', response);
           throw new Error('Plan list not found. Please try again.');
         } else if (response.status === 'ok' && response.code !== 200) {
+          console.log('=== API SERVICE: Empty response ===');
           return [];
         } else {
-          return response.data.map((planObj: any, index: number) => ({
-            id: planObj.id || index.toString(),
-            name: planObj.name || planObj.planname || '',
-            speed: planObj.speed || '',
-            upload: planObj.upload || '',
-            download: planObj.download || planObj.download_speed || '',
-            validity: planObj.validity || planObj.days || '',
-            price: parseFloat(planObj.price) || parseFloat(planObj.FinalAmount) || 0,
-            baseAmount: parseFloat(planObj.baseAmount) || parseFloat(planObj.Amount) || 0,
-            cgst: parseFloat(planObj.cgst) || 0,
-            sgst: parseFloat(planObj.sgst) || 0,
-            mrp: parseFloat(planObj.mrp) || parseFloat(planObj.Amount) || 0,
-            dues: parseFloat(planObj.dues) || 0,
-            gbLimit: parseFloat(planObj.gbLimit) || parseFloat(planObj.limit) || 0,
-            isCurrentPlan: planObj.isCurrentPlan || false,
-            ottServices: planObj.ottServices || [],
-            isExpanded: false
-          }));
+          console.log('=== API SERVICE: Mapping response data ===', response.data);
+          if (response.data?.[0]) {
+            console.log('=== API SERVICE: Raw plan data sample ===');
+            console.log('planname:', response.data[0].planname);
+            console.log('description:', response.data[0].description);
+            console.log('download_speed_mb:', response.data[0].download_speed_mb);
+            console.log('amount:', response.data[0].amount);
+            console.log('validity:', response.data[0].validity);
+            console.log('data_xfer:', response.data[0].data_xfer);
+            console.log('ott_plan:', response.data[0].ott_plan);
+            console.log('voice_plan:', response.data[0].voice_plan);
+            console.log('iptv:', response.data[0].iptv);
+            console.log('fup_flag:', response.data[0].fup_flag);
+            console.log('content_providers count:', response.data[0].content_providers?.length || 0);
+          }
+        const mappedPlans = response.data.map((planObj: any, index: number) => ({
+        id: planObj.id || index.toString(),
+        name: planObj.planname || planObj.name || '',
+        description: planObj.description || '',
+        downloadSpeed: planObj.download_speed_mb || planObj.download || '',
+        uploadSpeed: planObj.upload_speed_mb || planObj.upload || '',
+        days: parseInt(planObj.validity) || parseInt(planObj.days) || 30,
+        FinalAmount: parseFloat(planObj.amount) || parseFloat(planObj.FinalAmount) || 0,
+        // Set user_base_price as MRP for display; keep amt as base amount for breakdown
+        user_mrp: (planObj.user_base_price !== undefined ? parseFloat(planObj.user_base_price) : NaN) ||
+                  (planObj.base_price !== undefined ? parseFloat(planObj.base_price) : NaN) || undefined,
+        mrp: (planObj.user_base_price !== undefined ? parseFloat(planObj.user_base_price) : NaN) ||
+             (planObj.base_price !== undefined ? parseFloat(planObj.base_price) : NaN) || undefined,
+        amt: parseFloat(planObj.user_base_price) || parseFloat(planObj.amt) || 0,
+        CGSTAmount: parseFloat(planObj.cgst_value) || parseFloat(planObj.CGSTAmount) || 0,
+        SGSTAmount: parseFloat(planObj.sgst_value) || parseFloat(planObj.SGSTAmount) || 0,
+        limit: planObj.data_xfer || 'Unlimited',
+        content_providers: planObj.content_providers || [],
+        ott_plan: planObj.ott_plan || 'no',
+        voice_plan: planObj.voice_plan || 'no',
+        iptv: planObj.iptv || 'no',
+        fup_flag: planObj.fup_flag || 'no',
+        isExpanded: false
+      }));
+          console.log('=== API SERVICE: Mapped plans ===', mappedPlans);
+          if (mappedPlans?.[0]) {
+            console.log('=== API SERVICE: Mapped plan sample ===');
+            console.log('Mapped Name:', mappedPlans[0].name);
+            console.log('Mapped Description:', mappedPlans[0].description);
+            console.log('Mapped Speed:', mappedPlans[0].downloadSpeed);
+            console.log('Mapped Price:', mappedPlans[0].FinalAmount);
+            console.log('Mapped Validity:', mappedPlans[0].days);
+            console.log('Mapped Data Limit:', mappedPlans[0].limit);
+            console.log('Mapped OTT Plan:', mappedPlans[0].ott_plan);
+            console.log('Mapped Voice Plan:', mappedPlans[0].voice_plan);
+            console.log('Mapped IPTV:', mappedPlans[0].iptv);
+            console.log('Mapped FUP Flag:', mappedPlans[0].fup_flag);
+            console.log('Mapped OTT Count:', mappedPlans[0].content_providers?.length || 0);
+          }
+          return mappedPlans;
         }
       } catch (e: any) {
         if (isNetworkError(e)) {
@@ -1045,8 +1343,10 @@ class ApiService {
         const res = await fetch(`${url}/selfcareGetUserPaymentDues`, options);
         const response = await res.json();
         
+        console.log('=== Payment dues API response ===', response);
+        
         if (response.status !== 'ok' && response.code !== 200) {
-          return '0';
+          return '0'; // Return '0' instead of throwing error, as per old implementation
         } else {
           return response.data;
         }
@@ -1086,6 +1386,8 @@ class ApiService {
         const res = await fetch(`${url}/selfcareGetAdminDetails`, options);
         const response = await res.json();
         
+        console.log('=== Tax info API response ===', response);
+        
         if (response.status !== 'ok' && response.code !== 200) {
           throw new Error('Tax info not found. Please try again.');
         } else {
@@ -1103,11 +1405,21 @@ class ApiService {
 
   async paymentGatewayOptions(adminname: string, realm: string) {
     return this.makeAuthenticatedRequest(async (token: string) => {
+      const username = await sessionManager.getUsername();
+      if (!username) {
+        throw new Error('No username found in session');
+      }
+
       const data = {
+        username: username.toLowerCase().trim(),
         admin_login_id: adminname,
+        gw_for: 'end_user',
+        tp_gateway_type: 'online_payment',
+        user_application: 'user_app',
         request_source: 'app',
         request_app: 'user_app'
       };
+      //console.log('Payment Gateway API data:', data);
 
       const options = {
         method,
@@ -1117,12 +1429,13 @@ class ApiService {
       };
 
       try {
-        const res = await fetch(`${url}/selfcarePaymentGatewayOptions`, options);
+        const res = await fetch(`${url}/selfcareAdminWisePaymentGateway`, options);
         const response = await res.json();
-        
+        console.log('Payment Gateway API response:', response);
         if (response.status !== 'ok' && response.code !== 200) {
-          throw new Error(response.message || 'Failed to fetch payment gateway options');
+          throw new Error(response.message || 'Could not fetch payment methods. Please try again in some time.');
         } else {
+          console.log('Payment Gateway API data:', response.data);
           return response.data;
         }
       } catch (e: any) {
@@ -1135,12 +1448,116 @@ class ApiService {
     });
   }
 
+  async paymentRequestDetails(
+    {
+      amount,
+      adminname,
+      username,
+      planname,
+      selectedPGType,
+      payActionType,
+      proforma_invoice,
+      refund_amount,
+      old_pin_serial,
+      campaign_code,
+      coupon_amount,
+      originalAmount
+    }: {
+      amount: number,
+      adminname: string,
+      username: string,
+      planname?: string,
+      selectedPGType: any[],
+      payActionType: string,
+      proforma_invoice?: string,
+      refund_amount?: number,
+      old_pin_serial?: string,
+      campaign_code?: string | null,
+      coupon_amount?: number,
+      originalAmount?: number
+    },
+    realm: string
+  ) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const data: any = {
+        amount,
+        admin_login_id: adminname,
+        username,
+        tp_gateway_admin_setting_id: selectedPGType && selectedPGType[0].value,
+        gw_for: 'end_user',
+        payment_purpose: payActionType,
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+      if (refund_amount !== undefined) data.refund_amount = refund_amount;
+      if (old_pin_serial !== undefined) data.old_pin_serial = old_pin_serial;
+      if (proforma_invoice) data.proforma_invoice = proforma_invoice;
+      if (planname !== undefined) data.planname = planname;
+      if (campaign_code) data.campaign_code = campaign_code;
+      if (coupon_amount !== undefined) data.coupon_amount = coupon_amount;
+      if (originalAmount !== undefined) data.originalAmount = originalAmount;
+      
+      // Add comprehensive logging
+      console.log('=== API PAYMENT REQUEST DEBUG ===');
+      console.log('Function parameters received:', {
+        amount,
+        adminname,
+        username,
+        planname,
+        selectedPGType,
+        payActionType,
+        campaign_code,
+        coupon_amount,
+        originalAmount
+      });
+      console.log('Final data object being sent to backend:', data);
+      console.log('Realm:', realm);
+      console.log('API URL:', `${url}/selfcareMerchantPaymentRequest`);
+      console.log('=== END API DEBUG ===');
+      
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+      
+      console.log('=== FINAL REQUEST OPTIONS ===');
+      console.log('Method:', method);
+      console.log('Headers:', { Authentication: token ? 'exists' : 'missing', ...fixedHeaders });
+      console.log('Body (FormData):', 'FormData object created above');
+      console.log('Timeout:', timeout);
+      console.log('=== END REQUEST OPTIONS ===');
+      
+      try {
+        const res = await fetch(`${url}/selfcareMerchantPaymentRequest`, options);
+        const response = await res.json();
+        if (response.status !== 'ok' && response.code !== 200) {
+          throw new Error(response.message);
+        }
+        return response;
+      } catch (e: any) {
+        const msg = isNetworkError(e) ? networkErrorMsg : e.message;
+        throw new Error(msg);
+      }
+    });
+  }
+
   async addDeviceDetails(fcm_token: string, mac_addr: string, hostname: string, device_info: any, realm: string) {
     return this.makeAuthenticatedRequest(async (token: string) => {
+      //alert('addDeviceDetails');
       const username = await sessionManager.getUsername();
       if (!username) {
         throw new Error('No username found in session');
       }
+      // eslint-disable-next-line no-console
+      console.log('[API] addDeviceDetails request', {
+        username: username.toLowerCase().trim(),
+        realm,
+        hostname,
+        mac_addr,
+        tokenPreview: fcm_token?.slice(0, 10) + '...',
+      });
       const data = {
         username: username.toLowerCase().trim(),
         fcm_token,
@@ -1158,8 +1575,16 @@ class ApiService {
         timeout
       };
       try {
+        // eslint-disable-next-line no-console
+        console.log('[API] POST /selfcareAddDeviceInfo start')
         const res = await fetch(`${url}/selfcareAddDeviceInfo`, options);
         const response = await res.json();
+        // eslint-disable-next-line no-console
+        console.log('[API] POST /selfcareAddDeviceInfo response', {
+          status: response?.status,
+          code: response?.code,
+          message: response?.message,
+        })
         if (response.status !== 'ok' && response.code !== 200) {
           throw new Error('Invalid username or password');
         } else {
@@ -1167,6 +1592,8 @@ class ApiService {
         }
       } catch (e: any) {
         let msg = isNetworkError(e) ? networkErrorMsg : e.message;
+        // eslint-disable-next-line no-console
+        console.warn('[API] addDeviceDetails failed', msg)
         throw new Error(msg);
       }
     });
@@ -1187,7 +1614,7 @@ class ApiService {
         timeout
       };
       
-      return fetch(`${url}/bannerDisplay`, options).then(res => {
+      return fetch(`${url}/selfcareDisplayBanner`, options).then(res => {
         setTimeout(() => null, 0);
         return res.json().then(res => {
           setTimeout(() => null, 0);
@@ -1210,7 +1637,9 @@ class ApiService {
   }
 
   async usageRecords(username: string, accountStatus: string, fromDate: Date, toDate: Date = new Date(), realm: string) {
+    // Use makeAuthenticatedRequest to ensure token auto-regeneration
     return this.makeAuthenticatedRequest(async (token: string) => {
+      // Format dates to YYYY-MM-DD
       const formatDate = (date: Date) => {
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -1224,6 +1653,7 @@ class ApiService {
         request_source: 'app',
         request_app: 'user_app'
       };
+      console.log('Usage records data:', data);
       const options = {
         method,
         headers: headers(token),
@@ -1425,7 +1855,584 @@ class ApiService {
       throw new Error(msg);
     });
   }
+
+  async getPaymentStatus(username: string, merTxnId: string, realm: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const data = {
+        username: username.toLowerCase().trim(),
+        mer_txn_ref: merTxnId,
+        gw_for: 'end_user',
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+
+      try {
+        // console.log('=== PAYMENT STATUS CHECK ===');
+        // console.log('Username:', username);
+        // console.log('Merchant Txn Ref:', merTxnId);
+        // console.log('Realm:', realm);
+        
+        const res = await fetch(`${url}/selfcareGetTransactionDetails`, options);
+        const response = await res.json();
+        
+        //console.log('Payment status API response:', response);
+        
+        if (response.status !== 'ok' && response.code !== 200) {
+          console.log('Payment status API error:', response.message);
+          throw new Error(response.message || 'Failed to get payment status');
+        } else {
+          const txnStatus = response.data[0]?.txn_status;
+          console.log('Transaction status:', txnStatus);
+          // Return the full response object for better processing
+          return response;
+        }
+      } catch (e: any) {
+        console.error('Payment status check error:', e);
+        const msg = isNetworkError(e) ? networkErrorMsg : e.message;
+        throw new Error(msg);
+      }
+    });
+  }
+
+  async verifyPaymentStatus(username: string, merTxnId: string, realm: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const data = {
+        username: username.toLowerCase().trim(),
+        mer_txn_ref: merTxnId,
+        gw_for: 'end_user',
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+
+      try {
+        console.log('=== VERIFY PAYMENT STATUS ===');
+        console.log('Username:', username);
+        console.log('Merchant Txn Ref:', merTxnId);
+        console.log('Realm:', realm);
+        
+        const res = await fetch(`${url}/selfcareGetTransactionDetails`, options);
+        const response = await res.json();
+        
+        console.log('Verify payment status API response:', response);
+        
+        if (response.status !== 'ok' && response.code !== 200) {
+          console.log('Verify payment status API error:', response.message);
+          throw new Error(response.message || 'Failed to verify payment status');
+        } else {
+          const txnStatus = response.data[0]?.txn_status;
+          console.log('Verified transaction status:', txnStatus);
+          return txnStatus;
+        }
+      } catch (e: any) {
+        console.error('Verify payment status error:', e);
+        const msg = isNetworkError(e) ? networkErrorMsg : e.message;
+        throw new Error(msg);
+      }
+    });
+  }
+
+  async getCPESSIDDetails(realm: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const username = await sessionManager.getUsername();
+      if (!username) {
+        throw new Error('No username available');
+      }
+      
+      const data = {
+        username,
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+
+      try {
+        console.log('=== GET CPE SSID DETAILS ===');
+        console.log('Username:', username);
+        console.log('Realm:', realm);
+        
+        const res = await fetch(`${url}/selfcareGetCPESSIDDetails`, options);
+        const response = await res.json();
+        
+        console.log('Get CPE SSID details API response:', response);
+        
+        if (response.status !== 'ok' && response.code !== 200) {
+          console.log('Get CPE SSID details API error:', response.message);
+          throw new Error('Could not find SSID details. Please try again.');
+        } else {
+          console.log('SSID details retrieved successfully');
+          return response.data;
+        }
+      } catch (e: any) {
+        console.error('Get CPE SSID details error:', e);
+        const msg = isNetworkError(e) ? networkErrorMsg : e.message;
+        throw new Error(msg);
+      }
+    });
+  }
+
+  async updateSSID(data: {
+    id: string;
+    index: number;
+    ssid: string;
+    password: string;
+  }, realm: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const username = await sessionManager.getUsername();
+      if (!username) {
+        throw new Error('No username available');
+      }
+      
+      const requestData = {
+        username,
+        id: data.id,
+        index: data.index,
+        ssid: data.ssid,
+        password: data.password,
+        status: 'enabled',
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(requestData),
+        timeout
+      };
+
+      try {
+        console.log('=== UPDATE SSID ===');
+        console.log('Username:', username);
+        console.log('SSID Index:', data.index);
+        console.log('SSID Name:', data.ssid);
+        console.log('Realm:', realm);
+        
+        const res = await fetch(`${url}/selfcareUpdateSSID`, options);
+        const response = await res.json();
+        
+        console.log('Update SSID API response:', response);
+        
+        if (response.status !== 'ok' && response.code !== 200) {
+          console.log('Update SSID API error:', response.message);
+          throw new Error(response.message || 'Failed to update SSID');
+        } else {
+          console.log('SSID updated successfully');
+          return response.data;
+        }
+      } catch (e: any) {
+        console.error('Update SSID error:', e);
+        const msg = isNetworkError(e) ? networkErrorMsg : e.message;
+        throw new Error(msg);
+      }
+    });
+  }
+
+  async getCouponCode(realm: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const username = await sessionManager.getUsername();
+      if (!username) {
+        throw new Error('No username available');
+      }
+      
+      const requestData = {
+        username,
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(requestData),
+        timeout
+      };
+
+      try {
+        console.log('=== GET COUPON CODE ===');
+        console.log('Username:', username);
+        console.log('Realm:', realm);
+        
+        const res = await fetch(`${url}/selfcareGetCouponCode`, options);
+        const response = await res.json();
+        
+        console.log('Get coupon code API response:', response);
+        
+        if (response.status !== 'ok' && response.code !== 200) {
+          console.log('Get coupon code API error:', response.message);
+          throw new Error('No coupon found.');
+        } else {
+          console.log('Coupon codes retrieved successfully');
+          
+          const plan_wise = response.data['plan_wise'] !== undefined ? response.data.plan_wise.map((obj: any, index: number) => ({ ...obj, index, source: 'plan_wise' })) : null;
+          const demographics_wise = response.data['demographics_wise'] !== undefined ? response.data.demographics_wise.map((obj: any, index: number) => ({ ...obj, index, source: 'demographics_wise' })) : null;
+          const user_wise = response.data['user_wise'] !== undefined ? response.data.user_wise.map((obj: any, index: number) => ({ ...obj, index, source: 'user_wise' })) : null;
+          
+          console.log('Plan-wise coupons:', plan_wise?.length || 0);
+          console.log('Demographics-wise coupons:', demographics_wise?.length || 0);
+          console.log('User-wise coupons:', user_wise?.length || 0);
+          
+          var result: any[] = [];
+          if(plan_wise!=null && plan_wise.length>0) {
+            result = plan_wise.concat(demographics_wise || [], user_wise || []);
+          } else if (demographics_wise!=null && demographics_wise.length > 0) {
+            result = demographics_wise.concat(user_wise || [])
+          } else if (user_wise!=null && user_wise.length > 0) {
+            result = user_wise;
+          }
+          
+          // Remove null values
+          result = result.filter((vl) => {
+            return vl!=null;
+          })
+          
+          // Deduplicate coupons based on unique identifier (id or discount_coupon_json)
+          const seenCoupons = new Set();
+          const originalCount = result.length;
+          result = result.filter((coupon) => {
+            // Create a unique key for each coupon
+            const uniqueKey = coupon.id || coupon.discount_coupon_json || JSON.stringify(coupon);
+            
+            if (seenCoupons.has(uniqueKey)) {
+              return false; // Remove duplicate
+            } else {
+              seenCoupons.add(uniqueKey);
+              return true; // Keep first occurrence
+            }
+          });
+          
+          const duplicateCount = originalCount - result.length;
+          if (duplicateCount > 0) {
+            console.log(`Removed ${duplicateCount} duplicate coupons`);
+          }
+          
+          console.log('Processed coupon codes:', result);
+          return result;
+        }
+      } catch (e: any) {
+        console.error('Get coupon code error:', e);
+        const msg = isNetworkError(e) ? networkErrorMsg : e.message;
+        throw new Error(msg);
+      }
+    });
+  }
+
+  async Staticdropdown(dataObj: any, realm: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const username = await sessionManager.getUsername();
+      if (!username) {
+        throw new Error('No username available');
+      }
+
+      const data = {
+        data: dataObj,
+        request_source: 'app',
+        username: username,
+        request_app: 'user_app'
+      };
+
+      // Convert to URL-encoded format like the old param function
+      const formData = new URLSearchParams();
+      formData.append('data', JSON.stringify(dataObj));
+      formData.append('request_source', 'app');
+      formData.append('username', username);
+      formData.append('request_app', 'user_app');
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, 'Content-Type': 'application/x-www-form-urlencoded' }),
+        body: formData.toString(),
+        timeout
+      };
+
+      try {
+        const res = await fetch(`${url}/selfcareStaticdropdown`, options);
+        const response = await res.json();
+        
+        if (response.status != 'ok' && response.code != 200) {
+          throw new Error('Invalid username or password');
+        } else {
+          return response.data;
+        }
+      } catch (e: any) {
+        const msg = isNetworkError(e) ? networkErrorMsg : e.message;
+        throw new Error(msg);
+      }
+    });
+  }
+
+  async updateKycDetails(username: string, documentName: string, documentId: string, document: any, docType: string, realm: string, ekycData: any = null) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const data: any = {
+        username: username,
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      // Set document type specific fields based on old app structure
+      switch (docType) {
+        case 'address_proof':
+          data.address_proof_docid = documentId;
+          data.address_proof_name = documentName;
+          data.address_proof_file = document;
+          break;
+        case 'id_proof':
+          data.id_proof_docid = documentId;
+          data.id_proof_name = documentName;
+          data.id_proof_file = document;
+          break;
+        case 'caf':
+          data.caf_docid = documentId;
+          data.caf_name = documentName;
+          data.caf_file = document;
+          break;
+        case 'user_photo':
+          data.user_photo = document;
+          break;
+        case 'gst_certificate':
+          data.gst_number = documentId;
+          data.gst_certificate = document;
+          break;
+        case 'user_sign':
+          data.user_sign_docid = documentId;
+          data.user_sign_name = documentName;
+          data.user_sign_file = document;
+          break;
+        case 'other':
+          data.other_docid = documentId;
+          data.other_name = documentName;
+          data.other_file = document;
+          break;
+        default:
+          throw new Error(`Unsupported document type: ${docType}`);
+      }
+
+      // Add E-KYC specific data if provided
+      if (ekycData) {
+        data.is_aadhar_verified = ekycData.is_aadhar_verified || 'true';
+        data.is_without_otp_ekyc_data_verified = ekycData.is_without_otp_ekyc_data_verified || '';
+        
+        // Set E-KYC table ID based on document type
+        switch (docType) {
+          case 'address_proof':
+            data.address_proof_ekyc_table_id = ekycData.address_proof_ekyc_table_id || '';
+            break;
+          case 'id_proof':
+            data.id_proof_ekyc_table_id = ekycData.id_proof_ekyc_table_id || '';
+            break;
+          case 'caf':
+            data.caf_ekyc_table_id = ekycData.caf_ekyc_table_id || '';
+            break;
+          case 'user_photo':
+            data.user_photo_ekyc_table_id = ekycData.user_photo_ekyc_table_id || '';
+            break;
+          case 'gst_certificate':
+            data.gst_certificate_ekyc_table_id = ekycData.gst_certificate_ekyc_table_id || '';
+            break;
+          case 'user_sign':
+            data.user_sign_ekyc_table_id = ekycData.user_sign_ekyc_table_id || '';
+            break;
+          case 'other':
+            data.other_ekyc_table_id = ekycData.other_ekyc_table_id || '';
+            break;
+        }
+      }
+
+      const options = {
+        method,
+        headers: new Headers({ 
+          Authentication: token, 
+          // Remove Content-Type for file uploads - React Native will set it automatically
+          'cache-control': 'no-cache',
+          'referer': 'https://crm.dnainfotel.com/'
+        }),
+        body: toFormData(data),
+        timeout
+      };
+      console.log('=== UPDATE KYC DETAILS ===');
+      console.log('Request Data:', data); 
+      console.log('========================================');
+
+      try {
+        console.log(`=== UPDATE KYC ${docType.toUpperCase()} REQUEST ===`);
+        console.log('Request Data:', JSON.stringify(data, null, 2));
+        console.log('========================================');
+
+        const res = await fetch(`${url}/selfcareUpdateKycDetails`, options);
+        const response = await res.json();
+        
+        console.log(`=== UPDATE KYC ${docType.toUpperCase()} RESPONSE ===`);
+        console.log('Response:', JSON.stringify(response, null, 2));
+        console.log('==========================================');
+        
+        if (response.status !== 'ok' && response.code !== 200) {
+          throw new Error(response.message || 'Failed to update KYC details');
+        } else {
+          return response;
+        }
+      } catch (e: any) {
+        console.error(`=== UPDATE KYC ${docType.toUpperCase()} ERROR ===`);
+        console.error('Error:', e);
+        console.error('Error Message:', e.message);
+        console.error('=======================================');
+        const msg = isNetworkError(e) ? networkErrorMsg : e.message;
+        throw new Error(msg);
+      }
+    });
+  }
+
+  // Keep the old methods for backward compatibility
+  async updateKycDetailsAddressProof(username: string, documentName: string, documentId: string, document: any, realm: string, ekycData: any = null) {
+    return this.updateKycDetails(username, documentName, documentId, document, 'address_proof', realm, ekycData);
+  }
+
+  async updateKycDetailsIDProof(username: string, documentName: string, documentId: string, document: any, realm: string, ekycData: any = null) {
+    return this.updateKycDetails(username, documentName, documentId, document, 'id_proof', realm, ekycData);
+  }
+
+  async selfcareAadhaarVerificationOTP(data: any, realm: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const username = await sessionManager.getUsername();
+      if (!username) {
+        throw new Error('No username available');
+      }
+
+      const requestData = {
+        username,
+        aadhar_no: data.aadhar_no,
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(requestData),
+        timeout
+      };
+
+      try {
+        const res = await fetch(`${url}/selfcareAadhaarVerificationOTP`, options);
+        const response = await res.json();
+        
+        if (response.status !== 'ok' && response.code !== 200) {
+          throw new Error(response.message || 'Failed to generate OTP');
+        } else {
+          return response;
+        }
+      } catch (e: any) {
+        const msg = isNetworkError(e) ? networkErrorMsg : e.message;
+        throw new Error(msg);
+      }
+    });
+  }
+
+  async selfcareSubmitAadhaarOTP(data: any, realm: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const username = await sessionManager.getUsername();
+      if (!username) {
+        throw new Error('No username available');
+      }
+
+      const requestData = {
+        username,
+        aadhar_no: data.aadhar_no,
+        otp: data.otp,
+        mahareferid: data.mahareferid,
+        client_refid: data.client_refid,
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(requestData),
+        timeout
+      };
+
+      try {
+        const res = await fetch(`${url}/selfcareSubmitAadhaarOTP`, options);
+        const response = await res.json();
+        
+        if (response.status !== 'ok' && response.code !== 200) {
+          throw new Error(response.message || 'Failed to verify OTP');
+        } else {
+          return response;
+        }
+      } catch (e: any) {
+        const msg = isNetworkError(e) ? networkErrorMsg : e.message;
+        throw new Error(msg);
+      }
+    });
+  }
+
+  async selfcareSubmiteKYCData(data: any, realm: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const username = await sessionManager.getUsername();
+      if (!username) {
+        throw new Error('No username available');
+      }
+
+      const requestData = {
+        username: username,
+        kyc_id: data.kyc_id,
+        ekyc_api_status: data.ekyc_api_status,
+        ref_data: data.ref_data,
+        ekyc_json: data.ekyc_json,
+        doc_type: data.doc_type || 'address_proof',
+        doc_name: data.doc_name || '',
+        ekyc_status: 'verified',
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(requestData),
+        timeout
+      };
+
+      try {
+        const res = await fetch(`${url}/selfcareSubmiteKYCData`, options);
+        const response = await res.json();
+        
+        if (response.status !== 'ok' && response.code !== 200) {
+          throw new Error(response.message || 'Failed to submit KYC data');
+        } else {
+          return response;
+        }
+      } catch (e: any) {
+        const msg = isNetworkError(e) ? networkErrorMsg : e.message;
+        throw new Error(msg);
+      }
+    });
+  }
+
+  /**
+   * Check app version information
+   */
 }
 
 // Export singleton instance
-export const apiService = new ApiService();
+export const apiService = new ApiService(); 

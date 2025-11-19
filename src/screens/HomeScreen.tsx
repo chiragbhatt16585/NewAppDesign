@@ -34,6 +34,7 @@ import { debugFCMTokenIssues, forceFCMTokenGeneration } from '../services/fcmDeb
 //import { testFirebaseConfiguration, runComprehensiveFirebaseTest } from '../services/firebaseTest';
 import useMenuSettings from '../hooks/useMenuSettings';
 import menuService from '../services/menuService';
+import dataCache from '../services/dataCache';
 // import AIUsageInsights from '../components/AIUsageInsights';
 //import ispLogo from '../assets/isp_logo.png';
 import Feather from 'react-native-vector-icons/Feather';
@@ -48,7 +49,7 @@ const HomeScreen = ({navigation}: any) => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const currentAdIndexRef = useRef(0); // Use ref to track current index without re-renders
-  const {logout} = useAuth();
+  const {logout, isAuthenticated} = useAuth();
   const {checkSessionAndHandle} = useSessionValidation();
   const {reloadOnFocus} = useScreenDataReload({
     onReloadStart: () => {/* console.log('Auto reload starting...'); */},
@@ -59,7 +60,7 @@ const HomeScreen = ({navigation}: any) => {
     onReloadError: (error) => {/* console.log('Auto reload failed:', error) */}
   });
 
-  // State for API data
+  // State for API data - ALWAYS start with null to prevent old data display
   const [authData, setAuthData] = useState<any>(null);
   const isFetchingRef = useRef(false);
   const lastFetchTsRef = useRef<number>(0);
@@ -68,6 +69,43 @@ const HomeScreen = ({navigation}: any) => {
   const [apiResponse, setApiResponse] = useState<string>('');
   const [banners, setBanners] = useState<any[]>([]);
   const [loadingBanners, setLoadingBanners] = useState(true);
+  const lastUsernameRef = useRef<string | null>(null);
+  const hasClearedOnMountRef = useRef(false);
+  const [currentUsername, setCurrentUsername] = useState<string | null>(null);
+
+  // CRITICAL: Sync current username and clear data if username doesn't match
+  useEffect(() => {
+    const syncUsername = async () => {
+      if (!isAuthenticated) {
+        setCurrentUsername(null);
+        return;
+      }
+      
+      const session = await sessionManager.getCurrentSession();
+      const sessionUsername = session?.username || null;
+      
+      // If we have authData but username doesn't match, clear it immediately
+      if (authData && sessionUsername && lastUsernameRef.current !== sessionUsername) {
+        console.log('[HomeScreen] ⚠️ RENDER CHECK: Username mismatch detected!');
+        console.log('[HomeScreen] AuthData exists for:', lastUsernameRef.current);
+        console.log('[HomeScreen] Current session username:', sessionUsername);
+        console.log('[HomeScreen] Clearing authData immediately...');
+        
+        setAuthData(null);
+        setPlanDetails(null);
+        setApiResponse('');
+        lastUsernameRef.current = null;
+        setCurrentUsername(null);
+      }
+      
+      // Update current username state
+      if (sessionUsername) {
+        setCurrentUsername(sessionUsername);
+      }
+    };
+    
+    syncUsername();
+  }, [isAuthenticated, authData]);
 
   // Debug: log next renewal date value when it changes
   useEffect(() => {
@@ -80,15 +118,34 @@ const HomeScreen = ({navigation}: any) => {
     const invalids = ['N/A', 'NA', '-', 'NULL', 'UNDEFINED', ''];
     return invalids.includes(raw.toUpperCase()) ? '' : raw;
   }, [authData?.next_renewal_date]);
-  const { menu, loading: menuLoading, error: menuError, refresh: refreshMenu } = useMenuSettings();
+  const { menu, loading: menuLoading, error: menuError, refresh: refreshMenu, forceRefresh: forceRefreshMenu } = useMenuSettings();
   const [refreshing, setRefreshing] = useState(false);
   const isMicroscan = getClientConfig().clientId === 'microscan';
 
+  // Debug menu loading
+  useEffect(() => {
+    console.log('🔍 [HomeScreen] Menu state:', {
+      menu,
+      menuLoading,
+      menuError,
+      isArray: Array.isArray(menu),
+      length: Array.isArray(menu) ? menu.length : 'N/A',
+    });
+    
+    if (menu && Array.isArray(menu)) {
+      // console.log('🔍 [HomeScreen] Menu items:', menu.map((m: any) => ({
+      //   menu_label: m?.menu_label,
+      //   menu_api_type: m?.menu_api_type,
+      //   status: m?.status,
+      // })));
+    }
+  }, [menu, menuLoading, menuError]);
+
   // Derive dynamic main menu items from API
   const mainMenuItems = useMemo(() => {
-    console.log('🔍 [mainMenuItems] === RECOMPUTING MAIN MENU ITEMS ===');
-    console.log('🔍 [mainMenuItems] Menu input:', menu);
-    console.log('🔍 [mainMenuItems] Menu is array:', Array.isArray(menu));
+    // console.log('🔍 [mainMenuItems] === RECOMPUTING MAIN MENU ITEMS ===');
+    // console.log('🔍 [mainMenuItems] Menu input:', menu);
+    // console.log('🔍 [mainMenuItems] Menu is array:', Array.isArray(menu));
     
     const desiredOrder = ['Account', 'Sessions', 'Tickets', 'Ledger'];
     // Use vector icons so we can tint them with theme primary (orange)
@@ -112,35 +169,35 @@ const HomeScreen = ({navigation}: any) => {
           const isMain = m?.menu_api_type === 'main';
           const isActive = String(m?.status).toLowerCase() === 'active';
           const result = isMain && isActive;
-          console.log('🔍 [mainMenuItems] Filtering item:', {
-            menu_label: m?.menu_label,
-            menu_api_type: m?.menu_api_type,
-            status: m?.status,
-            isMain,
-            isActive,
-            passes: result
-          });
+          //console.log('🔍 [mainMenuItems] Filtering item:', {
+          //  menu_label: m?.menu_label,
+          //  menu_api_type: m?.menu_api_type,
+          //  status: m?.status,
+          //  isMain,
+          //  isActive,
+          //  passes: result
+          //});
           return result;
         })
       : [];
     
-    console.log('🔍 [mainMenuItems] Filtered list:', list);
-    console.log('🔍 [mainMenuItems] Filtered list length:', list.length);
+    // console.log('🔍 [mainMenuItems] Filtered list:', list);
+    // console.log('🔍 [mainMenuItems] Filtered list length:', list.length);
     
     const byLabel = new Map<string, any>();
     list.forEach((item: any) => { 
       if (item?.menu_label) {
-        console.log('🔍 [mainMenuItems] Adding to map:', item.menu_label, item);
+        //console.log('🔍 [mainMenuItems] Adding to map:', item.menu_label, item);
         byLabel.set(item.menu_label, item);
       }
     });
 
-    console.log('🔍 [mainMenuItems] Labels in map:', Array.from(byLabel.keys()));
+    //console.log('🔍 [mainMenuItems] Labels in map:', Array.from(byLabel.keys()));
 
     const result = desiredOrder
       .filter(label => {
         const hasLabel = byLabel.has(label);
-        console.log('🔍 [mainMenuItems] Checking desired label:', label, 'exists:', hasLabel);
+        //console.log('🔍 [mainMenuItems] Checking desired label:', label, 'exists:', hasLabel);
         return hasLabel;
       })
       .map(label => ({ 
@@ -150,9 +207,9 @@ const HomeScreen = ({navigation}: any) => {
         onPress: routeMap[label] 
       }));
     
-    console.log('🔍 [mainMenuItems] Final result:', result);
-    console.log('🔍 [mainMenuItems] Final result length:', result.length);
-    console.log('🔍 [mainMenuItems] === END RECOMPUTATION ===');
+    // console.log('🔍 [mainMenuItems] Final result:', result);
+    // console.log('🔍 [mainMenuItems] Final result length:', result.length);
+    // console.log('🔍 [mainMenuItems] === END RECOMPUTATION ===');
     
     return result;
   }, [menu, navigation]);
@@ -226,37 +283,58 @@ const HomeScreen = ({navigation}: any) => {
   //   },
   // ];
 
-  // API call to fetch account summary and usage data
+  // CRITICAL: Clear ALL state when authentication status changes
   useEffect(() => {
-    //console.warn('=== HOMESCREEN MOUNTED ===');
-    //Alert.alert('HomeScreen', 'Component mounted');
-    fetchAccountData();
-    // Initialize push registration similar to old app behavior
-    (async () => {
-      try {
-        const realm = getClientConfig().clientId;
-        console.log('[HomeScreen] Initializing push notifications for realm:', realm);
-        //Alert.alert('PushDebug', `Home init for realm: ${realm}`);
-        await initializePushNotifications(realm);
+    const clearAllState = async () => {
+      if (!isAuthenticated) {
+        //console.log('[HomeScreen] 🚨 LOGOUT: Clearing ALL state immediately');
+        setAuthData(null);
+        setPlanDetails(null);
+        setApiResponse('');
+        setBanners([]);
+        setIsLoading(true);
+        setLoadingBanners(true);
+        isFetchingRef.current = false;
+        lastFetchTsRef.current = 0;
+        lastUsernameRef.current = null;
+        setCurrentUsername(null);
+        await dataCache.clearAllCache();
+        menuService.clearCache();
+      } else {
+        // User just logged in - IMMEDIATELY clear state to prevent old data display
+        console.log('[HomeScreen] 🚨 LOGIN: Clearing state for fresh data');
         
-        // Add delay for iOS to ensure FCM token is ready
-        if (Platform.OS === 'ios') {
-          console.log('[HomeScreen] iOS detected, adding delay for FCM token...');
-          await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay
-        }
+        // Get current username to check if it changed
+        const session = await sessionManager.getCurrentSession();
+        const newUsername = session?.username || null;
         
-        console.log('[HomeScreen] Trying pending token registration');
-        await registerPendingPushToken(realm);
-        // Only attempt manual registration once; avoid repeated retries if Firebase not ready
-        console.log('[HomeScreen] Trying manual device registration');
-        await registerDeviceManually(realm);
+        // Always clear state on login, regardless of username
+        setAuthData(null);
+        setPlanDetails(null);
+        setApiResponse('');
+        setBanners([]);
+        setIsLoading(true);
+        setLoadingBanners(true);
+        isFetchingRef.current = false;
+        lastFetchTsRef.current = 0;
         
-      } catch (e) {
-        console.warn('[HomeScreen] Push initialization/registration error', (e as any)?.message || e);
-        //Alert.alert('PushDebug', `Home init error: ${(e as any)?.message || e}`);
+        // Reset username ref to force fresh data fetch
+        lastUsernameRef.current = null;
+        setCurrentUsername(null);
+        
+        // Clear all caches
+        await dataCache.clearAllCache();
+        menuService.clearCache();
+        
+        console.log('[HomeScreen] ✅ State cleared, ready for new user:', newUsername);
       }
-    })();
-  }, []);
+    };
+    
+    clearAllState();
+  }, [isAuthenticated]);
+
+  // Clear state when user changes - moved after fetchAccountData definition
+  // This will be set up in a separate useFocusEffect after fetchAccountData is defined
 
   useEffect(() => {
     const fetchBanners = async () => {
@@ -275,36 +353,36 @@ const HomeScreen = ({navigation}: any) => {
 
   // Log menu once loaded (for verification)
   useEffect(() => {
-    console.log('🔍 [MenuSettings] === DETAILED MENU DEBUG ===');
-    console.log('🔍 [MenuSettings] Loading state:', menuLoading);
-    console.log('🔍 [MenuSettings] Error:', menuError);
-    console.log('🔍 [MenuSettings] Menu exists:', !!menu);
-    console.log('🔍 [MenuSettings] Menu type:', typeof menu);
-    console.log('🔍 [MenuSettings] Is array:', Array.isArray(menu));
+    // console.log('🔍 [MenuSettings] === DETAILED MENU DEBUG ===');
+    // console.log('🔍 [MenuSettings] Loading state:', menuLoading);
+    // console.log('🔍 [MenuSettings] Error:', menuError);
+    // console.log('🔍 [MenuSettings] Menu exists:', !!menu);
+    // console.log('🔍 [MenuSettings] Menu type:', typeof menu);
+    // console.log('🔍 [MenuSettings] Is array:', Array.isArray(menu));
     
     if (menu) {
-      console.log('🔍 [MenuSettings] Full menu array:', JSON.stringify(menu, null, 2));
-      console.log('🔍 [MenuSettings] Menu length:', Array.isArray(menu) ? menu.length : 'Not an array');
+      // console.log('🔍 [MenuSettings] Full menu array:', JSON.stringify(menu, null, 2));
+      // console.log('🔍 [MenuSettings] Menu length:', Array.isArray(menu) ? menu.length : 'Not an array');
       
       if (Array.isArray(menu)) {
-        console.log('🔍 [MenuSettings] Menu items:');
+        //console.log('🔍 [MenuSettings] Menu items:');
         menu.forEach((item: any, index: number) => {
-          console.log(`🔍 [MenuSettings] Item ${index}:`, {
-            menu_label: item?.menu_label,
-            menu_api_type: item?.menu_api_type,
-            status: item?.status,
-            full_item: item
-          });
+          //console.log(`🔍 [MenuSettings] Item ${index}:`, {
+          //  menu_label: item?.menu_label,
+          //  menu_api_type: item?.menu_api_type,
+          //  status: item?.status,
+          //  full_item: item
+          //});
         });
         
         const mainItems = menu.filter((m: any) => m?.menu_api_type === 'main' && String(m?.status).toLowerCase() === 'active');
-        console.log('🔍 [MenuSettings] Filtered main items:', mainItems);
-        console.log('🔍 [MenuSettings] Filtered main items count:', mainItems.length);
+        //console.log('🔍 [MenuSettings] Filtered main items:', mainItems);
+        //console.log('🔍 [MenuSettings] Filtered main items count:', mainItems.length);
       }
     } else {
-      console.log('🔍 [MenuSettings] Menu is null/undefined/empty');
+      //console.log('🔍 [MenuSettings] Menu is null/undefined/empty');
     }
-    console.log('🔍 [MenuSettings] === END DEBUG ===');
+    //console.log('🔍 [MenuSettings] === END DEBUG ===');
   }, [menuLoading, menu, menuError]);
 
   // Disabled: Auto reload on focus to prevent unintended refreshes when switching tabs
@@ -358,7 +436,7 @@ const HomeScreen = ({navigation}: any) => {
     }, [])
   );
 
-  const fetchAccountData = async () => {
+  const fetchAccountData = React.useCallback(async () => {
     try {
       if (isFetchingRef.current) return;
       const now = Date.now();
@@ -367,6 +445,24 @@ const HomeScreen = ({navigation}: any) => {
       lastFetchTsRef.current = now;
       // console.log('🏠 [HomeScreen] fetchAccountData started');
       setIsLoading(true);
+      
+      // Get username BEFORE clearing to verify it matches
+      const sessionBeforeFetch = await sessionManager.getCurrentSession();
+      const usernameBeforeFetch = sessionBeforeFetch?.username;
+      
+      // If username changed, clear everything first
+      if (lastUsernameRef.current !== null && lastUsernameRef.current !== usernameBeforeFetch) {
+        console.log('[HomeScreen] ⚠️ Username changed during fetch! Clearing everything...');
+        setAuthData(null);
+        setPlanDetails(null);
+        setApiResponse('');
+        setBanners([]);
+      }
+      
+      // Always clear caches before fetch to ensure fresh data
+      //console.log('[HomeScreen] Clearing caches before fetch...');
+      await dataCache.clearAllCache();
+      menuService.clearCache();
       
       // Check session validity before making API call
       const isSessionValid = await checkSessionAndHandle(navigation);
@@ -391,7 +487,35 @@ const HomeScreen = ({navigation}: any) => {
       }
 
       const { username } = session;
-      // console.log('🏠 [HomeScreen] Making API call for username:', username);
+      
+      // CRITICAL: Verify this is the current user - clear state if username changed
+      if (lastUsernameRef.current !== null && lastUsernameRef.current !== username) {
+        console.log('[HomeScreen] ⚠️ USERNAME MISMATCH DETECTED!');
+        console.log('[HomeScreen] Previous user:', lastUsernameRef.current);
+        console.log('[HomeScreen] Current user:', username);
+        console.log('[HomeScreen] Clearing ALL state immediately...');
+        
+        // Clear state immediately
+        setAuthData(null);
+        setPlanDetails(null);
+        setApiResponse('');
+        setBanners([]);
+        
+        // Clear all caches again
+        await dataCache.clearAllCache();
+        menuService.clearCache();
+        
+        // Update username ref
+        lastUsernameRef.current = username;
+        
+        console.log('[HomeScreen] State cleared, continuing with API call for new user');
+      } else if (lastUsernameRef.current === null) {
+        // First time setting username
+        lastUsernameRef.current = username;
+        console.log('[HomeScreen] Setting initial username:', username);
+      }
+      
+      console.log('[HomeScreen] Making API call for username:', username);
 
       // Use the enhanced API service with automatic token regeneration
       // console.log('🏠 [HomeScreen] Calling makeAuthenticatedRequest...');
@@ -410,29 +534,18 @@ const HomeScreen = ({navigation}: any) => {
       //Alert.alert('API Response', `Response received: ${responseString.substring(0, 200)}...`);
       
       if (authResponse) {
-        // console.warn('=== RESPONSE DETAILS ===');
-        // console.warn('First Name:', authResponse.firstname);
-        // console.warn('Last Name:', authResponse.lastname);
-        // console.warn('Current Plan:', authResponse.currentPlan);
-        // console.warn('Account Status:', authResponse.accountStatus);
-        // console.warn('Data Allotted:', authResponse.dataAllotted);
-        // console.warn('Data Used:', authResponse.dataUsed);
-        // console.warn('Days Allotted:', authResponse.daysAllotted);
-        // console.warn('Days Used:', authResponse.daysUsed);
-        // console.warn('Login Status:', authResponse.loginStatus);
-        // console.warn('Plan Price:', authResponse.planPrice);
-        // console.warn('Plan Duration:', authResponse.planDuration);
-        // console.warn('Expiry Date:', authResponse.expiryDateString);
-        // console.warn('Last Renew Date:', authResponse.lastRenewDateString);
-        // console.warn('Creation Date:', authResponse.creationDateString);
-        // console.warn('Disable Time:', authResponse.disableTime);
+        // Verify username matches before setting data
+        const currentSession = await sessionManager.getCurrentSession();
+        if (currentSession?.username !== username) {
+          console.warn('[HomeScreen] Username changed during API call, skipping data set');
+          return;
+        }
         
-        // // Log all available keys for reference
-        // console.warn('=== ALL AVAILABLE KEYS ===');
-        // Object.keys(authResponse).forEach(key => {
-        //   console.warn(`${key}:`, authResponse[key]);
-        // });
-
+        // Update username ref and state
+        lastUsernameRef.current = username;
+        setCurrentUsername(username);
+        
+        console.log('[HomeScreen] Setting authData for user:', username);
         setAuthData(authResponse);
         
         // Extract plan details from auth response
@@ -444,24 +557,25 @@ const HomeScreen = ({navigation}: any) => {
             dataLimit: authResponse.dataAllotted || '100 GB',
           });
         }
-        
-        //Alert.alert('Success', 'Account data loaded successfully!');
       } else {
-        //console.warn('No auth response received');
-        //Alert.alert('No Response', 'No auth response received from API');
+        console.warn('[HomeScreen] No auth response received');
       }
-      // Menu settings load via hook; also fetch latest and log explicitly here
-      await refreshMenu();
+      // Menu settings load via hook; force refresh to get latest from server
       try {
+        console.log('[HomeScreen] Force refreshing menu after login...');
+        await forceRefreshMenu();
         const latestMenu = await menuService.get();
-        // console.log('🔍 [MenuSettings] Latest (service.get):', latestMenu);
-        // console.log('🔍 [MenuSettings] Latest menu type:', typeof latestMenu);
-        // console.log('🔍 [MenuSettings] Latest menu is array:', Array.isArray(latestMenu));
-        if (latestMenu) {
-          //console.log('🔍 [MenuSettings] Latest menu JSON:', JSON.stringify(latestMenu, null, 2));
-        }
+        console.log('🔍 [HomeScreen] Menu after refresh:', {
+          isArray: Array.isArray(latestMenu),
+          length: Array.isArray(latestMenu) ? latestMenu.length : 'N/A',
+          items: Array.isArray(latestMenu) ? latestMenu.map((m: any) => ({
+            label: m?.menu_label,
+            type: m?.menu_api_type,
+            status: m?.status,
+          })) : latestMenu,
+        });
       } catch (e: any) {
-        //console.warn('[MenuSettings] Fetch after auth failed:', e?.message || e);
+        console.warn('[HomeScreen] Menu refresh failed:', e?.message || e);
       }
     } catch (error: any) {
       //console.error('🏠 [HomeScreen] Error fetching account data:', error.message || error);
@@ -471,7 +585,104 @@ const HomeScreen = ({navigation}: any) => {
       setIsLoading(false);
       isFetchingRef.current = false;
     }
-  };
+  }, [checkSessionAndHandle, navigation, refreshMenu]);
+
+  // Initial data fetch and push notification setup - only when authenticated
+  useEffect(() => {
+    // Only fetch data if user is authenticated
+    if (!isAuthenticated) {
+      console.log('[HomeScreen] User not authenticated, skipping data fetch');
+      return;
+    }
+    
+    // Fetch data normally - don't clear state here, let fetchAccountData handle it
+    console.log('[HomeScreen] Starting data fetch...');
+    fetchAccountData();
+    
+    // Initialize push registration similar to old app behavior
+    (async () => {
+      try {
+        const realm = getClientConfig().clientId;
+        console.log('[HomeScreen] Initializing push notifications for realm:', realm);
+        await initializePushNotifications(realm);
+        
+        // Add delay for iOS to ensure FCM token is ready
+        if (Platform.OS === 'ios') {
+          console.log('[HomeScreen] iOS detected, adding delay for FCM token...');
+          await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay
+        }
+        
+        console.log('[HomeScreen] Trying pending token registration');
+        await registerPendingPushToken(realm);
+        console.log('[HomeScreen] Trying manual device registration');
+        await registerDeviceManually(realm);
+        
+      } catch (e) {
+        console.warn('[HomeScreen] Push initialization/registration error', (e as any)?.message || e);
+      }
+    })();
+  }, [isAuthenticated, fetchAccountData]);
+
+  // CRITICAL: Clear state when screen comes into focus - ALWAYS check and clear if needed
+  useFocusEffect(
+    React.useCallback(() => {
+      const clearOnFocus = async () => {
+        if (!isAuthenticated) {
+          // If not authenticated, ensure state is cleared
+          setAuthData(null);
+          setPlanDetails(null);
+          setApiResponse('');
+          setBanners([]);
+          return;
+        }
+        
+        const session = await sessionManager.getCurrentSession();
+        const currentUsername = session?.username || null;
+        
+        // ALWAYS clear if username changed, or if we have old data but username doesn't match
+        const shouldClear = 
+          !currentUsername || // No username
+          lastUsernameRef.current === null || // First time
+          lastUsernameRef.current !== currentUsername || // Username changed
+          (authData && lastUsernameRef.current !== currentUsername); // We have data but username doesn't match
+        
+        if (shouldClear && currentUsername) {
+          console.log('[HomeScreen] 🚨 FOCUS: Clearing state - Username check');
+          console.log('[HomeScreen] Previous:', lastUsernameRef.current, 'Current:', currentUsername);
+          console.log('[HomeScreen] Has authData:', !!authData);
+          
+          // Clear state immediately
+          setAuthData(null);
+          setPlanDetails(null);
+          setApiResponse('');
+          setBanners([]);
+          setIsLoading(true);
+          
+          // Clear caches
+          await dataCache.clearAllCache();
+          menuService.clearCache();
+          
+          // Update username ref and state
+          lastUsernameRef.current = currentUsername;
+          setCurrentUsername(currentUsername);
+          
+          // Fetch fresh data
+          console.log('[HomeScreen] Fetching fresh data after focus...');
+          await fetchAccountData();
+        } else if (currentUsername && !authData && lastUsernameRef.current === currentUsername) {
+          // Username matches but no data - fetch it
+          console.log('[HomeScreen] Username matches but no data, fetching...');
+          setCurrentUsername(currentUsername);
+          await fetchAccountData();
+        } else if (currentUsername) {
+          // Update current username state even if not clearing
+          setCurrentUsername(currentUsername);
+        }
+      };
+      
+      clearOnFocus();
+    }, [isAuthenticated, fetchAccountData, authData])
+  );
 
   const handleAdPress = (ad: any) => {
     //Alert.alert('Advertisement', `Opening ${ad.title}...`);
@@ -955,7 +1166,9 @@ const HomeScreen = ({navigation}: any) => {
         <View style={styles.welcomeSection}>
           <Text style={[styles.welcomeText, {color: colors.textSecondary}]}>{t('common.welcome')},</Text>
           <Text style={[styles.userName, {color: colors.text}]}>
-            {authData ? `${authData.first_name || ''} ${authData.last_name || ''}`.trim() || 'User' : 'User'}
+            {authData && currentUsername && lastUsernameRef.current === currentUsername 
+              ? `${authData.first_name || ''} ${authData.last_name || ''}`.trim() || 'User' 
+              : 'User'}
           </Text>
         </View>
 
@@ -974,13 +1187,24 @@ const HomeScreen = ({navigation}: any) => {
           
           {isLoading ? (
             <LoadingSpinner />
+          ) : !authData || (currentUsername && lastUsernameRef.current !== currentUsername) ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={[styles.loadingText, {color: colors.textSecondary}]}>Loading account data...</Text>
+            </View>
           ) : (
             <>
               <View style={styles.detailRow}>
                 <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>{t('home.currentPlan')}</Text>
-                <Text style={[styles.detailValue, {color: colors.text}]}>
-                  {authData?.current_plan || 'No Plan'}
-                </Text>
+                <View style={styles.detailValueContainer}>
+                  <Text 
+                    style={[styles.detailValue, {color: colors.text}]}
+                    numberOfLines={2}
+                    ellipsizeMode="tail"
+                  >
+                    {authData?.current_plan || 'No Plan'}
+                  </Text>
+                </View>
               </View>
               
               <View style={styles.detailRow}>
@@ -1060,23 +1284,54 @@ const HomeScreen = ({navigation}: any) => {
         {/* Quick Menu Section (dynamic from menu settings) */}
         <View style={[styles.quickMenuCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
           <Text style={[styles.quickMenuTitle, {color: colors.text}]}>{t('home.quickMenu')}</Text>
-          <View style={styles.quickMenuRow}>            
-            {mainMenuItems.map(item => (
+          {menuLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={[styles.loadingText, {color: colors.textSecondary}]}>Loading menu...</Text>
+            </View>
+          ) : menuError ? (
+            <View style={styles.loadingContainer}>
+              <Text style={[styles.loadingText, {color: colors.error || '#F44336'}]}>
+                Error loading menu: {menuError}
+              </Text>
               <TouchableOpacity 
-                key={item.label}
-                style={styles.quickMenuRowItem}
-                onPress={item.onPress}
-                disabled={!item.onPress}
+                style={[styles.testButton, {backgroundColor: colors.primary}]}
+                onPress={forceRefreshMenu}
               >
-                {item.iconType === 'feather' ? (
-                  <Feather name={item.icon} size={24} color={colors.primary} />
-                ) : (
-                  <Text style={styles.quickMenuRowIcon}>{item.icon}</Text>
-                )}
-                <Text style={[styles.quickMenuRowTitle, {color: colors.text}]}>{item.label}</Text>
+                <Text style={styles.testButtonText}>Retry</Text>
               </TouchableOpacity>
-            ))}
-          </View>
+            </View>
+          ) : mainMenuItems.length === 0 ? (
+            <View style={styles.loadingContainer}>
+              <Text style={[styles.loadingText, {color: colors.textSecondary}]}>
+                No menu items available. {Array.isArray(menu) ? `Found ${menu.length} items in database.` : 'Menu data not loaded.'}
+              </Text>
+              <TouchableOpacity 
+                style={[styles.testButton, {backgroundColor: colors.primary}]}
+                onPress={forceRefreshMenu}
+              >
+                <Text style={styles.testButtonText}>Refresh Menu</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.quickMenuRow}>            
+              {mainMenuItems.map(item => (
+                <TouchableOpacity 
+                  key={item.label}
+                  style={styles.quickMenuRowItem}
+                  onPress={item.onPress}
+                  disabled={!item.onPress}
+                >
+                  {item.iconType === 'feather' ? (
+                    <Feather name={item.icon} size={24} color={colors.primary} />
+                  ) : (
+                    <Text style={styles.quickMenuRowIcon}>{item.icon}</Text>
+                  )}
+                  <Text style={[styles.quickMenuRowTitle, {color: colors.text}]}>{item.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
         </View>
 
         {/* Quick Actions (hidden for all clients per request) */}
@@ -1140,6 +1395,11 @@ const HomeScreen = ({navigation}: any) => {
           <Text style={[styles.billTitle, {color: colors.text}]}>{t('account.billingInfo')}</Text>
           {isLoading ? (
             <LoadingSpinner />
+          ) : !authData || (currentUsername && lastUsernameRef.current !== currentUsername) ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={[styles.loadingText, {color: colors.textSecondary}]}>Loading billing data...</Text>
+            </View>
           ) : (
             <>
               <View style={styles.billDetails}>
@@ -1199,6 +1459,11 @@ const HomeScreen = ({navigation}: any) => {
           
           {isLoading ? (
             <LoadingSpinner />
+          ) : !authData || (currentUsername && lastUsernameRef.current !== currentUsername) ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={[styles.loadingText, {color: colors.textSecondary}]}>Loading usage data...</Text>
+            </View>
           ) : (
             <>
               {/* Data Usage Section */}
@@ -1415,10 +1680,18 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     fontSize: 14,
+    flex: 1,
+    marginRight: 12,
+  },
+  detailValueContainer: {
+    flex: 2,
+    alignItems: 'flex-end',
   },
   detailValue: {
     fontSize: 14,
     fontWeight: '600',
+    textAlign: 'right',
+    flexShrink: 1,
   },
   adCarouselSection: {
     height: screenWidth * 0.4, // Reduced height for more compact design

@@ -122,6 +122,8 @@ export class SessionManager {
           clientName = 'microscan';
         } else if (currentUrl.includes('dnainfotel.com')) {
           clientName = 'dna-infotel';
+        } else if (currentUrl.includes('dnagoa.com')) {
+          clientName = 'dna-goa';
         } else if (currentUrl.includes('7stardigitalnetwork.com')) {
           clientName = 'one-sevenstar';
         } else if (currentUrl.includes('logonbroadband.com')) {
@@ -134,6 +136,8 @@ export class SessionManager {
           clientName = 'microscan';
         } else if (domainUrl.includes('dnainfotel.com')) {
           clientName = 'dna-infotel';
+        } else if (domainUrl.includes('dnagoa.com')) {
+          clientName = 'dna-goa';
         } else if (domainUrl.includes('7stardigitalnetwork.com')) {
           clientName = 'one-sevenstar';
         } else if (domainUrl.includes('logonbroadband.com')) {

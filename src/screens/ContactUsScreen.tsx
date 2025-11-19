@@ -28,6 +28,14 @@ const ContactUsScreen = ({navigation}: any) => {
   // Get client configuration
   const clientConfig = getClientConfig();
   const contactInfo = clientConfig.contact;
+  const hasEscalationData = Boolean(
+    contactInfo.enterpriseEscalation &&
+    (
+      contactInfo.enterpriseEscalation.l1 ||
+      contactInfo.enterpriseEscalation.l2 ||
+      contactInfo.enterpriseEscalation.l3
+    )
+  );
 
   const handlePhoneCall = (number: string) => {
     Linking.canOpenURL(`tel:${number}`).then(supported => {
@@ -95,7 +103,9 @@ const ContactUsScreen = ({navigation}: any) => {
   };
 
   const handleEscalationMatrix = () => {
-    setShowEscalationModal(true);
+    if (hasEscalationData) {
+      setShowEscalationModal(true);
+    }
   };
 
   const defaultWebsite = useMemo(() => {
@@ -138,12 +148,12 @@ const ContactUsScreen = ({navigation}: any) => {
       label: tr('contactUs.supportHours', 'Support Hours'),
       value: contactInfo.headOffice.customerSupportHours || 'Monday - Sunday | 24×7',
     },
-    {
+    ...(hasEscalationData ? [{
       icon: '🛠️',
       label: tr('contactUs.escalationMatrix', 'Escalation Matrix'),
       value: tr('contactUs.viewDetails', 'View details'),
-      onPress: contactInfo.enterpriseEscalation ? handleEscalationMatrix : undefined,
-    },
+      onPress: handleEscalationMatrix,
+    }] : []),
   ].filter(row => row.value);
 
   const locations = [
@@ -276,85 +286,87 @@ const ContactUsScreen = ({navigation}: any) => {
       </ScrollView>
 
       {/* Enterprise Escalation Matrix Modal */}
-      <Modal
-        visible={showEscalationModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowEscalationModal(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, {backgroundColor: colors.card}]}>
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, {color: colors.text}]}>
-                {contactInfo.enterpriseEscalation?.title || 'Enterprise Escalation'}
-              </Text>
-              <TouchableOpacity
-                onPress={() => setShowEscalationModal(false)}
-                style={styles.closeButton}>
-                <Text style={[styles.closeButtonText, {color: colors.text}]}>✕</Text>
-              </TouchableOpacity>
-            </View>
+      {hasEscalationData && (
+        <Modal
+          visible={showEscalationModal}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowEscalationModal(false)}>
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContent, {backgroundColor: colors.card}]}>
+              <View style={styles.modalHeader}>
+                <Text style={[styles.modalTitle, {color: colors.text}]}>
+                  {contactInfo.enterpriseEscalation?.title || 'Enterprise Escalation'}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setShowEscalationModal(false)}
+                  style={styles.closeButton}>
+                  <Text style={[styles.closeButtonText, {color: colors.text}]}>✕</Text>
+                </TouchableOpacity>
+              </View>
 
-            <ScrollView style={styles.modalBody}>
-              {/* L1 - Call Centre */}
-              {contactInfo.enterpriseEscalation?.l1 && (
-                <View style={styles.escalationLevel}>
-                  <Text style={[styles.levelTitle, {color: colors.primary}]}>
-                    {contactInfo.enterpriseEscalation.l1.level}
-                  </Text>
-                  <View style={styles.contactRow}>
-                    <Text style={styles.contactLabel}>📧 Email:</Text>
-                    <Text style={[styles.modalContactValue, {color: colors.text}]}>
-                      {contactInfo.enterpriseEscalation.l1.email}
+              <ScrollView style={styles.modalBody}>
+                {/* L1 - Call Centre */}
+                {contactInfo.enterpriseEscalation?.l1 && (
+                  <View style={styles.escalationLevel}>
+                    <Text style={[styles.levelTitle, {color: colors.primary}]}>
+                      {contactInfo.enterpriseEscalation.l1.level}
                     </Text>
-                  </View>
-                  {contactInfo.enterpriseEscalation.l1.phone && (
                     <View style={styles.contactRow}>
-                      <Text style={styles.contactLabel}>📞 Phone:</Text>
+                      <Text style={styles.contactLabel}>📧 Email:</Text>
                       <Text style={[styles.modalContactValue, {color: colors.text}]}>
-                        {contactInfo.enterpriseEscalation.l1.phone}
+                        {contactInfo.enterpriseEscalation.l1.email}
                       </Text>
                     </View>
-                  )}
-                </View>
-              )}
+                    {contactInfo.enterpriseEscalation.l1.phone && (
+                      <View style={styles.contactRow}>
+                        <Text style={styles.contactLabel}>📞 Phone:</Text>
+                        <Text style={[styles.modalContactValue, {color: colors.text}]}>
+                          {contactInfo.enterpriseEscalation.l1.phone}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                )}
 
-              {/* L2 - Shift Lead */}
-              {contactInfo.enterpriseEscalation?.l2 && (
-                <View style={styles.escalationLevel}>
-                  <Text style={[styles.levelTitle, {color: colors.primary}]}>
-                    {contactInfo.enterpriseEscalation.l2.level}
-                  </Text>
-                  <View style={styles.contactRow}>
-                    <Text style={styles.contactLabel}>📧 Email:</Text>
-                    <Text style={[styles.modalContactValue, {color: colors.text}]}>
-                      {contactInfo.enterpriseEscalation.l2.email}
+                {/* L2 - Shift Lead */}
+                {contactInfo.enterpriseEscalation?.l2 && (
+                  <View style={styles.escalationLevel}>
+                    <Text style={[styles.levelTitle, {color: colors.primary}]}>
+                      {contactInfo.enterpriseEscalation.l2.level}
                     </Text>
-                  </View>
-                </View>
-              )}
-
-              {/* L3 - Management */}
-              {contactInfo.enterpriseEscalation?.l3 && (
-                <View style={styles.escalationLevel}>
-                  <Text style={[styles.levelTitle, {color: colors.primary}]}>
-                    {contactInfo.enterpriseEscalation.l3.level}
-                  </Text>
-                  <View style={styles.contactRow}>
-                    <Text style={styles.contactLabel}>📧 Emails:</Text>
-                  </View>
-                  {contactInfo.enterpriseEscalation.l3.emails.map((email, index) => (
-                    <View key={index} style={styles.emailRow}>
+                    <View style={styles.contactRow}>
+                      <Text style={styles.contactLabel}>📧 Email:</Text>
                       <Text style={[styles.modalContactValue, {color: colors.text}]}>
-                        {email}
+                        {contactInfo.enterpriseEscalation.l2.email}
                       </Text>
                     </View>
-                  ))}
-                </View>
-              )}
-            </ScrollView>
+                  </View>
+                )}
+
+                {/* L3 - Management */}
+                {contactInfo.enterpriseEscalation?.l3 && (
+                  <View style={styles.escalationLevel}>
+                    <Text style={[styles.levelTitle, {color: colors.primary}]}>
+                      {contactInfo.enterpriseEscalation.l3.level}
+                    </Text>
+                    <View style={styles.contactRow}>
+                      <Text style={styles.contactLabel}>📧 Emails:</Text>
+                    </View>
+                    {contactInfo.enterpriseEscalation.l3.emails.map((email, index) => (
+                      <View key={index} style={styles.emailRow}>
+                        <Text style={[styles.modalContactValue, {color: colors.text}]}>
+                          {email}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </ScrollView>
+            </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
+      )}
     </SafeAreaView>
   );
 };

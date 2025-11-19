@@ -137,14 +137,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await dataCache.clearAllCache();
       menuService.clearCache();
       
-      // If different user, also clear Realm data
+      // Always clear Realm data on login to ensure fresh start
+      try {
+        await realmAuthService.logout();
+        console.log('[AuthContext] Realm data cleared before login');
+      } catch (realmError) {
+        console.warn('[AuthContext] Error clearing Realm data:', realmError);
+      }
+      
+      // If different user, perform additional cleanup
       if (isDifferentUser) {
-        try {
-          await realmAuthService.logout();
-          console.log('[AuthContext] Realm data cleared for user switch');
-        } catch (realmError) {
-          console.warn('[AuthContext] Error clearing Realm data:', realmError);
-        }
+        console.log('[AuthContext] Different user detected - performing additional cleanup');
+        // Clear any remaining AsyncStorage items
+        await AsyncStorage.multiRemove([
+          'userData',
+          'plansData',
+          'authData',
+          'navigationState',
+        ]);
       }
       
       console.log('[AuthContext] Caches cleared before login');
@@ -199,14 +209,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await dataCache.clearAllCache();
       menuService.clearCache();
       
-      // If different user, also clear Realm data
+      // Always clear Realm data on login to ensure fresh start
+      try {
+        await realmAuthService.logout();
+        console.log('[AuthContext] Realm data cleared before OTP login');
+      } catch (realmError) {
+        console.warn('[AuthContext] Error clearing Realm data:', realmError);
+      }
+      
+      // If different user, perform additional cleanup
       if (isDifferentUser) {
-        try {
-          await realmAuthService.logout();
-          console.log('[AuthContext] Realm data cleared for user switch');
-        } catch (realmError) {
-          console.warn('[AuthContext] Error clearing Realm data:', realmError);
-        }
+        console.log('[AuthContext] Different user detected - performing additional cleanup');
+        // Clear any remaining AsyncStorage items
+        await AsyncStorage.multiRemove([
+          'userData',
+          'plansData',
+          'authData',
+          'navigationState',
+        ]);
       }
       
       console.log('[AuthContext] Caches cleared before OTP login');

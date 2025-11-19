@@ -242,6 +242,76 @@ const clientConfigs: Record<string, ClientConfig> = {
         appStoreId: '1559045355',
       },
     },
+  'dna-goa': {
+    clientId: 'dna-goa',
+    clientName: 'DNA Goa',
+    api: {
+      baseURL: 'https://crm.dnagoa.com/l2s/api',
+      timeout: 30000,
+    },
+    branding: {
+      logo: 'dna_logo.png',
+      primaryColor: '#1976D2',
+      secondaryColor: '#FF9800',
+      appName: 'DNA Goa',
+    },
+    features: {
+      biometricAuth: true,
+      pushNotifications: true,
+      fileUpload: true,
+      multiLanguage: true,
+    },
+    contact: {
+      headOffice: {
+        title: 'Head Office - Panjim',
+        address: '106, 1st Floor, Gera\'s Imperium, Patto, Patto Center. Panaji, GOA-403001',
+      },
+      branchOffices: [
+        {
+          title: 'Branch Office - Ponda',
+          address: 'DNA-GOA, Omkar Building, Opp. Sapana Park, Bethora Road, Ponda, GOA-403401',
+        },
+        {
+          title: 'Branch Office - Colva',
+          address: '72/2B, Near Colva Police Station, Opp. Amul Icecream Parlour, Colva, Salcete, GOA-403708',
+        },
+      ],
+      emails: {
+        inquiries: 'sales@dnagoa.com',
+        sales: 'sales@dnagoa.com',
+      },
+      landline: '0832-6747575',
+    },
+    about: {
+      companyName: 'DNA GOA',
+      establishedYear: '2008',
+      description: 'DNA Goa is a leading internet service provider committed to delivering high-quality broadband services to residential and business customers across Goa.',
+      specializations: [
+        'Hi-Speed Broadband Internet connection',
+        'GePON/GPON technology (FTTH - Fibre to the Home)',
+        'Leased Line connections for Small, Medium and large scale enterprises'
+      ],
+      serviceAreas: [
+        'Panjim',
+        'Ponda',
+        'Colva',
+        'Goa state'
+      ],
+      achievements: [
+        'Successfully reached to a prominent broadband supplier',
+        'Extensive service coverage across multiple regions in Goa',
+        'Latest technology implementation'
+      ],
+    },
+    reviewUrl: undefined,
+    versionCheck: {
+      enabled: true,
+      checkInterval: 24, // Check every 24 hours
+      forceUpdateEnabled: true,
+      packageName: 'com.dnagoa',
+      appStoreId: '1559045355',
+    },
+  },
   'one-sevenstar': {
     clientId: 'one-sevenstar',
     clientName: 'One Seven Star',

@@ -33,6 +33,15 @@ const CLIENTS = {
     keystore: 'LogonBroadband.jks',
     configDir: 'config/logon-broadband',
   },
+  'dna-goa': {
+    name: 'DNA Goa',
+    packageName: 'com.dnagoa',
+    namespace: 'com.dnagoa',
+    versionCode: 4,
+    versionName: '4.0.0',
+    keystore: 'Log2spaceDNAGoaAppKey.jks',
+    configDir: 'config/dna-goa',
+  },
 };
 
 // Colors for console output
@@ -139,6 +148,15 @@ function copyClientConfig(clientId) {
     logSuccess('Copied strings.json');
   }
 
+  // Update current-client.json so app picks correct configuration
+  const currentClientPath = path.join(appDir, 'src', 'config', 'current-client.json');
+  const currentClientData = {
+    clientId,
+    updatedAt: new Date().toISOString(),
+  };
+  fs.writeFileSync(currentClientPath, JSON.stringify(currentClientData, null, 2));
+  logSuccess(`Updated current-client.json to ${clientId}`);
+
   // Copy keystore file
   const keystoreSrc = path.join(configDir, client.keystore);
   const keystoreDest = path.join(appDir, 'android', 'app', client.keystore);
@@ -176,6 +194,28 @@ function updateAndroidBuildGradle(clientId) {
   const buildGradlePath = path.join(__dirname, '..', 'android', 'app', 'build.gradle');
   let buildGradleContent = fs.readFileSync(buildGradlePath, 'utf8');
 
+  // Read keystore config to extract passwords and aliases
+  const keystoreConfigPath = path.join(__dirname, '..', client.configDir, 'keystore-config.gradle');
+  let releaseStorePassword = 'dnasubscriber'; // fallback
+  let releaseKeyAlias = 'dnasubscriber'; // fallback
+  let releaseKeyPassword = 'dnasubscriber'; // fallback
+
+  if (fs.existsSync(keystoreConfigPath)) {
+    const keystoreConfigContent = fs.readFileSync(keystoreConfigPath, 'utf8');
+    // Extract release config values (handle any order)
+    const releaseBlock = keystoreConfigContent.match(/release\s*\{([^}]+)\}/s);
+    if (releaseBlock) {
+      const releaseContent = releaseBlock[1];
+      const storePasswordMatch = releaseContent.match(/storePassword\s+['"]([^'"]+)['"]/);
+      const keyAliasMatch = releaseContent.match(/keyAlias\s+['"]([^'"]+)['"]/);
+      const keyPasswordMatch = releaseContent.match(/keyPassword\s+['"]([^'"]+)['"]/);
+      
+      if (storePasswordMatch) releaseStorePassword = storePasswordMatch[1];
+      if (keyAliasMatch) releaseKeyAlias = keyAliasMatch[1];
+      if (keyPasswordMatch) releaseKeyPassword = keyPasswordMatch[1];
+    }
+  }
+
   // Update namespace
   buildGradleContent = buildGradleContent.replace(
     /namespace\s+["'][^"']+["']/,
@@ -200,10 +240,46 @@ function updateAndroidBuildGradle(clientId) {
     `versionName "${client.versionName}"`
   );
 
-  // Update keystore file reference
+  // Ensure debug signing config uses default debug keystore
   buildGradleContent = buildGradleContent.replace(
-    /storeFile\s+file\(['"][^'"]+['"]\)/g,
-    `storeFile file('${client.keystore}')`
+    /(debug\s*\{[^}]*storeFile\s+file\(['"])[^'"]+(['"])/s,
+    `$1debug.keystore$2`
+  );
+  buildGradleContent = buildGradleContent.replace(
+    /(debug\s*\{[^}]*storePassword\s+['"])[^'"]+(['"])/s,
+    `$1android$2`
+  );
+  buildGradleContent = buildGradleContent.replace(
+    /(debug\s*\{[^}]*keyAlias\s+['"])[^'"]+(['"])/s,
+    `$1androiddebugkey$2`
+  );
+  buildGradleContent = buildGradleContent.replace(
+    /(debug\s*\{[^}]*keyPassword\s+['"])[^'"]+(['"])/s,
+    `$1android$2`
+  );
+
+  // Update keystore file reference in release config
+  buildGradleContent = buildGradleContent.replace(
+    /(release\s*\{[^}]*storeFile\s+file\(['"])[^'"]+(['"])/s,
+    `$1${client.keystore}$2`
+  );
+
+  // Update release storePassword
+  buildGradleContent = buildGradleContent.replace(
+    /(release\s*\{[^}]*storePassword\s+['"])[^'"]+(['"])/s,
+    `$1${releaseStorePassword}$2`
+  );
+
+  // Update release keyAlias
+  buildGradleContent = buildGradleContent.replace(
+    /(release\s*\{[^}]*keyAlias\s+['"])[^'"]+(['"])/s,
+    `$1${releaseKeyAlias}$2`
+  );
+
+  // Update release keyPassword
+  buildGradleContent = buildGradleContent.replace(
+    /(release\s*\{[^}]*keyPassword\s+['"])[^'"]+(['"])/s,
+    `$1${releaseKeyPassword}$2`
   );
 
   fs.writeFileSync(buildGradlePath, buildGradleContent);
@@ -244,28 +320,77 @@ function updateAndroidMainActivity(clientId) {
 
   logStep('Updating Android MainActivity', client.name);
 
-  const mainActivityPath = path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'java', 'com', 'microscan', 'app', 'MainActivity.kt');
-  let mainActivityContent = fs.readFileSync(mainActivityPath, 'utf8');
-
-  // Update package name
+  // Build the correct package path
   const packageParts = client.packageName.split('.');
+  const packageDir = path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'java', ...packageParts);
+  const mainActivityPath = path.join(packageDir, 'MainActivity.kt');
+  const mainApplicationPath = path.join(packageDir, 'MainApplication.kt');
+
+  // Create package directory if it doesn't exist
+  if (!fs.existsSync(packageDir)) {
+    fs.mkdirSync(packageDir, { recursive: true });
+    logSuccess(`Created package directory: ${packageDir}`);
+  }
+
+  // Find a source MainActivity to use as template
+  const sourcePaths = [
+    path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'java', 'com', 'h8', 'dnasubscriber', 'MainActivity.kt'),
+    path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'java', 'com', 'microscan', 'app', 'MainActivity.kt'),
+  ];
+  
+  let sourceMainActivity = null;
+  for (const sourcePath of sourcePaths) {
+    if (fs.existsSync(sourcePath)) {
+      sourceMainActivity = sourcePath;
+      break;
+    }
+  }
+
+  if (!sourceMainActivity) {
+    throw new Error('Could not find source MainActivity.kt');
+  }
+
+  // Read and update MainActivity
+  let mainActivityContent = fs.readFileSync(sourceMainActivity, 'utf8');
   const newPackageName = packageParts.join('.');
   mainActivityContent = mainActivityContent.replace(
     /package\s+[^;]+;/,
-    `package ${newPackageName};`
+    `package ${newPackageName}`
   );
 
   // Update module name
   const moduleName = client.name.replace(/\s+/g, '') + 'App';
   mainActivityContent = mainActivityContent.replace(
-    /getMainComponentName\(\)\s*:\s*String\s*\{[^}]+\}/,
-    `getMainComponentName(): String {
-        return "${moduleName}"
-    }`
+    /getMainComponentName\(\)\s*:\s*String\s*=\s*"[^"]*"/,
+    `override fun getMainComponentName(): String = "${moduleName}"`
   );
 
   fs.writeFileSync(mainActivityPath, mainActivityContent);
   logSuccess('Updated Android MainActivity');
+
+  // Also update MainApplication if it exists or needs to be created
+  const sourceApplicationPaths = [
+    path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'java', 'com', 'h8', 'dnasubscriber', 'MainApplication.kt'),
+    path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'java', 'com', 'microscan', 'app', 'MainApplication.kt'),
+  ];
+  
+  let sourceMainApplication = null;
+  for (const sourcePath of sourceApplicationPaths) {
+    if (fs.existsSync(sourcePath)) {
+      sourceMainApplication = sourcePath;
+      break;
+    }
+  }
+
+  if (sourceMainApplication) {
+    let mainApplicationContent = fs.readFileSync(sourceMainApplication, 'utf8');
+    mainApplicationContent = mainApplicationContent.replace(
+      /package\s+[^;]+;/,
+      `package ${newPackageName}`
+    );
+    fs.writeFileSync(mainApplicationPath, mainApplicationContent);
+    logSuccess('Updated Android MainApplication');
+  }
 }
 
 // Build APK for a specific client
