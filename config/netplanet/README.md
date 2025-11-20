@@ -40,7 +40,7 @@ Place the following icon files in the appropriate directories:
 - `adaptive-icon.png` (Android adaptive icon foreground)
 
 ### 2. Keystore File
-- Place `NetPlanet.jks` keystore file in this directory
+- Place `Log2spaceNetPlanetAppKey.jks` keystore file in this directory
 - Update `keystore-config.gradle` with correct passwords if different from defaults
 
 ### 3. Assets

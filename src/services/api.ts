@@ -1135,6 +1135,89 @@ class ApiService {
     });
   }
 
+  async getFaqList(complaintId: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const username = await sessionManager.getUsername();
+      if (!username) {
+        throw new Error('No username found in session');
+      }
+
+      const data = {
+        crm_csi_id: complaintId,
+        username: username.toLowerCase().trim(),
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+
+      try {
+        const res = await fetch(`${url}/selfcareComplaintWiseFAQ`, options);
+        const response = await res.json();
+
+        if ((response.status !== 'ok' && response.code !== 200) || response.code === 999) {
+          throw new Error(response.message || 'Failed to fetch FAQs');
+        }
+
+        return response.data || [];
+      } catch (e: any) {
+        if (isNetworkError(e)) {
+          throw new Error(networkErrorMsg);
+        } else {
+          throw new Error(e.message || 'Failed to fetch FAQs');
+        }
+      }
+    });
+  }
+
+  async getSubComplaintList(parentComplaintId: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const username = await sessionManager.getUsername();
+      if (!username) {
+        throw new Error('No username found in session');
+      }
+
+      const data = {
+        combo_code: 'fetch_parent_complaints',
+        column: 'parent_id',
+        value: parentComplaintId,
+        'extraparams[selfcare_display]': 'yes',
+        username: username.toLowerCase().trim(),
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+
+      try {
+        const res = await fetch(`${url}/selfcareDropdown`, options);
+        const response = await res.json();
+
+        if ((response.status !== 'ok' && response.code !== 200) || response.code === 999) {
+          throw new Error(response.message || 'Failed to fetch sub complaints');
+        }
+
+        return response.data || [];
+      } catch (e: any) {
+        if (isNetworkError(e)) {
+          throw new Error(networkErrorMsg);
+        } else {
+          throw new Error(e.message || 'Failed to fetch sub complaints');
+        }
+      }
+    });
+  }
+
   async submitComplaint(username: string, problem: any, customMsg: string, realm: string) {
     return this.makeAuthenticatedRequest(async (token: string) => {
       const data: any = {
@@ -1298,21 +1381,21 @@ class ApiService {
         fup_flag: planObj.fup_flag || 'no',
         isExpanded: false
       }));
-          console.log('=== API SERVICE: Mapped plans ===', mappedPlans);
-          if (mappedPlans?.[0]) {
-            console.log('=== API SERVICE: Mapped plan sample ===');
-            console.log('Mapped Name:', mappedPlans[0].name);
-            console.log('Mapped Description:', mappedPlans[0].description);
-            console.log('Mapped Speed:', mappedPlans[0].downloadSpeed);
-            console.log('Mapped Price:', mappedPlans[0].FinalAmount);
-            console.log('Mapped Validity:', mappedPlans[0].days);
-            console.log('Mapped Data Limit:', mappedPlans[0].limit);
-            console.log('Mapped OTT Plan:', mappedPlans[0].ott_plan);
-            console.log('Mapped Voice Plan:', mappedPlans[0].voice_plan);
-            console.log('Mapped IPTV:', mappedPlans[0].iptv);
-            console.log('Mapped FUP Flag:', mappedPlans[0].fup_flag);
-            console.log('Mapped OTT Count:', mappedPlans[0].content_providers?.length || 0);
-          }
+          // console.log('=== API SERVICE: Mapped plans ===', mappedPlans);
+          // if (mappedPlans?.[0]) {
+          //   console.log('=== API SERVICE: Mapped plan sample ===');
+          //   console.log('Mapped Name:', mappedPlans[0].name);
+          //   console.log('Mapped Description:', mappedPlans[0].description);
+          //   console.log('Mapped Speed:', mappedPlans[0].downloadSpeed);
+          //   console.log('Mapped Price:', mappedPlans[0].FinalAmount);
+          //   console.log('Mapped Validity:', mappedPlans[0].days);
+          //   console.log('Mapped Data Limit:', mappedPlans[0].limit);
+          //   console.log('Mapped OTT Plan:', mappedPlans[0].ott_plan);
+          //   console.log('Mapped Voice Plan:', mappedPlans[0].voice_plan);
+          //   console.log('Mapped IPTV:', mappedPlans[0].iptv);
+          //   console.log('Mapped FUP Flag:', mappedPlans[0].fup_flag);
+          //   console.log('Mapped OTT Count:', mappedPlans[0].content_providers?.length || 0);
+          // }
           return mappedPlans;
         }
       } catch (e: any) {
@@ -1387,7 +1470,7 @@ class ApiService {
         const res = await fetch(`${url}/selfcareGetAdminDetails`, options);
         const response = await res.json();
         
-        console.log('=== Tax info API response ===', response);
+        //console.log('=== Tax info API response ===', response);
         
         if (response.status !== 'ok' && response.code !== 200) {
           throw new Error('Tax info not found. Please try again.');

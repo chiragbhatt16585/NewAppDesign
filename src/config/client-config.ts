@@ -87,7 +87,7 @@ const clientConfigs: Record<string, ClientConfig> = {
       timeout: 30000,
     },
     branding: {
-      logo: 'microscan_logo.png',
+      logo: 'isp_logo.png',
       primaryColor: '#FF791F',
       secondaryColor: '#FFA64D',
       appName: 'Microscan',
@@ -176,7 +176,7 @@ const clientConfigs: Record<string, ClientConfig> = {
         timeout: 30000,
       },
       branding: {
-        logo: 'dna_logo.png',
+        logo: 'isp_logo.png',
         primaryColor: '#1976D2',
         secondaryColor: '#FF9800',
         appName: 'DNA Infotel',
@@ -250,7 +250,7 @@ const clientConfigs: Record<string, ClientConfig> = {
       timeout: 30000,
     },
     branding: {
-      logo: 'dna_logo.png',
+      logo: 'isp_logo.png',
       primaryColor: '#1976D2',
       secondaryColor: '#FF9800',
       appName: 'DNA Goa',

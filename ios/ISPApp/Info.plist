@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>Net Planet</string>
+	<string>Microscan</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -57,10 +57,6 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>remote-notification</string>
-	</array>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -70,7 +66,7 @@
 			<array>
 				<string>paymentresponse</string>
 				<string>isp</string>
-				<string>netplanet</string>
+				<string>microscan</string>
 			</array>
 		</dict>
 	</array>
@@ -143,5 +139,4 @@
 		<string>market</string>
 	</array>
 </dict>
-</plist>
-
+</plist> 

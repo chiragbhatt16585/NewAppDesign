@@ -95,7 +95,7 @@ android {
             keyPassword 'android'
         }
         release {
-            storeFile file('NetPlanet.jks')
+            storeFile file('Log2spaceNetPlanetAppKey.jks')
             storePassword 'log2space'
             keyAlias 'log2space'
             keyPassword 'log2space'

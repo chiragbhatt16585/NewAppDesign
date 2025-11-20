@@ -100,13 +100,13 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.spacecom.log2space.netplanet"
+    namespace "com.microscan.app"
     defaultConfig {
-        applicationId "com.spacecom.log2space.netplanet"
+        applicationId "com.microscan.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1   
-        versionName "1.0.0"
+        versionCode 33   
+        versionName "33.0.0"
         buildConfigField "boolean", "IS_NEW_ARCHITECTURE_ENABLED", "false"
     }
     
@@ -118,7 +118,7 @@ android {
             keyPassword 'android'
         }
         release {
-            storeFile file('NetPlanet.jks')
+            storeFile file('Log2SpaceEndUserMicroscan.jks')
             storePassword 'log2space'
             keyAlias 'log2space'
             keyPassword 'log2space'

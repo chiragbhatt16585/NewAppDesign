@@ -57,7 +57,7 @@ const CLIENTS = {
     namespace: 'com.spacecom.log2space.netplanet',
     versionCode: 1,
     versionName: '1.0.0',
-    keystore: 'NetPlanet.jks',
+    keystore: 'Log2spaceNetPlanetAppKey.jks',
     configDir: 'config/netplanet',
   },
 };

@@ -15,6 +15,7 @@ import {apiService} from '../services/api';
 import sessionManager from '../services/sessionManager';
 import CommonHeader from '../components/CommonHeader';
 import {navigateToLogin} from '../utils/navigationUtils';
+import { getSafeDaysRemaining } from '../utils/usageUtils';
 
 const AccountDetailsScreen = ({navigation}: any) => {
   const {isDark} = useTheme();
@@ -22,6 +23,8 @@ const AccountDetailsScreen = ({navigation}: any) => {
   const {t} = useTranslation();
   const [authData, setAuthData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const primaryUsageDetail = authData?.usage_details?.[0];
+  const usageDaysRemainingText = getSafeDaysRemaining(primaryUsageDetail);
 
   // Fetch account data on component mount
   useEffect(() => {
@@ -404,14 +407,14 @@ const AccountDetailsScreen = ({navigation}: any) => {
         })}
 
         {/* Usage Information */}
-        {authData?.usage_details?.[0] && renderDetailCard('Usage Information', {
-          'Plan Data': authData.usage_details[0].plan_data || 'N/A',
-          'Data Used': `${(parseFloat(authData.usage_details[0].data_used) / (1024 * 1024 * 1024)).toFixed(2)} GB`,
-          'Plan Hours': authData.usage_details[0].plan_hours || 'N/A',
-          'Hours Used': authData.usage_details[0].hours_used || 'N/A',
-          'Plan Days': authData.usage_details[0].plan_days || 'N/A',
-          'Days Used': authData.usage_details[0].days_used || 'N/A',
-          'Days Remaining': `${parseInt(authData.usage_details[0].plan_days) - parseInt(authData.usage_details[0].days_used)} days`,
+        {primaryUsageDetail && renderDetailCard('Usage Information', {
+          'Plan Data': primaryUsageDetail.plan_data || 'N/A',
+          'Data Used': `${(parseFloat(primaryUsageDetail.data_used) / (1024 * 1024 * 1024)).toFixed(2)} GB`,
+          'Plan Hours': primaryUsageDetail.plan_hours || 'N/A',
+          'Hours Used': primaryUsageDetail.hours_used || 'N/A',
+          'Plan Days': primaryUsageDetail.plan_days || 'N/A',
+          'Days Used': primaryUsageDetail.days_used || 'N/A',
+          'Days Remaining': usageDaysRemainingText === '-' ? '-' : `${usageDaysRemainingText} days`,
         })}
 
        

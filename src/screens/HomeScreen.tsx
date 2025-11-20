@@ -35,6 +35,7 @@ import { debugFCMTokenIssues, forceFCMTokenGeneration } from '../services/fcmDeb
 import useMenuSettings from '../hooks/useMenuSettings';
 import menuService from '../services/menuService';
 import dataCache from '../services/dataCache';
+import { getSafeDaysRemaining } from '../utils/usageUtils';
 // import AIUsageInsights from '../components/AIUsageInsights';
 //import ispLogo from '../assets/isp_logo.png';
 import Feather from 'react-native-vector-icons/Feather';
@@ -508,14 +509,14 @@ const HomeScreen = ({navigation}: any) => {
         // Update username ref
         lastUsernameRef.current = username;
         
-        console.log('[HomeScreen] State cleared, continuing with API call for new user');
+        //console.log('[HomeScreen] State cleared, continuing with API call for new user');
       } else if (lastUsernameRef.current === null) {
         // First time setting username
         lastUsernameRef.current = username;
-        console.log('[HomeScreen] Setting initial username:', username);
+        //console.log('[HomeScreen] Setting initial username:', username);
       }
       
-      console.log('[HomeScreen] Making API call for username:', username);
+      //console.log('[HomeScreen] Making API call for username:', username);
 
       // Use the enhanced API service with automatic token regeneration
       // console.log('🏠 [HomeScreen] Calling makeAuthenticatedRequest...');
@@ -565,15 +566,15 @@ const HomeScreen = ({navigation}: any) => {
         console.log('[HomeScreen] Force refreshing menu after login...');
         await forceRefreshMenu();
         const latestMenu = await menuService.get();
-        console.log('🔍 [HomeScreen] Menu after refresh:', {
-          isArray: Array.isArray(latestMenu),
-          length: Array.isArray(latestMenu) ? latestMenu.length : 'N/A',
-          items: Array.isArray(latestMenu) ? latestMenu.map((m: any) => ({
-            label: m?.menu_label,
-            type: m?.menu_api_type,
-            status: m?.status,
-          })) : latestMenu,
-        });
+          // console.log('🔍 [HomeScreen] Menu after refresh:', {
+          //   isArray: Array.isArray(latestMenu),
+          //   length: Array.isArray(latestMenu) ? latestMenu.length : 'N/A',
+          //   items: Array.isArray(latestMenu) ? latestMenu.map((m: any) => ({
+          //     label: m?.menu_label,
+          //     type: m?.menu_api_type,
+          //     status: m?.status,
+          //   })) : latestMenu,
+          // });
       } catch (e: any) {
         console.warn('[HomeScreen] Menu refresh failed:', e?.message || e);
       }
@@ -997,6 +998,7 @@ const HomeScreen = ({navigation}: any) => {
     authData?.usage_details?.[0] ? (parseFloat(authData.usage_details[0].data_used) / (1024 * 1024 * 1024) / 100 * 100) : 0;
   const daysFill = authData?.usage_details?.[0]?.plan_days === 'Unlimited' ? 50 : 
     authData?.usage_details?.[0] ? (parseFloat(authData.usage_details[0].days_used) / parseFloat(authData.usage_details[0].plan_days) * 100) : 0;
+  const daysRemainingText = getSafeDaysRemaining(authData?.usage_details?.[0]);
 
   // Loading spinner component
   const LoadingSpinner = () => (
@@ -1498,9 +1500,7 @@ const HomeScreen = ({navigation}: any) => {
                   <Text style={[styles.usageStatIcon, {color: colors.success}]}>📅</Text>
                   <Text style={[styles.usageStatLabel, {color: colors.textSecondary}]}>Days Remaining</Text>
                   <Text style={[styles.usageStatValue, {color: colors.text}]}>
-                    {authData?.usage_details?.[0] ? 
-                      `${parseInt(authData.usage_details[0].plan_days) - parseInt(authData.usage_details[0].days_used)}` : 
-                      '0'}
+                    {daysRemainingText}
                   </Text>
                 </View>
                 

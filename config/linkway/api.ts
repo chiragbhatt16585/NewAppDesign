@@ -1134,6 +1134,89 @@ class ApiService {
     });
   }
 
+  async getFaqList(complaintId: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const username = await sessionManager.getUsername();
+      if (!username) {
+        throw new Error('No username found in session');
+      }
+
+      const data = {
+        crm_csi_id: complaintId,
+        username: username.toLowerCase().trim(),
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+
+      try {
+        const res = await fetch(`${url}/selfcareComplaintWiseFAQ`, options);
+        const response = await res.json();
+
+        if ((response.status !== 'ok' && response.code !== 200) || response.code === 999) {
+          throw new Error(response.message || 'Failed to fetch FAQs');
+        }
+
+        return response.data || [];
+      } catch (e: any) {
+        if (isNetworkError(e)) {
+          throw new Error(networkErrorMsg);
+        } else {
+          throw new Error(e.message || 'Failed to fetch FAQs');
+        }
+      }
+    });
+  }
+
+  async getSubComplaintList(parentComplaintId: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const username = await sessionManager.getUsername();
+      if (!username) {
+        throw new Error('No username found in session');
+      }
+
+      const data = {
+        combo_code: 'fetch_parent_complaints',
+        column: 'parent_id',
+        value: parentComplaintId,
+        'extraparams[selfcare_display]': 'yes',
+        username: username.toLowerCase().trim(),
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+
+      try {
+        const res = await fetch(`${url}/selfcareDropdown`, options);
+        const response = await res.json();
+
+        if ((response.status !== 'ok' && response.code !== 200) || response.code === 999) {
+          throw new Error(response.message || 'Failed to fetch sub complaints');
+        }
+
+        return response.data || [];
+      } catch (e: any) {
+        if (isNetworkError(e)) {
+          throw new Error(networkErrorMsg);
+        } else {
+          throw new Error(e.message || 'Failed to fetch sub complaints');
+        }
+      }
+    });
+  }
+
   async submitComplaint(username: string, problem: any, customMsg: string, realm: string) {
     return this.makeAuthenticatedRequest(async (token: string) => {
       const data: any = {
