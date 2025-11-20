@@ -14,3 +14,22 @@
 -keep class com.google.ar.core.** { *; }
 -dontwarn androidx.xr.arcore.**
 -keep class androidx.xr.arcore.** { *; }
+
+# React Native Screens - Fix Fragment instantiation issues
+-keep class com.swmansion.rnscreens.** { *; }
+-keep class com.swmansion.rnscreens.ScreenFragment { *; }
+-keep class com.swmansion.rnscreens.ScreenStackFragment { *; }
+-keep class com.swmansion.rnscreens.ScreenContainerFragment { *; }
+-keepclassmembers class com.swmansion.rnscreens.** {
+    <init>(...);
+}
+
+# Keep all Fragment classes from react-native-screens
+-keep class * extends androidx.fragment.app.Fragment {
+    <init>(...);
+}
+
+# Keep Fragment constructors
+-keepclassmembers class * extends androidx.fragment.app.Fragment {
+    public <init>(...);
+}

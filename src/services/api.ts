@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import param from 'jquery-param';
 import sessionManager from '../../src/services/sessionManager';
 import { getClientConfig } from '../config/client-config';
 
@@ -1537,6 +1538,59 @@ class ApiService {
         }
         return response;
       } catch (e: any) {
+        const msg = isNetworkError(e) ? networkErrorMsg : e.message;
+        throw new Error(msg);
+      }
+    });
+  }
+
+  async activatePaymentGatewayResponse(
+    gatewayId: string,
+    merchantTxnRef: string,
+    gatewayResponse: any,
+    realm: string
+  ) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const username = await sessionManager.getUsername();
+      if (!username) {
+        throw new Error('No user session found');
+      }
+
+      const payload: Record<string, any> = {
+        username: username.toLowerCase().trim(),
+        mer_txn_ref: merchantTxnRef,
+        tp_gw_id: gatewayId,
+        gw_response_json: gatewayResponse,
+        is_verify: 'false',
+        request_source: 'app',
+        request_app: 'user_app',
+      };
+
+      const encodedBody = param(payload);
+
+      const options = {
+        method,
+        headers: new Headers({
+          Authentication: token,
+          ...fixedHeaders,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        }),
+        body: encodedBody,
+        timeout,
+      };
+
+      try {
+        console.log('=== ACTIVATE PAYMENT REQUEST ===');
+        console.log('Payload:', payload);
+        const res = await fetch(`${url}/selfcareAdminPaymentResponse`, options);
+        const response = await res.json();
+        console.log('Activate payment response:', response);
+        if (response.status !== 'ok' && response.code !== 200) {
+          throw new Error(response.message || 'Failed to record payment response');
+        }
+        return response;
+      } catch (e: any) {
+        console.error('Activate payment error:', e);
         const msg = isNetworkError(e) ? networkErrorMsg : e.message;
         throw new Error(msg);
       }

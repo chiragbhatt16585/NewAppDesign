@@ -63,8 +63,7 @@ task fixGeneratedFile {
             def content = generatedFile.text
             def namespace = android.namespace
             // Replace any BuildConfig reference with the correct namespace
-            content = content.replaceAll(/com\.\w+\.\w+\.\w+\.BuildConfig/, "${namespace}.BuildConfig")
-            content = content.replaceAll(/com\.\w+\.\w+\.BuildConfig/, "${namespace}.BuildConfig")
+            content = content.replaceAll(/com\.[A-Za-z0-9_.]+\.BuildConfig/, "${namespace}.BuildConfig")
             generatedFile.text = content
             println "✅ Fixed generated file with namespace: ${namespace}"
         }
@@ -101,13 +100,13 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.dnagoa"
+    namespace "com.spacecom.log2space.netplanet"
     defaultConfig {
-        applicationId "com.dnagoa"
+        applicationId "com.spacecom.log2space.netplanet"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 14
-        versionName "14"
+        versionCode 1   
+        versionName "1.0.0"
         buildConfigField "boolean", "IS_NEW_ARCHITECTURE_ENABLED", "false"
     }
     
@@ -119,10 +118,10 @@ android {
             keyPassword 'android'
         }
         release {
-            storeFile file('Log2spaceDNAGoaAppKey.jks')
-            storePassword 'dnasubscriber'
-            keyAlias 'dnasubscriber'
-            keyPassword 'dnasubscriber'
+            storeFile file('NetPlanet.jks')
+            storePassword 'log2space'
+            keyAlias 'log2space'
+            keyPassword 'log2space'
         }
     }
     

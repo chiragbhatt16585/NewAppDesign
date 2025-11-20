@@ -80,6 +80,16 @@ const clientConfigs: Record<string, ClientConfig> = {
     poweredByWebsite: 'https://spacecom.in',
     bundleId: 'com.spacecom.log2space.linkway',
   },
+  netplanet: {
+    name: 'Net Planet',
+    companyName: 'Net Planet',
+    apiUrl: 'https://netplanet.l2s.biz/l2s/api',
+    supportEmail: 'netplanetservices@gmail.com',
+    website: '', // No website for Net Planet
+    poweredBy: 'Spacecom Software LLP',
+    poweredByWebsite: 'https://spacecom.in',
+    bundleId: 'com.spacecom.log2space.netplanet',
+  },
 };
 
 // Export current client configuration

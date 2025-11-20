@@ -522,6 +522,71 @@ const clientConfigs: Record<string, ClientConfig> = {
       appStoreId: '1234567890',
     },
   },
+  'netplanet': {
+    clientId: 'netplanet',
+    clientName: 'Net Planet',
+    api: {
+      baseURL: 'https://netplanet.l2s.biz/l2s/api',
+      timeout: 30000,
+    },
+    branding: {
+      logo: 'isp_logo.png',
+      primaryColor: '#1976D2',
+      secondaryColor: '#42A5F5',
+      appName: 'Net Planet',
+    },
+    features: {
+      biometricAuth: true,
+      pushNotifications: true,
+      fileUpload: true,
+      multiLanguage: true,
+    },
+    contact: {
+      whatsappNumber: '9404824139',
+      headOffice: {
+        title: 'Head Office',
+        address: 'HASHAMJI PREMJI SHOPPING COMPLEX, STATION ROAD, AMALNER, Dist: Jalgaon, Maharashtra - 425401',
+        customerSupport: '9404824139',
+        customerSupportHours: 'Mon-Fri 9:00 AM - 6:00 PM',
+      },
+      branchOffices: [],
+      emails: {
+        inquiries: 'netplanetservices@gmail.com',
+        sales: 'netplanetservices@gmail.com',
+        support: 'netplanetservices@gmail.com',
+      },
+    },
+    about: {
+      companyName: 'Net Planet',
+      establishedYear: '2024',
+      description: 'Net Planet is an internet service provider committed to delivering high-quality broadband services.',
+      specializations: [
+        'High-speed broadband internet',
+        'Fiber optic technology',
+        'Business internet solutions',
+        '24/7 customer support'
+      ],
+      serviceAreas: [
+        'Amalner',
+        'Jalgaon District',
+        'Maharashtra',
+        'Surrounding areas'
+      ],
+      achievements: [
+        'Reliable internet services',
+        'Customer-focused approach',
+        'Modern technology implementation'
+      ],
+    },
+    reviewUrl: undefined,
+    versionCheck: {
+      enabled: true,
+      checkInterval: 24,
+      forceUpdateEnabled: true,
+      packageName: 'com.spacecom.log2space.netplanet',
+      appStoreId: '1234567890',
+    },
+  },
 };
 
 // Get current client configuration

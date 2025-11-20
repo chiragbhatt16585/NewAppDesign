@@ -1155,16 +1155,18 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
               </View> 
               <Text style={[styles.featureText, {color: colors.text}]}>Support</Text> 
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.featureCard, {backgroundColor: colors.card, borderColor: colors.border}]}
-              onPress={handleCompanyWebsite}
-              activeOpacity={0.7}
-            > 
-              <View style={[styles.featureIcon, {backgroundColor: isDark ? 'rgba(255, 0, 128, 0.2)' : '#f0f9ff'}]}> 
-                <Text style={styles.featureEmoji}>🌐</Text> 
-              </View> 
-              <Text style={[styles.featureText, {color: colors.text}]}>Website</Text> 
-            </TouchableOpacity>
+            {getWebsite() && (
+              <TouchableOpacity 
+                style={[styles.featureCard, {backgroundColor: colors.card, borderColor: colors.border}]}
+                onPress={handleCompanyWebsite}
+                activeOpacity={0.7}
+              > 
+                <View style={[styles.featureIcon, {backgroundColor: isDark ? 'rgba(255, 0, 128, 0.2)' : '#f0f9ff'}]}> 
+                  <Text style={styles.featureEmoji}>🌐</Text> 
+                </View> 
+                <Text style={[styles.featureText, {color: colors.text}]}>Website</Text> 
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* Language & Theme Row (hidden for Microscan) */}

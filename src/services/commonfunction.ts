@@ -5,8 +5,45 @@ import { apiService } from './api';
 // @ts-ignore
 import RazorpayCheckout from 'react-native-razorpay';
 import queryString from 'query-string';
+import sessionManager from './sessionManager';
+import { getClientConfig } from '../config/client-config';
 
 const domain = ''; // TODO: Set your domain if needed for EBS/PayuMoney
+
+async function navigateWithServerStatus(
+  navigation: any,
+  txnRef: string,
+  source: any,
+  pgInfo: string,
+  amount: number,
+  fallbackStatus: string,
+) {
+  try {
+    const session = await sessionManager.getCurrentSession();
+    const username = session?.username;
+    if (!username) {
+      throw new Error('User session not found');
+    }
+    const realm = getClientConfig().clientId;
+    const paymentStatusResponse = await apiService.getPaymentStatus(username, txnRef, realm);
+    navigation.navigate('PaymentResponse', {
+      ...paymentStatusResponse,
+      txnRef,
+      source,
+      pgInfo,
+      amount,
+    });
+  } catch (error) {
+    console.error('Failed to fetch gateway payment status:', error);
+    navigation.navigate('PaymentResponse', {
+      txnRef,
+      source,
+      pgInfo,
+      amount,
+      status: fallbackStatus,
+    });
+  }
+}
 
 export function handlePayment(params: any, payActionType: string, navigation: any, realm: string) {
   console.log('=== HANDLE PAYMENT DEBUG ===');
@@ -168,13 +205,49 @@ export function handlePayment(params: any, payActionType: string, navigation: an
         },
         order_id: data.razorpayOrderId
       };
+      console.log('=== RAZORPAY OPTIONS SENT ===');
+      console.log(JSON.stringify(options, null, 2));
+      console.log('=== END RAZORPAY OPTIONS ===');
+
+      const tpGatewayId = selectedPg || pgInfo || 'RAZORPAY';
+
       RazorpayCheckout.open(options)
-        .then((result: any) => {
-          navigation.navigate('PaymentResponse', { txnRef: txnInfo.merTxnId, source, pgInfo, amount: params.amount, status: 'success' });
-          // TODO: Optionally call activateUser and toPaymentFeedback if needed
+        .then(async (result: any) => {
+          console.log('=== RAZORPAY SUCCESS RESPONSE ===');
+          try {
+            console.log(JSON.stringify(result, null, 2));
+          } catch (err) {
+            console.log(result);
+          }
+          console.log('=== END SUCCESS RESPONSE ===');
+
+          try {
+            await apiService.activatePaymentGatewayResponse(
+              tpGatewayId,
+              txnInfo.merTxnId,
+              {
+                ...result,
+                amount: params.amount,
+                pgInfo,
+              },
+              realm,
+            );
+            console.log('✅ Razorpay activation sent to backend');
+          } catch (activationError) {
+            console.error('Failed to activate Razorpay payment:', activationError);
+          }
+
+          await navigateWithServerStatus(navigation, txnInfo.merTxnId, source, pgInfo, params.amount, 'success');
         })
-        .catch((error: any) => {
-          navigation.navigate('PaymentResponse', { txnRef: txnInfo.merTxnId, source, pgInfo, amount: params.amount, status: 'failed' });
+        .catch(async (error: any) => {
+          console.log('=== RAZORPAY FAILURE RESPONSE ===');
+          try {
+            console.log(JSON.stringify(error, null, 2));
+          } catch (err) {
+            console.log(error);
+          }
+          console.log('=== END FAILURE RESPONSE ===');
+          await navigateWithServerStatus(navigation, txnInfo.merTxnId, source, pgInfo, params.amount, 'failed');
         });
     } else if (pgInfo) {
       txnInfo.merTxnId = res.data.txn_ref_no;

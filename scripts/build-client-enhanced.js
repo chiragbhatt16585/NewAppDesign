@@ -33,6 +33,15 @@ const CLIENTS = {
     keystore: 'LogonBroadband.jks',
     configDir: 'config/logon-broadband',
   },
+  linkway: {
+    name: 'Linkway',
+    packageName: 'com.spacecom.log2space.linkway',
+    namespace: 'com.spacecom.log2space.linkway',
+    versionCode: 1,
+    versionName: '1.0.0',
+    keystore: 'Linkway.jks',
+    configDir: 'config/linkway',
+  },
   'dna-goa': {
     name: 'DNA Goa',
     packageName: 'com.dnagoa',
@@ -41,6 +50,15 @@ const CLIENTS = {
     versionName: '4.0.0',
     keystore: 'Log2spaceDNAGoaAppKey.jks',
     configDir: 'config/dna-goa',
+  },
+  netplanet: {
+    name: 'Net Planet',
+    packageName: 'com.spacecom.log2space.netplanet',
+    namespace: 'com.spacecom.log2space.netplanet',
+    versionCode: 1,
+    versionName: '1.0.0',
+    keystore: 'NetPlanet.jks',
+    configDir: 'config/netplanet',
   },
 };
 
@@ -353,15 +371,13 @@ function updateAndroidMainActivity(clientId) {
   // Read and update MainActivity
   let mainActivityContent = fs.readFileSync(sourceMainActivity, 'utf8');
   const newPackageName = packageParts.join('.');
-  mainActivityContent = mainActivityContent.replace(
-    /package\s+[^;]+;/,
-    `package ${newPackageName}`
-  );
+  const packageRegex = /package\s+[^\s;]+;?/;
+  mainActivityContent = mainActivityContent.replace(packageRegex, `package ${newPackageName}`);
 
   // Update module name
   const moduleName = client.name.replace(/\s+/g, '') + 'App';
   mainActivityContent = mainActivityContent.replace(
-    /getMainComponentName\(\)\s*:\s*String\s*=\s*"[^"]*"/,
+    /override\s+fun\s+getMainComponentName\(\)\s*:\s*String\s*=\s*"[^"]*"/,
     `override fun getMainComponentName(): String = "${moduleName}"`
   );
 
@@ -384,10 +400,7 @@ function updateAndroidMainActivity(clientId) {
 
   if (sourceMainApplication) {
     let mainApplicationContent = fs.readFileSync(sourceMainApplication, 'utf8');
-    mainApplicationContent = mainApplicationContent.replace(
-      /package\s+[^;]+;/,
-      `package ${newPackageName}`
-    );
+    mainApplicationContent = mainApplicationContent.replace(packageRegex, `package ${newPackageName}`);
     fs.writeFileSync(mainApplicationPath, mainApplicationContent);
     logSuccess('Updated Android MainApplication');
   }
