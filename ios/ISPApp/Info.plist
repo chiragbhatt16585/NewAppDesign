@@ -20,47 +20,6 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
-	<key>CFBundleVersion</key>
-	<string>$(CURRENT_PROJECT_VERSION)</string>
-	<key>LSRequiresIPhoneOS</key>
-	<true/>
-	<key>NSAppTransportSecurity</key>
-	<dict>
-		<key>NSAllowsArbitraryLoads</key>
-		<false/>
-		<key>NSAllowsLocalNetworking</key>
-		<true/>
-	</dict>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string></string>
-	<key>NSFaceIDUsageDescription</key>
-	<string>This app uses Face ID for secure authentication and quick access.</string>
-	<key>NSCameraUsageDescription</key>
-	<string>This app needs access to camera for scanning QR codes and taking photos.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>This app needs access to photo library for uploading documents and images.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>This app needs access to microphone for voice features.</string>
-	<key>RCTNewArchEnabled</key>
-	<true/>
-	<key>UILaunchStoryboardName</key>
-	<string>LaunchScreen</string>
-	<key>UIRequiredDeviceCapabilities</key>
-	<array>
-		<string>arm64</string>
-	</array>
-	<key>UISupportedInterfaceOrientations</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-	<key>UIViewControllerBasedStatusBarAppearance</key>
-	<false/>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>remote-notification</string>
-	</array>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -70,18 +29,17 @@
 			<array>
 				<string>paymentresponse</string>
 				<string>isp</string>
-				<string>dna-goa</string>
+				<string>microscan</string>
 			</array>
 		</dict>
 	</array>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
-		<!-- Google Pay / Tez -->
 		<string>googlepay</string>
 		<string>tez</string>
 		<string>gpay</string>
-		
-		<!-- Popular UPI Apps -->
 		<string>phonepe</string>
 		<string>phonepepay</string>
 		<string>cred</string>
@@ -103,14 +61,10 @@
 		<string>jio</string>
 		<string>jiopay</string>
 		<string>jiomoney</string>
-		
-		<!-- International Payment Apps -->
 		<string>razorpay</string>
 		<string>stripe</string>
 		<string>square</string>
 		<string>paypal</string>
-		
-		<!-- Bank Apps -->
 		<string>yono</string>
 		<string>icicibank</string>
 		<string>hdfcbank</string>
@@ -137,11 +91,62 @@
 		<string>syndicatebank</string>
 		<string>vijayabank</string>
 		<string>dhanlaxmibank</string>
-		
-		<!-- Android Intent and Market -->
 		<string>intent</string>
 		<string>market</string>
 	</array>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<false/>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>This app needs access to camera for scanning QR codes and taking photos.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>This app uses Face ID for secure authentication and quick access.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string></string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This app needs access to microphone for voice features.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app needs access to photo library for uploading documents and images.</string>
+	<key>RCTNewArchEnabled</key>
+	<true/>
+	<key>UIAppFonts</key>
+	<array>
+		<string>AntDesign.ttf</string>
+		<string>Entypo.ttf</string>
+		<string>EvilIcons.ttf</string>
+		<string>Feather.ttf</string>
+		<string>FontAwesome.ttf</string>
+		<string>FontAwesome5_Brands.ttf</string>
+		<string>FontAwesome5_Regular.ttf</string>
+		<string>FontAwesome5_Solid.ttf</string>
+		<string>Foundation.ttf</string>
+		<string>Ionicons.ttf</string>
+		<string>MaterialIcons.ttf</string>
+		<string>MaterialCommunityIcons.ttf</string>
+		<string>SimpleLineIcons.ttf</string>
+		<string>Octicons.ttf</string>
+		<string>Zocial.ttf</string>
+		<string>Fontisto.ttf</string>
+	</array>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>arm64</string>
+	</array>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<false/>
 </dict>
 </plist>
-

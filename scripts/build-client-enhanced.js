@@ -150,11 +150,47 @@ function copyClientConfig(clientId) {
     logSuccess('Copied Android strings.xml');
   }
 
-  // Copy iOS Info.plist
+  // Copy iOS Info.plist and ensure UIAppFonts is present
   const infoPlistSrc = path.join(configDir, 'ios-Info.plist');
   const infoPlistDest = path.join(appDir, 'ios', 'ISPApp', 'Info.plist');
   if (fs.existsSync(infoPlistSrc)) {
-    fs.copyFileSync(infoPlistSrc, infoPlistDest);
+    let infoPlistContent = fs.readFileSync(infoPlistSrc, 'utf8');
+    
+    // Remove UIAppFonts if it exists in wrong location (inside NSAppTransportSecurity)
+    infoPlistContent = infoPlistContent.replace(
+      /<key>NSAppTransportSecurity<\/key>\s*<dict>[\s\S]*?<key>UIAppFonts<\/key>[\s\S]*?<\/array>\s*<\/dict>/,
+      '<key>NSAppTransportSecurity</key>\n\t<dict>\n\t\t<key>NSAllowsArbitraryLoads</key>\n\t\t<false/>\n\t\t<key>NSAllowsLocalNetworking</key>\n\t\t<true/>\n\t</dict>'
+    );
+    
+    // Check if UIAppFonts already exists at root level
+    if (!infoPlistContent.includes('<key>UIAppFonts</key>')) {
+      // Add UIAppFonts before the final closing </dict> tag (root level)
+      const uiAppFonts = `\t<key>UIAppFonts</key>
+	<array>
+		<string>AntDesign.ttf</string>
+		<string>Entypo.ttf</string>
+		<string>EvilIcons.ttf</string>
+		<string>Feather.ttf</string>
+		<string>FontAwesome.ttf</string>
+		<string>FontAwesome5_Brands.ttf</string>
+		<string>FontAwesome5_Regular.ttf</string>
+		<string>FontAwesome5_Solid.ttf</string>
+		<string>Foundation.ttf</string>
+		<string>Ionicons.ttf</string>
+		<string>MaterialIcons.ttf</string>
+		<string>MaterialCommunityIcons.ttf</string>
+		<string>SimpleLineIcons.ttf</string>
+		<string>Octicons.ttf</string>
+		<string>Zocial.ttf</string>
+		<string>Fontisto.ttf</string>
+	</array>`;
+      
+      // Insert before final closing </dict> (root level, before </plist>)
+      infoPlistContent = infoPlistContent.replace(/(\s*)<\/dict>\s*<\/plist>/, `${uiAppFonts}\n$1</dict>\n</plist>`);
+      log('Added UIAppFonts to Info.plist', 'blue');
+    }
+    
+    fs.writeFileSync(infoPlistDest, infoPlistContent);
     logSuccess('Copied iOS Info.plist');
   }
 
@@ -314,10 +350,35 @@ function updateIOSAppDelegate(clientId) {
   logStep('Updating iOS AppDelegate', client.name);
 
   const appDelegatePath = path.join(__dirname, '..', 'ios', 'ISPApp', 'AppDelegate.swift');
+  if (!fs.existsSync(appDelegatePath)) {
+    logWarning('AppDelegate.swift not found, skipping update');
+    return;
+  }
+
   let appDelegateContent = fs.readFileSync(appDelegatePath, 'utf8');
 
-  // Update module name
-  const moduleName = client.name.replace(/\s+/g, '') + 'App';
+  // Read app name from app.json (more reliable than client.name)
+  const appJsonPath = path.join(__dirname, '..', 'app.json');
+  let moduleName = client.name.replace(/\s+/g, '') + 'App'; // fallback
+  
+  if (fs.existsSync(appJsonPath)) {
+    try {
+      const appJson = JSON.parse(fs.readFileSync(appJsonPath, 'utf8'));
+      if (appJson.name) {
+        moduleName = appJson.name;
+      }
+    } catch (e) {
+      logWarning('Could not read app.json, using fallback module name');
+    }
+  }
+
+  // Update withModuleName (for React Native 0.80+)
+  appDelegateContent = appDelegateContent.replace(
+    /withModuleName:\s*"[^"]*"/,
+    `withModuleName: "${moduleName}"`
+  );
+
+  // Also update getMainComponentName if it exists (for older React Native versions)
   appDelegateContent = appDelegateContent.replace(
     /getMainComponentName\(\)\s*->\s*String\s*\{[^}]+\}/,
     `getMainComponentName() -> String {
@@ -326,7 +387,7 @@ function updateIOSAppDelegate(clientId) {
   );
 
   fs.writeFileSync(appDelegatePath, appDelegateContent);
-  logSuccess('Updated iOS AppDelegate');
+  logSuccess(`Updated iOS AppDelegate module name to '${moduleName}'`);
 }
 
 // Update Android MainActivity

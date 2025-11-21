@@ -48,7 +48,7 @@ const HomeScreen = ({navigation}: any) => {
   const colors = getThemeColors(isDark);
   const {t} = useTranslation();
   const [currentAdIndex, setCurrentAdIndex] = useState(0);
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  // const [showProfileMenu, setShowProfileMenu] = useState(false); // Hidden for future use
   const flatListRef = useRef<FlatList>(null);
   const currentAdIndexRef = useRef(0); // Use ref to track current index without re-renders
   const {logout, isAuthenticated} = useAuth();
@@ -808,22 +808,22 @@ const HomeScreen = ({navigation}: any) => {
     navigation.navigate('MoreOptions');
   };
 
-  const handleProfilePress = () => {
-    setShowProfileMenu(!showProfileMenu);
-  };
+  // Hidden for future use
+  // const handleProfilePress = () => {
+  //   setShowProfileMenu(!showProfileMenu);
+  // };
 
-  const handleMoreOptions = () => {
-    setShowProfileMenu(false);
-    navigation.navigate('MoreOptions');
-  };
+  // const handleMoreOptions = () => {
+  //   setShowProfileMenu(false);
+  //   navigation.navigate('MoreOptions');
+  // };
 
-  const handleContactUs = () => {
-    setShowProfileMenu(false);
-    navigation.navigate('ContactUs');
-  };
+  // const handleContactUs = () => {
+  //   setShowProfileMenu(false);
+  //   navigation.navigate('ContactUs');
+  // };
 
   const handleLogout = async () => {
-    setShowProfileMenu(false);
     Alert.alert('Logout', 'Are you sure you want to logout?', [
       {text: 'Cancel', style: 'cancel'},
       {
@@ -1038,20 +1038,18 @@ const HomeScreen = ({navigation}: any) => {
           showBackButton={false}
           rightComponent={(
             <TouchableOpacity 
-              style={[styles.profileButton, {backgroundColor: colors.accent}]}
-              onPress={handleProfilePress}
+              style={styles.logoutButtonHeader}
+              onPress={handleLogout}
+              activeOpacity={0.8}
             >
-              <Text style={styles.profileText}>
-                {authData ? `${authData.first_name?.[0] || ''}${authData.last_name?.[0] || ''}` : 'CB'}
-              </Text>
+              <Feather name="log-out" size={20} color={colors.primary || '#FF6B35'} />
+              <Text style={[styles.logoutButtonText, {color: colors.primary || '#FF6B35'}]}>{t('common.logout')}</Text>
             </TouchableOpacity>
           )}
         />
 
-        
-
-        {/* Profile Dropdown Menu */}
-        {showProfileMenu && (
+        {/* Profile Dropdown Menu - Hidden for future use */}
+        {/* {showProfileMenu && (
           <View style={[styles.profileMenu, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
             <TouchableOpacity 
               style={[styles.menuItem, {backgroundColor: 'transparent'}]} 
@@ -1067,104 +1065,6 @@ const HomeScreen = ({navigation}: any) => {
               <Text style={[styles.menuIcon, {color: colors.textSecondary}]}>📞</Text>
               <Text style={[styles.menuText, {color: colors.text}]}>{t('common.contactUs')}</Text>
             </TouchableOpacity>
-            {/* Test buttons - commented out for production
-            <TouchableOpacity 
-              style={[styles.menuItem, {backgroundColor: 'transparent'}]} 
-              onPress={handleTestTokenRegeneration}
-              activeOpacity={0.7}>
-              <Text style={[styles.menuIcon, {color: colors.textSecondary}]}>🧪</Text>
-              <Text style={[styles.menuText, {color: colors.text}]}>Test Token Regeneration</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.menuItem, {backgroundColor: 'transparent'}]} 
-              onPress={handleTestAutoDataReloader}
-              activeOpacity={0.7}>
-              <Text style={[styles.menuIcon, {color: colors.textSecondary}]}>🔄</Text>
-              <Text style={[styles.menuText, {color: colors.text}]}>Test Auto Data Reloader</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.menuItem, {backgroundColor: 'transparent'}]} 
-              onPress={handleTestRealScenario}
-              activeOpacity={0.7}>
-              <Text style={[styles.menuIcon, {color: colors.textSecondary}]}>🎯</Text>
-              <Text style={[styles.menuText, {color: colors.text}]}>Test Real Scenario</Text>
-            </TouchableOpacity>
-            */}
-            {/* <TouchableOpacity 
-              style={[styles.menuItem, {backgroundColor: 'transparent'}]} 
-              onPress={() => {
-                setShowProfileMenu(false);
-                navigation.navigate('NotificationTest');
-              }}
-              activeOpacity={0.7}>
-              <Text style={[styles.menuIcon, {color: colors.textSecondary}]}>🔔</Text>
-              <Text style={[styles.menuText, {color: colors.text}]}>Test Notifications</Text>
-            </TouchableOpacity> */}
-            {/* <TouchableOpacity 
-              style={[styles.menuItem, {backgroundColor: 'transparent'}]} 
-              onPress={async () => {
-                setShowProfileMenu(false);
-                await debugVersionCheck();
-              }}
-              activeOpacity={0.7}>
-              <Text style={[styles.menuIcon, {color: colors.textSecondary}]}>🔍</Text>
-              <Text style={[styles.menuText, {color: colors.text}]}>Debug Version Check</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.menuItem, {backgroundColor: 'transparent'}]} 
-              onPress={async () => {
-                setShowProfileMenu(false);
-                await quickVersionTest();
-              }}
-              activeOpacity={0.7}>
-              <Text style={[styles.menuIcon, {color: colors.textSecondary}]}>⚡</Text>
-              <Text style={[styles.menuText, {color: colors.text}]}>Quick Version Test</Text>
-            </TouchableOpacity> */}
-            {/* <TouchableOpacity 
-              style={[styles.menuItem, {backgroundColor: 'transparent'}]} 
-              onPress={async () => {
-                setShowProfileMenu(false);
-                await debugFCMTokenIssues();
-              }}
-              activeOpacity={0.7}>
-              <Text style={[styles.menuIcon, {color: colors.textSecondary}]}>🔥</Text>
-              <Text style={[styles.menuText, {color: colors.text}]}>Debug FCM Token</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.menuItem, {backgroundColor: 'transparent'}]} 
-              onPress={async () => {
-                setShowProfileMenu(false);
-                const token = await forceFCMTokenGeneration();
-                Alert.alert('FCM Token', token ? `Token: ${token.substring(0, 20)}...` : 'No token generated');
-              }}
-              activeOpacity={0.7}>
-              <Text style={[styles.menuIcon, {color: colors.textSecondary}]}>🔄</Text>
-              <Text style={[styles.menuText, {color: colors.text}]}>Force FCM Token</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.menuItem, {backgroundColor: 'transparent'}]} 
-              onPress={async () => {
-                setShowProfileMenu(false);
-                const results = await runComprehensiveFirebaseTest();
-                const status = results.overall ? '✅ All tests passed!' : '❌ Some tests failed';
-                Alert.alert('Firebase Test Results', status);
-              }}
-              activeOpacity={0.7}>
-              <Text style={[styles.menuIcon, {color: colors.textSecondary}]}>🧪</Text>
-              <Text style={[styles.menuText, {color: colors.text}]}>Firebase Test</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.menuItem, {backgroundColor: 'transparent'}]} 
-              onPress={async () => {
-                setShowProfileMenu(false);
-                const realm = getClientConfig().clientId;
-                const success = await updateDeviceWithRealFCMToken(realm);
-                Alert.alert('Update FCM Token', success ? '✅ Device updated with real FCM token!' : '❌ No real FCM token available');
-              }}
-              activeOpacity={0.7}>
-              <Text style={[styles.menuIcon, {color: colors.textSecondary}]}>🔄</Text>
-              <Text style={[styles.menuText, {color: colors.text}]}>Update FCM Token</Text>
-            </TouchableOpacity> */}
             <TouchableOpacity 
               style={[styles.menuItem, {backgroundColor: 'transparent'}]} 
               onPress={handleLogout}
@@ -1173,7 +1073,7 @@ const HomeScreen = ({navigation}: any) => {
               <Text style={[styles.menuText, {color: colors.text}]}>{t('common.logout')}</Text>
             </TouchableOpacity>
           </View>
-        )}
+        )} */}
 
         {/* Welcome Message */}
         <View style={styles.welcomeSection}>
@@ -1628,17 +1528,30 @@ const styles = StyleSheet.create({
   logo: {
     marginRight: 12,
   },
-  profileButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
+  // Hidden for future use
+  // profileButton: {
+  //   width: 40,
+  //   height: 40,
+  //   borderRadius: 20,
+  //   justifyContent: 'center',
+  //   alignItems: 'center',
+  // },
+  // profileText: {
+  //   fontSize: 16,
+  //   fontWeight: 'bold',
+  //   color: '#fff',
+  // },
+  logoutButtonHeader: {
+    flexDirection: 'column',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
-  profileText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#fff',
+  logoutButtonText: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 2,
   },
   welcomeSection: {
     paddingHorizontal: 20,

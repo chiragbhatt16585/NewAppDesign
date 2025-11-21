@@ -189,18 +189,18 @@ const MoreOptionsScreen = ({navigation}: any) => {
       return true;
     });
 
-    const iconMap: Record<string, { icon: string; iconType?: 'feather' }> = {
-      'Renew Plan': { icon: '🔄' },
-      'Upgrade Plan': { icon: '⬆️' },
-      'Ledger': { icon: '📊' },
-      'Usage Details': { icon: '📈' },
+    const iconMap: Record<string, { icon: string; iconType: 'feather' }> = {
+      'Renew Plan': { icon: 'refresh-cw', iconType: 'feather' },
+      'Upgrade Plan': { icon: 'arrow-up', iconType: 'feather' },
+      'Ledger': { icon: 'book', iconType: 'feather' },
+      'Usage Details': { icon: 'bar-chart-2', iconType: 'feather' },
       'Sessions': { icon: 'clock', iconType: 'feather' },
-      'KYC': { icon: '🆔' },
-      'Refer Friend': { icon: '👥' },
+      'KYC': { icon: 'user-check', iconType: 'feather' },
+      'Refer Friend': { icon: 'users', iconType: 'feather' },
       'Update SSID': { icon: 'wifi', iconType: 'feather' },
-      'Speed Test': { icon: '⚡' },
-      'Partner Apps': { icon: '📱' },
-      'Settings': { icon: '⚙️' },
+      'Speed Test': { icon: 'activity', iconType: 'feather' },
+      'Partner Apps': { icon: 'smartphone', iconType: 'feather' },
+      'Settings': { icon: 'settings', iconType: 'feather' },
     };
 
     const routeMap: Record<string, () => void> = {
@@ -254,7 +254,8 @@ const MoreOptionsScreen = ({navigation}: any) => {
       id: 'logout',
       title: t('common.logout'),
       subtitle: 'Sign out of your account',
-      icon: '⏏️',
+      icon: 'log-out',
+      iconType: 'feather',
       onPress: handleLogout,
       isLogout: true,
     });
@@ -281,6 +282,26 @@ const MoreOptionsScreen = ({navigation}: any) => {
           />
         )}
       >
+        {/* User Profile Card */}
+        {authData && (
+          <View style={[styles.profileCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
+            <View style={[styles.avatarContainer, {backgroundColor: colors.primary || '#FF6B35'}]}>
+              <Text style={styles.avatarText}>
+                {authData.first_name?.[0] || ''}{authData.last_name?.[0] || ''}
+                {!authData.first_name && !authData.last_name && authData.username?.[0]?.toUpperCase() || ''}
+              </Text>
+            </View>
+            <View style={styles.profileInfo}>
+              <Text style={[styles.profileName, {color: colors.primary || '#FF6B35'}]}>
+                {authData.full_name || `${authData.first_name || ''} ${authData.last_name || ''}`.trim() || 'User'}
+              </Text>
+              <Text style={[styles.profileUsername, {color: colors.text}]}>
+                {authData.username || 'N/A'}
+              </Text>
+            </View>
+          </View>
+        )}
+
         <View style={styles.content}>
           {(() => {
             const nonLogoutItems = dynamicMenuItems.filter(item => !item.isLogout);
@@ -304,15 +325,11 @@ const MoreOptionsScreen = ({navigation}: any) => {
                           styles.gridMenuIcon, 
                           {backgroundColor: colors.primaryLight}
                         ]}>
-                          {item.iconType === 'feather' ? (
-                            <Feather 
-                              name={item.icon} 
-                              size={18} 
-                              color={colors.primary} 
-                            />
-                          ) : (
-                            <Text style={styles.gridIconText}>{item.icon}</Text>
-                          )}
+                          <Feather 
+                            name={item.icon} 
+                            size={18} 
+                            color={colors.primary} 
+                          />
                         </View>
                         <Text style={[styles.gridMenuTitle, {color: colors.text}]} numberOfLines={1}>
                           {item.title}
@@ -349,7 +366,11 @@ const MoreOptionsScreen = ({navigation}: any) => {
                 styles.logoutIcon,
                 {backgroundColor: colors.primaryLight || '#E5F1FF'}
               ]}> 
-                <Text style={styles.gridIconText}>{logoutItem.icon}</Text>
+                <Feather 
+                  name={logoutItem.icon} 
+                  size={18} 
+                  color={colors.primary} 
+                />
               </View>
               <Text style={[styles.logoutTitle, {color: colors.text}]}> {logoutItem.title}</Text>
             </TouchableOpacity>
@@ -365,9 +386,49 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
+  profileCard: {
+    marginHorizontal: 20,
+    marginTop: 16,
+    marginBottom: 20,
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  avatarContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  avatarText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  profileInfo: {
+    flex: 1,
+  },
+  profileName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  profileUsername: {
+    fontSize: 14,
+  },
   content: {
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 0,
   },
   menuItem: {
     flexDirection: 'row',

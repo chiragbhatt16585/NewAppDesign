@@ -37,22 +37,24 @@ const CommonHeader = ({
 
   return (
     <View style={[styles.header, {backgroundColor: colors.surface, borderBottomColor: colors.border}]}>
-      {showBackButton ? (
-        <TouchableOpacity
-          style={[styles.backButton, {backgroundColor: colors.background}]}
-          onPress={handleBackPress}>
-          <Text style={[styles.backButtonText, {color: colors.text}]}>‹</Text>
-        </TouchableOpacity>
-      ) : (
-        <View style={styles.placeholder} />
-      )}
-      
-      <View style={styles.headerCenter}>
-        <LogoImage type="header" />
-        {title && (
-          <Text style={[styles.headerTitle, {color: colors.text}]}>{title}</Text>
+      <View style={styles.headerLeft}>
+        {showBackButton && (
+          <TouchableOpacity
+            style={[styles.backButton, {backgroundColor: colors.background}]}
+            onPress={handleBackPress}>
+            <Text style={[styles.backButtonText, {color: colors.text}]}>‹</Text>
+          </TouchableOpacity>
         )}
+        <View style={styles.logoContainer}>
+          <LogoImage type="header" />
+        </View>
       </View>
+      
+      {title && (
+        <View style={styles.headerCenter}>
+          <Text style={[styles.headerTitle, {color: colors.text}]}>{title}</Text>
+        </View>
+      )}
       
       {rightComponent ? (
         rightComponent
@@ -73,29 +75,33 @@ const styles = StyleSheet.create({
     paddingBottom: 0,
     borderBottomWidth: 1,
   },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 8,
   },
   backButtonText: {
     fontSize: 24,
   },
+  logoContainer: {
+    marginRight: 8,
+  },
   headerCenter: {
     flex: 1,
     alignItems: 'center',
-    flexDirection: 'row',
     justifyContent: 'center',
-  },
-  logo: {
-    marginRight: 8,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginLeft: 8,
   },
   placeholder: {
     width: 40,
