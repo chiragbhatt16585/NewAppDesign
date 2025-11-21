@@ -4,6 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import Feather from 'react-native-vector-icons/Feather';
 import { useTheme } from '../utils/ThemeContext';
 import { getThemeColors } from '../utils/themeStyles';
+import { useAuthData } from '../utils/AuthDataContext';
 
 // Screens
 import HomeScreen from '../screens/HomeScreen';
@@ -64,6 +65,15 @@ const SpeedTestStack = () => (
 const MainTabs = React.memo(() => {
   const { isDark } = useTheme();
   const colors = getThemeColors(isDark);
+  const { authData } = useAuthData();
+
+  // Check if AppSideNavigationMenu contains "First Payment"
+  const shouldHideRecharge = useMemo(() => {
+    if (!authData?.AppSideNavigationMenu || !Array.isArray(authData.AppSideNavigationMenu)) {
+      return false;
+    }
+    return authData.AppSideNavigationMenu.includes('First Payment');
+  }, [authData?.AppSideNavigationMenu]);
 
   const screenOptions = useMemo(() => ({
     headerShown: false,
@@ -91,11 +101,13 @@ const MainTabs = React.memo(() => {
         component={HomeStack} 
         options={{ title: 'Home', tabBarIcon: getTabBarIcon('Home') }} 
       />
-      <Tab.Screen 
-        name="Pay" 
-        component={RenewPlanScreen} 
-        options={{ title: 'Recharge', tabBarIcon: getTabBarIcon('Pay') }} 
-      />
+      {!shouldHideRecharge && (
+        <Tab.Screen 
+          name="Pay" 
+          component={RenewPlanScreen} 
+          options={{ title: 'Recharge', tabBarIcon: getTabBarIcon('Pay') }} 
+        />
+      )}
       <Tab.Screen 
         name="SpeedTest" 
         component={SpeedTestStack} 

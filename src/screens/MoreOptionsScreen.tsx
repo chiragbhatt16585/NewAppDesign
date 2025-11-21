@@ -20,6 +20,7 @@ import Feather from 'react-native-vector-icons/Feather';
 import {getClientConfig} from '../config/client-config';
 import useMenuSettings from '../hooks/useMenuSettings';
 import menuService from '../services/menuService';
+import { useAuthData } from '../utils/AuthDataContext';
 
 const MoreOptionsScreen = ({navigation}: any) => {
   const {isDark, themeMode, setThemeMode} = useTheme();
@@ -28,10 +29,19 @@ const MoreOptionsScreen = ({navigation}: any) => {
   const {logout} = useAuth();
   const { menu, loading: menuLoading, error: menuError, refresh } = useMenuSettings();
   const [refreshing, setRefreshing] = useState(false);
+  const { authData } = useAuthData();
   
   // Check if current client is microscan
   const clientConfig = getClientConfig();
   const isMicroscan = clientConfig.clientId === 'microscan';
+
+  // Check if AppSideNavigationMenu contains "First Payment"
+  const shouldHideRenewAndUpgrade = useMemo(() => {
+    if (!authData?.AppSideNavigationMenu || !Array.isArray(authData.AppSideNavigationMenu)) {
+      return false;
+    }
+    return authData.AppSideNavigationMenu.includes('First Payment');
+  }, [authData?.AppSideNavigationMenu]);
 
   // Removed auto-refresh on focus to avoid unnecessary calls; rely on pull-to-refresh
 
@@ -171,7 +181,13 @@ const MoreOptionsScreen = ({navigation}: any) => {
       'Speed Test',
       'Partner Apps',
       'Settings',
-    ];
+    ].filter(label => {
+      // Hide "Renew Plan" and "Upgrade Plan" if "First Payment" is in AppSideNavigationMenu
+      if (shouldHideRenewAndUpgrade && (label === 'Renew Plan' || label === 'Upgrade Plan')) {
+        return false;
+      }
+      return true;
+    });
 
     const iconMap: Record<string, { icon: string; iconType?: 'feather' }> = {
       'Renew Plan': { icon: '🔄' },
@@ -244,7 +260,7 @@ const MoreOptionsScreen = ({navigation}: any) => {
     });
 
     return built;
-  }, [menu, t]);
+  }, [menu, t, shouldHideRenewAndUpgrade]);
 
   return (
     <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}>

@@ -57,6 +57,10 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -66,7 +70,7 @@
 			<array>
 				<string>paymentresponse</string>
 				<string>isp</string>
-				<string>microscan</string>
+				<string>dna-goa</string>
 			</array>
 		</dict>
 	</array>
@@ -139,4 +143,5 @@
 		<string>market</string>
 	</array>
 </dict>
-</plist> 
+</plist>
+

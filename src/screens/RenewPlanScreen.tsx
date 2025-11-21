@@ -2354,8 +2354,8 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   ottLogoWrapper: {
-    width: 32,
-    height: 32,
+    width: 48,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 2,
@@ -2417,11 +2417,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   ottLogoNew: {
-    width: 28,
-    height: 28,
+    width: 40,
+    height: 40,
   },
   ottIconNew: {
-    fontSize: 24,
+    fontSize: 32,
   },
   speedValiditySection: {
     marginTop: 4,

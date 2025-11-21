@@ -275,10 +275,14 @@ const clientConfigs: Record<string, ClientConfig> = {
           title: 'Branch Office - Colva',
           address: '72/2B, Near Colva Police Station, Opp. Amul Icecream Parlour, Colva, Salcete, GOA-403708',
         },
+        {
+          title: 'Branch Office - Margao',
+          address: 'Shop no : 2/915/A, " Belmar " Opp. Fatorda Stadium, Salcete, Goa. 403602',
+        },
       ],
       emails: {
-        inquiries: 'sales@dnagoa.com',
-        sales: 'sales@dnagoa.com',
+        inquiries: 'crm@dnagoa.com',
+        sales: 'crm@dnagoa.com',
       },
       landline: '0832-6747575',
     },

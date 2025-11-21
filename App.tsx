@@ -15,6 +15,7 @@ import BiometricAuthScreen from './src/screens/BiometricAuthScreen';
 import {ThemeProvider, useTheme} from './src/utils/ThemeContext';
 import {LanguageProvider} from './src/utils/LanguageContext';
 import {AuthProvider} from './src/utils/AuthContext';
+import {AuthDataProvider} from './src/utils/AuthDataContext';
 import biometricAuthService from './src/services/biometricAuth';
 import sessionManager from './src/services/sessionManager';
 import autoDataReloader from './src/services/autoDataReloader';
@@ -313,7 +314,9 @@ function App() {
       <LanguageProvider>
         <ThemeProvider>
           <AuthProvider>
-            <AppContent />
+            <AuthDataProvider>
+              <AppContent />
+            </AuthDataProvider>
           </AuthProvider>
         </ThemeProvider>
       </LanguageProvider>

@@ -36,6 +36,7 @@ import useMenuSettings from '../hooks/useMenuSettings';
 import menuService from '../services/menuService';
 import dataCache from '../services/dataCache';
 import { getSafeDaysRemaining } from '../utils/usageUtils';
+import { useAuthData } from '../utils/AuthDataContext';
 // import AIUsageInsights from '../components/AIUsageInsights';
 //import ispLogo from '../assets/isp_logo.png';
 import Feather from 'react-native-vector-icons/Feather';
@@ -63,6 +64,7 @@ const HomeScreen = ({navigation}: any) => {
 
   // State for API data - ALWAYS start with null to prevent old data display
   const [authData, setAuthData] = useState<any>(null);
+  const { setAuthData: setGlobalAuthData } = useAuthData();
   const isFetchingRef = useRef(false);
   const lastFetchTsRef = useRef<number>(0);
   const [planDetails, setPlanDetails] = useState<any>(null);
@@ -93,6 +95,7 @@ const HomeScreen = ({navigation}: any) => {
         console.log('[HomeScreen] Clearing authData immediately...');
         
         setAuthData(null);
+        setGlobalAuthData(null);
         setPlanDetails(null);
         setApiResponse('');
         lastUsernameRef.current = null;
@@ -290,6 +293,7 @@ const HomeScreen = ({navigation}: any) => {
       if (!isAuthenticated) {
         //console.log('[HomeScreen] 🚨 LOGOUT: Clearing ALL state immediately');
         setAuthData(null);
+        setGlobalAuthData(null);
         setPlanDetails(null);
         setApiResponse('');
         setBanners([]);
@@ -311,6 +315,7 @@ const HomeScreen = ({navigation}: any) => {
         
         // Always clear state on login, regardless of username
         setAuthData(null);
+        setGlobalAuthData(null);
         setPlanDetails(null);
         setApiResponse('');
         setBanners([]);
@@ -455,6 +460,7 @@ const HomeScreen = ({navigation}: any) => {
       if (lastUsernameRef.current !== null && lastUsernameRef.current !== usernameBeforeFetch) {
         console.log('[HomeScreen] ⚠️ Username changed during fetch! Clearing everything...');
         setAuthData(null);
+        setGlobalAuthData(null);
         setPlanDetails(null);
         setApiResponse('');
         setBanners([]);
@@ -491,20 +497,21 @@ const HomeScreen = ({navigation}: any) => {
       
       // CRITICAL: Verify this is the current user - clear state if username changed
       if (lastUsernameRef.current !== null && lastUsernameRef.current !== username) {
-        console.log('[HomeScreen] ⚠️ USERNAME MISMATCH DETECTED!');
-        console.log('[HomeScreen] Previous user:', lastUsernameRef.current);
-        console.log('[HomeScreen] Current user:', username);
-        console.log('[HomeScreen] Clearing ALL state immediately...');
+        // console.log('[HomeScreen] ⚠️ USERNAME MISMATCH DETECTED!');
+        // console.log('[HomeScreen] Previous user:', lastUsernameRef.current);
+        // console.log('[HomeScreen] Current user:', username);
+        // console.log('[HomeScreen] Clearing ALL state immediately...');
         
-        // Clear state immediately
-        setAuthData(null);
-        setPlanDetails(null);
-        setApiResponse('');
-        setBanners([]);
-        
-        // Clear all caches again
-        await dataCache.clearAllCache();
-        menuService.clearCache();
+          // Clear state immediately
+          setAuthData(null);
+          setGlobalAuthData(null);
+          setPlanDetails(null);
+          setApiResponse('');
+          setBanners([]);
+          
+          // Clear all caches again
+          await dataCache.clearAllCache();
+          menuService.clearCache();
         
         // Update username ref
         lastUsernameRef.current = username;
@@ -548,6 +555,8 @@ const HomeScreen = ({navigation}: any) => {
         
         console.log('[HomeScreen] Setting authData for user:', username);
         setAuthData(authResponse);
+        // Also update global authData context for use in other components
+        setGlobalAuthData(authResponse);
         
         // Extract plan details from auth response
         if (authResponse.currentPlan) {
@@ -631,6 +640,7 @@ const HomeScreen = ({navigation}: any) => {
         if (!isAuthenticated) {
           // If not authenticated, ensure state is cleared
           setAuthData(null);
+          setGlobalAuthData(null);
           setPlanDetails(null);
           setApiResponse('');
           setBanners([]);
@@ -654,6 +664,7 @@ const HomeScreen = ({navigation}: any) => {
           
           // Clear state immediately
           setAuthData(null);
+          setGlobalAuthData(null);
           setPlanDetails(null);
           setApiResponse('');
           setBanners([]);
@@ -1167,11 +1178,18 @@ const HomeScreen = ({navigation}: any) => {
         {/* Welcome Message */}
         <View style={styles.welcomeSection}>
           <Text style={[styles.welcomeText, {color: colors.textSecondary}]}>{t('common.welcome')},</Text>
-          <Text style={[styles.userName, {color: colors.text}]}>
-            {authData && currentUsername && lastUsernameRef.current === currentUsername 
-              ? `${authData.first_name || ''} ${authData.last_name || ''}`.trim() || 'User' 
-              : 'User'}
-          </Text>
+          <View style={styles.userNameRow}>
+            <Text style={[styles.userName, {color: colors.text}]}>
+              {authData && currentUsername && lastUsernameRef.current === currentUsername 
+                ? `${authData.first_name || ''} ${authData.last_name || ''}`.trim() || 'User' 
+                : 'User'}
+            </Text>
+            {currentUsername && lastUsernameRef.current === currentUsername && (
+              <Text style={[styles.userNameText, {color: colors.textSecondary}]}>
+                {' '}({currentUsername})
+              </Text>
+            )}
+          </View>
         </View>
 
         {/* Account Summary Card */}
@@ -1631,9 +1649,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 4,
   },
+  userNameRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    flexWrap: 'wrap',
+  },
   userName: {
     fontSize: 24,
     fontWeight: 'bold',
+  },
+  userNameText: {
+    fontSize: 14,
+    fontStyle: 'italic',
   },
   accountCard: {
     marginHorizontal: 20,

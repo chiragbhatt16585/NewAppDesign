@@ -105,12 +105,12 @@ android {
         applicationId "com.microscan.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 33   
+        versionCode 33
         versionName "33.0.0"
         buildConfigField "boolean", "IS_NEW_ARCHITECTURE_ENABLED", "false"
     }
     
-    signingConfigs {
+        signingConfigs {
         debug {
             storeFile file('debug.keystore')
             storePassword 'android'
@@ -124,7 +124,7 @@ android {
             keyPassword 'log2space'
         }
     }
-    
+
     buildTypes {
         debug {
             signingConfig signingConfigs.debug

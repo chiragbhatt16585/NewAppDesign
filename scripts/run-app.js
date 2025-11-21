@@ -29,7 +29,7 @@ const CLIENTS = {
     namespace: 'com.logon.broadband',
     versionCode: 1,
     versionName: '1.0.0',
-    keystore: 'debug.keystore',
+    keystore: 'LogonBroadband.jks',
     configDir: 'config/logon-broadband',
   },
   'dna-goa': {
@@ -43,6 +43,187 @@ const CLIENTS = {
   },
 };
 
+function loadBuildConfig(configDir) {
+  const buildConfigPath = path.join(configDir, 'build-config.json');
+  if (!fs.existsSync(buildConfigPath)) {
+    return null;
+  }
+
+  try {
+    const raw = fs.readFileSync(buildConfigPath, 'utf8');
+    return JSON.parse(raw);
+  } catch (error) {
+    console.warn(`⚠️  Unable to parse build-config.json in ${configDir}: ${error.message}`);
+    return null;
+  }
+}
+
+function getAndroidSettings(client, buildConfig) {
+  const android = buildConfig?.android || {};
+
+  return {
+    namespace: android.namespace || client.namespace || client.packageName,
+    applicationId: android.applicationId || client.packageName,
+    versionCode: android.versionCode || client.versionCode,
+    versionName: android.versionName || client.versionName,
+    signing: android.signing,
+  };
+}
+
+function buildSigningBlock(signing) {
+  if (!signing?.release) {
+    return null;
+  }
+
+  const debug = signing.debug || {
+    storeFile: 'debug.keystore',
+    storePassword: 'android',
+    keyAlias: 'androiddebugkey',
+    keyPassword: 'android',
+  };
+
+  const formatBlock = (name, cfg) => [
+    `        ${name} {`,
+    `            storeFile file('${cfg.storeFile}')`,
+    `            storePassword '${cfg.storePassword}'`,
+    `            keyAlias '${cfg.keyAlias}'`,
+    `            keyPassword '${cfg.keyPassword}'`,
+    '        }',
+  ].join('\n');
+
+  return [
+    '    signingConfigs {',
+    formatBlock('debug', debug),
+    formatBlock('release', signing.release),
+    '    }',
+  ].join('\n');
+}
+
+function updateAndroidBuildGradle(androidSettings) {
+  if (!androidSettings) {
+    return;
+  }
+
+  const buildGradlePath = path.join(__dirname, '../android/app/build.gradle');
+  let buildGradle = fs.readFileSync(buildGradlePath, 'utf8');
+
+  if (androidSettings.namespace) {
+    buildGradle = buildGradle.replace(
+      /namespace\s+"[^"]*"/,
+      `namespace "${androidSettings.namespace}"`
+    );
+  }
+
+  if (androidSettings.applicationId) {
+    buildGradle = buildGradle.replace(
+      /applicationId\s+"[^"]*"/,
+      `applicationId "${androidSettings.applicationId}"`
+    );
+  }
+
+  if (androidSettings.versionCode) {
+    buildGradle = buildGradle.replace(
+      /versionCode\s+\d+/,
+      `versionCode ${androidSettings.versionCode}`
+    );
+  }
+
+  if (androidSettings.versionName) {
+    buildGradle = buildGradle.replace(
+      /versionName\s+"[^"]*"/,
+      `versionName "${androidSettings.versionName}"`
+    );
+  }
+
+  const signingBlock = buildSigningBlock(androidSettings.signing);
+  if (signingBlock) {
+    const signingRegex = /signingConfigs\s*{[\s\S]*?}\s*(?=buildTypes\s*{)/;
+    if (signingRegex.test(buildGradle)) {
+      buildGradle = buildGradle.replace(signingRegex, `${signingBlock}\n\n    `);
+    }
+  }
+
+  fs.writeFileSync(buildGradlePath, buildGradle);
+  console.log('✅ Updated android/app/build.gradle');
+}
+
+function getIosSettings(client, buildConfig) {
+  const ios = buildConfig?.ios;
+  if (!ios) {
+    return null;
+  }
+
+  return {
+    bundleIdentifier: ios.bundleIdentifier,
+    marketingVersion: ios.marketingVersion,
+    buildNumber: ios.buildNumber,
+    displayName: ios.displayName || client.name,
+  };
+}
+
+function updateInfoPlist(displayName) {
+  if (!displayName) {
+    return;
+  }
+
+  const infoPlistPath = path.join(__dirname, '../ios/ISPApp/Info.plist');
+  let infoPlist = fs.readFileSync(infoPlistPath, 'utf8');
+  const displayNameRegex = /<key>CFBundleDisplayName<\/key>\s*<string>[^<]*<\/string>/;
+
+  if (displayNameRegex.test(infoPlist)) {
+    infoPlist = infoPlist.replace(
+      displayNameRegex,
+      `<key>CFBundleDisplayName</key>\n\t<string>${displayName}</string>`
+    );
+    fs.writeFileSync(infoPlistPath, infoPlist);
+  }
+}
+
+function updateIosProject(iosSettings) {
+  if (!iosSettings) {
+    return;
+  }
+
+  const pbxProjPath = path.join(__dirname, '../ios/ISPApp.xcodeproj/project.pbxproj');
+  let pbxProj = fs.readFileSync(pbxProjPath, 'utf8');
+
+  if (iosSettings.bundleIdentifier) {
+    pbxProj = pbxProj.replace(
+      /PRODUCT_BUNDLE_IDENTIFIER = "[^"]+";/g,
+      `PRODUCT_BUNDLE_IDENTIFIER = "${iosSettings.bundleIdentifier}";`
+    );
+    pbxProj = pbxProj.replace(
+      /"PRODUCT_BUNDLE_IDENTIFIER\[sdk=iphoneos\*\]" = [^;]+;/g,
+      `"PRODUCT_BUNDLE_IDENTIFIER[sdk=iphoneos*]" = ${iosSettings.bundleIdentifier};`
+    );
+  }
+
+  if (iosSettings.marketingVersion) {
+    pbxProj = pbxProj.replace(
+      /MARKETING_VERSION = [^;]+;/g,
+      `MARKETING_VERSION = ${iosSettings.marketingVersion};`
+    );
+  }
+
+  if (iosSettings.buildNumber) {
+    pbxProj = pbxProj.replace(
+      /CURRENT_PROJECT_VERSION = [^;]+;/g,
+      `CURRENT_PROJECT_VERSION = ${iosSettings.buildNumber};`
+    );
+  }
+
+  if (iosSettings.displayName) {
+    pbxProj = pbxProj.replace(
+      /INFOPLIST_KEY_CFBundleDisplayName = [^;]+;/g,
+      `INFOPLIST_KEY_CFBundleDisplayName = ${iosSettings.displayName};`
+    );
+    updateInfoPlist(iosSettings.displayName);
+  }
+
+  fs.writeFileSync(pbxProjPath, pbxProj);
+  console.log('✅ Updated iOS project settings');
+}
+
 function switchClient(clientId) {
   const client = CLIENTS[clientId];
   if (!client) {
@@ -53,38 +234,16 @@ function switchClient(clientId) {
 
   console.log(`🔄 Switching to ${client.name}...`);
 
-  // Update build.gradle
-  const buildGradlePath = path.join(__dirname, '../android/app/build.gradle');
-  let buildGradle = fs.readFileSync(buildGradlePath, 'utf8');
+  const configDir = path.join(__dirname, '..', client.configDir);
+  const buildConfig = loadBuildConfig(configDir);
 
-  // Update namespace and applicationId
-  buildGradle = buildGradle.replace(
-    /namespace\s+"[^"]*"/,
-    `namespace "${client.namespace}"`
-  );
-  buildGradle = buildGradle.replace(
-    /applicationId\s+"[^"]*"/,
-    `applicationId "${client.packageName}"`
-  );
-  buildGradle = buildGradle.replace(
-    /versionCode\s+\d+/,
-    `versionCode ${client.versionCode}`
-  );
-  buildGradle = buildGradle.replace(
-    /versionName\s+"[^"]*"/,
-    `versionName "${client.versionName}"`
-  );
+  const androidSettings = getAndroidSettings(client, buildConfig);
+  updateAndroidBuildGradle(androidSettings);
 
-  // Update release signing config
-  buildGradle = buildGradle.replace(
-    /storeFile file\('[^']*'\)/,
-    `storeFile file('${client.keystore}')`
-  );
-
-  fs.writeFileSync(buildGradlePath, buildGradle);
+  const iosSettings = getIosSettings(client, buildConfig);
+  updateIosProject(iosSettings);
 
   // Copy client-specific assets
-  const configDir = path.join(__dirname, '..', client.configDir);
   if (fs.existsSync(configDir)) {
     console.log(`📁 Copying ${client.name} assets...`);
     // Copy app icons
@@ -113,6 +272,39 @@ function switchClient(clientId) {
       fs.copyFileSync(logoConfigSrc, logoConfigDest);
       console.log('✅ Copied logo-config.json');
     }
+
+    // Copy client-strings.json to src/config
+    const clientStringsSrc = path.join(configDir, 'strings.json');
+    const clientStringsDest = path.join(__dirname, '../src/config/client-strings.json');
+    if (fs.existsSync(clientStringsSrc)) {
+      fs.copyFileSync(clientStringsSrc, clientStringsDest);
+      console.log('✅ Copied client-strings.json');
+    }
+
+    // Copy Android strings.xml
+    const androidStringsSrc = path.join(configDir, 'android-strings.xml');
+    const androidStringsDest = path.join(__dirname, '../android/app/src/main/res/values/strings.xml');
+    if (fs.existsSync(androidStringsSrc)) {
+      fs.copyFileSync(androidStringsSrc, androidStringsDest);
+      console.log('✅ Copied Android strings.xml');
+    }
+
+    // Copy app.json to root
+    const appJsonSrc = path.join(configDir, 'app.json');
+    const appJsonDest = path.join(__dirname, '../app.json');
+    if (fs.existsSync(appJsonSrc)) {
+      fs.copyFileSync(appJsonSrc, appJsonDest);
+      console.log('✅ Copied app.json');
+    }
+
+    // Update current-client.json
+    const currentClientDest = path.join(__dirname, '../src/config/current-client.json');
+    const currentClientData = {
+      clientId,
+      updatedAt: new Date().toISOString(),
+    };
+    fs.writeFileSync(currentClientDest, `${JSON.stringify(currentClientData, null, 2)}\n`);
+    console.log('✅ Updated current-client.json');
   }
 
   console.log(`✅ Switched to ${client.name}`);
