@@ -33,7 +33,7 @@ const installAPK = () => {
     
     // Uninstall previous version if exists
     try {
-      execSync('adb uninstall com.microscan.app', { stdio: 'pipe' });
+      execSync('adb uninstall in.spacecom.log2space.client.microscan', { stdio: 'pipe' });
       console.log('🗑️ Uninstalled previous version');
     } catch (error) {
       // App wasn't installed, that's fine
@@ -44,7 +44,7 @@ const installAPK = () => {
     execSync(`adb install ${apkPath}`, { stdio: 'inherit' });
     
     console.log('🚀 Launching app...');
-    execSync('adb shell am start -n com.microscan.app/.MainActivity', { stdio: 'inherit' });
+    execSync('adb shell am start -n in.spacecom.log2space.client.microscan/.MainActivity', { stdio: 'inherit' });
     
     console.log('✅ APK installed and launched successfully!');
     console.log('');

@@ -4,12 +4,15 @@ import { createStackNavigator } from '@react-navigation/stack';
 import Feather from 'react-native-vector-icons/Feather';
 import { useTheme } from '../utils/ThemeContext';
 import { getThemeColors } from '../utils/themeStyles';
+import { useAuthData } from '../utils/AuthDataContext';
+import useMenuSettings from '../hooks/useMenuSettings';
 
 // Screens
 import HomeScreen from '../screens/HomeScreen';
 import AccountDetailsScreen from '../screens/AccountDetailsScreen';
 import PayBillScreen from '../screens/PayBillScreen';
 import RenewPlanScreen from '../screens/RenewPlanScreen';
+import UpgradePlanScreen from '../screens/UpgradePlanScreen';
 import ContactUsScreen from '../screens/ContactUsScreen';
 import UsageDetailsScreen from '../screens/UsageDetailsScreen';
 import TicketsScreen from '../screens/TicketsScreen';
@@ -38,7 +41,7 @@ const HomeStack = () => (
 
 const SupportStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
-    <Stack.Screen name="Tickets" component={TicketsScreen} />
+    <Stack.Screen name="ContactUs" component={ContactUsScreen} />
   </Stack.Navigator>
 );
 
@@ -55,15 +58,113 @@ const MenuStack = () => (
   </Stack.Navigator>
 );
 
-const SpeedTestStack = () => (
-  <Stack.Navigator screenOptions={{ headerShown: false }}>
-    <Stack.Screen name="SpeedTestWeb" component={WebViewScreen} initialParams={{ url: 'https://www.speedtest.net', title: 'Speed Test' }} />
-  </Stack.Navigator>
-);
 
 const MainTabs = React.memo(() => {
   const { isDark } = useTheme();
   const colors = getThemeColors(isDark);
+  const { authData } = useAuthData();
+  const { menu } = useMenuSettings();
+
+  // Check if AppSideNavigationMenu contains "First Payment"
+  const shouldHideRecharge = useMemo(() => {
+    if (!authData?.AppSideNavigationMenu || !Array.isArray(authData.AppSideNavigationMenu)) {
+      return false;
+    }
+    return authData.AppSideNavigationMenu.includes('First Payment');
+  }, [authData?.AppSideNavigationMenu]);
+
+  // Check if proforma_invoices_dues exists and has a value
+  const shouldHideRenewAndUpgrade = useMemo(() => {
+    // proforma_invoices_dues is at the root level of authData
+    const proformaDues = authData?.proforma_invoices_dues;
+    
+    // If no proforma dues, show the tabs
+    if (proformaDues === null || proformaDues === undefined || proformaDues === '') {
+      return false;
+    }
+    
+    // Convert to string and check if it's a valid non-zero value
+    const duesValue = String(proformaDues).trim();
+    const numericValue = parseFloat(duesValue);
+    
+    // Hide tabs if dues exist and are greater than 0
+    const shouldHide = duesValue !== '' && duesValue !== '0' && !isNaN(numericValue) && numericValue > 0;
+    
+    return shouldHide;
+  }, [authData]);
+
+  // Check menu API status for Renew Plan and Upgrade Plan
+  // PRIMARY CHECK: Status must be "active" first, then other conditions apply
+  // Status can be "active", "in_active", "inactive", etc. - only "active" shows the tab
+  const isRenewPlanActive = useMemo(() => {
+    if (!Array.isArray(menu)) {
+      console.log('[MainTabs] Menu is not an array:', menu);
+      return false;
+    }
+    const renewPlanItem = menu.find((m: any) => 
+      m?.menu_label === 'Renew Plan' && 
+      m?.menu_api_type === 'main'
+    );
+    
+    // FIRST: Check if menu item exists
+    if (!renewPlanItem) {
+      console.log('[MainTabs] Renew Plan menu item not found');
+      return false;
+    }
+    
+    // SECOND: Check if status is exactly "active" (case-insensitive)
+    // Handle "in_active", "inactive", or any other value as non-active
+    const status = String(renewPlanItem?.status || '').toLowerCase().trim();
+    const isActive = status === 'active';
+    
+    console.log('[MainTabs] Renew Plan menu item:', {
+      found: true,
+      menu_label: renewPlanItem?.menu_label,
+      menu_api_type: renewPlanItem?.menu_api_type,
+      status: renewPlanItem?.status,
+      statusLowercase: status,
+      isActive,
+      willShowTab: isActive,
+    });
+    
+    // Only return true if status is exactly "active"
+    return isActive;
+  }, [menu]);
+
+  const isUpgradePlanActive = useMemo(() => {
+    if (!Array.isArray(menu)) {
+      console.log('[MainTabs] Menu is not an array:', menu);
+      return false;
+    }
+    const upgradePlanItem = menu.find((m: any) => 
+      m?.menu_label === 'Upgrade Plan' && 
+      m?.menu_api_type === 'main'
+    );
+    
+    // FIRST: Check if menu item exists
+    if (!upgradePlanItem) {
+      console.log('[MainTabs] Upgrade Plan menu item not found');
+      return false;
+    }
+    
+    // SECOND: Check if status is exactly "active" (case-insensitive)
+    // Handle "in_active", "inactive", or any other value as non-active
+    const status = String(upgradePlanItem?.status || '').toLowerCase().trim();
+    const isActive = status === 'active';
+    
+    console.log('[MainTabs] Upgrade Plan menu item:', {
+      found: true,
+      menu_label: upgradePlanItem?.menu_label,
+      menu_api_type: upgradePlanItem?.menu_api_type,
+      status: upgradePlanItem?.status,
+      statusLowercase: status,
+      isActive,
+      willShowTab: isActive,
+    });
+    
+    // Only return true if status is exactly "active"
+    return isActive;
+  }, [menu]);
 
   const screenOptions = useMemo(() => ({
     headerShown: false,
@@ -75,9 +176,9 @@ const MainTabs = React.memo(() => {
   const getTabBarIcon = (routeName: string) => ({ color, size }: { color: string; size: number }) => {
     const map: Record<string, string> = {
       Home: 'home',
-      Pay: 'credit-card',
-      SpeedTest: 'activity',
-      Support: 'help-circle',
+      Pay: 'refresh-cw',
+      UpgradePlan: 'arrow-up-circle',
+      Support: 'headphones',
       Menu: 'menu',
     };
     const name = map[routeName] || 'circle';
@@ -91,16 +192,22 @@ const MainTabs = React.memo(() => {
         component={HomeStack} 
         options={{ title: 'Home', tabBarIcon: getTabBarIcon('Home') }} 
       />
+      {/* Renew Plan: FIRST check if status is "active", THEN check other conditions */}
+      {isRenewPlanActive && !shouldHideRecharge && !shouldHideRenewAndUpgrade && (
+        <Tab.Screen 
+          name="Pay" 
+          component={RenewPlanScreen} 
+          options={{ title: 'Renew Plan', tabBarIcon: getTabBarIcon('Pay') }} 
+        />
+      )}
+      {/* Upgrade Plan: FIRST check if status is "active", THEN check other conditions */}
+      {isUpgradePlanActive && !shouldHideRenewAndUpgrade && (
       <Tab.Screen 
-        name="Pay" 
-        component={RenewPlanScreen} 
-        options={{ title: 'Recharge', tabBarIcon: getTabBarIcon('Pay') }} 
+        name="UpgradePlan" 
+        component={UpgradePlanScreen} 
+        options={{ title: 'Upgrade Plan', tabBarIcon: getTabBarIcon('UpgradePlan') }} 
       />
-      <Tab.Screen 
-        name="SpeedTest" 
-        component={SpeedTestStack} 
-        options={{ title: 'Speed Test', tabBarIcon: getTabBarIcon('SpeedTest') }} 
-      />
+      )}
       <Tab.Screen 
         name="Support" 
         component={SupportStack} 

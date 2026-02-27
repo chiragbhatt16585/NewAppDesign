@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import param from 'jquery-param';
 import sessionManager from '../../src/services/sessionManager';
 import { getClientConfig } from '../config/client-config';
 
@@ -8,32 +9,71 @@ const getApiConfig = () => {
     const clientConfig = getClientConfig();
     const baseURL = clientConfig.api.baseURL;
     
-    // Extract domain from baseURL
+    // Extract domain and protocol from baseURL
     let domainUrl: string;
+    let protocol: string = 'https://';
+    
     if (baseURL.startsWith('https://')) {
       domainUrl = baseURL.replace('https://', '').replace('/l2s/api', '');
+      protocol = 'https://';
+    } else if (baseURL.startsWith('http://')) {
+      domainUrl = baseURL.replace('http://', '').replace('/l2s/api', '');
+      protocol = 'http://';
     } else {
       domainUrl = baseURL.replace('/l2s/api', '');
+      protocol = 'https://'; // Default to https
     }
     
     return {
       domainUrl: domainUrl,
+      protocol: protocol,
       ispName: clientConfig.clientName
     };
   } catch (error) {
     console.error('Error getting client config, falling back to dna-infotel:', error);
     return {
       domainUrl: "crm.dnainfotel.com",
+      protocol: 'https://',
       ispName: 'DNA Infotel'
     };
   }
 };
 
-const apiConfig = getApiConfig();
-export const domainUrl = apiConfig.domainUrl;
-export const domain = `https://${domainUrl}`;
-const url = `${domain}/l2s/api`;
-export const ispName = apiConfig.ispName;
+// Get API config dynamically (not cached at module load)
+const getApiConfigDynamic = () => {
+  const apiConfig = getApiConfig();
+  console.log('=== API CONFIG LOADED ===');
+  console.log('Client Config:', getClientConfig().clientId);
+  console.log('API Domain:', apiConfig.domainUrl);
+  console.log('API URL:', `${apiConfig.protocol}${apiConfig.domainUrl}/l2s/api`);
+  console.log('=== END API CONFIG ===');
+  return apiConfig;
+};
+
+// For backward compatibility, keep static exports but make them dynamic
+let cachedApiConfig = getApiConfigDynamic();
+export const getDomainUrl = () => {
+  cachedApiConfig = getApiConfigDynamic();
+  return cachedApiConfig.domainUrl;
+};
+export const getDomain = () => {
+  cachedApiConfig = getApiConfigDynamic();
+  return `${cachedApiConfig.protocol}${cachedApiConfig.domainUrl}`;
+};
+export const getApiUrl = () => {
+  cachedApiConfig = getApiConfigDynamic();
+  return `${cachedApiConfig.protocol}${cachedApiConfig.domainUrl}/l2s/api`;
+};
+export const getIspName = () => {
+  cachedApiConfig = getApiConfigDynamic();
+  return cachedApiConfig.ispName;
+};
+
+// Legacy exports for backward compatibility (will use cached config)
+export const domainUrl = cachedApiConfig.domainUrl;
+export const domain = `${cachedApiConfig.protocol}${cachedApiConfig.domainUrl}`;
+const url = `${cachedApiConfig.protocol}${cachedApiConfig.domainUrl}/l2s/api`;
+export const ispName = cachedApiConfig.ispName;
 
 // Get KYC document URL dynamically
 export const getKycDocumentUrl = (filename: string): string => {
@@ -70,6 +110,7 @@ export interface LoginRequest {
   login_from?: string;
   request_source?: string;
   request_app?: string;
+  auth_type?: string;
 }
 
 export interface LoginResponse {
@@ -148,13 +189,18 @@ const toFormData = (data: any): FormData => {
         formData.append(key, data[key]);
       }
     } else {
-      //console.log(`Skipping ${key} - value is undefined or null:`, data[key]);
+      // Skip undefined/null values silently - this is expected behavior
+      // Only log in debug mode for troubleshooting
+      if (__DEV__ && key !== 'phone_no') {
+        // Don't log phone_no skipping as it's always undefined for password login
+        console.log(`Skipping ${key} - value is undefined or null:`, data[key]);
+      }
     }
   });
   
-  //console.log('=== FINAL FORM DATA CONTENTS ===');
-  // Log what's actually in the FormData
-  //console.log('FormData created with keys:', Object.keys(data).filter(key => data[key] !== undefined && data[key] !== null));
+  // console.log('=== FINAL FORM DATA CONTENTS ===');
+  // // Log what's actually in the FormData
+  // console.log('FormData created with keys:', Object.keys(data).filter(key => data[key] !== undefined && data[key] !== null));
   // console.log('=== END FORM DATA DEBUG ===');
   
   return formData;
@@ -182,8 +228,15 @@ class ApiService {
   private isRegeneratingToken = false;
   private tokenRegenerationPromise: Promise<string | false> | null = null;
   private authUserInFlight: Promise<any> | null = null;
-  private authUserCache: { data: any; ts: number } | null = null;
+  private authUserCache: { data: any; ts: number; username?: string } | null = null;
   private readonly AUTHUSER_TTL_MS = 60 * 1000;
+  
+  // CRITICAL: Clear authUser cache when user changes
+  clearAuthUserCache(): void {
+    console.log('[API] 🚨 Clearing authUser cache');
+    this.authUserCache = null;
+    this.authUserInFlight = null;
+  }
 
   abortController() {
     const abortController = new AbortController();
@@ -198,7 +251,7 @@ class ApiService {
     };
     
     try {
-      const res = await fetch(`https://${domainUrl}/tmp/isp_details.json`, options);
+      const res = await fetch(`${domain}/tmp/isp_details.json`, options);
       const data = await res.json();
       return data.data[0];
     } catch (e: any) {
@@ -549,14 +602,14 @@ class ApiService {
         timeout
       } as any;
 
-      console.log('[API] POST /selfcareMenuSettings start (realm variant)', { hasToken: !!Authentication, username });
+      //console.log('[API] POST /selfcareMenuSettings start (realm variant)', { hasToken: !!Authentication, username });
       const res = await fetch(`${url}/selfcareMenuSettings`, options);
       const response = await res.json();
-      console.log('[API] POST /selfcareMenuSettings response (realm variant)', {
-        status: response?.status,
-        code: response?.code,
-        message: response?.message,
-      });
+      //console.log('[API] POST /selfcareMenuSettings response (realm variant)', {
+      //  status: response?.status,
+      //  code: response?.code,
+      //  message: response?.message,
+      //});
       if (response.status != 'ok' && response.code != 200) {
         throw new Error(response.message || 'Failed to fetch menu settings');
       } else {
@@ -569,7 +622,11 @@ class ApiService {
     }
   }
 
-  async authenticate(username: string, password: string, otp: string = '', resend_otp: string = 'none', phone_no?: string): Promise<LoginResponse> {
+  async authenticate(username: string, password: string, otp: string = '', resend_otp: string = 'none', phone_no?: string, auth_type?: 'password' | 'otp'): Promise<LoginResponse> {
+    // Get dynamic API URL based on current client config
+    const currentApiUrl = getApiUrl();
+    const clientConfig = getClientConfig();
+    
     const data: LoginRequest = {
       username: username.toLowerCase().trim(),
       password: password,
@@ -579,11 +636,13 @@ class ApiService {
       user_type: 'user',
       login_from: 'app',
       request_source: 'app',
-      request_app: 'user_app'
+      request_app: 'user_app',
+      auth_type: auth_type
     };
 
-    console.log('API Request Data:', data);
-    console.log('API URL:', `${url}/selfcareL2sUserLogin`);
+    // console.log('Using client for login:', clientConfig.clientId);
+    // console.log('API Request Data:', data);
+    // console.log('API URL:', `${currentApiUrl}/selfcareL2sUserLogin`);
 
     const options = {
       method,
@@ -593,40 +652,118 @@ class ApiService {
     };
 
     try {
-      console.log('Making API request...');
-      const res = await fetch(`${url}/selfcareL2sUserLogin`, options);
-      console.log('Response status:', res.status);
+      // console.log('=== LOGIN API REQUEST ===');
+      // console.log('Making API request...');
+      // console.log('Full URL:', `${currentApiUrl}/selfcareL2sUserLogin`);
+      // console.log('Request Data:', JSON.stringify(data, null, 2));
+      
+      const res = await fetch(`${currentApiUrl}/selfcareL2sUserLogin`, options);
+      // console.log('Response status:', res.status);
+      // console.log('Response statusText:', res.statusText);
+      // console.log('Response headers:', JSON.stringify(Object.fromEntries(res.headers.entries()), null, 2));
       
       const response = await res.json();
-      console.log('API Response:', response);
+      // console.log('=== LOGIN API RESPONSE ===');
+      // console.log('Full Response:', JSON.stringify(response, null, 2));
+      // console.log('Response status:', response.status);
+      // console.log('Response code:', response.code);
+      // console.log('Response message:', response.message);
+      // console.log('Response data:', response.data);
+      // if (response.data) {
+      //   console.log('Response data.token:', response.data?.token ? 'Token present' : 'Token missing');
+      //   console.log('Response data keys:', response.data ? Object.keys(response.data) : 'No data');
+      // }
+      // console.log('=== END LOGIN API RESPONSE ===');
       
       if (response.status !== 'ok' && response.code !== 200) {
         console.error('API Error:', response.message);
-        throw new Error(response.message);
+        throw new Error(response.message || 'Login failed');
       } else {
-        console.log('API Success:', response.data);
+        console.log('API Success - Returning data:', response.data);
         return response.data;
       }
     } catch (e: any) {
-      console.error('API Request Error:', e);
+      console.error('=== LOGIN API REQUEST ERROR ===');
+      console.error('Error type:', e.constructor.name);
+      console.error('Error message:', e.message);
+      console.error('Error stack:', e.stack);
+      if (e.response) {
+        console.error('Error response:', e.response);
+      }
+      console.error('=== END LOGIN API REQUEST ERROR ===');
+      const msg = isNetworkError(e) ? networkErrorMsg : e.message;
+      throw new Error(msg);
+    }
+  }
+
+  /**
+   * Verify OTP without sending auth_type/login_from/resend_otp.
+   * Required params: username, otp, request_source, request_app.
+   */
+  async verifyOtp(username: string, otp: string): Promise<LoginResponse> {
+    const normalizedUsername = username.toLowerCase().trim();
+    const data = {
+      username: normalizedUsername,
+      otp: otp,
+      phone_no: normalizedUsername, // same as username for OTP login
+      request_source: 'app',
+      request_app: 'user_app',
+    };
+
+    // console.log('API OTP Verify Data:', data);
+    // console.log('API URL:', `${url}/selfcareL2sUserLogin`);
+
+    const options = {
+      method,
+      body: toFormData(data),
+      headers: new Headers({ ...fixedHeaders }),
+      timeout
+    };
+
+    try {
+      const res = await fetch(`${url}/selfcareL2sUserLogin`, options);
+      const response = await res.json();
+
+      if (response.status !== 'ok' && response.code !== 200) {
+        throw new Error(response.message || 'OTP verification failed');
+      }
+
+      return response.data;
+    } catch (e: any) {
       const msg = isNetworkError(e) ? networkErrorMsg : e.message;
       throw new Error(msg);
     }
   }
 
   async authUser(user_id: string) {
-    // TTL cache check
-    if (this.authUserCache && Date.now() - this.authUserCache.ts < this.AUTHUSER_TTL_MS) {
+    const normalizedUsername = user_id.toLowerCase().trim();
+    
+    // CRITICAL: Check if cached data is for a different user
+    // If username doesn't match, clear cache and fetch fresh data
+    if (this.authUserCache && this.authUserCache.username !== normalizedUsername) {
+      //console.log('[API] 🚨 Cached data is for different user! Clearing cache.');
+      //console.log('[API] Cached username:', this.authUserCache.username, 'Requested:', normalizedUsername);
+      this.clearAuthUserCache();
+    }
+    
+    // TTL cache check - only use cache if username matches
+    if (this.authUserCache && 
+        this.authUserCache.username === normalizedUsername &&
+        Date.now() - this.authUserCache.ts < this.AUTHUSER_TTL_MS) {
+      // console.log('[API] ✅ Using cached data for user:', normalizedUsername);
       return this.authUserCache.data
     }
+    
     // in-flight dedupe
     if (this.authUserInFlight) {
       return this.authUserInFlight
     }
+    
     this.authUserInFlight = this.makeAuthenticatedRequest(async (token: string) => {
       const data = {
-        username: user_id.toLowerCase().trim(),
+        username: normalizedUsername,
         fetch_company_details: 'yes',
+        fetch_sales_details: 'yes',
         request_source: 'app',
         request_app: 'user_app'
       };
@@ -639,12 +776,19 @@ class ApiService {
       };
 
       try {
+        //console.log('[API] Fetching fresh data for user:', normalizedUsername);
         const res = await fetch(`${url}/selfcareHelpdesk`, options);
         const response = await res.json();
         if (response.status !== 'ok' && response.code !== 200) {
           throw new Error('Invalid username or password');
         } else {
-          this.authUserCache = { data: response.data, ts: Date.now() }
+          // CRITICAL: Store username with cached data to verify on next request
+          this.authUserCache = { 
+            data: response.data, 
+            ts: Date.now(),
+            username: normalizedUsername
+          };
+          //console.log('[API] ✅ Cached fresh data for user:', normalizedUsername);
           return response.data;
         }
       } catch (e: any) {
@@ -899,51 +1043,74 @@ class ApiService {
     // console.log('=== API SERVICE: Formatting date ===', { dateString, format });
     
     try {
-      // Handle the specific format 'DD-MMM,YY HH:mm' (e.g., "15-Jul,24 14:30")
+      // Handle the specific format 'DD-MMM,YY HH:mm' (e.g., "12-May,26 01:05")
       if (format === 'DD-MMM,YY HH:mm') {
-        // Parse the date string manually
+        // If the date is already in the expected format, return it as-is
+        if (dateString.match(/^\d{1,2}-[A-Za-z]{3},\d{2}\s+\d{1,2}:\d{2}$/)) {
+          return dateString;
+        }
+        
+        // Handle "DD-MM-YYYY HH:mm" format (e.g., "25-04-2025 10:56")
+        if (dateString.match(/^\d{1,2}-\d{2}-\d{4}\s+\d{1,2}:\d{2}$/)) {
+          const parts = dateString.split(' ');
+          const datePart = parts[0]; // "25-04-2025"
+          const timePart = parts[1] || ''; // "10:56"
+          
+          const [day, month, year] = datePart.split('-');
+          const monthNum = parseInt(month, 10) - 1; // Month is 0-indexed
+          const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          const monthAbbr = monthNames[monthNum];
+          const year2Digit = year.slice(-2);
+          
+          return `${day}-${monthAbbr},${year2Digit} ${timePart}`;
+        }
+        
+        // Parse the date string manually if it's in a different format
         const parts = dateString.split(' ');
         if (parts.length >= 2) {
-          const datePart = parts[0]; // "15-Jul,24"
-          const timePart = parts[1]; // "14:30"
+          const datePart = parts[0]; // Could be "12-May,26" or "2026-05-12" or "12/05/2026"
+          const timePart = parts[1] || ''; // "01:05" or empty
           
-          const dateComponents = datePart.split('-');
-          if (dateComponents.length >= 2) {
-            const day = dateComponents[0]; // "15"
-            const monthYear = dateComponents[1]; // "Jul,24"
+          // Try to parse as ISO date or standard date format
+          let date: Date;
+          if (datePart.includes('-') && datePart.match(/^\d{4}-\d{2}-\d{2}/)) {
+            // ISO format: "2026-05-12"
+            date = new Date(dateString);
+          } else if (datePart.includes('/')) {
+            // Format like "12/05/2026"
+            const [day, month, year] = datePart.split('/');
+            date = new Date(`${year}-${month}-${day} ${timePart}`);
+          } else {
+            // Try standard Date parsing
+            date = new Date(dateString);
+          }
+          
+          if (!isNaN(date.getTime())) {
+            // Format to "DD-MMM,YY HH:mm" (e.g., "12-May,26 01:05")
+            const day = date.getDate().toString();
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const month = monthNames[date.getMonth()];
+            const year = date.getFullYear().toString().slice(-2);
+            const hours = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
             
-            const monthYearParts = monthYear.split(',');
-            if (monthYearParts.length >= 2) {
-              const month = monthYearParts[0]; // "Jul"
-              const year = monthYearParts[1]; // "24"
-              
-              // Convert to full year
-              const fullYear = year.length === 2 ? `20${year}` : year;
-              
-              // Create a proper date string
-              const properDateString = `${day} ${month} ${fullYear}`;
-              const date = new Date(properDateString);
-              
-              if (!isNaN(date.getTime())) {
-                return date.toLocaleDateString('en-GB', {
-                  day: '2-digit',
-                  month: 'short',
-                  year: 'numeric'
-                });
-              }
-            }
+            return `${day}-${month},${year} ${hours}:${minutes}`;
           }
         }
       }
       
-      // Fallback: try to parse as regular date
+      // Fallback: try to parse as regular date and format to expected format
       const date = new Date(dateString);
       if (!isNaN(date.getTime())) {
-        return date.toLocaleDateString('en-GB', {
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric'
-        });
+        // Format to "DD-MMM,YY HH:mm" (e.g., "12-May,26 01:05")
+        const day = date.getDate().toString();
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const month = monthNames[date.getMonth()];
+        const year = date.getFullYear().toString().slice(-2);
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        
+        return `${day}-${month},${year} ${hours}:${minutes}`;
       }
       
       // If all else fails, return the original string
@@ -1134,6 +1301,89 @@ class ApiService {
     });
   }
 
+  async getFaqList(complaintId: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const username = await sessionManager.getUsername();
+      if (!username) {
+        throw new Error('No username found in session');
+      }
+
+      const data = {
+        crm_csi_id: complaintId,
+        username: username.toLowerCase().trim(),
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+
+      try {
+        const res = await fetch(`${url}/selfcareComplaintWiseFAQ`, options);
+        const response = await res.json();
+
+        if ((response.status !== 'ok' && response.code !== 200) || response.code === 999) {
+          throw new Error(response.message || 'Failed to fetch FAQs');
+        }
+
+        return response.data || [];
+      } catch (e: any) {
+        if (isNetworkError(e)) {
+          throw new Error(networkErrorMsg);
+        } else {
+          throw new Error(e.message || 'Failed to fetch FAQs');
+        }
+      }
+    });
+  }
+
+  async getSubComplaintList(parentComplaintId: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const username = await sessionManager.getUsername();
+      if (!username) {
+        throw new Error('No username found in session');
+      }
+
+      const data = {
+        combo_code: 'fetch_parent_complaints',
+        column: 'parent_id',
+        value: parentComplaintId,
+        'extraparams[selfcare_display]': 'yes',
+        username: username.toLowerCase().trim(),
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+
+      try {
+        const res = await fetch(`${url}/selfcareDropdown`, options);
+        const response = await res.json();
+
+        if ((response.status !== 'ok' && response.code !== 200) || response.code === 999) {
+          throw new Error(response.message || 'Failed to fetch sub complaints');
+        }
+
+        return response.data || [];
+      } catch (e: any) {
+        if (isNetworkError(e)) {
+          throw new Error(networkErrorMsg);
+        } else {
+          throw new Error(e.message || 'Failed to fetch sub complaints');
+        }
+      }
+    });
+  }
+
   async submitComplaint(username: string, problem: any, customMsg: string, realm: string) {
     return this.makeAuthenticatedRequest(async (token: string) => {
       const data: any = {
@@ -1252,26 +1502,26 @@ class ApiService {
         //Alert.alert('Plan list response:', JSON.stringify(response));
         
         if (response.status !== 'ok' && response.code !== 200) {
-          console.log('=== API SERVICE: Error response ===', response);
+          //console.log('=== API SERVICE: Error response ===', response);
           throw new Error('Plan list not found. Please try again.');
         } else if (response.status === 'ok' && response.code !== 200) {
-          console.log('=== API SERVICE: Empty response ===');
+          //console.log('=== API SERVICE: Empty response ===');
           return [];
         } else {
-          console.log('=== API SERVICE: Mapping response data ===', response.data);
+          //console.log('=== API SERVICE: Mapping response data ===', response.data);
           if (response.data?.[0]) {
-            console.log('=== API SERVICE: Raw plan data sample ===');
-            console.log('planname:', response.data[0].planname);
-            console.log('description:', response.data[0].description);
-            console.log('download_speed_mb:', response.data[0].download_speed_mb);
-            console.log('amount:', response.data[0].amount);
-            console.log('validity:', response.data[0].validity);
-            console.log('data_xfer:', response.data[0].data_xfer);
-            console.log('ott_plan:', response.data[0].ott_plan);
-            console.log('voice_plan:', response.data[0].voice_plan);
-            console.log('iptv:', response.data[0].iptv);
-            console.log('fup_flag:', response.data[0].fup_flag);
-            console.log('content_providers count:', response.data[0].content_providers?.length || 0);
+            // console.log('=== API SERVICE: Raw plan data sample ===');
+            // console.log('planname:', response.data[0].planname);
+            // console.log('description:', response.data[0].description);
+            // console.log('download_speed_mb:', response.data[0].download_speed_mb);
+            // console.log('amount:', response.data[0].amount);
+            // console.log('validity:', response.data[0].validity);
+            // console.log('data_xfer:', response.data[0].data_xfer);
+            // console.log('ott_plan:', response.data[0].ott_plan);
+            // console.log('voice_plan:', response.data[0].voice_plan);
+            // console.log('iptv:', response.data[0].iptv);
+            // console.log('fup_flag:', response.data[0].fup_flag);
+            // console.log('content_providers count:', response.data[0].content_providers?.length || 0);
           }
         const mappedPlans = response.data.map((planObj: any, index: number) => ({
         id: planObj.id || index.toString(),
@@ -1297,21 +1547,21 @@ class ApiService {
         fup_flag: planObj.fup_flag || 'no',
         isExpanded: false
       }));
-          console.log('=== API SERVICE: Mapped plans ===', mappedPlans);
-          if (mappedPlans?.[0]) {
-            console.log('=== API SERVICE: Mapped plan sample ===');
-            console.log('Mapped Name:', mappedPlans[0].name);
-            console.log('Mapped Description:', mappedPlans[0].description);
-            console.log('Mapped Speed:', mappedPlans[0].downloadSpeed);
-            console.log('Mapped Price:', mappedPlans[0].FinalAmount);
-            console.log('Mapped Validity:', mappedPlans[0].days);
-            console.log('Mapped Data Limit:', mappedPlans[0].limit);
-            console.log('Mapped OTT Plan:', mappedPlans[0].ott_plan);
-            console.log('Mapped Voice Plan:', mappedPlans[0].voice_plan);
-            console.log('Mapped IPTV:', mappedPlans[0].iptv);
-            console.log('Mapped FUP Flag:', mappedPlans[0].fup_flag);
-            console.log('Mapped OTT Count:', mappedPlans[0].content_providers?.length || 0);
-          }
+          // console.log('=== API SERVICE: Mapped plans ===', mappedPlans);
+          // if (mappedPlans?.[0]) {
+          //   console.log('=== API SERVICE: Mapped plan sample ===');
+          //   console.log('Mapped Name:', mappedPlans[0].name);
+          //   console.log('Mapped Description:', mappedPlans[0].description);
+          //   console.log('Mapped Speed:', mappedPlans[0].downloadSpeed);
+          //   console.log('Mapped Price:', mappedPlans[0].FinalAmount);
+          //   console.log('Mapped Validity:', mappedPlans[0].days);
+          //   console.log('Mapped Data Limit:', mappedPlans[0].limit);
+          //   console.log('Mapped OTT Plan:', mappedPlans[0].ott_plan);
+          //   console.log('Mapped Voice Plan:', mappedPlans[0].voice_plan);
+          //   console.log('Mapped IPTV:', mappedPlans[0].iptv);
+          //   console.log('Mapped FUP Flag:', mappedPlans[0].fup_flag);
+          //   console.log('Mapped OTT Count:', mappedPlans[0].content_providers?.length || 0);
+          // }
           return mappedPlans;
         }
       } catch (e: any) {
@@ -1386,7 +1636,7 @@ class ApiService {
         const res = await fetch(`${url}/selfcareGetAdminDetails`, options);
         const response = await res.json();
         
-        console.log('=== Tax info API response ===', response);
+        //console.log('=== Tax info API response ===', response);
         
         if (response.status !== 'ok' && response.code !== 200) {
           throw new Error('Tax info not found. Please try again.');
@@ -1543,6 +1793,61 @@ class ApiService {
     });
   }
 
+  async activatePaymentGatewayResponse(
+    gatewayId: string,
+    merchantTxnRef: string,
+    gatewayResponse: any,
+    realm: string
+  ) { 
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const username = await sessionManager.getUsername();
+      if (!username) {
+        throw new Error('No user session found');
+      }
+
+      const payload: Record<string, any> = {
+        username: username.toLowerCase().trim(),
+        mer_txn_ref: merchantTxnRef,
+        tp_gw_id: gatewayId,
+        gw_response_json: typeof gatewayResponse === 'string'
+          ? gatewayResponse
+          : JSON.stringify(gatewayResponse),
+        is_verify: false,
+        request_source: 'app',
+        request_app: 'user_app',
+      };
+
+      const encodedBody = param(payload);
+
+      const options = {
+        method,
+        headers: new Headers({
+          Authentication: token,
+          ...fixedHeaders,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        }),
+        body: encodedBody,
+        timeout,
+      };
+
+      try {
+        console.log('=== ACTIVATE PAYMENT REQUEST ===');
+        console.log('Payload:', payload);
+        const res = await fetch(`${url}/selfcareAdminPaymentResponse`, options);
+        const response = await res.json();
+        console.log('Activate payment response:', response);
+        if (response.status !== 'ok' && response.code !== 200) {
+          throw new Error(response.message || 'Failed to record payment response');
+        }
+        return response;
+      } catch (e: any) {
+        console.error('Activate payment error:', e);
+        const msg = isNetworkError(e) ? networkErrorMsg : e.message;
+        throw new Error(msg);
+      }
+    });
+  }
+
   async addDeviceDetails(fcm_token: string, mac_addr: string, hostname: string, device_info: any, realm: string) {
     return this.makeAuthenticatedRequest(async (token: string) => {
       //alert('addDeviceDetails');
@@ -1576,15 +1881,15 @@ class ApiService {
       };
       try {
         // eslint-disable-next-line no-console
-        console.log('[API] POST /selfcareAddDeviceInfo start')
+        //console.log('[API] POST /selfcareAddDeviceInfo start')
         const res = await fetch(`${url}/selfcareAddDeviceInfo`, options);
         const response = await res.json();
         // eslint-disable-next-line no-console
-        console.log('[API] POST /selfcareAddDeviceInfo response', {
-          status: response?.status,
-          code: response?.code,
-          message: response?.message,
-        })
+        //console.log('[API] POST /selfcareAddDeviceInfo response', {
+        //  status: response?.status,
+        //  code: response?.code,
+        //  message: response?.message,
+        //})
         if (response.status !== 'ok' && response.code !== 200) {
           throw new Error('Invalid username or password');
         } else {
@@ -1602,7 +1907,10 @@ class ApiService {
   async bannerDisplay(realm: string) {
     try {
       const { Authentication } = await this.getCredentials(realm);
+      const session = await sessionManager.getCurrentSession();
       const data = {
+        username: session?.username || '',
+        l2s_module: 'user_app',
         request_source: 'app',
         request_app: 'user_app'
       };
@@ -1614,16 +1922,17 @@ class ApiService {
         timeout
       };
       
-      return fetch(`${url}/selfcareDisplayBanner`, options).then(res => {
-        setTimeout(() => null, 0);
-        return res.json().then(res => {
-          setTimeout(() => null, 0);
-          if (res.status != 'ok' && res.code != 200) {
-            throw new Error(res.message);
-          } else {
-            return res.data || [];
-          }
-        });
+      //console.log('[API] bannerDisplay request payload:', data);
+
+      return fetch(`${url}/selfcareDisplayBanner`, options).then(async res => {
+        const json = await res.json();
+        //console.log('[API] bannerDisplay response:', json);
+
+        if (json.status !== 'ok' && json.code !== 200) {
+          throw new Error(json.message);
+        } else {
+          return json.data || [];
+        }
       }).catch(e => {
         let msg = (
           isNetworkError(e) ? networkErrorMsg : e.message
@@ -2156,12 +2465,15 @@ class ApiService {
       formData.append('request_source', 'app');
       formData.append('username', username);
       formData.append('request_app', 'user_app');
-      console.log('=== STATICDROPDOWN REQUEST DATA ===');
-      console.log('Data:', JSON.stringify(dataObj, null, 2));
-      console.log('Request Source:', 'app');
-      console.log('Username:', username);
-      console.log('Request App:', 'user_app');
-      console.log('=== END STATICDROPDOWN REQUEST DATA ===');
+
+      // console.log('=== STATICDROPDOWN API SERVICE REQUEST ===');
+      // console.log('URL:', `${url}/selfcareStaticdropdown`);
+      // console.log('Method:', method);
+      // console.log('Data Object Received:', JSON.stringify(dataObj, null, 2));
+      // console.log('Username:', username);
+      // console.log('Form Data String:', formData.toString());
+      // console.log('Token Available:', token ? 'Yes' : 'No');
+      // console.log('=== END API SERVICE REQUEST ===');
 
       const options = {
         method,
@@ -2172,22 +2484,63 @@ class ApiService {
 
       try {
         const res = await fetch(`${url}/selfcareStaticdropdown`, options);
-        const response = await res.json();
+        console.log('=== STATICDROPDOWN API SERVICE RESPONSE ===');
+        console.log('Response Status:', res.status);
+        console.log('Response Status Text:', res.statusText);
+        console.log('Response Headers:', JSON.stringify(Object.fromEntries(res.headers.entries()), null, 2));
         
-        console.log('=== STATICDROPDOWN RAW RESPONSE ===');
-        console.log('Status:', response.status);
-        console.log('Code:', response.code);
-        console.log('Has Data:', !!response.data);
-        console.log('Data Type:', typeof response.data);
-        console.log('Full Response:', JSON.stringify(response, null, 2));
-        console.log('=== END STATICDROPDOWN RAW RESPONSE ===');
+        // Get raw response text first
+        const rawResponseText = await res.text();
+        console.log('=== RAW RESPONSE TEXT ===');
+        console.log('Raw Response (as string):', rawResponseText);
+        console.log('Raw Response Length:', rawResponseText.length);
+        console.log('Raw Response Type:', typeof rawResponseText);
+        console.log('=== END RAW RESPONSE ===');
+        
+        // Now parse as JSON
+        let response;
+        try {
+          response = JSON.parse(rawResponseText);
+          console.log('=== PARSED JSON RESPONSE ===');
+          console.log('Response JSON:', JSON.stringify(response, null, 2));
+          console.log('Response Status:', response.status);
+          console.log('Response Code:', response.code);
+          console.log('Response Message:', response.message);
+          console.log('Response Data:', JSON.stringify(response.data, null, 2));
+          console.log('Response Data Type:', typeof response.data);
+          console.log('Response Data Keys:', response.data ? Object.keys(response.data) : 'No data');
+          if (response.data) {
+            console.log('Response Data is Array:', Array.isArray(response.data));
+            console.log('Response Data is Object:', typeof response.data === 'object');
+          }
+          console.log('=== END PARSED JSON ===');
+        } catch (parseError) {
+          console.error('=== JSON PARSE ERROR ===');
+          console.error('Parse Error:', parseError);
+          console.error('Failed to parse response as JSON');
+          console.error('Raw text that failed to parse:', rawResponseText);
+          console.error('=== END PARSE ERROR ===');
+          throw new Error('Failed to parse API response as JSON');
+        }
+        
+        console.log('=== END API SERVICE RESPONSE ===');
         
         if (response.status != 'ok' && response.code != 200) {
-          throw new Error('Invalid username or password');
+          console.error('=== STATICDROPDOWN API ERROR ===');
+          console.error('Error Status:', response.status);
+          console.error('Error Code:', response.code);
+          console.error('Error Message:', response.message);
+          console.error('=== END API ERROR ===');
+          throw new Error(response.message || 'Invalid username or password');
         } else {
           return response.data;
         }
       } catch (e: any) {
+        console.error('=== STATICDROPDOWN FETCH ERROR ===');
+        console.error('Error:', e);
+        console.error('Error Message:', e.message);
+        console.error('Error Stack:', e.stack);
+        console.error('=== END FETCH ERROR ===');
         const msg = isNetworkError(e) ? networkErrorMsg : e.message;
         throw new Error(msg);
       }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { View, Text } from 'react-native';
 import {NavigationContainer} from '@react-navigation/native';
 import {createStackNavigator} from '@react-navigation/stack';
 import MainTabs from './MainTabs';
@@ -112,7 +113,11 @@ const AppNavigator: React.FC<AppNavigatorProps> = ({ initialRoute }) => {
   };
 
   if (!isReady) {
-    return null; // Show loading state
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8f9fa' }}>
+        <Text style={{ color: '#333333', fontSize: 16 }}>Loading navigation...</Text>
+      </View>
+    );
   }
 
   return (

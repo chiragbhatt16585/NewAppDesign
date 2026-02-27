@@ -1,0 +1,33 @@
+{
+  "name": "NetfixApp",
+  "expo": {
+    "name": "Netfix",
+    "slug": "netfix",
+    "version": "1.0.1",
+    "orientation": "portrait",
+    "icon": "./app-icons/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./app-icons/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "in.spacecom.log2space.client.netfix",
+      "buildNumber": "1"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./app-icons/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "package": "in.spacecom.log2space.client.netfix",
+      "versionCode": 3
+    },
+    "web": {
+      "favicon": "./app-icons/favicon.png"
+    }
+  }
+}

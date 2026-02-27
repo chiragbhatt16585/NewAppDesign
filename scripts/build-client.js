@@ -61,7 +61,7 @@ const switchJavaPackage = (client) => {
     
     // Update package declaration
     if (client === 'microscan') {
-      content = content.replace(/package com\.h8\.dnasubscriber/, 'package com.microscan.app');
+      content = content.replace(/package com\.h8\.dnasubscriber/, 'package in.spacecom.log2space.client.microscan');
     } else if (client === 'linkway') {
       content = content.replace(/package com\.h8\.dnasubscriber/, 'package com.spacecom.log2space.linkway');
     }
@@ -127,29 +127,8 @@ const copyFiles = () => {
       console.log(`✅ Copied app.json for ${clientName}`);
     }
 
-    // Copy api.ts (only if it doesn't exist or is smaller than current)
-    if (fs.existsSync(`${sourcePath}/api.ts`)) {
-      const sourceApiPath = `${sourcePath}/api.ts`;
-      const targetApiPath = './src/services/api.ts';
-      
-      // Check if target exists and compare sizes
-      if (fs.existsSync(targetApiPath)) {
-        const sourceStats = fs.statSync(sourceApiPath);
-        const targetStats = fs.statSync(targetApiPath);
-        
-        // Only copy if source is significantly larger (more complete)
-        if (sourceStats.size > targetStats.size * 1.2) {
-          fs.copyFileSync(sourceApiPath, targetApiPath);
-          console.log(`✅ Copied enhanced api.ts for ${clientName}`);
-        } else {
-          console.log(`⚠️  Skipped api.ts copy - current version is more complete`);
-        }
-      } else {
-        // Target doesn't exist, copy it
-        fs.copyFileSync(sourceApiPath, targetApiPath);
-        console.log(`✅ Copied api.ts for ${clientName}`);
-      }
-    }
+    // Skip api.ts copy - shared dynamic api handles all clients now
+    console.log('ℹ️  Skipping api.ts copy (shared src/services/api.ts is in use)');
 
     // Copy assets (in-app logos)
     if (fs.existsSync(`${sourcePath}/assets`)) {
@@ -176,9 +155,18 @@ const copyFiles = () => {
     }
 
     // Copy iOS app icons
-    if (fs.existsSync(`${sourcePath}/app-icons/ios`)) {
-      fs.cpSync(`${sourcePath}/app-icons/ios`, './ios/ISPApp/Images.xcassets', { recursive: true, force: true });
+    const iosAppIconSrc = path.join(sourcePath, 'app-icons', 'ios', 'AppIcon.appiconset');
+    const iosAppIconDest = path.join(__dirname, '..', 'ios', 'ISPApp', 'Images.xcassets', 'AppIcon.appiconset');
+    if (fs.existsSync(iosAppIconSrc)) {
+      // Remove existing AppIcon.appiconset if it exists
+      if (fs.existsSync(iosAppIconDest)) {
+        fs.rmSync(iosAppIconDest, { recursive: true, force: true });
+      }
+      // Copy the new AppIcon.appiconset
+      fs.cpSync(iosAppIconSrc, iosAppIconDest, { recursive: true, force: true });
       console.log(`✅ Copied iOS app icons for ${clientName}`);
+    } else {
+      console.log(`⚠️  iOS app icons not found at ${iosAppIconSrc}`);
     }
 
     // Copy Android strings.xml (app name)
@@ -191,6 +179,24 @@ const copyFiles = () => {
     if (fs.existsSync(`${sourcePath}/ios-Info.plist`)) {
       fs.copyFileSync(`${sourcePath}/ios-Info.plist`, './ios/ISPApp/Info.plist');
       console.log(`✅ Copied iOS Info.plist for ${clientName}`);
+    }
+
+    // Copy Firebase config for Android (google-services.json)
+    const googleServicesPath = `${sourcePath}/google-services.json`;
+    if (fs.existsSync(googleServicesPath)) {
+      fs.copyFileSync(googleServicesPath, './android/app/google-services.json');
+      console.log(`✅ Copied google-services.json for Android (Firebase) for ${clientName}`);
+    } else {
+      console.log(`⚠️  google-services.json not found for ${clientName}, skipping Firebase Android config copy`);
+    }
+
+    // Copy Firebase config for iOS (GoogleService-Info.plist)
+    const googleServiceInfoPath = `${sourcePath}/GoogleService-Info.plist`;
+    if (fs.existsSync(googleServiceInfoPath)) {
+      fs.copyFileSync(googleServiceInfoPath, './ios/ISPApp/GoogleService-Info.plist');
+      console.log(`✅ Copied GoogleService-Info.plist for iOS (Firebase) for ${clientName}`);
+    } else {
+      console.log(`⚠️  GoogleService-Info.plist not found for ${clientName}, skipping Firebase iOS config copy`);
     }
 
     // Copy strings.json

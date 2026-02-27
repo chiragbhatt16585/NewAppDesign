@@ -11,6 +11,7 @@ import { useTheme } from '../utils/ThemeContext';
 import { getThemeColors } from '../utils/themeStyles';
 import { apiService } from '../services/api';
 import sessionManager from '../services/sessionManager';
+import { getDaysRemainingNumber, parseUsageNumber } from '../utils/usageUtils';
 
 const { width } = Dimensions.get('window');
 
@@ -92,19 +93,22 @@ const AIUsageInsights = ({ navigation }: { navigation?: any }) => {
 
     const dataUsed = usageDetails.data_used || '0';
     const dataAllotted = usageDetails.plan_data || '100 GB';
-    const daysUsed = parseInt(usageDetails.days_used || '0');
-    const planDays = parseInt(usageDetails.plan_days || '30');
-    
+    const daysUsed = parseUsageNumber(usageDetails.days_used) ?? 0;
+    const planDays = parseUsageNumber(usageDetails.plan_days) ?? 30;
+
+    // Use robust days-remaining logic (handles days_remaining, Unlimited, total_days)
+    const daysRemaining = getDaysRemainingNumber(usageDetails, authData);
+
     // Convert bytes to GB
-    const dataUsedGB = parseFloat(dataUsed) / (1024 * 1024 * 1024);
-    
+    let dataUsedGB = parseFloat(String(dataUsed)) / (1024 * 1024 * 1024);
+    if (Number.isNaN(dataUsedGB)) dataUsedGB = 0;
+
     // Handle unlimited plans
     const isUnlimited = dataAllotted === 'Unlimited';
-    const planDataGB = isUnlimited ? 1000 : parseFloat(dataAllotted.split(' ')[0]);
-    
-    const daysRemaining = Math.max(0, planDays - daysUsed);
+    const planDataGB = isUnlimited ? 1000 : parseFloat(String(dataAllotted).split(' ')[0]) || 100;
+
     const averageDailyUsage = daysUsed > 0 ? dataUsedGB / daysUsed : 0;
-    const predictedUsage = averageDailyUsage * planDays;
+    const predictedUsage = averageDailyUsage * (planDays > 0 ? planDays : 30);
 
     setUsageData({
       currentUsage: dataUsedGB,

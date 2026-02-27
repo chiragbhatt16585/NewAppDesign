@@ -121,7 +121,19 @@ const PayBillScreen = ({navigation}: any) => {
       const gateways = await apiService.paymentGatewayOptions(adminId, realm);
       console.log('Payment gateways fetched successfully:', gateways?.length || 0);
       
-      setPaymentGateways(gateways || []);
+      const gatewaysList = gateways || [];
+      setPaymentGateways(gatewaysList);
+      
+      // If only one gateway, automatically proceed to payment
+      if (gatewaysList.length === 1) {
+        setSelectedGateway(gatewaysList[0].id);
+        setLoadingGateways(false);
+        // Directly proceed to payment without showing modal
+        await handleGatewayPayDirect(gatewaysList[0]);
+        return;
+      }
+      
+      // Multiple gateways - show selection modal
       setShowPaymentModal(true);
     } catch (err: any) {
       console.error('Payment gateway fetch error:', err);
@@ -139,9 +151,8 @@ const PayBillScreen = ({navigation}: any) => {
     }
   };
 
-  const handleGatewayPay = async () => {
-    setShowPaymentModal(false);
-    
+  // Shared payment processing function
+  const processPayment = async (gatewayObj: any) => {
     // Get username from current session
     const session = await sessionManager.getCurrentSession();
     if (!session || !session.username) {
@@ -151,17 +162,21 @@ const PayBillScreen = ({navigation}: any) => {
     
     const clientConfig = getClientConfig();
     const realm = clientConfig.clientId;
-    const selectedGatewayObj = paymentGateways.find(g => g.id === selectedGateway);
     
     // Check ATOM minimum amount requirement
-    if (selectedGatewayObj?.gw_display_name?.toLowerCase().includes('atom') && existingDues < 50) {
+    if (gatewayObj?.gw_display_name?.toLowerCase().includes('atom') && existingDues < 50) {
       Alert.alert(
         'ATOM Payment Gateway',
         'ATOM requires minimum Rs. 50 for payment. Please select a different payment gateway or contact support.',
         [
           {
             text: 'OK',
-            onPress: () => setShowPaymentModal(true), // Reopen modal to select different gateway
+            onPress: () => {
+              // If modal is shown, reopen it; otherwise just dismiss
+              if (showPaymentModal) {
+                setShowPaymentModal(true);
+              }
+            },
           },
         ]
       );
@@ -173,7 +188,7 @@ const PayBillScreen = ({navigation}: any) => {
       adminname: authData?.admin_login_id,
       username: session.username,
       planname: planName,
-      selectedPGType: [{ label: selectedGatewayObj.gw_display_name, value: selectedGatewayObj.id }],
+      selectedPGType: [{ label: gatewayObj.gw_display_name, value: gatewayObj.id }],
       payActionType: 'payDues',
     };
     
@@ -183,13 +198,29 @@ const PayBillScreen = ({navigation}: any) => {
     console.log('Admin Login ID:', authData?.admin_login_id);
     console.log('Username:', session.username);
     console.log('Plan Name:', planName);
-    console.log('Selected Gateway:', selectedGatewayObj);
+    console.log('Selected Gateway:', gatewayObj);
     console.log('Pay Action Type:', 'payDues');
     console.log('Realm:', realm);
     console.log('Full Params Object:', JSON.stringify(params, null, 2));
     console.log('=== END PAYMENT DUES DEBUG ===');
     
     handlePayment(params, 'payDues', navigation, realm);
+  };
+
+  // Direct payment handler (when only one gateway is available)
+  const handleGatewayPayDirect = async (gatewayObj: any) => {
+    await processPayment(gatewayObj);
+  };
+
+  // Payment handler from modal (when user selects a gateway)
+  const handleGatewayPay = async () => {
+    setShowPaymentModal(false);
+    const selectedGatewayObj = paymentGateways.find(g => g.id === selectedGateway);
+    if (!selectedGatewayObj) {
+      Alert.alert('Error', 'Please select a payment gateway.');
+      return;
+    }
+    await processPayment(selectedGatewayObj);
   };
 
   if (isLoading) {

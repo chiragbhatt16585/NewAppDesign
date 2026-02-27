@@ -83,7 +83,9 @@ PODS:
   - nanopb/decode (3.30910.0)
   - nanopb/encode (3.30910.0)
   - PromisesObjC (2.4.0)
-  - razorpay-pod (1.4.5)
+  - razorpay-core-pod (1.0.4)
+  - razorpay-pod (1.5.0):
+    - razorpay-core-pod
   - RCT-Folly (2024.11.18.00):
     - boost
     - DoubleConversion
@@ -1680,8 +1682,8 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - react-native-razorpay (2.3.0):
-    - razorpay-pod
+  - react-native-razorpay (2.3.1):
+    - razorpay-pod (= 1.5.0)
     - React
   - react-native-safe-area-context (5.5.2):
     - boost
@@ -2766,6 +2768,7 @@ SPEC REPOS:
     - GoogleUtilities
     - nanopb
     - PromisesObjC
+    - razorpay-core-pod
     - razorpay-pod
     - SocketRocket
 
@@ -2969,7 +2972,8 @@ SPEC CHECKSUMS:
   GoogleUtilities: 00c88b9a86066ef77f0da2fab05f65d7768ed8e1
   nanopb: fad817b59e0457d11a5dfbde799381cd727c1275
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
-  razorpay-pod: beab9d68c43e4d1421b1cf39283d126fc082d300
+  razorpay-core-pod: a5ee92704a114e9468436dcba9d9b6222f6d9899
+  razorpay-pod: f634f1b8397eb54d547f25d35291f679545ddf17
   RCT-Folly: 59ec0ac1f2f39672a0c6e6cecdd39383b764646f
   RCTDeprecation: efa5010912100e944a7ac9a93a157e1def1988fe
   RCTRequired: bbc4cf999ddc4a4b076e076c74dd1d39d0254630
@@ -3005,7 +3009,7 @@ SPEC CHECKSUMS:
   React-microtasksnativemodule: df9aabcab28ceded524c9ad510a83c3457d8ec9f
   react-native-biometrics: 352e5a794bfffc46a0c86725ea7dc62deb085bdc
   react-native-image-picker: 17f6784d7cb64b066f6c8a7b0264e1355a77a452
-  react-native-razorpay: 0272dd684bc9148828c54a72e05059e3e2e8b813
+  react-native-razorpay: 41a407f4367b5b0e1bba89a77f9cab1918860844
   react-native-safe-area-context: b0beb30b17951a99914cfb98fb6209e1cc43afa9
   react-native-webview: fd93c77a8928b6bc0d0ad7b32e97c1e41a6d9230
   React-NativeModulesApple: 1493fb61e1f8b1ecf9575a676aff1ea8b454d514
@@ -3055,6 +3059,6 @@ SPEC CHECKSUMS:
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   Yoga: daa1e4de4b971b977b23bc842aaa3e135324f1f3
 
-PODFILE CHECKSUM: edb2e8f1b43538fc2b2e1ac2c67b083e78d7b591
+PODFILE CHECKSUM: 6de9208186e10ef9b7f0dee675d865599967b890
 
 COCOAPODS: 1.16.2

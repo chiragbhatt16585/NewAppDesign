@@ -39,7 +39,7 @@ const monitorAndFix = () => {
       console.log('🛠️  Detected wrong package name, fixing...');
       content = content.replace(
         /com\.h8\.dnasubscriber\.BuildConfig/g,
-        'com.microscan.app.BuildConfig'
+        'in.spacecom.log2space.client.microscan.BuildConfig'
       );
       fs.writeFileSync(generatedFilePath, content);
       console.log('✅ Fixed package name');

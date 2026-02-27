@@ -10,6 +10,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Feather from 'react-native-vector-icons/Feather';
 import { useTheme } from '../utils/ThemeContext';
 import { getThemeColors } from '../utils/themeStyles';
 import CommonHeader from '../components/CommonHeader';
@@ -19,9 +20,10 @@ import { pinStorage } from '../services/pinStorage';
 import DeviceInfo from 'react-native-device-info';
 import versionCheckService from '../services/versionCheck';
 import useMenuSettings from '../hooks/useMenuSettings';
+import LeftBorderLine from '../components/LeftBorderLine';
 
 const SettingsScreen = ({ navigation }: any) => {
-  const { isDark, themeMode, setThemeMode } = useTheme();
+  const { isDark } = useTheme();
   const colors = getThemeColors(isDark);
   const { t, i18n } = useTranslation();
   const [pinStatus, setPinStatus] = useState<string>('Not Set');
@@ -113,30 +115,6 @@ const SettingsScreen = ({ navigation }: any) => {
     Alert.alert(t('settings.languageChanged'), `${t('settings.switchedTo')} ${languageName} ${flag}`);
   };
 
-  const handleThemeSettings = () => {
-    Alert.alert(
-      t('settings.themeSettings'),
-      t('settings.themeSettingsSubtitle'),
-      [
-        {
-          text: t('common.cancel'),
-          style: 'cancel',
-        },
-        {
-          text: t('settings.lightTheme'),
-          onPress: () => setThemeMode('light'),
-        },
-        {
-          text: t('settings.darkTheme'),
-          onPress: () => setThemeMode('dark'),
-        },
-        {
-          text: t('settings.systemTheme'),
-          onPress: () => setThemeMode('system'),
-        },
-      ],
-    );
-  };
 
   const handleSecuritySettings = () => {
     navigation.navigate('SecuritySettingsScreen');
@@ -168,19 +146,6 @@ const SettingsScreen = ({ navigation }: any) => {
       Alert.alert('Error', 'Failed to check for updates. Please try again.');
     } finally {
       setIsChecking(false);
-    }
-  };
-
-  const getThemeDisplayText = () => {
-    switch (themeMode) {
-      case 'light':
-        return t('settings.lightTheme');
-      case 'dark':
-        return t('settings.darkTheme');
-      case 'system':
-        return t('settings.systemTheme');
-      default:
-        return t('settings.systemTheme');
     }
   };
 
@@ -219,14 +184,25 @@ const SettingsScreen = ({ navigation }: any) => {
       if (!obj) return true; // default to shown
       const v = (obj as any)[keyShow];
       const d = (obj as any)[keyDisplay];
-      return (typeof v === 'boolean' ? v : (d !== false));
+      // If show is explicitly false, return false
+      if (typeof v === 'boolean') return v;
+      // Otherwise check display flag
+      return (d !== false);
     };
     const showLanguage = flag(cfg?.language);
-    const showTheme = flag(cfg?.theme);
-    const showSecurity = flag(cfg?.auth_settings) || flag(cfg?.security_settings);
-    const showFaq = flag(cfg?.faq);
-    const showTerms = flag(cfg?.tnc) || flag(cfg?.terms_and_conditions);
-    const showAbout = flag(cfg?.about_company);
+    // Respect show: false for auth_settings - check auth_settings first, then security_settings
+    const showSecurity = cfg?.auth_settings !== undefined 
+      ? flag(cfg?.auth_settings) 
+      : (cfg?.security_settings !== undefined ? flag(cfg?.security_settings) : true);
+    // Respect show: false for FAQ
+    const showFaq = cfg?.faq !== undefined ? flag(cfg?.faq) : true;
+    // Check both tnc and terms_and_conditions, but respect show: false
+    // If tnc exists, use its flag value; otherwise check terms_and_conditions
+    const showTerms = cfg?.tnc !== undefined 
+      ? flag(cfg?.tnc) 
+      : (cfg?.terms_and_conditions !== undefined ? flag(cfg?.terms_and_conditions) : true);
+    // Respect show: false for about_company
+    const showAbout = cfg?.about_company !== undefined ? flag(cfg?.about_company) : true;
 
     const appearanceItems: any[] = [];
     if (showLanguage) {
@@ -234,17 +210,8 @@ const SettingsScreen = ({ navigation }: any) => {
         id: 'language',
         title: t('settings.language'),
         subtitle: getLanguageDisplayText(),
-        icon: '🌐',
+        icon: 'globe',
         onPress: handleLanguageChange,
-      });
-    }
-    if (showTheme) {
-      appearanceItems.push({
-        id: 'theme',
-        title: t('settings.theme'),
-        subtitle: getThemeDisplayText(),
-        icon: isDark ? '🌙' : '☀️',
-        onPress: handleThemeSettings,
       });
     }
 
@@ -260,7 +227,7 @@ const SettingsScreen = ({ navigation }: any) => {
           id: 'security',
           title: t('settings.securitySettings'),
           subtitle: t('settings.securitySettingsSubtitle'),
-          icon: '🔒',
+          icon: 'shield',
           onPress: handleSecuritySettings,
         }],
       });
@@ -268,17 +235,47 @@ const SettingsScreen = ({ navigation }: any) => {
 
     const supportItems: any[] = [];
     if (showFaq) {
-      supportItems.push({ id: 'faq', title: t('settings.faq'), subtitle: t('settings.faqSubtitle'), icon: '❓', onPress: () => navigation.navigate('FAQScreen') });
+      supportItems.push({
+        id: 'faq',
+        title: t('settings.faq'),
+        subtitle: t('settings.faqSubtitle'),
+        icon: 'help-circle',
+        onPress: () => navigation.navigate('FAQScreen'),
+      });
     }
     if (showTerms) {
-      supportItems.push({ id: 'terms', title: t('settings.terms'), subtitle: t('settings.termsSubtitle'), icon: '📋', onPress: () => navigation.navigate('TermsScreen') });
+      supportItems.push({
+        id: 'terms',
+        title: t('settings.terms'),
+        subtitle: t('settings.termsSubtitle'),
+        icon: 'file-text',
+        onPress: () => navigation.navigate('TermsScreen'),
+      });
     }
     if (showAbout) {
-      supportItems.push({ id: 'about', title: t('settings.about'), subtitle: t('settings.aboutSubtitle'), icon: '🏢', onPress: () => navigation.navigate('AboutScreen') });
+      supportItems.push({
+        id: 'about',
+        title: t('settings.about'),
+        subtitle: t('settings.aboutSubtitle'),
+        icon: 'info',
+        onPress: () => navigation.navigate('AboutScreen'),
+      });
     }
     // Always include version and update check
-    supportItems.push({ id: 'version', title: t('settings.version'), subtitle: appVersion, icon: '📱', onPress: () => {} });
-    supportItems.push({ id: 'checkUpdates', title: t('settings.checkUpdates'), subtitle: isChecking ? t('settings.checkingUpdates') : t('settings.checkUpdatesSubtitle'), icon: '🔄', onPress: handleCheckForUpdates });
+    supportItems.push({
+      id: 'version',
+      title: t('settings.version'),
+      subtitle: appVersion,
+      icon: 'smartphone',
+      onPress: () => {},
+    });
+    supportItems.push({
+      id: 'checkUpdates',
+      title: t('settings.checkUpdates'),
+      subtitle: isChecking ? t('settings.checkingUpdates') : t('settings.checkUpdatesSubtitle'),
+      icon: 'refresh-cw',
+      onPress: handleCheckForUpdates,
+    });
 
     if (supportItems.length > 0) {
       sections.push({ title: t('settings.support'), items: supportItems });
@@ -289,6 +286,7 @@ const SettingsScreen = ({ navigation }: any) => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <LeftBorderLine />
       <CommonHeader navigation={navigation}  />
 
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -307,11 +305,12 @@ const SettingsScreen = ({ navigation }: any) => {
                     { backgroundColor: colors.card, shadowColor: colors.shadow }
                   ]}
                   onPress={item.onPress}>
-                  <View style={[
-                    styles.menuIcon,
-                    { backgroundColor: colors.primaryLight }
-                  ]}>
-                    <Text style={styles.iconText}>{item.icon}</Text>
+                  <View style={[styles.menuIconContainer, {backgroundColor: colors.primaryLight}]}>
+                    <Feather
+                      name={item.icon}
+                      size={20}
+                      color={colors.primary}
+                    />
                   </View>
                   
                   <View style={styles.menuContent}>
@@ -413,6 +412,8 @@ const SettingsScreen = ({ navigation }: any) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    position: 'relative',
+    overflow: 'visible',
   },
   content: {
     paddingHorizontal: 20,
@@ -441,16 +442,13 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
-  menuIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+  menuIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
-  },
-  iconText: {
-    fontSize: 24,
   },
   menuContent: {
     flex: 1,

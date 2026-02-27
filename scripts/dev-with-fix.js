@@ -46,12 +46,12 @@ buildProcess.on('close', (code) => {
       const oldPackagePattern = /com\.h8\.dnasubscriber\.BuildConfig/g;
       const newPackagePattern = /com\.microscan\.app\.BuildConfig/g;
       
-      if (namespace === 'com.microscan.app') {
-        content = content.replace(oldPackagePattern, 'com.microscan.app.BuildConfig');
+      if (namespace === 'in.spacecom.log2space.client.microscan') {
+        content = content.replace(oldPackagePattern, 'in.spacecom.log2space.client.microscan.BuildConfig');
         // Also comment out the new architecture check
         content = content.replace(
           /if \(com\.microscan\.app\.BuildConfig\.IS_NEW_ARCHITECTURE_ENABLED\) \{\s+DefaultNewArchitectureEntryPoint\.load\(\);\s+\}/g,
-          '// if (com.microscan.app.BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {\n    //   DefaultNewArchitectureEntryPoint.load();\n    // }'
+          '// if (in.spacecom.log2space.client.microscan.BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {\n    //   DefaultNewArchitectureEntryPoint.load();\n    // }'
         );
       } else if (namespace === 'com.h8.dnasubscriber') {
         content = content.replace(newPackagePattern, 'com.h8.dnasubscriber.BuildConfig');

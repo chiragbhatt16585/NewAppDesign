@@ -8,26 +8,60 @@ import { Platform } from 'react-native';
  */
 export function initializeFirebase() {
   try {
-    console.log('🔥 Initializing Firebase...');
-    
-    // Check if Firebase is already initialized
-    const apps = firebase.apps;
-    console.log('🔥 Existing Firebase apps:', apps.length);
-    
-    if (apps.length === 0) {
-      console.log('🔥 No Firebase apps found yet. Native auto-init will occur shortly.');
-      // Do not call firebase.app() here to avoid throwing; let waitForFirebaseAppReady handle readiness
-      return true;
-    } else {
-      console.log('✅ Firebase already initialized');
-      const app = firebase.app();
-      console.log('📱 App name:', app.name);
-      console.log('📱 Project ID:', app.options.projectId);
+    // In production, be more defensive - don't log if it might cause issues
+    if (__DEV__) {
+      console.log('🔥 Initializing Firebase...');
+    }
+
+    // Check existing native apps without forcing firebase.app() to throw
+    // Use try-catch for every firebase access to prevent crashes
+    let apps;
+    try {
+      apps = (firebase as any).apps;
+    } catch (e) {
+      // Firebase module might not be available yet
+      if (__DEV__) {
+        console.log('🔥 Firebase apps not accessible yet');
+      }
+      return true; // Return true to allow app to continue
+    }
+
+    const count = apps ? apps.length : 0;
+    if (__DEV__) {
+      console.log('🔥 Existing Firebase apps:', count);
+    }
+
+    if (!apps || count === 0) {
+      // On some iOS devices the native default app is only available a bit later.
+      // Let waitForFirebaseAppReady() handle polling instead of throwing here.
+      if (__DEV__) {
+        console.log('🔥 No Firebase apps found yet. Waiting for native auto-init.');
+      }
       return true;
     }
+
+    // Default app is available – safe to access it for debug info
+    try {
+      const app = (firebase as any).app();
+      if (__DEV__) {
+        console.log('✅ Firebase already initialized');
+        console.log('📱 App name:', app.name);
+        console.log('📱 Project ID:', app.options.projectId);
+      }
+      return true;
+    } catch (appError) {
+      // App might not be fully initialized yet
+      if (__DEV__) {
+        console.log('🔥 Firebase app not fully ready yet');
+      }
+      return true; // Return true to allow app to continue
+    }
   } catch (error) {
-    console.error('❌ Firebase initialization error:', error);
-    return false;
+    // In production, silently fail - don't crash the app
+    if (__DEV__) {
+      console.error('❌ Firebase initialization error:', error);
+    }
+    return false; // Return false but don't throw
   }
 }
 

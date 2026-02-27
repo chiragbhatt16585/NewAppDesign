@@ -33,7 +33,7 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
   const [appState, setAppState] = useState(AppState.currentState);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
-  const { source, pgInfo, amount, merTxnId } = route.params || {};
+  const { source, pgInfo, amount, merTxnId, tpGatewayId } = route.params || {};
 
   // Debug: Log the amount parameter received
   console.log('=== PAYMENT LINK SCREEN DEBUG ===');
@@ -578,7 +578,9 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
       source: source,
       pgInfo: pgInfo,
       amount: extractedAmount,
-      status: status
+      status: status,
+      gatewayResponse: response,
+      tpGatewayId: tpGatewayId,
     });
   };
 

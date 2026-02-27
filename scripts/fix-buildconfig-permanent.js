@@ -19,7 +19,7 @@ const fixBuildConfigPermanent = () => {
     
     // Check if the file contains the wrong package
     if (content.includes('com.h8.dnasubscriber.BuildConfig')) {
-      content = content.replace(oldPackagePattern, 'com.microscan.app.BuildConfig');
+      content = content.replace(oldPackagePattern, 'in.spacecom.log2space.client.microscan.BuildConfig');
       
       // Write the fixed content
       fs.writeFileSync(generatedFilePath, content);
@@ -28,7 +28,7 @@ const fixBuildConfigPermanent = () => {
       fs.chmodSync(generatedFilePath, 0o444);
       
       console.log('✅ Fixed BuildConfig package reference and made file read-only');
-    } else if (content.includes('com.microscan.app.BuildConfig')) {
+    } else if (content.includes('in.spacecom.log2space.client.microscan.BuildConfig')) {
       // Make the file read-only even if it's already correct
       fs.chmodSync(generatedFilePath, 0o444);
       console.log('✅ BuildConfig package reference is correct, made file read-only');

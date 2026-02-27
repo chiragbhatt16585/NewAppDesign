@@ -37,7 +37,7 @@ export class RealmAuthService {
       }
 
       // Call API to authenticate
-      const response = await apiService.authenticate(username, password);
+      const response = await apiService.authenticate(username, password, '', 'none', undefined, 'password');
       
       if (response && response.token) {
         console.log('=== REALM AUTH: LOGIN SUCCESS ===');
@@ -82,7 +82,7 @@ export class RealmAuthService {
       }
 
       // Call API to authenticate with OTP
-      const response = await apiService.authenticate('', '', otp, 'no', phoneNumber);
+      const response = await apiService.authenticate('', '', otp, 'no', phoneNumber, 'otp');
       
       if (response && response.token) {
         console.log('=== REALM AUTH: OTP LOGIN SUCCESS ===');
@@ -216,7 +216,7 @@ export class RealmAuthService {
       const { username, password } = credentials as any;
       
       // Call API to regenerate token
-      const response = await apiService.authenticate(username, password);
+      const response = await apiService.authenticate(username, password, '', 'none', undefined, 'password');
       
       if (response && response.token) {
         console.log('Token regenerated successfully');
@@ -263,16 +263,27 @@ export class RealmAuthService {
       console.log('=== REALM AUTH: LOGOUT ===');
 
       if (!this.realm) {
-        console.error('Realm not initialized');
+        console.log('Realm not initialized - skipping Realm cleanup (this is normal if Realm was never used)');
+        return;
+      }
+
+      // Check if realm is closed or invalid
+      if (this.realm.isClosed) {
+        console.log('Realm is closed - skipping Realm cleanup');
         return;
       }
 
       // Clear all data from Realm
-      realmApi.clearAllData(this.realm);
-      
-      console.log('User logged out and data cleared from Realm');
+      try {
+        realmApi.clearAllData(this.realm);
+        console.log('User logged out and data cleared from Realm');
+      } catch (realmError: any) {
+        // If Realm operations fail, log but don't throw - logout should still succeed
+        console.warn('Error clearing Realm data (non-critical):', realmError?.message || realmError);
+      }
     } catch (error) {
-      console.error('Error during logout:', error);
+      // Log error but don't throw - logout should always succeed even if Realm cleanup fails
+      console.warn('Error during Realm logout (non-critical):', error);
     }
   }
 

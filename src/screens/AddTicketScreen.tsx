@@ -4,12 +4,14 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   TextInput,
   Modal,
   Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Dimensions,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useTheme} from '../utils/ThemeContext';
@@ -18,6 +20,7 @@ import {useTranslation} from 'react-i18next';
 import {apiService} from '../services/api';
 import sessionManager from '../services/sessionManager';
 import useMenuSettings from '../hooks/useMenuSettings';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 
 interface AddTicketScreenProps {
   visible: boolean;
@@ -38,6 +41,9 @@ const AddTicketScreen = ({visible, onClose, onTicketCreated}: AddTicketScreenPro
   const [showProblemDropdown, setShowProblemDropdown] = useState(false);
   const [loadingProblems, setLoadingProblems] = useState(false);
   const [selectedProblem, setSelectedProblem] = useState<any>(null);
+  const [faqItems, setFaqItems] = useState<any[]>([]);
+  const [showFaqModal, setShowFaqModal] = useState(false);
+  const [loadingFaqData, setLoadingFaqData] = useState(false);
 
   // Determine if description (remarks) should be shown based on menu settings for Tickets
   const allowDescription: boolean = useMemo(() => {
@@ -248,6 +254,7 @@ const AddTicketScreen = ({visible, onClose, onTicketCreated}: AddTicketScreenPro
               onPress: () => {
                 // Reset form
                 setSelectedProblem(null);
+                setFaqItems([]);
                 setProblemDescription('');
                 onClose();
                 // Notify parent component to refresh tickets
@@ -268,6 +275,72 @@ const AddTicketScreen = ({visible, onClose, onTicketCreated}: AddTicketScreenPro
       setIsSubmitting(false);
     }
   };
+
+  const loadFaqForProblem = async (problemValue: string) => {
+    if (!problemValue) {
+      setFaqItems([]);
+      return;
+    }
+
+    setLoadingFaqData(true);
+    try {
+      const faqData = await apiService.getFaqList(problemValue);
+      if (Array.isArray(faqData) && faqData.length > 0) {
+        setFaqItems(faqData);
+        setShowFaqModal(true);
+      } else {
+        setFaqItems([]);
+      }
+    } catch (error: any) {
+      console.error('[AddTicket] FAQ load error:', error);
+      Alert.alert('Error', error?.message || 'Failed to load FAQ details');
+      setFaqItems([]);
+    } finally {
+      setLoadingFaqData(false);
+    }
+  };
+
+  const handleProblemSelect = (option: any) => {
+    setSelectedProblem(option);
+    setShowProblemDropdown(false);
+    loadFaqForProblem(option?.value);
+  };
+
+  const renderFaqModal = () => (
+    <Modal
+      visible={showFaqModal}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setShowFaqModal(false)}
+    >
+      <TouchableWithoutFeedback onPress={() => setShowFaqModal(false)}>
+        <View style={styles.faqModalOverlay}>
+          <TouchableWithoutFeedback>
+            <View style={[styles.faqModalContent, {backgroundColor: colors.card}]}>
+              <View style={styles.faqModalHeader}>
+                <Text style={[styles.faqModalTitle, {color: colors.text}]}>Helpful FAQs</Text>
+                <TouchableOpacity onPress={() => setShowFaqModal(false)}>
+                  <Text style={[styles.faqModalClose, {color: colors.primary}]}>Close</Text>
+                </TouchableOpacity>
+              </View>
+              <ScrollView style={styles.faqList} showsVerticalScrollIndicator={false}>
+                {faqItems.map((faq, idx) => (
+                  <View key={`${faq.id || idx}`} style={[styles.faqItem, {borderBottomColor: colors.border}]}>
+                    <Text style={[styles.faqQuestion, {color: colors.text}]}>
+                      {faq.faq_question || faq.question || `FAQ ${idx + 1}`}
+                    </Text>
+                    <Text style={[styles.faqAnswer, {color: colors.textSecondary}]}>
+                      {faq.faq_text || faq.answer || faq.description || ''}
+                    </Text>
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+          </TouchableWithoutFeedback>
+        </View>
+      </TouchableWithoutFeedback>
+    </Modal>
+  );
 
   const handleCancel = () => {
     if (selectedProblem || problemDescription.trim()) {
@@ -314,9 +387,12 @@ const AddTicketScreen = ({visible, onClose, onTicketCreated}: AddTicketScreenPro
           ]}> 
             {/* Header */}
             <View style={[styles.header, {borderBottomColor: colors.border}]}>
-              <Text style={[styles.headerTitle, {color: colors.text}]}>📋 Create New Complaint</Text>
+              <View style={styles.headerTitleContainer}>
+                <MaterialIcons name="confirmation-number" size={24} color={colors.primary} style={styles.headerIcon} />
+                <Text style={[styles.headerTitle, {color: colors.text}]}>Create New Complaint</Text>
+              </View>
               <TouchableOpacity onPress={handleCancel} style={[styles.closeButton, {backgroundColor: colors.background}]}>
-                <Text style={[styles.closeButtonText, {color: colors.textSecondary}]}>✕</Text>
+                <MaterialIcons name="close" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
 
@@ -346,7 +422,11 @@ const AddTicketScreen = ({visible, onClose, onTicketCreated}: AddTicketScreenPro
                   
                   {showProblemDropdown && (
                     <View style={[styles.pickerDropdown, {backgroundColor: colors.card, borderColor: colors.border}]}>
-                      <ScrollView style={styles.pickerScroll} showsVerticalScrollIndicator={false}>
+                      <ScrollView
+                        style={styles.pickerScroll}
+                        showsVerticalScrollIndicator={true}
+                        nestedScrollEnabled={true}
+                      >
                         {problemOptions.map((option, index) => (
                           <TouchableOpacity
                             key={index}
@@ -356,8 +436,7 @@ const AddTicketScreen = ({visible, onClose, onTicketCreated}: AddTicketScreenPro
                               selectedProblem?.value === option.value && {backgroundColor: colors.primary + '20'}
                             ]}
                             onPress={() => {
-                              setSelectedProblem(option);
-                              setShowProblemDropdown(false);
+                              handleProblemSelect(option);
                             }}
                           >
                             <Text style={[
@@ -376,6 +455,20 @@ const AddTicketScreen = ({visible, onClose, onTicketCreated}: AddTicketScreenPro
                   )}
                 </View>
               </View>
+
+              {loadingFaqData && (
+                <Text style={[styles.helperText, {color: colors.textSecondary}]}>
+                  Loading FAQs...
+                </Text>
+              )}
+
+              {faqItems.length > 0 && (
+                <TouchableOpacity style={[styles.faqBadge, {backgroundColor: colors.primary + '15'}]} onPress={() => setShowFaqModal(true)}>
+                  <Text style={[styles.faqBadgeText, {color: colors.primary}]}>
+                    View {faqItems.length} FAQ{faqItems.length > 1 ? 's' : ''} related to this issue
+                  </Text>
+                </TouchableOpacity>
+              )}
 
               {/* Problem Description */}
               {allowDescription && (
@@ -421,6 +514,7 @@ const AddTicketScreen = ({visible, onClose, onTicketCreated}: AddTicketScreenPro
             </View>
           </View>
         </View>
+        {renderFaqModal()}
       </KeyboardAvoidingView>
     </Modal>
   );
@@ -472,6 +566,14 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     paddingBottom: 16,
     borderBottomWidth: 1,
+  },
+  headerTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  headerIcon: {
+    marginRight: 8,
   },
   headerTitle: {
     fontSize: 20,
@@ -630,7 +732,8 @@ const styles = StyleSheet.create({
   },
   pickerDropdown: {
     borderTopWidth: 1,
-    maxHeight: 200,
+    maxHeight: Math.min(360, Dimensions.get('window').height * 0.45),
+    minHeight: 180,
     zIndex: 1000,
     shadowOffset: {
       width: 0,
@@ -641,11 +744,13 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   pickerScroll: {
-    maxHeight: 200,
+    maxHeight: Math.min(360, Dimensions.get('window').height * 0.45),
+    minHeight: 180,
   },
   pickerItem: {
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 12,
+    minHeight: 48,
     borderBottomWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
@@ -659,6 +764,66 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     marginLeft: 8,
+  },
+  helperText: {
+    fontSize: 14,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  faqBadge: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  faqBadgeText: {
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  faqModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  faqModalContent: {
+    width: '100%',
+    maxWidth: 420,
+    borderRadius: 16,
+    padding: 20,
+    maxHeight: '75%',
+  },
+  faqModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  faqModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  faqModalClose: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  faqList: {
+    maxHeight: '100%',
+  },
+  faqItem: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  faqQuestion: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  faqAnswer: {
+    fontSize: 14,
+    lineHeight: 20,
   },
 });
 

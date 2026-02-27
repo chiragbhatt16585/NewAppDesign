@@ -1,4 +1,4 @@
-import React, {useState, useRef, useEffect, useMemo} from 'react';
+import React, {useState, useRef, useEffect, useMemo, useCallback} from 'react';
 import {
   View,
   Text,
@@ -14,9 +14,10 @@ import {
   BackHandler,
   ActivityIndicator,
   Platform,
+  Modal,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import {useFocusEffect} from '@react-navigation/native';
+import {useFocusEffect, useIsFocused} from '@react-navigation/native';
 import LogoImage from '../components/LogoImage';
 import CommonHeader from '../components/CommonHeader';
 import {useTheme} from '../utils/ThemeContext';
@@ -34,13 +35,20 @@ import { debugFCMTokenIssues, forceFCMTokenGeneration } from '../services/fcmDeb
 //import { testFirebaseConfiguration, runComprehensiveFirebaseTest } from '../services/firebaseTest';
 import useMenuSettings from '../hooks/useMenuSettings';
 import menuService from '../services/menuService';
+import dataCache from '../services/dataCache';
+import { getSafeDaysRemaining } from '../utils/usageUtils';
+import { useAuthData } from '../utils/AuthDataContext';
 // import AIUsageInsights from '../components/AIUsageInsights';
 //import ispLogo from '../assets/isp_logo.png';
 import Feather from 'react-native-vector-icons/Feather';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const {width: screenWidth} = Dimensions.get('window');
+const modalImageHeight = screenWidth * 0.9;
 
 const HomeScreen = ({navigation}: any) => {
+  const isFocused = useIsFocused();
   const {isDark} = useTheme();
   const colors = getThemeColors(isDark);
   const {t} = useTranslation();
@@ -48,31 +56,133 @@ const HomeScreen = ({navigation}: any) => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const currentAdIndexRef = useRef(0); // Use ref to track current index without re-renders
-  const {logout} = useAuth();
+  const {logout, isAuthenticated} = useAuth();
   const {checkSessionAndHandle} = useSessionValidation();
-  const {reloadOnFocus} = useScreenDataReload({
-    onReloadStart: () => {/* console.log('Auto reload starting...'); */},
-    onReloadSuccess: (data) => {
-      // console.log('Auto reload successful, refreshing screen data');
-      fetchAccountData();
-    },
-    onReloadError: (error) => {/* console.log('Auto reload failed:', error) */}
-  });
+  // Auto reload on focus is intentionally disabled to avoid duplicate app-state listeners
+  // and unnecessary background/foreground fetch churn.
+  const {reloadOnFocus} = useScreenDataReload({enabled: false});
 
-  // State for API data
+  // State for API data - ALWAYS start with null to prevent old data display
   const [authData, setAuthData] = useState<any>(null);
+  const { setAuthData: setGlobalAuthData } = useAuthData();
+  const hasAuthDataRef = useRef(false);
   const isFetchingRef = useRef(false);
   const lastFetchTsRef = useRef<number>(0);
   const [planDetails, setPlanDetails] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [apiResponse, setApiResponse] = useState<string>('');
   const [banners, setBanners] = useState<any[]>([]);
   const [loadingBanners, setLoadingBanners] = useState(true);
+  const lastUsernameRef = useRef<string | null>(null);
+  const hasClearedOnMountRef = useRef(false);
+  const [currentUsername, setCurrentUsername] = useState<string | null>(null);
+  const [selectedBanner, setSelectedBanner] = useState<any | null>(null);
+  const [showBannerModal, setShowBannerModal] = useState(false);
+
+  const closeBannerModal = useCallback(() => {
+    setShowBannerModal(false);
+    setSelectedBanner(null);
+  }, []);
+
+  useEffect(() => {
+    hasAuthDataRef.current = !!authData;
+  }, [authData]);
+
+  // Sync current username and clear data if username doesn't match
+  useEffect(() => {
+    const syncUsername = async () => {
+      if (!isAuthenticated) {
+        setCurrentUsername(null);
+        // Clear all data when not authenticated
+        if (authData) {
+          setAuthData(null);
+          setGlobalAuthData(null);
+          setPlanDetails(null);
+          setBanners([]);
+          lastUsernameRef.current = null;
+        }
+        return;
+      }
+      
+      const session = await sessionManager.getCurrentSession();
+      const sessionUsername = session?.username || null;
+      
+      // CRITICAL: If username changed, clear ALL data IMMEDIATELY and synchronously
+      if (sessionUsername && lastUsernameRef.current !== null && lastUsernameRef.current !== sessionUsername) {
+        console.log('[HomeScreen] 🚨 USERNAME CHANGED! Clearing all data immediately');
+        console.log('[HomeScreen] Old username:', lastUsernameRef.current);
+        console.log('[HomeScreen] New username:', sessionUsername);
+        
+        // Clear state IMMEDIATELY (synchronous)
+        setAuthData(null);
+        setGlobalAuthData(null);
+        setPlanDetails(null);
+        setBanners([]);
+        setIsLoading(true);
+        isFetchingRef.current = false;
+        lastFetchTsRef.current = 0;
+        
+        // Clear caches asynchronously but don't wait
+        dataCache.clearAllCache().catch(() => {});
+        menuService.clearCache();
+        
+        // Update ref immediately
+        lastUsernameRef.current = sessionUsername;
+        setCurrentUsername(sessionUsername);
+        return;
+      }
+      
+      // If we have authData but username doesn't match, clear it immediately
+      if (authData && sessionUsername && lastUsernameRef.current !== sessionUsername) {
+        console.log('[HomeScreen] ⚠️ RENDER CHECK: Username mismatch detected!');
+        console.log('[HomeScreen] AuthData exists for:', lastUsernameRef.current);
+        console.log('[HomeScreen] Current session username:', sessionUsername);
+        console.log('[HomeScreen] Clearing authData immediately...');
+        
+        setAuthData(null);
+        setGlobalAuthData(null);
+        setPlanDetails(null);
+        setBanners([]);
+        lastUsernameRef.current = sessionUsername;
+        setCurrentUsername(sessionUsername);
+        return;
+      }
+      
+      // Update current username state
+      if (sessionUsername) {
+        // Only update if it's different to avoid unnecessary re-renders
+        if (lastUsernameRef.current !== sessionUsername) {
+          lastUsernameRef.current = sessionUsername;
+        }
+        if (currentUsername !== sessionUsername) {
+          setCurrentUsername(sessionUsername);
+        }
+      }
+    };
+    
+    syncUsername();
+  }, [isAuthenticated]);
 
   // Debug: log next renewal date value when it changes
   useEffect(() => {
-    console.log('Next Renewal debug =>', authData?.next_renewal_date, 'type:', typeof authData?.next_renewal_date);
+    // console.log('Next Renewal debug =>', authData?.next_renewal_date, 'type:', typeof authData?.next_renewal_date);
   }, [authData?.next_renewal_date]);
+
+  // Debug: log account summary data when authData changes
+  useEffect(() => {
+    if (authData) {
+      try {
+        // console.log('[HomeScreen] Account summary data:', JSON.stringify({
+        //   current_plan: authData?.current_plan,
+        //   usage_details: authData?.usage_details?.[0],
+        //   user_status: authData?.user_status,
+        //   login_status: authData?.login_status,
+        //   payment_dues: authData?.payment_dues,
+        // }));
+      } catch {
+        //console.log('[HomeScreen] Account summary data (raw):', authData);
+      }
+    }
+  }, [authData]);
 
   // Normalize next renewal value and filter placeholders like 'N/A', 'NA', '-', 'null'
   const nextRenewalValue = useMemo(() => {
@@ -80,23 +190,263 @@ const HomeScreen = ({navigation}: any) => {
     const invalids = ['N/A', 'NA', '-', 'NULL', 'UNDEFINED', ''];
     return invalids.includes(raw.toUpperCase()) ? '' : raw;
   }, [authData?.next_renewal_date]);
-  const { menu, loading: menuLoading, error: menuError, refresh: refreshMenu } = useMenuSettings();
+  const { menu, loading: menuLoading, error: menuError, refresh: refreshMenu, forceRefresh: forceRefreshMenu } = useMenuSettings();
   const [refreshing, setRefreshing] = useState(false);
   const isMicroscan = getClientConfig().clientId === 'microscan';
+  const activeStatusColor = isMicroscan ? '#4CAF50' : colors.primary;
+  const loginStatusColor = isMicroscan ? '#4CAF50' : colors.primary;
+  
+  // CRITICAL: Synchronous check to prevent rendering old user data
+  // This runs on every render to immediately detect username changes
+  const shouldShowData = useMemo(() => {
+    // If not authenticated, don't show data
+    if (!isAuthenticated) {
+      return false;
+    }
+    
+    // If no current username, don't show data
+    if (!currentUsername) {
+      return false;
+    }
+    
+    // If username ref doesn't match current username, don't show data
+    if (lastUsernameRef.current !== currentUsername) {
+      return false;
+    }
+    
+    // If we have authData but username doesn't match, don't show data
+    if (authData && lastUsernameRef.current !== currentUsername) {
+      return false;
+    }
+    
+    // Only show data if everything matches
+    return authData && currentUsername && lastUsernameRef.current === currentUsername;
+  }, [isAuthenticated, currentUsername, authData]);
+
+  const homeMenuConfig = useMemo(() => {
+    // console.log('🔍 [HomeMenuConfig] === STARTING CONFIG COMPUTATION ===');
+    const defaults = { 
+      profileMenuEnabled: true, 
+      directLogoutEnabled: false,
+      accountSummaryEnabled: true,
+      billingInformationEnabled: true,
+      usageStatisticsEnabled: true,
+      showL2SPlanName: true,
+      showPlanParamsBlend: false,
+    };
+    
+    if (!Array.isArray(menu)) {
+      // console.log('🔍 [HomeMenuConfig] Menu is not an array, using defaults:', defaults);
+      return defaults;
+    }
+    
+    // console.log('🔍 [HomeMenuConfig] Menu array length:', menu.length);
+    // console.log('🔍 [HomeMenuConfig] All menu labels:', menu.map((m: any) => m?.menu_label).filter(Boolean));
+    
+    const homeItem = menu.find((item: any) => {
+      try {
+        const label = String(item?.menu_label || '').trim();
+        const matches = label === 'Home';
+        if (matches) {
+          // console.log('🔍 [HomeMenuConfig] Found Home item:', {
+          //   menu_label: item?.menu_label,
+          //   menu_api_type: item?.menu_api_type,
+          //   status: item?.status,
+          //   hasDisplayOptionJson: !!item?.display_option_json,
+          //   displayOptionJsonType: typeof item?.display_option_json,
+          // });
+        }
+        return matches;
+      } catch (e) {
+        // console.warn('🔍 [HomeMenuConfig] Error checking menu item:', e);
+        return false;
+      }
+    });
+    
+    if (!homeItem) {
+      // console.log('🔍 [HomeMenuConfig] Home item not found, using defaults:', defaults);
+      return defaults;
+    }
+    
+    let displayOptions: any = homeItem.display_option_json;
+    // console.log('🔍 [HomeMenuConfig] Raw display_option_json:', {
+    //   value: displayOptions,
+    //   type: typeof displayOptions,
+    //   isString: typeof displayOptions === 'string',
+    //   isObject: typeof displayOptions === 'object',
+    // });
+    
+    if (typeof displayOptions === 'string') {
+      try {
+        const trimmed = displayOptions.trim();
+        // console.log('🔍 [HomeMenuConfig] Parsing JSON string, trimmed length:', trimmed.length);
+        displayOptions = trimmed ? JSON.parse(trimmed) : {};
+        // console.log('🔍 [HomeMenuConfig] Parsed display_options:', displayOptions);
+      } catch (parseError) {
+        // console.warn('🔍 [HomeMenuConfig] JSON parse error:', parseError);
+        displayOptions = {};
+      }
+    }
+
+    // Log the parsed display options for debugging
+    try {
+      //console.log('[HomeScreen] display_option_json (parsed):', JSON.stringify(displayOptions));
+    } catch {
+      //console.log('[HomeScreen] display_option_json (parsed):', displayOptions);
+    }
+    
+    // Extract logout button style options - check multiple possible paths
+    const logoutButtonOptions = displayOptions?.logout_button_style?.options || 
+                                 displayOptions?.logout_button_style || 
+                                 displayOptions?.options || 
+                                 {};
+    const profileMenuValue = logoutButtonOptions?.show_profile_menu !== undefined 
+      ? logoutButtonOptions?.show_profile_menu 
+      : displayOptions?.show_profile_menu;
+    const directLogoutValue = logoutButtonOptions?.direct_logout !== undefined
+      ? logoutButtonOptions?.direct_logout
+      : displayOptions?.direct_logout;
+    
+    // Extract display option settings
+    const displayOption = displayOptions?.display_option || {};
+    const accountSummaryValue = displayOption?.account_summary;
+    const billingInformationValue = displayOption?.billing_information;
+    const usageStatisticsValue = displayOption?.usage_statistics;
+    
+    // Helper to interpret boolean-like values coming from API (including "true"/"false" strings)
+    const parseBoolFlag = (raw: any, defaultValue: boolean): boolean => {
+      // If value is explicitly undefined or null, use default
+      if (raw === undefined || raw === null) return defaultValue;
+      
+      // Explicitly check for false values first (boolean false, string "false", number 0)
+      if (raw === false) return false;
+      if (raw === 0) return false;
+      if (typeof raw === 'string') {
+        const v = raw.trim().toLowerCase();
+        if (v === 'false' || v === '0' || v === 'no' || v === 'n') return false;
+      }
+      
+      // Then check for true values
+      if (raw === true) return true;
+      if (raw === 1) return true;
+      if (typeof raw === 'string') {
+        const v = raw.trim().toLowerCase();
+        if (v === 'true' || v === '1' || v === 'yes' || v === 'y') return true;
+      }
+      
+      // If value is provided but doesn't match known patterns, use default
+      return defaultValue;
+    };
+
+    const result = {
+      // IMPORTANT: respect API when it sends "false" as a string or boolean
+      // Check if value is explicitly provided (not undefined), if so parse it; otherwise use default
+      profileMenuEnabled: profileMenuValue !== undefined && profileMenuValue !== null
+        ? parseBoolFlag(profileMenuValue, false) 
+        : defaults.profileMenuEnabled,
+      directLogoutEnabled: directLogoutValue !== undefined && directLogoutValue !== null
+        ? parseBoolFlag(directLogoutValue, false)
+        : defaults.directLogoutEnabled,
+      accountSummaryEnabled: parseBoolFlag(accountSummaryValue, defaults.accountSummaryEnabled),
+      billingInformationEnabled: parseBoolFlag(billingInformationValue, defaults.billingInformationEnabled),
+      usageStatisticsEnabled: parseBoolFlag(usageStatisticsValue, defaults.usageStatisticsEnabled),
+      showL2SPlanName: defaults.showL2SPlanName,
+      showPlanParamsBlend: defaults.showPlanParamsBlend,
+    };
+
+    // Temporary client-specific override:
+    // For Linkway, ALWAYS hide the profile menu regardless of API flags
+    try {
+      const currentClientId = getClientConfig().clientId;
+      if (currentClientId === 'linkway') {
+        result.profileMenuEnabled = false;
+      }
+    } catch {
+      // If client-config fails, just keep parsed value
+    }
+
+    // Debug log to verify settings coming from API and final parsed config
+    if (__DEV__) {
+      try {
+        console.log('[HomeMenuConfig] Raw logout_button_style.options:', logoutButtonOptions);
+        console.log('[HomeMenuConfig] Raw flags:', {
+          show_profile_menu: profileMenuValue,
+          direct_logout: directLogoutValue,
+          account_summary: accountSummaryValue,
+          billing_information: billingInformationValue,
+          usage_statistics: usageStatisticsValue,
+        });
+        console.log('[HomeMenuConfig] Parsed result:', result);
+      } catch {
+        // Ignore logging errors
+      }
+    }
+
+    // Parse display_plan_settings.show_plan.{l2s_planname, plan_params_blend}
+    try {
+      const rawPlanSettings = displayOptions?.display_plan_settings?.show_plan || {};
+      const rawNameFlag = rawPlanSettings?.l2s_planname;
+      const rawBlendFlag = rawPlanSettings?.plan_params_blend;
+
+      if (typeof rawNameFlag === 'boolean') result.showL2SPlanName = rawNameFlag;
+      else if (typeof rawNameFlag === 'string') result.showL2SPlanName = rawNameFlag.toLowerCase() === 'true';
+
+      if (typeof rawBlendFlag === 'boolean') result.showPlanParamsBlend = rawBlendFlag;
+      else if (typeof rawBlendFlag === 'string') result.showPlanParamsBlend = rawBlendFlag.toLowerCase() === 'true';
+    } catch {
+      // ignore parsing errors, fall back to defaults
+    }
+    
+    // console.log('🔍 [HomeMenuConfig] === FINAL CONFIG ===');
+    // console.log('🔍 [HomeMenuConfig] show_profile_menu raw value:', profileMenuValue);
+    // console.log('🔍 [HomeMenuConfig] direct_logout raw value:', directLogoutValue);
+    // console.log('🔍 [HomeMenuConfig] account_summary raw value:', accountSummaryValue);
+    // console.log('🔍 [HomeMenuConfig] billing_information raw value:', billingInformationValue);
+    // console.log('🔍 [HomeMenuConfig] usage_statistics raw value:', usageStatisticsValue);
+    // console.log('🔍 [HomeMenuConfig] Final config:', result);
+    // console.log('🔍 [HomeMenuConfig] === END CONFIG COMPUTATION ===');
+    
+    return result;
+  }, [menu]);
+
+  useEffect(() => {
+    if (!homeMenuConfig.profileMenuEnabled && showProfileMenu) {
+      setShowProfileMenu(false);
+    }
+  }, [homeMenuConfig.profileMenuEnabled, showProfileMenu]);
+
+  // Debug menu loading
+  useEffect(() => {
+    //console.log('🔍 [HomeScreen] Menu state:', {
+    //  menu,
+    //  menuLoading,
+    //  menuError,
+    //  isArray: Array.isArray(menu),
+    //  length: Array.isArray(menu) ? menu.length : 'N/A',
+    //});
+    
+    if (menu && Array.isArray(menu)) {
+      // console.log('🔍 [HomeScreen] Menu items:', menu.map((m: any) => ({
+      //   menu_label: m?.menu_label,
+      //   menu_api_type: m?.menu_api_type,
+      //   status: m?.status,
+      // })));
+    }
+  }, [menu, menuLoading, menuError]);
 
   // Derive dynamic main menu items from API
   const mainMenuItems = useMemo(() => {
-        // console.log('🔍 [mainMenuItems] === RECOMPUTING MAIN MENU ITEMS ===');
-        // console.log('🔍 [mainMenuItems] Menu input:', menu);
-        // console.log('🔍 [mainMenuItems] Menu is array:', Array.isArray(menu));
+    // console.log('🔍 [mainMenuItems] === RECOMPUTING MAIN MENU ITEMS ===');
+    // console.log('🔍 [mainMenuItems] Menu input:', menu);
+    // console.log('🔍 [mainMenuItems] Menu is array:', Array.isArray(menu));
     
     const desiredOrder = ['Account', 'Sessions', 'Tickets', 'Ledger'];
-    // Use vector icons so we can tint them with theme primary (orange)
-    const iconMap: Record<string, { icon: string; iconType: 'feather' }> = {
-      'Account': { icon: 'user', iconType: 'feather' },
-      'Sessions': { icon: 'bar-chart-2', iconType: 'feather' },
-      'Tickets': { icon: 'clipboard', iconType: 'feather' },
-      'Ledger': { icon: 'book', iconType: 'feather' },
+    // Use vector icons with lighter background colors for each menu item
+    const iconMap: Record<string, { icon: string; iconType: 'feather' | 'material' | 'material-community'; backgroundColor: string; iconColor: string; textColor: string }> = {
+      'Account': { icon: 'user', iconType: 'feather', backgroundColor: '#E4985A', iconColor: '#FFFFFF', textColor: '#E4985A' }, // Orange background, white icon, orange text
+      'Sessions': { icon: 'bar-chart-2', iconType: 'feather', backgroundColor: '#3173E3', iconColor: '#FFFFFF', textColor: '#3173E3' }, // Blue background, white icon, blue text
+      'Tickets': { icon: 'clipboard', iconType: 'feather', backgroundColor: '#bfbd70', iconColor: '#FFFFFF', textColor: '#bfbd70' },
+      'Ledger': { icon: 'file-text', iconType: 'feather', backgroundColor: '#9998E6', iconColor: '#FFFFFF', textColor: '#9998E6' }, // Purple background, white icon, purple text - document/billing icon
     };
     const routeMap: Record<string, () => void> = {
       'Account': () => navigation.navigate('AccountDetails'),
@@ -112,14 +462,14 @@ const HomeScreen = ({navigation}: any) => {
           const isMain = m?.menu_api_type === 'main';
           const isActive = String(m?.status).toLowerCase() === 'active';
           const result = isMain && isActive;
-          // console.log('🔍 [mainMenuItems] Filtering item:', {
-          //   menu_label: m?.menu_label,
-          //   menu_api_type: m?.menu_api_type,
-          //   status: m?.status,
-          //   isMain,
-          //   isActive,
-          //   passes: result
-          // });
+          //console.log('🔍 [mainMenuItems] Filtering item:', {
+          //  menu_label: m?.menu_label,
+          //  menu_api_type: m?.menu_api_type,
+          //  status: m?.status,
+          //  isMain,
+          //  isActive,
+          //  passes: result
+          //});
           return result;
         })
       : [];
@@ -130,23 +480,27 @@ const HomeScreen = ({navigation}: any) => {
     const byLabel = new Map<string, any>();
     list.forEach((item: any) => { 
       if (item?.menu_label) {
-        // console.log('🔍 [mainMenuItems] Adding to map:', item.menu_label, item);
+        //console.log('🔍 [mainMenuItems] Adding to map:', item.menu_label, item);
         byLabel.set(item.menu_label, item);
       }
     });
 
-    // console.log('🔍 [mainMenuItems] Labels in map:', Array.from(byLabel.keys()));
+    //console.log('🔍 [mainMenuItems] Labels in map:', Array.from(byLabel.keys()));
 
     const result = desiredOrder
       .filter(label => {
         const hasLabel = byLabel.has(label);
-        // console.log('🔍 [mainMenuItems] Checking desired label:', label, 'exists:', hasLabel);
+        //console.log('🔍 [mainMenuItems] Checking desired label:', label, 'exists:', hasLabel);
         return hasLabel;
       })
       .map(label => ({ 
         label, 
+        displayLabel: label === 'Ledger' ? t('navigation.billingHistory') : label,
         icon: iconMap[label]?.icon || 'circle', 
-        iconType: iconMap[label]?.iconType || 'feather', 
+        iconType: iconMap[label]?.iconType || 'feather',
+        iconColor: iconMap[label]?.iconColor || '#FFFFFF',
+        backgroundColor: iconMap[label]?.backgroundColor || colors.primary,
+        textColor: iconMap[label]?.textColor || colors.text,
         onPress: routeMap[label] 
       }));
     
@@ -201,88 +555,135 @@ const HomeScreen = ({navigation}: any) => {
 
 
 
-  // Mock advertisement data
-  // const advertisements = [
-  //   {
-  //     id: '1',
-  //     image: require('../assets/1st-slide-desk.webp'),
-  //     // title: 'First time in GOA',
-  //     // subtitle: 'Experience blazing fast connectivity',
-  //     backgroundColor: 'rgba(26, 115, 232, 0.8)',
-  //   },
-  //   {
-  //     id: '2',
-  //     image: require('../assets/DNA3.jpg'),
-  //     // title: 'Advanced Technology',
-  //     // subtitle: 'Cutting-edge network solutions',
-  //     backgroundColor: 'rgba(220, 53, 69, 0.8)',
-  //   },
-  //   {
-  //     id: '3',
-  //     image: require('../assets/Group-60974.webp'),
-  //     // title: 'Premium Service',
-  //     // subtitle: 'Unmatched quality and reliability',
-  //     backgroundColor: 'rgba(40, 167, 69, 0.8)',
-  //   },
-  // ];
-
-  // API call to fetch account summary and usage data
+  // CRITICAL: Clear ALL state when authentication status changes
+  // This runs IMMEDIATELY when isAuthenticated changes
   useEffect(() => {
-    //console.warn('=== HOMESCREEN MOUNTED ===');
-    //Alert.alert('HomeScreen', 'Component mounted');
-    fetchAccountData();
-    
-    // Initialize push registration in background - don't block UI
-    // Use setTimeout to ensure it doesn't block the main thread
-    setTimeout(() => {
-      (async () => {
+    const clearAllState = async () => {
+      if (!isAuthenticated) {
+        console.log('[HomeScreen] 🚨🚨🚨 LOGOUT DETECTED: Clearing ALL state IMMEDIATELY 🚨🚨🚨');
+        
+        // CRITICAL: Clear ALL state SYNCHRONOUSLY first (don't wait for async operations)
+        // This prevents any old data from being displayed even for a millisecond
+        setAuthData(null);
+        setGlobalAuthData(null); // CRITICAL: Clear global context too
+        setPlanDetails(null);
+        setBanners([]);
+        setIsLoading(true);
+        setLoadingBanners(true);
+        isFetchingRef.current = false;
+        lastFetchTsRef.current = 0;
+        lastUsernameRef.current = null;
+        setCurrentUsername(null);
+        
+        console.log('[HomeScreen] ✅ All state variables cleared synchronously');
+        
+        // Then clear caches (async, but state is already cleared)
         try {
-          const realm = getClientConfig().clientId;
-          console.log('[HomeScreen] Initializing push notifications for realm:', realm);
-          //Alert.alert('PushDebug', `Home init for realm: ${realm}`);
-          
-          // Set a timeout for Firebase initialization to prevent hanging
-          const initPromise = initializePushNotifications(realm);
-          const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Firebase init timeout')), 10000)
-          );
-          
-          await Promise.race([initPromise, timeoutPromise]).catch(e => {
-            console.warn('[HomeScreen] Firebase init timeout or error:', e);
-          });
-          
-          // Add delay for iOS to ensure FCM token is ready
-          if (Platform.OS === 'ios') {
-            console.log('[HomeScreen] iOS detected, adding delay for FCM token...');
-            await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay
-          }
-          
-          console.log('[HomeScreen] Trying pending token registration');
-          await registerPendingPushToken(realm).catch(e => {
-            console.warn('[HomeScreen] Pending token registration error:', e);
-          });
-          
-          // Only attempt manual registration once; avoid repeated retries if Firebase not ready
-          console.log('[HomeScreen] Trying manual device registration');
-          await registerDeviceManually(realm).catch(e => {
-            console.warn('[HomeScreen] Manual device registration error:', e);
-          });
-          
-        } catch (e) {
-          console.warn('[HomeScreen] Push initialization/registration error', (e as any)?.message || e);
-          //Alert.alert('PushDebug', `Home init error: ${(e as any)?.message || e}`);
+          await dataCache.clearAllCache();
+          console.log('[HomeScreen] ✅ Data cache cleared');
+        } catch (cacheError) {
+          console.warn('[HomeScreen] Error clearing cache:', cacheError);
         }
-      })();
-    }, 100); // Small delay to let UI render first
-  }, []);
+        
+        try {
+          menuService.clearCache();
+          console.log('[HomeScreen] ✅ Menu cache cleared');
+        } catch (menuError) {
+          console.warn('[HomeScreen] Error clearing menu cache:', menuError);
+        }
+        
+        console.log('[HomeScreen] ✅✅✅ LOGOUT CLEANUP COMPLETE - SCREEN IS CLEAN ✅✅✅');
+      } else {
+        // User just logged in - IMMEDIATELY clear state to prevent old data display
+        console.log('[HomeScreen] 🚨 LOGIN: Clearing state for fresh data');
+        
+        // Get current username to check if it changed
+        const session = await sessionManager.getCurrentSession();
+        const newUsername = session?.username || null;
+        
+        // CRITICAL: Always clear state on login, regardless of username
+        // This prevents old user data from being displayed
+        setAuthData(null);
+        setGlobalAuthData(null);
+        setPlanDetails(null);
+        setBanners([]);
+        setIsLoading(true);
+        setLoadingBanners(true);
+        isFetchingRef.current = false;
+        lastFetchTsRef.current = 0;
+        
+        // Reset username ref to force fresh data fetch
+        // If username changed, this will trigger data clearing in other effects
+        const previousUsername = lastUsernameRef.current;
+        lastUsernameRef.current = null;
+        setCurrentUsername(null);
+        
+        // Clear all caches
+        await dataCache.clearAllCache();
+        menuService.clearCache();
+        
+        console.log('[HomeScreen] ✅ State cleared, ready for new user:', newUsername);
+        console.log('[HomeScreen] Previous username was:', previousUsername);
+        
+        // If username changed, log it
+        if (previousUsername && newUsername && previousUsername !== newUsername) {
+          console.log('[HomeScreen] 🚨 USER SWITCH DETECTED:', previousUsername, '->', newUsername);
+        }
+      }
+    };
+    
+    clearAllState();
+  }, [isAuthenticated]);
+
+  // Clear state when user changes - moved after fetchAccountData definition
+  // This will be set up in a separate useFocusEffect after fetchAccountData is defined
 
   useEffect(() => {
     const fetchBanners = async () => {
       try {
-        const realm = getClientConfig().clientId;
+        const clientConfig = getClientConfig();
+        const realm = clientConfig.clientId;
+        const apiBaseUrl = clientConfig.api?.baseURL || '';
+        const baseImageHost = apiBaseUrl.replace(/\/l2s\/api.*$/i, '');
+
         const bannerData = await apiService.bannerDisplay(realm);
-        setBanners(bannerData);
+        // console.log('[HomeScreen] Banner API response:', Array.isArray(bannerData) ? bannerData.length : bannerData);
+
+        const normalizedBanners = (bannerData || [])
+          .map((item: any) => {
+            const pathCandidates = [
+              item?.banner_full_path,
+              item?.full_path,
+              item?.banner_path && item?.banner_image ? `${item.banner_path}/${item.banner_image}` : null,
+              item?.banner_path && item?.banner_name ? `${item.banner_path}/${item.banner_name}` : null,
+            ];
+
+            let resolvedPath = pathCandidates.find(candidate => typeof candidate === 'string' && candidate.trim().length > 0) || '';
+
+            if (resolvedPath && !/^https?:/i.test(resolvedPath)) {
+              resolvedPath = `${baseImageHost}${resolvedPath.startsWith('/') ? '' : '/'}${resolvedPath}`;
+            }
+
+            try {
+              resolvedPath = encodeURI(resolvedPath);
+            } catch {
+              // ignore encoding error, keep raw path
+            }
+
+            return {
+              ...item,
+              banner_full_path: resolvedPath || '',
+            };
+          })
+          .filter((item: any) => typeof item.banner_full_path === 'string' && item.banner_full_path.trim().length > 0);
+
+        if (normalizedBanners.length === 0) {
+          // console.warn('[HomeScreen] No valid banners after normalization. Raw data:', bannerData);
+        }
+
+        setBanners(normalizedBanners);
       } catch (e) {
+        // console.error('[HomeScreen] Failed to load banners:', e);
         setBanners([]);
       } finally {
         setLoadingBanners(false);
@@ -307,22 +708,22 @@ const HomeScreen = ({navigation}: any) => {
       if (Array.isArray(menu)) {
         //console.log('🔍 [MenuSettings] Menu items:');
         menu.forEach((item: any, index: number) => {
-          // console.log(`🔍 [MenuSettings] Item ${index}:`, {
-          //   menu_label: item?.menu_label,
-          //   menu_api_type: item?.menu_api_type,
-          //   status: item?.status,
-          //   full_item: item
-          // });
+          //console.log(`🔍 [MenuSettings] Item ${index}:`, {
+          //  menu_label: item?.menu_label,
+          //  menu_api_type: item?.menu_api_type,
+          //  status: item?.status,
+          //  full_item: item
+          //});
         });
         
         const mainItems = menu.filter((m: any) => m?.menu_api_type === 'main' && String(m?.status).toLowerCase() === 'active');
-        // console.log('🔍 [MenuSettings] Filtered main items:', mainItems);
-        // // console.log('🔍 [MenuSettings] Filtered main items count:', mainItems.length);
+        //console.log('🔍 [MenuSettings] Filtered main items:', mainItems);
+        //console.log('🔍 [MenuSettings] Filtered main items count:', mainItems.length);
       }
     } else {
-      // console.log('🔍 [MenuSettings] Menu is null/undefined/empty');
+      //console.log('🔍 [MenuSettings] Menu is null/undefined/empty');
     }
-    // console.log('🔍 [MenuSettings] === END DEBUG ===');
+    //console.log('🔍 [MenuSettings] === END DEBUG ===');
   }, [menuLoading, menu, menuError]);
 
   // Disabled: Auto reload on focus to prevent unintended refreshes when switching tabs
@@ -376,17 +777,38 @@ const HomeScreen = ({navigation}: any) => {
     }, [])
   );
 
-  const fetchAccountData = async () => {
+  const fetchAccountData = React.useCallback(async () => {
     try {
       if (isFetchingRef.current) return;
       const now = Date.now();
-      if (now - lastFetchTsRef.current < 5000) return; // debounce within 5s
+      if (now - lastFetchTsRef.current < 15000) return; // debounce within 15s
       isFetchingRef.current = true;
       lastFetchTsRef.current = now;
       // console.log('🏠 [HomeScreen] fetchAccountData started');
       setIsLoading(true);
       
-      // Get current session data first (faster check)
+      // Get username BEFORE clearing to verify it matches
+      const sessionBeforeFetch = await sessionManager.getCurrentSession();
+      const usernameBeforeFetch = sessionBeforeFetch?.username;
+      
+      // If username changed, clear everything first
+      if (lastUsernameRef.current !== null && lastUsernameRef.current !== usernameBeforeFetch) {
+        // console.log('[HomeScreen] ⚠️ Username changed during fetch! Clearing everything...');
+        setAuthData(null);
+        setGlobalAuthData(null);
+        setPlanDetails(null);
+        setBanners([]);
+      }
+      
+      // Check session validity before making API call
+      const isSessionValid = await checkSessionAndHandle(navigation);
+      // console.log('🏠 [HomeScreen] Session validation result:', isSessionValid);
+      
+      if (!isSessionValid) {
+        // console.log('🏠 [HomeScreen] Session validation failed, but continuing with API call');
+      }
+      
+      // Get current session data
       const session = await sessionManager.getCurrentSession();
       // console.log('🏠 [HomeScreen] Current session:', {
       //   username: session?.username,
@@ -397,65 +819,83 @@ const HomeScreen = ({navigation}: any) => {
       if (!session) {
         // console.log('🏠 [HomeScreen] No session found, stopping');
         setIsLoading(false);
-        isFetchingRef.current = false;
         return;
       }
 
       const { username } = session;
-      // console.log('🏠 [HomeScreen] Making API call for username:', username);
-
-      // Check session validity with timeout to prevent hanging
-      const sessionCheckPromise = checkSessionAndHandle(navigation);
-      const sessionTimeoutPromise = new Promise<boolean>((resolve) => 
-        setTimeout(() => resolve(true), 3000) // 3 second timeout
-      );
-      await Promise.race([sessionCheckPromise, sessionTimeoutPromise]);
       
+      // CRITICAL: Verify this is the current user - clear state if username changed
+      if (lastUsernameRef.current !== null && lastUsernameRef.current !== username) {
+        // console.log('[HomeScreen] ⚠️ USERNAME MISMATCH DETECTED!');
+        // console.log('[HomeScreen] Previous user:', lastUsernameRef.current);
+        // console.log('[HomeScreen] Current user:', username);
+        // console.log('[HomeScreen] Clearing ALL state immediately...');
+        
+          // Clear state immediately
+          setAuthData(null);
+          setGlobalAuthData(null);
+          setPlanDetails(null);
+          setBanners([]);
+          
+          // Clear all caches again
+          await dataCache.clearAllCache();
+          menuService.clearCache();
+        
+        // Update username ref
+        lastUsernameRef.current = username;
+        
+        //console.log('[HomeScreen] State cleared, continuing with API call for new user');
+      } else if (lastUsernameRef.current === null) {
+        // First time setting username
+        lastUsernameRef.current = username;
+        //console.log('[HomeScreen] Setting initial username:', username);
+      }
+      
+      //console.log('[HomeScreen] Making API call for username:', username);
+
       // Use the enhanced API service with automatic token regeneration
-      // Add timeout to prevent hanging
-      const apiCallPromise = apiService.authUser(username);
-      const apiTimeoutPromise = new Promise<any>((_, reject) => 
-        setTimeout(() => reject(new Error('API call timeout')), 15000) // 15 second timeout
-      );
-      const authResponse = await Promise.race([apiCallPromise, apiTimeoutPromise]);
+      // console.log('🏠 [HomeScreen] Calling makeAuthenticatedRequest...');
+      const authResponse = await apiService.authUser(username);
       // console.log('🏠 [HomeScreen] API call completed, response received:', !!authResponse);
       
-      // console.warn('=== AUTH USER API RESPONSE ===');
-      // console.warn('Full Response:', JSON.stringify(authResponse, null, 2));
-      // console.warn('Response Type:', typeof authResponse);
-      // console.warn('Is Array:', Array.isArray(authResponse));
-      // console.warn('Keys:', authResponse ? Object.keys(authResponse) : 'No response');
-      
-      // Display response on screen and in alert
-      const responseString = JSON.stringify(authResponse, null, 2);
-      setApiResponse(responseString);
-      //Alert.alert('API Response', `Response received: ${responseString.substring(0, 200)}...`);
+      if (__DEV__) {
+        console.log('[HomeScreen] authUser response received:', {
+          hasResponse: !!authResponse,
+          keys: authResponse ? Object.keys(authResponse) : [],
+        });
+      }
       
       if (authResponse) {
-        // console.warn('=== RESPONSE DETAILS ===');
-        // console.warn('First Name:', authResponse.firstname);
-        // console.warn('Last Name:', authResponse.lastname);
-        // console.warn('Current Plan:', authResponse.currentPlan);
-        // console.warn('Account Status:', authResponse.accountStatus);
-        // console.warn('Data Allotted:', authResponse.dataAllotted);
-        // console.warn('Data Used:', authResponse.dataUsed);
-        // console.warn('Days Allotted:', authResponse.daysAllotted);
-        // console.warn('Days Used:', authResponse.daysUsed);
-        // console.warn('Login Status:', authResponse.loginStatus);
-        // console.warn('Plan Price:', authResponse.planPrice);
-        // console.warn('Plan Duration:', authResponse.planDuration);
-        // console.warn('Expiry Date:', authResponse.expiryDateString);
-        // console.warn('Last Renew Date:', authResponse.lastRenewDateString);
-        // console.warn('Creation Date:', authResponse.creationDateString);
-        // console.warn('Disable Time:', authResponse.disableTime);
+        // CRITICAL: Triple-check username matches before setting ANY data
+        const currentSession = await sessionManager.getCurrentSession();
+        const currentUsername = currentSession?.username;
         
-        // // Log all available keys for reference
-        // console.warn('=== ALL AVAILABLE KEYS ===');
-        // Object.keys(authResponse).forEach(key => {
-        //   console.warn(`${key}:`, authResponse[key]);
-        // });
-
+        if (!currentUsername || currentUsername !== username) {
+          console.log('[HomeScreen] 🚨🚨🚨 USERNAME MISMATCH - NOT SETTING DATA 🚨🚨🚨');
+          console.log('[HomeScreen] Expected:', username, 'Got:', currentUsername);
+          setIsLoading(false);
+          isFetchingRef.current = false;
+          return;
+        }
+        
+        // CRITICAL: Verify username ref matches too
+        if (lastUsernameRef.current !== null && lastUsernameRef.current !== username) {
+          console.log('[HomeScreen] 🚨🚨🚨 USERNAME REF MISMATCH - NOT SETTING DATA 🚨🚨🚨');
+          console.log('[HomeScreen] Ref:', lastUsernameRef.current, 'Current:', username);
+          setIsLoading(false);
+          isFetchingRef.current = false;
+          return;
+        }
+        
+        // Update username ref and state FIRST
+        lastUsernameRef.current = username;
+        setCurrentUsername(username);
+        
+        if (__DEV__) {
+          console.log('[HomeScreen] Setting authData for user:', username);
+        }
         setAuthData(authResponse);
+        setGlobalAuthData(authResponse);
         
         // Extract plan details from auth response
         if (authResponse.currentPlan) {
@@ -466,94 +906,181 @@ const HomeScreen = ({navigation}: any) => {
             dataLimit: authResponse.dataAllotted || '100 GB',
           });
         }
-        
-        //Alert.alert('Success', 'Account data loaded successfully!');
       } else {
-        //console.warn('No auth response received');
-        //Alert.alert('No Response', 'No auth response received from API');
+        //console.warn('[HomeScreen] No auth response received');
       }
-      // Menu settings load via hook; also fetch latest and log explicitly here
-      await refreshMenu();
+      // Menu settings load via hook; refresh only if stale to avoid repeated heavy calls
       try {
-        const latestMenu = await menuService.get();
-        // console.log('🔍 [MenuSettings] Latest (service.get):', latestMenu);
-        // console.log('🔍 [MenuSettings] Latest menu type:', typeof latestMenu);
-        // console.log('🔍 [MenuSettings] Latest menu is array:', Array.isArray(latestMenu));
-        if (latestMenu) {
-          //console.log('🔍 [MenuSettings] Latest menu JSON:', JSON.stringify(latestMenu, null, 2));
-        }
+        await refreshMenu();
       } catch (e: any) {
-        //console.warn('[MenuSettings] Fetch after auth failed:', e?.message || e);
+        // console.warn('[HomeScreen] Menu refresh failed:', e?.message || e);
       }
     } catch (error: any) {
-      console.error('🏠 [HomeScreen] Error fetching account data:', error.message || error);
-      // Don't show alert for timeout errors to avoid annoying users
-      if (error.message !== 'API call timeout' && error.message !== 'Firebase init timeout') {
-        //Alert.alert('Error', `Failed to load account data: ${error.message}`);
-      }
+      //console.error('🏠 [HomeScreen] Error fetching account data:', error.message || error);
+      //Alert.alert('Error', `Failed to load account data: ${error.message}`);
     } finally {
       // console.log('🏠 [HomeScreen] fetchAccountData completed, setting loading to false');
       setIsLoading(false);
       isFetchingRef.current = false;
     }
-  };
+  }, [checkSessionAndHandle, navigation, refreshMenu]);
+
+  // Initial data fetch and push notification setup - only when authenticated
+  useEffect(() => {
+    // Only fetch data if user is authenticated
+    if (!isAuthenticated) {
+      // console.log('[HomeScreen] User not authenticated, skipping data fetch');
+      return;
+    }
+    
+    // CRITICAL: Before fetching, verify username matches and clear if it doesn't
+    const verifyAndFetch = async () => {
+      const session = await sessionManager.getCurrentSession();
+      const sessionUsername = session?.username || null;
+      
+      // If username changed, clear everything first
+      if (sessionUsername && lastUsernameRef.current !== null && lastUsernameRef.current !== sessionUsername) {
+        console.log('[HomeScreen] 🚨 Username changed on mount! Clearing all data');
+        setAuthData(null);
+        setGlobalAuthData(null);
+        setPlanDetails(null);
+        setBanners([]);
+        lastUsernameRef.current = sessionUsername;
+        setCurrentUsername(sessionUsername);
+        await dataCache.clearAllCache();
+        menuService.clearCache();
+      }
+      
+      // Fetch data normally
+      fetchAccountData();
+    };
+    
+    verifyAndFetch();
+    
+    // Initialize push registration similar to old app behavior
+    (async () => {
+      try {
+        const realm = getClientConfig().clientId;
+        //console.log('[HomeScreen] Initializing push notifications for realm:', realm);
+        await initializePushNotifications(realm);
+        
+        // Add delay for iOS to ensure FCM token is ready
+        if (Platform.OS === 'ios') {
+          //console.log('[HomeScreen] iOS detected, adding delay for FCM token...');
+          await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay
+        }
+        
+        //console.log('[HomeScreen] Trying pending token registration');
+        await registerPendingPushToken(realm);
+        //console.log('[HomeScreen] Trying manual device registration');
+        await registerDeviceManually(realm);
+        
+      } catch (e) {
+        //console.warn('[HomeScreen] Push initialization/registration error', (e as any)?.message || e);
+      }
+    })();
+  }, [isAuthenticated, fetchAccountData]);
+
+  // CRITICAL: Clear state when screen comes into focus - ALWAYS check and clear if needed
+  useFocusEffect(
+    React.useCallback(() => {
+      const clearOnFocus = async () => {
+        if (!isAuthenticated) {
+          // If not authenticated, ensure state is cleared
+          setAuthData(null);
+          setGlobalAuthData(null);
+          setPlanDetails(null);
+          setBanners([]);
+          return;
+        }
+        
+        const session = await sessionManager.getCurrentSession();
+        const currentUsername = session?.username || null;
+        
+        // ALWAYS clear if username changed, or if we have old data but username doesn't match
+        const shouldClear = 
+          !currentUsername || // No username
+          lastUsernameRef.current === null || // First time
+          lastUsernameRef.current !== currentUsername || // Username changed
+          (hasAuthDataRef.current && lastUsernameRef.current !== currentUsername); // We have data but username doesn't match
+        
+        if (shouldClear && currentUsername) {
+          // console.log('[HomeScreen] 🚨 FOCUS: Clearing state - Username check');
+          // console.log('[HomeScreen] Previous:', lastUsernameRef.current, 'Current:', currentUsername);
+          // console.log('[HomeScreen] Has authData:', !!authData);
+          
+          // Clear state immediately
+          setAuthData(null);
+          setGlobalAuthData(null);
+          setPlanDetails(null);
+          setBanners([]);
+          setIsLoading(true);
+          
+          // Clear caches
+          await dataCache.clearAllCache();
+          menuService.clearCache();
+          
+          // Update username ref and state
+          lastUsernameRef.current = currentUsername;
+          setCurrentUsername(currentUsername);
+          
+          // Fetch fresh data
+          //console.log('[HomeScreen] Fetching fresh data after focus...');
+          await fetchAccountData();
+        } else if (currentUsername && !hasAuthDataRef.current && lastUsernameRef.current === currentUsername) {
+          // Username matches but no data - fetch it
+          //console.log('[HomeScreen] Username matches but no data, fetching...');
+          setCurrentUsername(currentUsername);
+          await fetchAccountData();
+        } else if (currentUsername) {
+          // Update current username state even if not clearing
+          setCurrentUsername(currentUsername);
+        }
+      };
+      
+      clearOnFocus();
+    }, [isAuthenticated, fetchAccountData])
+  );
 
   const handleAdPress = (ad: any) => {
     //Alert.alert('Advertisement', `Opening ${ad.title}...`);
   };
 
-  // Replace static advertisements with banners
-  // const advertisements = [
-  //   {
-  //     id: '1',
-  //     image: require('../assets/1st-slide-desk.webp'),
-  //     // title: 'First time in GOA',
-  //     // subtitle: 'Experience blazing fast connectivity',
-  //     backgroundColor: 'rgba(26, 115, 232, 0.8)',
-  //   },
-  //   {
-  //     id: '2',
-  //     image: require('../assets/DNA3.jpg'),
-  //     // title: 'Advanced Technology',
-  //     // subtitle: 'Cutting-edge network solutions',
-  //     backgroundColor: 'rgba(220, 53, 69, 0.8)',
-  //   },
-  //   {
-  //     id: '3',
-  //     image: require('../assets/Group-60974.webp'),
-  //     // title: 'Premium Service',
-  //     // subtitle: 'Unmatched quality and reliability',
-  //     backgroundColor: 'rgba(40, 167, 69, 0.8)',
-  //   },
-  // ];
+  
 
-  // Adjust renderAdItem to use banner data
-  const renderAdItem = ({item}: {item: any}) => (
-    <TouchableOpacity
-      style={styles.adCard}
-      onPress={() => {
-        if (item.target_url) {
-          Linking.openURL(item.target_url);
-        }
-      }}
-      activeOpacity={0.8}
-      disabled={!item.target_url}
-    >
-      <View style={styles.adImageContainer}>
-        <Image
-          source={{ uri: encodeURI(item.banner_full_path) }}
-          style={styles.adImage}
-          resizeMode="cover"
-          accessibilityLabel={item.alt_text || item.banner_title || 'Banner'}
-        />
-      </View>
-      {(item.banner_title || item.title_text) && (
-        <View style={[styles.adOverlay, {backgroundColor: 'rgba(26, 115, 232, 0.5)'}]}>
-          <Text style={styles.adTitle}>{item.banner_title || item.title_text}</Text>
+  const handleBannerPress = (banner: any) => {
+    setSelectedBanner(banner);
+    setShowBannerModal(true);
+  };
+
+  // Adjust renderAdItem to use banner data and open in popup
+  const renderAdItem = ({item}: {item: any}) => {
+    if (!item?.banner_full_path) {
+      return null;
+    }
+
+    return (
+      <TouchableOpacity
+        style={styles.adCard}
+      onPress={() => handleBannerPress(item)}
+        activeOpacity={0.8}
+      >
+        <View style={styles.adImageContainer}>
+          <Image
+            source={{ uri: item.banner_full_path }}
+            style={styles.adImage}
+            resizeMode="cover"
+            accessibilityLabel={item.alt_text || item.banner_title || 'Banner'}
+          />
         </View>
-      )}
-    </TouchableOpacity>
-  );
+        {(item.banner_title || item.title_text) && (
+          <View style={[styles.adOverlay, {backgroundColor: 'rgba(26, 115, 232, 0.5)'}]}>
+            <Text style={styles.adTitle}>{item.banner_title || item.title_text}</Text>
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
 
   const renderAdDot = (index: number) => (
     <View
@@ -577,10 +1104,16 @@ const HomeScreen = ({navigation}: any) => {
     itemVisiblePercentThreshold: 50,
   };
 
-  // Auto-scroll functionality
+  // Auto-scroll with lower impact:
+  // - runs only while Home is focused
+  // - slower cadence to reduce wakeups/animations
   useEffect(() => {
+    if (!isFocused || banners.length <= 1) {
+      return;
+    }
+
     const interval = setInterval(() => {
-      if (flatListRef.current) {
+      if (flatListRef.current && banners.length > 1) {
         const nextIndex = (currentAdIndexRef.current + 1) % banners.length;
         flatListRef.current.scrollToIndex({
           index: nextIndex,
@@ -589,10 +1122,10 @@ const HomeScreen = ({navigation}: any) => {
         currentAdIndexRef.current = nextIndex;
         setCurrentAdIndex(nextIndex);
       }
-    }, 3000); // Change every 3 seconds
+    }, 8000);
 
     return () => clearInterval(interval);
-  }, [banners.length]); // Empty dependency array to prevent infinite re-renders
+  }, [banners.length, isFocused]);
 
   const handleRenew = () => {
     navigation.navigate('RenewPlan');
@@ -610,22 +1143,23 @@ const HomeScreen = ({navigation}: any) => {
     navigation.navigate('MoreOptions');
   };
 
-  const handleProfilePress = () => {
-    setShowProfileMenu(!showProfileMenu);
+  const toggleProfileMenu = () => {
+    setShowProfileMenu(prev => !prev);
   };
 
-  const handleMoreOptions = () => {
-    setShowProfileMenu(false);
-    navigation.navigate('MoreOptions');
-  };
+  const closeProfileMenu = () => setShowProfileMenu(false);
 
-  const handleContactUs = () => {
-    setShowProfileMenu(false);
-    navigation.navigate('ContactUs');
-  };
+  // const handleMoreOptions = () => {
+  //   setShowProfileMenu(false);
+  //   navigation.navigate('MoreOptions');
+  // };
+
+  // const handleContactUs = () => {
+  //   setShowProfileMenu(false);
+  //   navigation.navigate('ContactUs');
+  // };
 
   const handleLogout = async () => {
-    setShowProfileMenu(false);
     Alert.alert('Logout', 'Are you sure you want to logout?', [
       {text: 'Cancel', style: 'cancel'},
       {
@@ -636,13 +1170,47 @@ const HomeScreen = ({navigation}: any) => {
             await logout();
             navigation.navigate('Login');
           } catch (error) {
-            console.error('Logout error:', error);
+            // console.error('Logout error:', error);
             // Even if logout fails, navigate to login
             navigation.navigate('Login');
           }
         }
       }
     ]);
+  };
+
+  const handleProfileMoreOptions = () => {
+    closeProfileMenu();
+    navigation.navigate('MoreOptions');
+  };
+
+  const handleProfileContactUs = () => {
+    closeProfileMenu();
+    navigation.navigate('ContactUs');
+  };
+
+  const handleProfileLogout = () => {
+    closeProfileMenu();
+    handleLogout();
+  };
+
+  // Get user initials from first_name and last_name
+  const getUserInitials = (): string => {
+    if (!authData || !currentUsername || lastUsernameRef.current !== currentUsername) {
+      return 'U'; // Default to 'U' for User
+    }
+    const firstName = authData.first_name || '';
+    const lastName = authData.last_name || '';
+    const firstInitial = firstName.trim().charAt(0).toUpperCase() || '';
+    const lastInitial = lastName.trim().charAt(0).toUpperCase() || '';
+    if (firstInitial && lastInitial) {
+      return `${firstInitial}${lastInitial}`;
+    } else if (firstInitial) {
+      return firstInitial;
+    } else if (lastInitial) {
+      return lastInitial;
+    }
+    return 'U'; // Fallback to 'U'
   };
 
   // Test function to simulate token expiration and regeneration
@@ -700,7 +1268,7 @@ const HomeScreen = ({navigation}: any) => {
       );
 
     } catch (error: any) {
-      console.error('🧪 Token regeneration test failed:', error.message || error);
+      // console.error('🧪 Token regeneration test failed:', error.message || error);
       Alert.alert(
         'Test Failed',
         `Error: ${error.message || 'Unknown error'}`,
@@ -755,7 +1323,7 @@ const HomeScreen = ({navigation}: any) => {
       );
 
     } catch (error: any) {
-      console.error('🧪 Auto data reloader test failed:', error.message || error);
+      // console.error('🧪 Auto data reloader test failed:', error.message || error);
       Alert.alert(
         'Test Failed',
         `Error: ${error.message || 'Unknown error'}`,
@@ -797,7 +1365,7 @@ const HomeScreen = ({navigation}: any) => {
       );
 
     } catch (error: any) {
-      console.error('🧪 Real scenario test failed:', error.message || error);
+      // console.error('🧪 Real scenario test failed:', error.message || error);
       Alert.alert(
         'Test Failed',
         `Error: ${error.message || 'Unknown error'}`,
@@ -811,6 +1379,109 @@ const HomeScreen = ({navigation}: any) => {
     authData?.usage_details?.[0] ? (parseFloat(authData.usage_details[0].data_used) / (1024 * 1024 * 1024) / 100 * 100) : 0;
   const daysFill = authData?.usage_details?.[0]?.plan_days === 'Unlimited' ? 50 : 
     authData?.usage_details?.[0] ? (parseFloat(authData.usage_details[0].days_used) / parseFloat(authData.usage_details[0].plan_days) * 100) : 0;
+  const daysRemainingText = getSafeDaysRemaining(authData?.usage_details?.[0]);
+
+  // Build plan parameter summary for Home header when plan name is hidden
+  const planSpeedDisplay = useMemo(() => {
+    // Prefer top-level Mbps values if present (from authUser response)
+    const topMbps =
+      typeof authData?.plan_download_speed_in_mb === 'number'
+        ? authData.plan_download_speed_in_mb
+        : authData?.plan_download_speed_in_mb
+        ? Number(authData.plan_download_speed_in_mb)
+        : null;
+
+    if (topMbps && !Number.isNaN(topMbps)) {
+      return `${topMbps} Mbps`;
+    }
+
+    const usage = authData?.usage_details?.[0];
+    if (!usage) return '';
+    const speed =
+      usage.downloadSpeed ||
+      usage.download_speed ||
+      usage.plan_speed ||
+      usage.speed;
+    if (speed) {
+      const num = Number(speed);
+      // If numeric, append Mbps; otherwise show raw
+      return Number.isNaN(num) ? String(speed) : `${num} Mbps`;
+    }
+    return '';
+  }, [authData?.plan_download_speed_in_mb, authData?.usage_details]);
+
+  const planDaysDisplay = useMemo(() => {
+    const usage = authData?.usage_details?.[0];
+    // Use plan_days from usage_details as primary source to match Validity display
+    // This ensures Current Plan and Validity show the same number of days
+    // Check explicitly for plan_days first (even if it's 0, null, or empty string)
+    if (usage?.plan_days !== undefined && usage?.plan_days !== null && usage?.plan_days !== '') {
+      return String(usage.plan_days);
+    }
+    // Fallback to other usage fields
+    const fromUsage = usage?.days || usage?.validity;
+    // Only use total_days as last resort if plan_days is not available
+    const days = fromUsage || authData?.total_days;
+    return days ? String(days) : '';
+  }, [authData?.total_days, authData?.usage_details]);
+
+  // Decide what to show for Current Plan label
+  const currentPlanDisplay = useMemo(() => {
+    // Plan name can come from current_plan, currentPlan, or usage_details[0]
+    const planNameRaw =
+      authData?.current_plan ??
+      authData?.currentPlan ??
+      authData?.usage_details?.[0]?.plan_name ??
+      authData?.usage_details?.[0]?.current_plan ??
+      authData?.plan_name ??
+      '';
+    const planName = (planNameRaw ?? '').toString().trim();
+    const showPlanName = homeMenuConfig.showL2SPlanName && planName;
+
+    // When menu says "show plan name" and we have current_plan, prefer plan name
+    if (showPlanName) {
+      if (homeMenuConfig.showPlanParamsBlend && (planSpeedDisplay || planDaysDisplay)) {
+        const parts = [planSpeedDisplay, planDaysDisplay ? `${planDaysDisplay} Days` : ''].filter(Boolean);
+        return parts.length ? `${planName} (${parts.join(', ')})` : planName;
+      }
+      return planName;
+    }
+
+    // Otherwise: prefer constructed speed + days (e.g., "100 Mbps 365 Days")
+    if (planSpeedDisplay && planDaysDisplay) {
+      return `${planSpeedDisplay} ${planDaysDisplay} Days`;
+    }
+    if (planSpeedDisplay) return planSpeedDisplay;
+    if (planDaysDisplay) return `${planDaysDisplay} Days`;
+    // Fallback to plan name if nothing else is available
+    return planName || 'No Plan';
+  }, [planSpeedDisplay, planDaysDisplay, authData?.current_plan, homeMenuConfig.showL2SPlanName, homeMenuConfig.showPlanParamsBlend]);
+
+  // Debug: log what will render in Account Summary container
+  useEffect(() => {
+    if (!authData) return;
+    try {
+      console.log('[HomeScreen] AccountSummary container data:', JSON.stringify({
+        currentPlanDisplay,
+        planSpeedDisplay,
+        planDaysDisplay,
+        usage: authData?.usage_details?.[0],
+        user_status: authData?.user_status,
+        login_status: authData?.login_status,
+        payment_dues: authData?.payment_dues,
+      }));
+    } catch {
+      console.log('[HomeScreen] AccountSummary container data (raw):', {
+        currentPlanDisplay,
+        planSpeedDisplay,
+        planDaysDisplay,
+        usage: authData?.usage_details?.[0],
+        user_status: authData?.user_status,
+        login_status: authData?.login_status,
+        payment_dues: authData?.payment_dues,
+      });
+    }
+  }, [authData, currentPlanDisplay, planSpeedDisplay, planDaysDisplay]);
 
   // Loading spinner component
   const LoadingSpinner = () => (
@@ -820,8 +1491,22 @@ const HomeScreen = ({navigation}: any) => {
     </View>
   );
 
+  // Get left border color from config
+  // - If headerBorderColors is not present at all → no left border
+  // - If headerBorderColors.left is undefined → no left border
+  // - If headerBorderColors.left is empty string '' → no border (transparent)
+  // - If headerBorderColors.left has a color → use that color
+  const clientConfig = getClientConfig();
+  const headerBorderColors = clientConfig.branding.headerBorderColors;
+  const leftBorderColor = headerBorderColors?.left;
+  const leftBorderBgColor = leftBorderColor ? leftBorderColor : 'transparent';
+  const leftBorderWidth = leftBorderColor ? (Platform.OS === 'ios' ? 4 : 5) : 0;
+
   return (
     <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}>
+      {/* Left border line - 5px from top to bottom */}
+      <View style={[styles.leftBorderLine, {backgroundColor: leftBorderBgColor, width: leftBorderWidth}]} />
+      
       <ScrollView 
         showsVerticalScrollIndicator={false}
         refreshControl={(
@@ -837,138 +1522,52 @@ const HomeScreen = ({navigation}: any) => {
         <CommonHeader
           navigation={navigation}
           showBackButton={false}
+          logoPosition="center"
           rightComponent={(
-            <TouchableOpacity 
-              style={[styles.profileButton, {backgroundColor: colors.accent}]}
-              onPress={handleProfilePress}
-            >
-              <Text style={styles.profileText}>
-                {authData ? `${authData.first_name?.[0] || ''}${authData.last_name?.[0] || ''}` : 'CB'}
-              </Text>
-            </TouchableOpacity>
+            homeMenuConfig.profileMenuEnabled ? (
+              <TouchableOpacity 
+                style={styles.profileAvatarButton}
+                onPress={toggleProfileMenu}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel="Profile menu"
+              >
+                <View style={[styles.profileAvatar, {backgroundColor: colors.primary || '#FF6B35'}]}>
+                  <Text style={styles.profileAvatarText}>{getUserInitials()}</Text>
+                </View>
+              </TouchableOpacity>
+            ) : homeMenuConfig.directLogoutEnabled ? (
+              <TouchableOpacity 
+                style={styles.logoutButtonHeader}
+                onPress={handleLogout}
+                activeOpacity={0.8}
+              >
+                <Feather name="log-out" size={20} color={colors.primary || '#FF6B35'} />
+                <Text style={[styles.logoutButtonText, {color: colors.primary || '#FF6B35'}]}>{t('common.logout')}</Text>
+              </TouchableOpacity>
+            ) : null
           )}
         />
 
-        
-
-        {/* Profile Dropdown Menu */}
-        {showProfileMenu && (
+        {homeMenuConfig.profileMenuEnabled && showProfileMenu && (
           <View style={[styles.profileMenu, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
             <TouchableOpacity 
               style={[styles.menuItem, {backgroundColor: 'transparent'}]} 
-              onPress={handleMoreOptions}
+              onPress={handleProfileMoreOptions}
               activeOpacity={0.7}>
               <Text style={[styles.menuIcon, {color: colors.textSecondary}]}>⋮</Text>
               <Text style={[styles.menuText, {color: colors.text}]}>More Options</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={[styles.menuItem, {backgroundColor: 'transparent'}]} 
-              onPress={handleContactUs}
+              onPress={handleProfileContactUs}
               activeOpacity={0.7}>
-              <Text style={[styles.menuIcon, {color: colors.textSecondary}]}>📞</Text>
+              <Feather name="phone" size={20} color={colors.textSecondary} style={styles.menuIcon} />
               <Text style={[styles.menuText, {color: colors.text}]}>{t('common.contactUs')}</Text>
             </TouchableOpacity>
-            {/* Test buttons - commented out for production
             <TouchableOpacity 
               style={[styles.menuItem, {backgroundColor: 'transparent'}]} 
-              onPress={handleTestTokenRegeneration}
-              activeOpacity={0.7}>
-              <Text style={[styles.menuIcon, {color: colors.textSecondary}]}>🧪</Text>
-              <Text style={[styles.menuText, {color: colors.text}]}>Test Token Regeneration</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.menuItem, {backgroundColor: 'transparent'}]} 
-              onPress={handleTestAutoDataReloader}
-              activeOpacity={0.7}>
-              <Text style={[styles.menuIcon, {color: colors.textSecondary}]}>🔄</Text>
-              <Text style={[styles.menuText, {color: colors.text}]}>Test Auto Data Reloader</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.menuItem, {backgroundColor: 'transparent'}]} 
-              onPress={handleTestRealScenario}
-              activeOpacity={0.7}>
-              <Text style={[styles.menuIcon, {color: colors.textSecondary}]}>🎯</Text>
-              <Text style={[styles.menuText, {color: colors.text}]}>Test Real Scenario</Text>
-            </TouchableOpacity>
-            */}
-            {/* <TouchableOpacity 
-              style={[styles.menuItem, {backgroundColor: 'transparent'}]} 
-              onPress={() => {
-                setShowProfileMenu(false);
-                navigation.navigate('NotificationTest');
-              }}
-              activeOpacity={0.7}>
-              <Text style={[styles.menuIcon, {color: colors.textSecondary}]}>🔔</Text>
-              <Text style={[styles.menuText, {color: colors.text}]}>Test Notifications</Text>
-            </TouchableOpacity> */}
-            {/* <TouchableOpacity 
-              style={[styles.menuItem, {backgroundColor: 'transparent'}]} 
-              onPress={async () => {
-                setShowProfileMenu(false);
-                await debugVersionCheck();
-              }}
-              activeOpacity={0.7}>
-              <Text style={[styles.menuIcon, {color: colors.textSecondary}]}>🔍</Text>
-              <Text style={[styles.menuText, {color: colors.text}]}>Debug Version Check</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.menuItem, {backgroundColor: 'transparent'}]} 
-              onPress={async () => {
-                setShowProfileMenu(false);
-                await quickVersionTest();
-              }}
-              activeOpacity={0.7}>
-              <Text style={[styles.menuIcon, {color: colors.textSecondary}]}>⚡</Text>
-              <Text style={[styles.menuText, {color: colors.text}]}>Quick Version Test</Text>
-            </TouchableOpacity> */}
-            {/* <TouchableOpacity 
-              style={[styles.menuItem, {backgroundColor: 'transparent'}]} 
-              onPress={async () => {
-                setShowProfileMenu(false);
-                await debugFCMTokenIssues();
-              }}
-              activeOpacity={0.7}>
-              <Text style={[styles.menuIcon, {color: colors.textSecondary}]}>🔥</Text>
-              <Text style={[styles.menuText, {color: colors.text}]}>Debug FCM Token</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.menuItem, {backgroundColor: 'transparent'}]} 
-              onPress={async () => {
-                setShowProfileMenu(false);
-                const token = await forceFCMTokenGeneration();
-                Alert.alert('FCM Token', token ? `Token: ${token.substring(0, 20)}...` : 'No token generated');
-              }}
-              activeOpacity={0.7}>
-              <Text style={[styles.menuIcon, {color: colors.textSecondary}]}>🔄</Text>
-              <Text style={[styles.menuText, {color: colors.text}]}>Force FCM Token</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.menuItem, {backgroundColor: 'transparent'}]} 
-              onPress={async () => {
-                setShowProfileMenu(false);
-                const results = await runComprehensiveFirebaseTest();
-                const status = results.overall ? '✅ All tests passed!' : '❌ Some tests failed';
-                Alert.alert('Firebase Test Results', status);
-              }}
-              activeOpacity={0.7}>
-              <Text style={[styles.menuIcon, {color: colors.textSecondary}]}>🧪</Text>
-              <Text style={[styles.menuText, {color: colors.text}]}>Firebase Test</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.menuItem, {backgroundColor: 'transparent'}]} 
-              onPress={async () => {
-                setShowProfileMenu(false);
-                const realm = getClientConfig().clientId;
-                const success = await updateDeviceWithRealFCMToken(realm);
-                Alert.alert('Update FCM Token', success ? '✅ Device updated with real FCM token!' : '❌ No real FCM token available');
-              }}
-              activeOpacity={0.7}>
-              <Text style={[styles.menuIcon, {color: colors.textSecondary}]}>🔄</Text>
-              <Text style={[styles.menuText, {color: colors.text}]}>Update FCM Token</Text>
-            </TouchableOpacity> */}
-            <TouchableOpacity 
-              style={[styles.menuItem, {backgroundColor: 'transparent'}]} 
-              onPress={handleLogout}
+              onPress={handleProfileLogout}
               activeOpacity={0.7}>
               <Text style={[styles.menuIcon, {color: colors.textSecondary}]}>🚪</Text>
               <Text style={[styles.menuText, {color: colors.text}]}>{t('common.logout')}</Text>
@@ -979,12 +1578,22 @@ const HomeScreen = ({navigation}: any) => {
         {/* Welcome Message */}
         <View style={styles.welcomeSection}>
           <Text style={[styles.welcomeText, {color: colors.textSecondary}]}>{t('common.welcome')},</Text>
-          <Text style={[styles.userName, {color: colors.text}]}>
-            {authData ? `${authData.first_name || ''} ${authData.last_name || ''}`.trim() || 'User' : 'User'}
-          </Text>
+          <View style={styles.userNameRow}>
+            <Text style={[styles.userName, {color: colors.text}]}>
+              {shouldShowData && authData
+                ? `${authData.first_name || ''} ${authData.last_name || ''}`.trim() || 'User' 
+                : 'User'}
+            </Text>
+            {shouldShowData && currentUsername && (
+              <Text style={[styles.userNameText, {color: colors.textSecondary}]}>
+                {' '}({currentUsername})
+              </Text>
+            )}
+          </View>
         </View>
 
         {/* Account Summary Card */}
+        {homeMenuConfig.accountSummaryEnabled && (
         <View style={[styles.accountCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
           <View style={styles.cardHeader}>
             <Text style={[styles.cardTitle, {color: colors.text}]}>{t('home.accountSummary')}</Text>
@@ -999,15 +1608,25 @@ const HomeScreen = ({navigation}: any) => {
           
           {isLoading ? (
             <LoadingSpinner />
+          ) : !shouldShowData ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={[styles.loadingText, {color: colors.textSecondary}]}>Loading account data...</Text>
+            </View>
           ) : (
             <>
               <View style={styles.detailRow}>
                 <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>{t('home.currentPlan')}</Text>
-                <Text style={[styles.detailValue, {color: colors.text}]}>
-                  {authData?.current_plan || 'No Plan'}
-                </Text>
+                <View style={styles.detailValueContainer}>
+                  <Text 
+                    style={[styles.detailValue, {color: colors.text}]}
+                    numberOfLines={2}
+                    ellipsizeMode="tail"
+                  >
+                    {currentPlanDisplay || 'No Plan'}
+                  </Text>
+                </View>
               </View>
-              
               <View style={styles.detailRow}>
                 <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>{t('home.validity')}</Text>
                 <Text style={[styles.detailValue, {color: colors.text}]}>
@@ -1020,7 +1639,7 @@ const HomeScreen = ({navigation}: any) => {
               {/* Account Status */}
               <View style={styles.detailRow}>
                 <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>Account Status</Text>
-                <Text style={[styles.detailValue, {color: authData?.user_status === 'active' ? '#4CAF50' : '#F44336'}]}>
+                <Text style={[styles.detailValue, {color: authData?.user_status === 'active' ? activeStatusColor : '#F44336'}]}>
                   {authData?.user_status?.replace(/_+/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'Active'}
                 </Text>
               </View>
@@ -1028,10 +1647,27 @@ const HomeScreen = ({navigation}: any) => {
               {/* Login Status */}
               <View style={styles.detailRow}>
                 <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>Login Status</Text>
-                <Text style={[styles.detailValue, {color: authData?.login_status === 'IN' ? '#4CAF50' : '#F44336'}]}>
+                <Text style={[styles.detailValue, {color: authData?.login_status === 'IN' ? loginStatusColor : '#F44336'}]}>
                   {authData?.login_status === 'IN' ? 'Online' : 'Offline'}
                 </Text>
               </View>
+
+              {/* Payment Dues Row */}
+              <View style={styles.detailRow}>
+                <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>Payment Dues</Text>
+                <Text style={[styles.detailValue, {color: authData?.payment_dues > 0 ? '#F44336' : colors.primary}]}>
+                  {authData?.payment_dues > 0 ? `₹${authData?.payment_dues}` : 'Fully Paid'}
+                </Text>
+              </View>
+
+              {/* Pay Now button - only show if there are payment dues */}
+              {authData?.payment_dues > 0 && (
+                <TouchableOpacity 
+                  style={[styles.payNowButton, {backgroundColor: colors.primary, marginTop: 12}]} 
+                  onPress={handlePayBill}>
+                  <Text style={styles.payNowText}>Pay Now</Text>
+                </TouchableOpacity>
+              )}
             </>
           )}
 
@@ -1061,6 +1697,7 @@ const HomeScreen = ({navigation}: any) => {
             </Text>
           </View> */}
         </View>
+        )}
 
         {/* Advertisement Carousel - only if banners exist */}
         {!loadingBanners && banners.length > 0 && (
@@ -1082,26 +1719,134 @@ const HomeScreen = ({navigation}: any) => {
           </View>
         )}
 
+        {/* Banner Popup Modal */}
+        {selectedBanner && showBannerModal && (
+          <Modal
+            visible={showBannerModal}
+            transparent
+            animationType="fade"
+            onRequestClose={closeBannerModal}>
+            <SafeAreaView style={styles.bannerModalOverlay} edges={['top', 'bottom']}>
+              <View style={[styles.bannerModalContent, {backgroundColor: colors.card}]}>
+                <TouchableOpacity
+                  style={styles.bannerModalClose}
+                  onPress={closeBannerModal}>
+                  <Text style={styles.bannerModalCloseText}>✕</Text>
+                </TouchableOpacity>
+
+                <View style={styles.bannerModalImageContainer}>
+                  <Image
+                    source={{uri: selectedBanner.banner_full_path}}
+                    style={styles.bannerModalImage}
+                    resizeMode="contain"
+                  />
+                </View>
+
+                {(selectedBanner.banner_title || selectedBanner.title_text) && (
+                  <Text
+                    style={[
+                      styles.bannerModalTitle,
+                      {color: colors.text},
+                    ]}
+                    numberOfLines={2}
+                    ellipsizeMode="tail">
+                    {selectedBanner.banner_title || selectedBanner.title_text}
+                  </Text>
+                )}
+
+                {selectedBanner.target_url && (
+                  <TouchableOpacity
+                    style={[styles.bannerModalButton, {backgroundColor: colors.primary}]}
+                    onPress={() => {
+                      const url = selectedBanner?.target_url;
+                      closeBannerModal();
+                      if (url) {
+                        Linking.openURL(url).catch(() => {
+                          Alert.alert('Error', 'Unable to open link');
+                        });
+                      }
+                    }}>
+                    <Text style={styles.bannerModalButtonText}>Open Link</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </SafeAreaView>
+          </Modal>
+        )}
+
         {/* Quick Menu Section (dynamic from menu settings) */}
         <View style={[styles.quickMenuCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
           <Text style={[styles.quickMenuTitle, {color: colors.text}]}>{t('home.quickMenu')}</Text>
-          <View style={styles.quickMenuRow}>            
-            {mainMenuItems.map(item => (
+          {menuLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={[styles.loadingText, {color: colors.textSecondary}]}>Loading menu...</Text>
+            </View>
+          ) : menuError ? (
+            <View style={styles.loadingContainer}>
+              <Text style={[styles.loadingText, {color: colors.error || '#F44336'}]}>
+                Error loading menu: {menuError}
+              </Text>
               <TouchableOpacity 
-                key={item.label}
-                style={styles.quickMenuRowItem}
-                onPress={item.onPress}
-                disabled={!item.onPress}
+                style={[styles.testButton, {backgroundColor: colors.primary}]}
+                onPress={forceRefreshMenu}
               >
-                {item.iconType === 'feather' ? (
-                  <Feather name={item.icon} size={24} color={colors.primary} />
-                ) : (
-                  <Text style={styles.quickMenuRowIcon}>{item.icon}</Text>
-                )}
-                <Text style={[styles.quickMenuRowTitle, {color: colors.text}]}>{item.label}</Text>
+                <Text style={styles.testButtonText}>Retry</Text>
               </TouchableOpacity>
-            ))}
-          </View>
+            </View>
+          ) : mainMenuItems.length === 0 ? (
+            <View style={styles.loadingContainer}>
+              <Text style={[styles.loadingText, {color: colors.textSecondary}]}>
+                No menu items available. {Array.isArray(menu) ? `Found ${menu.length} items in database.` : 'Menu data not loaded.'}
+              </Text>
+              <TouchableOpacity 
+                style={[styles.testButton, {backgroundColor: colors.primary}]}
+                onPress={forceRefreshMenu}
+              >
+                <Text style={styles.testButtonText}>Refresh Menu</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.quickMenuRow}>            
+              {mainMenuItems.map(item => (
+                <TouchableOpacity 
+                  key={item.label}
+                  style={styles.quickMenuRowItem}
+                  onPress={item.onPress}
+                  disabled={!item.onPress}
+                >
+                  {isMicroscan ? (
+                    // For microscan: just the icon with primary color, no background container
+                    <>
+                      {item.iconType === 'feather' ? (
+                        <Feather name={item.icon} size={24} color={colors.primary} />
+                      ) : item.iconType === 'material' ? (
+                        <MaterialIcons name={item.icon} size={24} color={colors.primary} />
+                      ) : item.iconType === 'material-community' ? (
+                        <MaterialCommunityIcons name={item.icon} size={24} color={colors.primary} />
+                      ) : (
+                        <Text style={[styles.quickMenuRowIcon, { color: colors.primary, fontWeight: 'bold' }]}>{item.icon}</Text>
+                      )}
+                    </>
+                  ) : (
+                    // For other clients: icon with filled background container
+                    <View style={[styles.quickMenuIconContainer, { backgroundColor: item.backgroundColor || colors.primary }]}>
+                      {item.iconType === 'feather' ? (
+                        <Feather name={item.icon} size={26} color={item.iconColor || '#FFFFFF'} strokeWidth={2.5} />
+                      ) : item.iconType === 'material' ? (
+                        <MaterialIcons name={item.icon} size={26} color={item.iconColor || '#FFFFFF'} />
+                      ) : item.iconType === 'material-community' ? (
+                        <MaterialCommunityIcons name={item.icon} size={26} color={item.iconColor || '#FFFFFF'} />
+                      ) : (
+                        <Text style={[styles.quickMenuRowIcon, { color: item.iconColor || '#FFFFFF', fontWeight: 'bold' }]}>{item.icon}</Text>
+                      )}
+                    </View>
+                  )}
+                  <Text style={[styles.quickMenuRowTitle, {color: isMicroscan ? colors.text : (item.textColor || colors.text)}]}>{item.displayLabel || item.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
         </View>
 
         {/* Quick Actions (hidden for all clients per request) */}
@@ -1126,7 +1871,7 @@ const HomeScreen = ({navigation}: any) => {
                 style={[styles.actionCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]} 
                 onPress={handlePayBill}>
                 <View style={[styles.actionIcon, {backgroundColor: colors.primaryLight}]}> 
-                  <Text style={styles.iconText}>💳</Text>
+                  <MaterialIcons name="credit-card" size={24} color={colors.primary} />
                 </View>
                 <Text style={[styles.actionTitle, {color: colors.text}]}>{t('home.payBill')}</Text>
                 <Text style={[styles.actionSubtitle, {color: colors.textSecondary}]}>{Number(authData?.payment_dues) > 0 ? `₹${authData?.payment_dues}` : 'Fully Paid'}</Text>
@@ -1138,7 +1883,7 @@ const HomeScreen = ({navigation}: any) => {
                 style={[styles.actionCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]} 
                 onPress={handleSupport}>
                 <View style={[styles.actionIcon, {backgroundColor: colors.primaryLight}]}> 
-                  <Text style={styles.iconText}>🆘</Text>
+                  <MaterialIcons name="help-outline" size={24} color={colors.primary} />
                 </View>
                 <Text style={[styles.actionTitle, {color: colors.text}]}>{t('home.support')}</Text>
                 <Text style={[styles.actionSubtitle, {color: colors.textSecondary}]}>Get help</Text>
@@ -1151,7 +1896,7 @@ const HomeScreen = ({navigation}: any) => {
               style={[styles.actionCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]} 
               onPress={() => navigation.navigate('ContactUs')}>
               <View style={[styles.actionIcon, {backgroundColor: colors.primaryLight}]}>
-                <Text style={styles.iconText}>📞</Text>
+                <Feather name="phone" size={24} color={colors.primary} />
               </View>
               <Text style={[styles.actionTitle, {color: colors.text}]}>{t('common.contactUs')}</Text>
               <Text style={[styles.actionSubtitle, {color: colors.textSecondary}]}>Reach out</Text>
@@ -1161,10 +1906,16 @@ const HomeScreen = ({navigation}: any) => {
         )}
 
         {/* Bill Information */}
+        {homeMenuConfig.billingInformationEnabled && (
         <View style={[styles.billCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
           <Text style={[styles.billTitle, {color: colors.text}]}>{t('account.billingInfo')}</Text>
           {isLoading ? (
             <LoadingSpinner />
+          ) : !authData || (currentUsername && lastUsernameRef.current !== currentUsername) ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={[styles.loadingText, {color: colors.textSecondary}]}>Loading billing data...</Text>
+            </View>
           ) : (
             <>
               <View style={styles.billDetails}>
@@ -1183,24 +1934,11 @@ const HomeScreen = ({navigation}: any) => {
                     <Text style={[styles.billDate, {color: colors.text}]}>{nextRenewalValue}</Text>
                   </View>
                 ) : null}
-                <View style={styles.billRow}>
-                  <Text style={[styles.billLabel, {color: colors.textSecondary}]}>Payment Dues</Text>
-                  <Text style={[styles.billAmount, {color: authData?.payment_dues > 0 ? '#F44336' : '#4CAF50'}]}>
-                    ₹{authData?.payment_dues || 0}
-                  </Text>
-                </View>
               </View>
-              {/* Only show Pay Now button if there are payment dues */}
-              {authData?.payment_dues > 0 && (
-                <TouchableOpacity 
-                  style={[styles.payNowButton, {backgroundColor: colors.primary}]} 
-                  onPress={handlePayBill}>
-                  <Text style={styles.payNowText}>Pay Now</Text>
-                </TouchableOpacity>
-              )}
             </>
           )}
         </View>
+        )}
 
         {/* More Options*/}
         {/* <View style={styles.section}>
@@ -1213,7 +1951,7 @@ const HomeScreen = ({navigation}: any) => {
         </View>  */}
 
         {/* Usage Statistics */}
-        {hasUsageDetails && (
+        {hasUsageDetails && homeMenuConfig.usageStatisticsEnabled && (
         <View style={[styles.usageCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
           <View style={styles.usageHeader}>
             <Text style={[styles.usageTitle, {color: colors.text}]}>Usage Statistics</Text>
@@ -1224,6 +1962,11 @@ const HomeScreen = ({navigation}: any) => {
           
           {isLoading ? (
             <LoadingSpinner />
+          ) : !authData || (currentUsername && lastUsernameRef.current !== currentUsername) ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={[styles.loadingText, {color: colors.textSecondary}]}>Loading usage data...</Text>
+            </View>
           ) : (
             <>
               {/* Data Usage Section */}
@@ -1247,7 +1990,9 @@ const HomeScreen = ({navigation}: any) => {
               {/* Usage Stats Row */}
               <View style={styles.usageStatsRow}>
                 <View style={styles.usageStat}>
-                  <Text style={[styles.usageStatIcon, {color: colors.primary}]}>⏱️</Text>
+                  <View style={[styles.usageStatIconContainer, {backgroundColor: colors.primaryLight}]}>
+                    <Feather name="clock" size={20} color={colors.primary} />
+                  </View>
                   <Text style={[styles.usageStatLabel, {color: colors.textSecondary}]}>Hours Used</Text>
                   <Text style={[styles.usageStatValue, {color: colors.text}]}>
                     {authData?.usage_details[0]?.hours_used || '0:00:00'}
@@ -1255,18 +2000,20 @@ const HomeScreen = ({navigation}: any) => {
                 </View>
                 
                 <View style={styles.usageStat}>
-                  <Text style={[styles.usageStatIcon, {color: colors.success}]}>📅</Text>
+                  <View style={[styles.usageStatIconContainer, {backgroundColor: colors.primaryLight}]}>
+                    <Feather name="calendar" size={20} color={colors.primary} />
+                  </View>
                   <Text style={[styles.usageStatLabel, {color: colors.textSecondary}]}>Days Remaining</Text>
                   <Text style={[styles.usageStatValue, {color: colors.text}]}>
-                    {authData?.usage_details?.[0] ? 
-                      `${parseInt(authData.usage_details[0].plan_days) - parseInt(authData.usage_details[0].days_used)}` : 
-                      '0'}
+                    {daysRemainingText}
                   </Text>
                 </View>
                 
                 {authData?.usage_details?.[0]?.plan_data !== 'Unlimited' && (
                   <View style={styles.usageStat}>
-                    <Text style={[styles.usageStatIcon, {color: colors.accent}]}>📊</Text>
+                    <View style={[styles.usageStatIconContainer, {backgroundColor: colors.primaryLight}]}>
+                      <Feather name="bar-chart-2" size={20} color={colors.primary} />
+                    </View>
                     <Text style={[styles.usageStatLabel, {color: colors.textSecondary}]}>Usage %</Text>
                     <Text style={[styles.usageStatValue, {color: colors.text}]}>
                       {Math.round(dataFill)}%
@@ -1291,6 +2038,19 @@ const HomeScreen = ({navigation}: any) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    position: 'relative',
+    overflow: 'visible',
+  },
+  leftBorderLine: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    // Make the line a bit bolder on Android so it's clearly visible
+    width: Platform.OS === 'ios' ? 4 : 5,
+    // Ensure the line stays above card shadows and other content, especially on Android
+    zIndex: 100,
+    elevation: 16,
   },
   header: {
     flexDirection: 'row',
@@ -1370,17 +2130,42 @@ const styles = StyleSheet.create({
   logo: {
     marginRight: 12,
   },
-  profileButton: {
+  profileAvatarButton: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 4,
+  },
+  profileAvatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
   },
-  profileText: {
+  profileAvatarText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  logoutButtonHeader: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  logoutButtonText: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 2,
   },
   welcomeSection: {
     paddingHorizontal: 20,
@@ -1391,9 +2176,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 4,
   },
+  userNameRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    flexWrap: 'wrap',
+  },
   userName: {
     fontSize: 24,
     fontWeight: 'bold',
+  },
+  userNameText: {
+    fontSize: 14,
+    fontStyle: 'italic',
   },
   accountCard: {
     marginHorizontal: 20,
@@ -1440,10 +2234,18 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     fontSize: 14,
+    flex: 1,
+    marginRight: 12,
+  },
+  detailValueContainer: {
+    flex: 2,
+    alignItems: 'flex-end',
   },
   detailValue: {
     fontSize: 14,
     fontWeight: '600',
+    textAlign: 'right',
+    flexShrink: 1,
   },
   adCarouselSection: {
     height: screenWidth * 0.4, // Reduced height for more compact design
@@ -1492,6 +2294,69 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     marginHorizontal: 4,
+  },
+  bannerModalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    padding: 16,
+  },
+  bannerModalContent: {
+    width: '92%',
+    maxHeight: '85%',
+    borderRadius: 16,
+    padding: 16,
+    paddingTop: Platform.OS === 'ios' ? 40 : 24,
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  bannerModalClose: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 10 : 6,
+    right: 10,
+    padding: 10,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    zIndex: 10,
+  },
+  bannerModalCloseText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  bannerModalImageContainer: {
+    width: '100%',
+    height: modalImageHeight,
+    borderRadius: 14,
+    overflow: 'hidden',
+    marginBottom: 12,
+    backgroundColor: '#000',
+  },
+  bannerModalImage: {
+    width: '100%',
+    height: '100%',
+  },
+  bannerModalTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  bannerModalButton: {
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    alignSelf: 'center',
+    minWidth: 140,
+  },
+  bannerModalButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   section: {
     paddingHorizontal: 20,
@@ -1679,8 +2544,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
   },
+  usageStatIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   usageStatIcon: {
-    fontSize: 24,
     marginBottom: 4,
   },
   usageStatLabel: {
@@ -1763,6 +2635,14 @@ const styles = StyleSheet.create({
   quickMenuRowItem: {
     alignItems: 'center',
     flex: 1,
+  },
+  quickMenuIconContainer: {
+    width: 50,
+    height: 42,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
   },
   quickMenuRowIcon: {
     fontSize: 24,

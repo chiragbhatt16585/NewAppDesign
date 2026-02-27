@@ -30,11 +30,20 @@ const UpdateModal: React.FC<UpdateModalProps> = ({
 
   if (!versionInfo) return null;
 
-  const { latestVersion, updateMessage } = versionInfo;
+  const { latestVersion, updateMessage, forceUpdate } = versionInfo;
 
   const handleUpdate = () => {
     onUpdate();
-    onClose();
+    if (!forceUpdate) {
+      onClose();
+    }
+  };
+
+  // Prevent closing modal if forceUpdate is true
+  const handleClose = () => {
+    if (!forceUpdate) {
+      onClose();
+    }
   };
 
   return (
@@ -42,7 +51,7 @@ const UpdateModal: React.FC<UpdateModalProps> = ({
       visible={visible}
       transparent
       animationType="fade"
-      onRequestClose={undefined}
+      onRequestClose={forceUpdate ? undefined : handleClose}
     >
       <View style={styles.overlay}>
         <View style={[styles.modal, { backgroundColor: colors.card }]}>

@@ -1,0 +1,36 @@
+{
+  "name": "SpacecomLocalApp",
+  "expo": {
+    "name": "Spacecom Local",
+    "slug": "spacecom-local",
+    "version": "4.0.0",
+    "orientation": "portrait",
+    "icon": "./app-icons/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./app-icons/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.l2sClient.spacecomlocal",
+      "buildNumber": "4"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./app-icons/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "package": "com.log2space.spacecom.local",
+      "versionCode": 4
+    },
+    "web": {
+      "favicon": "./app-icons/favicon.png"
+    }
+  }
+}
+

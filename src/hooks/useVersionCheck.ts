@@ -3,6 +3,7 @@ import { AppState, AppStateStatus } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import versionCheckService, { VersionInfo } from '../services/versionCheck';
 import { getClientConfig } from '../config/client-config';
+import { useAuth } from '../utils/AuthContext';
 
 const VERSION_CHECK_KEY = 'last_version_check';
 const VERSION_CHECK_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
@@ -12,6 +13,9 @@ export const useVersionCheck = () => {
   const [isChecking, setIsChecking] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [lastDismissedTime, setLastDismissedTime] = useState(0);
+
+  // Get authentication state to only check version when user is logged in
+  const { isAuthenticated } = useAuth();
 
   const clientConfig = getClientConfig();
   const versionCheckConfig = clientConfig.versionCheck;
@@ -55,6 +59,11 @@ export const useVersionCheck = () => {
    * Perform version check
    */
   const checkForUpdates = useCallback(async (showModal: boolean = true) => {
+    // Only check for updates if user is authenticated
+    if (!isAuthenticated) {
+      return;
+    }
+    
     if (!isVersionCheckEnabled || isChecking) return;
 
     try {
@@ -74,19 +83,20 @@ export const useVersionCheck = () => {
     } finally {
       setIsChecking(false);
     }
-  }, [isVersionCheckEnabled, isChecking, updateLastCheckTime]);
+  }, [isAuthenticated, isVersionCheckEnabled, isChecking, updateLastCheckTime]);
 
   /**
    * Check for updates on app state change (when app comes to foreground)
    */
   const handleAppStateChange = useCallback(async (nextAppState: AppStateStatus) => {
-    if (nextAppState === 'active' && isVersionCheckEnabled) {
+    // Only check if user is authenticated
+    if (nextAppState === 'active' && isVersionCheckEnabled && isAuthenticated) {
       const shouldCheck = await shouldCheckVersion();
       if (shouldCheck) {
         checkForUpdates(true);
       }
     }
-  }, [isVersionCheckEnabled, shouldCheckVersion, checkForUpdates]);
+  }, [isAuthenticated, isVersionCheckEnabled, shouldCheckVersion, checkForUpdates]);
 
   /**
    * Handle update button press
@@ -118,13 +128,15 @@ export const useVersionCheck = () => {
 
     const subscription = AppState.addEventListener('change', handleAppStateChange);
     
-    // Check immediately on mount
-    checkForUpdates(true);
+    // Check immediately on mount only if user is authenticated
+    if (isAuthenticated) {
+      checkForUpdates(true);
+    }
 
     return () => {
       subscription?.remove();
     };
-  }, [isVersionCheckEnabled, handleAppStateChange]); // Removed checkForUpdates from dependencies
+  }, [isAuthenticated, isVersionCheckEnabled, handleAppStateChange]); // Removed checkForUpdates from dependencies
 
   return {
     versionInfo,

@@ -18,6 +18,8 @@ import {apiService, Ticket} from '../services/api';
 import sessionManager from '../services/sessionManager';
 import AddTicketScreen from './AddTicketScreen';
 import useMenuSettings from '../hooks/useMenuSettings';
+import Feather from 'react-native-vector-icons/Feather';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 
 const TicketsScreen = ({navigation}: any) => {
   const {isDark} = useTheme();
@@ -100,13 +102,13 @@ const TicketsScreen = ({navigation}: any) => {
     const statusLower = status.toLowerCase();
     switch (statusLower) {
       case 'open':
-        return '#FF6B35';
+        return '#FBBC05';
       case 'in progress':
         return '#FFA500';
       case 'resolved':
         return '#4CAF50';
       case 'closed':
-        return '#4CAF50';
+        return '#000000';
       default:
         return '#757575';
     }
@@ -143,38 +145,126 @@ const TicketsScreen = ({navigation}: any) => {
     }
   };
 
+  const getStatusTranslationKey = (status: string): string => {
+    const normalized = status.toLowerCase().replace(/[\s_]/g, '');
+    // Map common variations to translation keys
+    const statusMap: Record<string, string> = {
+      'open': 'open',
+      'inprogress': 'inprogress',
+      'in-progress': 'inprogress',
+      'resolved': 'resolved',
+      'closed': 'closed',
+      'closedonline': 'closed_online',
+      'closed-online': 'closed_online',
+      'closed_online': 'closed_online',
+    };
+    return statusMap[normalized] || normalized;
+  };
+
+  const formatTicketDate = (dateString: string): string => {
+    if (!dateString) return '';
+    
+    try {
+      // If already in the correct format "DD-MMM,YY HH:mm", return as-is
+      if (dateString.match(/^\d{1,2}-[A-Za-z]{3},\d{2}\s+\d{1,2}:\d{2}$/)) {
+        return dateString;
+      }
+      
+      // Handle "DD-MM-YYYY HH:mm" format (e.g., "25-04-2025 10:56")
+      if (dateString.match(/^\d{1,2}-\d{2}-\d{4}\s+\d{1,2}:\d{2}$/)) {
+        const parts = dateString.split(' ');
+        const datePart = parts[0]; // "25-04-2025"
+        const timePart = parts[1] || ''; // "10:56"
+        
+        const [day, month, year] = datePart.split('-');
+        const monthNum = parseInt(month, 10) - 1; // Month is 0-indexed
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const monthAbbr = monthNames[monthNum];
+        const year2Digit = year.slice(-2);
+        
+        return `${day}-${monthAbbr},${year2Digit} ${timePart}`;
+      }
+      
+      // Handle format: "15-Jul,24 14:30" or "15-Jul,24 14:30:45"
+      if (dateString.includes('-') && dateString.includes(',')) {
+        const parts = dateString.split(' ');
+        const datePart = parts[0]; // "15-Jul,24"
+        const originalTimePart = parts[1] || ''; // "14:30" or "14:30:45"
+        
+        const dateComponents = datePart.split('-');
+        if (dateComponents.length >= 2) {
+          const day = dateComponents[0]; // "15"
+          const monthYear = dateComponents[1]; // "Jul,24"
+          const monthYearParts = monthYear.split(',');
+          if (monthYearParts.length >= 2) {
+            const month = monthYearParts[0]; // "Jul"
+            const year = monthYearParts[1]; // "24"
+            
+            // Extract time as HH:mm (remove seconds if present)
+            let timePart = '';
+            if (originalTimePart) {
+              const timeMatch = originalTimePart.match(/(\d{1,2}):(\d{2})/);
+              if (timeMatch) {
+                const hours = timeMatch[1].padStart(2, '0');
+                const minutes = timeMatch[2];
+                timePart = `${hours}:${minutes}`;
+              }
+            }
+            
+            return `${day}-${month},${year} ${timePart}`.trim();
+          }
+        }
+      }
+      
+      // Try to parse as standard date format
+      const date = new Date(dateString);
+      if (!isNaN(date.getTime())) {
+        const day = date.getDate().toString();
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const month = monthNames[date.getMonth()];
+        const year = date.getFullYear().toString().slice(-2);
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        
+        return `${day}-${month},${year} ${hours}:${minutes}`;
+      }
+      
+      // Return original if parsing fails
+      return dateString;
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return dateString; // Return original if formatting fails
+    }
+  };
+
   const renderTicketItem = ({item}: {item: Ticket}) => (
     <TouchableOpacity
       style={[styles.ticketCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}
       onPress={() => handleTicketPress(item)}>
       <View style={styles.ticketHeader}>
         <View style={styles.ticketInfo}>
-          <Text style={[styles.ticketIcon, {color: colors.textSecondary}]}>🔢</Text>
           <Text style={[styles.ticketNo, {color: colors.text}]}>{item.ticketNo}</Text>
         </View>
         <View style={[styles.statusBadge, {backgroundColor: getStatusColor(item.status)}]}>
-          <Text style={styles.statusText}>{t(`tickets.${item.status.toLowerCase().replace(' ', '')}`)}</Text>
+          <Text style={styles.statusText}>{t(`tickets.${getStatusTranslationKey(item.status)}`)}</Text>
         </View>
       </View>
       <View style={styles.titleRow}>
-        <Text style={[styles.titleIcon, {color: colors.textSecondary}]}>📋</Text>
         <Text style={[styles.ticketTitle, {color: colors.textSecondary}]}>{item.title}</Text>
       </View>
       <View style={styles.ticketFooter}>
         <View style={styles.dateInfo}>
-          <Text style={[styles.dateIcon, {color: colors.textSecondary}]}>📅</Text>
           <View style={styles.dateLabelContainer}>
             <Text style={[styles.dateLabel, {color: colors.textSecondary}]}>{t('tickets.created')}:</Text>
           </View>
-          <Text style={[styles.dateValue, {color: colors.text}]}>{item.dateCreated}</Text>
+          <Text style={[styles.dateValue, {color: colors.text}]}>{formatTicketDate(item.dateCreated)}</Text>
         </View>
         {item.dateClosed && (
           <View style={styles.dateInfo}>
-            <Text style={[styles.dateIcon, {color: colors.textSecondary}]}>✅</Text>
             <View style={styles.dateLabelContainer}>
               <Text style={[styles.dateLabel, {color: colors.textSecondary}]}>{t('tickets.closed')}:</Text>
             </View>
-            <Text style={[styles.dateValue, {color: colors.text}]}>{item.dateClosed}</Text>
+            <Text style={[styles.dateValue, {color: colors.text}]}>{formatTicketDate(item.dateClosed)}</Text>
           </View>
         )}
       </View>
@@ -202,19 +292,17 @@ const TicketsScreen = ({navigation}: any) => {
     <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}> 
       <CommonHeader
         navigation={navigation}
-        rightComponent={
-          <TouchableOpacity
-            style={[styles.createButton, {backgroundColor: colors.primary}]}
-            onPress={handleCreateTicket}>
-            <Text style={styles.createButtonText}>+</Text>
-          </TouchableOpacity>
-        }
       />
 
       <View style={styles.headingContainer}>
         <View style={styles.headingRow}>
-          <Text style={[styles.headingIcon, {color: colors.primary}]}>📋</Text>
           <Text style={[styles.pageHeading, {color: colors.text}]}>{t('tickets.title')}</Text>
+          <TouchableOpacity
+            style={[styles.createButton, {backgroundColor: colors.primary}]}
+            onPress={handleCreateTicket}>
+            <MaterialIcons name="confirmation-number" size={18} color="#fff" style={styles.createButtonIcon} />
+            <Text style={styles.createButtonText}>New</Text>
+          </TouchableOpacity>
         </View>
         <Text style={[styles.pageSubheading, {color: colors.textSecondary}]}> 
           {t('tickets.subtitle')}
@@ -232,7 +320,7 @@ const TicketsScreen = ({navigation}: any) => {
 
       {error && !loading && (
         <View style={styles.errorContainer}>
-          <Text style={[styles.errorIcon, {color: colors.textSecondary}]}>⚠️</Text>
+          <MaterialIcons name="warning" size={48} color={colors.textSecondary} />
           <Text style={[styles.errorTitle, {color: colors.text}]}>{t('common.error')}</Text>
           <Text style={[styles.errorMessage, {color: colors.textSecondary}]}>{error}</Text>
           <TouchableOpacity
@@ -252,7 +340,7 @@ const TicketsScreen = ({navigation}: any) => {
           contentContainerStyle={styles.ticketsList}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Text style={[styles.emptyIcon, {color: colors.textSecondary}]}>📋</Text>
+              <MaterialIcons name="confirmation-number" size={48} color={colors.textSecondary} />
               <Text style={[styles.emptyTitle, {color: colors.text}]}>{t('tickets.noTickets')}</Text>
               <Text style={[styles.emptySubtitle, {color: colors.textSecondary}]}> 
                 {t('tickets.noTicketsSubtitle')}
@@ -278,16 +366,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   createButton: {
-    width: 40,
-    height: 40,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 20,
     justifyContent: 'center',
-    alignItems: 'center',
+  },
+  createButtonIcon: {
+    marginRight: 6,
   },
   createButtonText: {
-    fontSize: 24,
+    fontSize: 14,
     color: '#fff',
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   headingContainer: {
     paddingHorizontal: 20,
@@ -297,11 +389,8 @@ const styles = StyleSheet.create({
   headingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
-  },
-  headingIcon: {
-    fontSize: 28,
-    marginRight: 12,
+    justifyContent: 'space-between',
+    marginBottom: 4,
   },
   pageHeading: {
     fontSize: 24,
@@ -316,9 +405,9 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   ticketCard: {
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 10,
     shadowOffset: {
       width: 0,
       height: 2,
@@ -331,7 +420,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   ticketInfo: {
     flexDirection: 'row',
@@ -339,8 +428,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   ticketIcon: {
-    fontSize: 16,
-    marginRight: 6,
+    fontSize: 0,
+    marginRight: 0,
   },
   ticketNo: {
     fontSize: 16,
@@ -352,7 +441,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 6,
   },
   statusIcon: {
     fontSize: 12,
@@ -376,11 +465,11 @@ const styles = StyleSheet.create({
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   titleIcon: {
-    fontSize: 16,
-    marginRight: 8,
+    fontSize: 0,
+    marginRight: 0,
   },
   ticketTitle: {
     fontSize: 16,
@@ -395,22 +484,21 @@ const styles = StyleSheet.create({
   ticketFooter: {
     borderTopWidth: 1,
     borderTopColor: 'rgba(0,0,0,0.1)',
-    paddingTop: 12,
+    paddingTop: 8,
   },
   dateInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
-    paddingVertical: 2,
+    marginBottom: 0,
+    paddingVertical: 0,
   },
   dateIcon: {
-    fontSize: 14,
-    marginRight: 6,
+    fontSize: 0,
+    marginRight: 0,
   },
   dateLabelContainer: {
-    width: 70,
-    alignItems: 'flex-end',
-    marginRight: 8,
+    alignItems: 'flex-start',
+    marginRight: 4,
   },
   dateLabel: {
     fontSize: 12,

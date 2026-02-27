@@ -14,7 +14,7 @@ if linkage != nil
   use_frameworks! :linkage => linkage.to_sym
 end
 
-target 'ISPApp' do
+target 'Spacecom End User App' do
   config = use_native_modules!
 
   use_react_native!(
@@ -42,6 +42,52 @@ target 'ISPApp' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+    
+    # Fix Razorpay framework code signing issue
+    # Modify the embed frameworks script to remove Razorpay signatures before signing
+    embed_script_path = "#{installer.sandbox.root}/Target Support Files/Pods-Spacecom End User App/Pods-Spacecom End User App-frameworks.sh"
+    if File.exist?(embed_script_path)
+      embed_script = File.read(embed_script_path)
+      unless embed_script.include?("RAZORPAY_FIX_APPLIED")
+        puts "Applying Razorpay code signing fix..."
+        razorpay_fix = <<-FIX
+
+# RAZORPAY_FIX_APPLIED - Remove code signatures from Razorpay frameworks before signing
+if [ -d "${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/Razorpay.framework" ]; then
+  if [ -d "${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/Razorpay.framework/_CodeSignature" ]; then
+    echo "Removing existing code signature from Razorpay.framework"
+    rm -rf "${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/Razorpay.framework/_CodeSignature"
+  fi
+fi
+if [ -d "${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/RazorpayCore.framework" ]; then
+  if [ -d "${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/RazorpayCore.framework/_CodeSignature" ]; then
+    echo "Removing existing code signature from RazorpayCore.framework"
+    rm -rf "${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/RazorpayCore.framework/_CodeSignature"
+  fi
+fi
+if [ -d "${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/RazorpayStandard.framework" ]; then
+  if [ -d "${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/RazorpayStandard.framework/_CodeSignature" ]; then
+    echo "Removing existing code signature from RazorpayStandard.framework"
+    rm -rf "${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/RazorpayStandard.framework/_CodeSignature"
+  fi
+fi
+
+FIX
+        # Insert the fix before the code signing section
+        if embed_script.include?("if [ \"${COCOAPODS_PARALLEL_CODE_SIGN}\" == \"true\" ]; then")
+          embed_script = embed_script.sub(/(if \[ \"\$\{COCOAPODS_PARALLEL_CODE_SIGN\}\" == \"true\" \]; then)/, razorpay_fix + "\\1")
+        elsif embed_script.include?("code_sign")
+          embed_script = embed_script.sub(/(.*code_sign.*)/, razorpay_fix + "\\1")
+        else
+          # Add at the end if we can't find the signing section
+          embed_script += razorpay_fix
+        end
+        File.write(embed_script_path, embed_script)
+        puts "✅ Razorpay fix applied to embed frameworks script"
+      else
+        puts "Razorpay fix already applied"
+      end
+    end
     
     # Fix for dSYM generation for Hermes framework
     installer.pods_project.targets.each do |target|
@@ -75,6 +121,28 @@ target 'ISPApp' do
           config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
           config.build_settings['DEFINES_MODULE'] = 'NO'
           config.build_settings['BUILD_LIBRARY_FOR_DISTRIBUTION'] = 'NO'
+        end
+      end
+    end
+    
+    # Fix for Razorpay Swift protocol linking in Xcode 26.1.1+
+    installer.pods_project.targets.each do |target|
+      if target.name == 'razorpay-pod' || target.name == 'react-native-razorpay'
+        target.build_configurations.each do |config|
+          config.build_settings['CLANG_ENABLE_MODULES'] = 'YES'
+          config.build_settings['SWIFT_VERSION'] = '5.0'
+          config.build_settings['DEFINES_MODULE'] = 'YES'
+          config.build_settings['DEBUG_INFORMATION_FORMAT'] = 'dwarf-with-dsym'
+        end
+      end
+    end
+    
+    # Ensure Razorpay dSYMs are included in archive
+    installer.pods_project.targets.each do |target|
+      if target.name == 'razorpay-core-pod' || target.name == 'razorpay-pod'
+        target.build_configurations.each do |config|
+          config.build_settings['DEBUG_INFORMATION_FORMAT'] = 'dwarf-with-dsym'
+          config.build_settings['STRIP_INSTALLED_PRODUCT'] = 'NO'
         end
       end
     end

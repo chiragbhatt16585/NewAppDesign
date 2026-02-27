@@ -19,6 +19,7 @@ import biometricAuthService from '../services/biometricAuth';
 import { pinStorage } from '../services/pinStorage';
 import { useTranslation } from 'react-i18next';
 import CommonHeader from '../components/CommonHeader';
+import { getClientConfig } from '../config/client-config';
 
 const { width, height } = Dimensions.get('window');
 
@@ -43,20 +44,30 @@ const BiometricAuthScreen = ({ navigation, onAuthSuccess, onLoginRedirect }: any
       
       console.log('=== BIOMETRIC AUTH INITIALIZATION ===');
       
-      // Check if biometric is available
+      // Check client config first
+      const clientConfig = getClientConfig();
+      const isBiometricEnabledForClient = clientConfig.features?.biometricAuth === true;
+      
+      // Check if biometric is available (this will also check client config)
       const isAvailable = await biometricAuthService.isBiometricAvailable();
       const type = await biometricAuthService.getBiometricType();
       const isEnabled = await biometricAuthService.isAuthEnabled();
       const pin = await pinStorage.getPin();
       
+      console.log('Biometric enabled for client:', isBiometricEnabledForClient);
       console.log('Biometric available:', isAvailable);
       console.log('Biometric type:', type);
       console.log('Biometric enabled:', isEnabled);
       console.log('PIN available:', !!pin);
       
-      setBiometricType(type);
+      // If biometric is disabled for client, always set type to 'none'
+      if (!isBiometricEnabledForClient) {
+        setBiometricType('none');
+      } else {
+        setBiometricType(type);
+      }
       
-      if (isAvailable && isEnabled) {
+      if (isBiometricEnabledForClient && isAvailable && isEnabled) {
         console.log('✅ Biometric available and enabled, attempting authentication');
         console.log('🔄 This should trigger Face ID/Touch ID prompt...');
         // Try biometric authentication

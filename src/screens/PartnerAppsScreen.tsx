@@ -197,13 +197,19 @@ const PartnerAppsScreen = ({navigation}: any) => {
               <Text style={[styles.appDescription, {color: colors.textSecondary}]}>No partner apps available.</Text>
             </View>
           )}
-          {apps.map((app) => (
+          {apps.map((app) => {
+            const effectiveLogoUrl =
+              app.name?.trim().toLowerCase() === 'playboxtv'
+                ? 'https://www.playboxtv.in/images/playbox-logo.png'
+                : app.logoUrl;
+
+            return (
             <View key={app.id} style={[styles.appCard, {backgroundColor: colors.card}]}> 
               <View style={styles.appHeader}>
-                {app.logoUrl ? (
+                {effectiveLogoUrl ? (
                   <View style={[styles.appIcon, {backgroundColor: '#1a1a1a'}]}> 
                     <Image 
-                      source={{uri: app.logoUrl}} 
+                      source={{uri: effectiveLogoUrl}} 
                       style={styles.appLogo}
                       resizeMode="contain"
                       onError={() => {
@@ -249,7 +255,7 @@ const PartnerAppsScreen = ({navigation}: any) => {
                 </View>
               </View>
             </View>
-          ))}
+          )})}
 
           {/* Info Section */}
           <View style={[styles.infoCard, {backgroundColor: colors.card}]}> 

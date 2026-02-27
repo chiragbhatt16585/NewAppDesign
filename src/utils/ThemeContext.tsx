@@ -1,6 +1,4 @@
-import React, {createContext, useContext, useState, useEffect} from 'react';
-import {Appearance, ColorSchemeName} from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, {createContext, useContext, useState} from 'react';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 
@@ -16,7 +14,17 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export const useTheme = () => {
   const context = useContext(ThemeContext);
   if (!context) {
-    throw new Error('useTheme must be used within a ThemeProvider');
+    // In production, return a default theme instead of throwing
+    if (__DEV__) {
+      throw new Error('useTheme must be used within a ThemeProvider');
+    }
+    // Fallback theme for production
+    return {
+      theme: 'light' as const,
+      themeMode: 'system' as const,
+      setThemeMode: () => {},
+      isDark: false,
+    };
   }
   return context;
 };
@@ -26,57 +34,15 @@ interface ThemeProviderProps {
 }
 
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({children}) => {
-  const [themeMode, setThemeMode] = useState<ThemeMode>('system');
-  const [systemColorScheme, setSystemColorScheme] = useState<ColorSchemeName>(
-    Appearance.getColorScheme(),
-  );
-  const [isLoading, setIsLoading] = useState(true);
+  const [themeMode] = useState<ThemeMode>('light');
+  const theme: 'light' | 'dark' = 'light';
+  const isDark = false;
 
-  // Load saved theme mode from AsyncStorage
-  useEffect(() => {
-    const loadThemeMode = async () => {
-      try {
-        const savedThemeMode = await AsyncStorage.getItem('themeMode');
-        if (savedThemeMode && ['light', 'dark', 'system'].includes(savedThemeMode)) {
-          setThemeMode(savedThemeMode as ThemeMode);
-        }
-      } catch (error) {
-        console.error('Error loading theme mode:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadThemeMode();
-  }, []);
-
-  // Save theme mode to AsyncStorage when it changes
-  const saveThemeMode = async (mode: ThemeMode) => {
-    try {
-      await AsyncStorage.setItem('themeMode', mode);
-    } catch (error) {
-      console.error('Error saving theme mode:', error);
-    }
-  };
-
-  useEffect(() => {
-    const subscription = Appearance.addChangeListener(({colorScheme}) => {
-      setSystemColorScheme(colorScheme);
-    });
-
-    return () => subscription?.remove();
-  }, []);
-
-  const theme = themeMode === 'system' 
-    ? (systemColorScheme || 'light') 
-    : themeMode;
-
-  const isDark = theme === 'dark';
-
-  // Wrapper function to save theme mode when it's changed
+  // Dark mode is intentionally disabled globally.
   const handleSetThemeMode = (mode: ThemeMode) => {
-    setThemeMode(mode);
-    saveThemeMode(mode);
+    if (__DEV__ && mode !== 'light') {
+      console.log('Theme override ignored: app is locked to light mode');
+    }
   };
 
   const value: ThemeContextType = {
@@ -85,11 +51,6 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({children}) => {
     setThemeMode: handleSetThemeMode,
     isDark,
   };
-
-  // Show loading state while theme is being loaded
-  if (isLoading) {
-    return null; // or a loading spinner
-  }
 
   return (
     <ThemeContext.Provider value={value}>

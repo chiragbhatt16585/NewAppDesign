@@ -1,0 +1,35 @@
+{
+  "name": "SpacecomLiveApp",
+  "expo": {
+    "name": "Spacecom Live",
+    "slug": "spacecom-live",
+    "version": "4.0.0",
+    "orientation": "portrait",
+    "icon": "./app-icons/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./app-icons/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.spacecom.log2space.spacecomlive",
+      "buildNumber": "1"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./app-icons/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "package": "com.spacecom.log2space.spacecomlive",
+      "versionCode": 1
+    },
+    "web": {
+      "favicon": "./app-icons/favicon.png"
+    }
+  }
+} 

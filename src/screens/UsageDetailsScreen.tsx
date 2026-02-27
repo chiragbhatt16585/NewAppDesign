@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, Platform, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import Feather from 'react-native-vector-icons/Feather';
 import CommonHeader from '../components/CommonHeader';
 import { apiService } from '../services/api';
 import sessionManager from '../services/sessionManager';
@@ -9,6 +10,7 @@ import { getClientConfig } from '../config/client-config';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../utils/ThemeContext';
 import { getThemeColors } from '../utils/themeStyles';
+import LeftBorderLine from '../components/LeftBorderLine';
 
 const UsageDetailsScreen = ({ navigation }: any) => {
   const { t } = useTranslation();
@@ -64,14 +66,21 @@ const UsageDetailsScreen = ({ navigation }: any) => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <LeftBorderLine />
       <CommonHeader navigation={navigation} />
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <Text style={[styles.title, { color: colors.text }]}>{t('usageDetails.title')}</Text>
+          <View style={styles.titleRow}>
+            <Feather name="bar-chart-2" size={28} color={colors.primary} style={styles.titleIcon} />
+            <Text style={[styles.title, { color: colors.text }]}>{t('usageDetails.title')}</Text>
+          </View>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{t('usageDetails.subtitle')}</Text>
         </View>
         <View style={[styles.card, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
-          <Text style={[styles.cardTitle, { color: colors.text }]}>{t('usageDetails.selectDateRange')}</Text>
+          <View style={styles.cardTitleRow}>
+            <Feather name="calendar" size={20} color={colors.primary} style={styles.cardTitleIcon} />
+            <Text style={[styles.cardTitle, { color: colors.text }]}>{t('usageDetails.selectDateRange')}</Text>
+          </View>
           <Text style={[styles.cardSubtitle, { color: colors.textSecondary }]}>{t('usageDetails.selectDateSubtitle')}</Text>
           <View style={styles.dateRow}>
             <TouchableOpacity
@@ -185,6 +194,7 @@ const UsageDetailsScreen = ({ navigation }: any) => {
             onPress={handleFetch}
             disabled={isLoading}
           >
+            <Feather name="bar-chart-2" size={20} color="#fff" style={styles.buttonIcon} />
             <Text style={styles.buttonText}>
               {isLoading ? t('common.loading') : t('usageDetails.fetchUsage')}
             </Text>
@@ -195,22 +205,30 @@ const UsageDetailsScreen = ({ navigation }: any) => {
             <Text style={[styles.dataTitle, { color: colors.text }]}>{t('usageDetails.usageStatistics')}</Text>
             <View style={styles.statsGrid}>
               <View style={[styles.statItem, { backgroundColor: colors.background }]}>
-                <Text style={[styles.statArrowIcon, { color: colors.primary }]}>↓</Text>
+                <View style={[styles.statIconContainer, { backgroundColor: colors.primaryLight }]}>
+                  <Feather name="download" size={20} color={colors.primary} />
+                </View>
                 <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('usageDetails.download')}</Text>
                 <Text style={[styles.statValue, { color: colors.text }]}>{usageData.download}</Text>
               </View>
               <View style={[styles.statItem, { backgroundColor: colors.background }]}>
-                <Text style={[styles.statArrowIcon, { color: colors.primary }]}>↑</Text>
+                <View style={[styles.statIconContainer, { backgroundColor: colors.primaryLight }]}>
+                  <Feather name="upload" size={20} color={colors.primary} />
+                </View>
                 <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('usageDetails.upload')}</Text>
                 <Text style={[styles.statValue, { color: colors.text }]}>{usageData.upload}</Text>
               </View>
               <View style={[styles.statItem, { backgroundColor: colors.background }]}>
-                <Text style={styles.statIcon}>📊</Text>
+                <View style={[styles.statIconContainer, { backgroundColor: colors.primaryLight }]}>
+                  <Feather name="bar-chart-2" size={20} color={colors.primary} />
+                </View>
                 <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('usageDetails.total')}</Text>
                 <Text style={[styles.statValue, { color: colors.text }]}>{usageData.total}</Text>
               </View>
               <View style={[styles.statItem, { backgroundColor: colors.background }]}>
-                <Text style={styles.statIcon}>⏰</Text>
+                <View style={[styles.statIconContainer, { backgroundColor: colors.primaryLight }]}>
+                  <Feather name="clock" size={20} color={colors.primary} />
+                </View>
                 <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('usageDetails.hours')}</Text>
                 <Text style={[styles.statValue, { color: colors.text }]}>{usageData.hours} h</Text>
               </View>
@@ -235,6 +253,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8f9fa',
+    position: 'relative',
+    overflow: 'visible',
   },
   scrollView: {
     flex: 1,
@@ -245,11 +265,18 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: 24,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  titleIcon: {
+    marginRight: 8,
+  },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
     color: '#2c3e50',
-    marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
@@ -266,11 +293,18 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
+  cardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  cardTitleIcon: {
+    marginRight: 8,
+  },
   cardTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#2c3e50',
-    marginBottom: 8,
   },
   cardSubtitle: {
     fontSize: 14,
@@ -311,6 +345,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     borderRadius: 12,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
     shadowColor: '#3498db',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -319,6 +355,9 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     backgroundColor: '#bdc3c7',
+  },
+  buttonIcon: {
+    marginRight: 8,
   },
   buttonText: {
     color: 'white',
@@ -354,14 +393,15 @@ const styles = StyleSheet.create({
     padding: 16,
     alignItems: 'center',
   },
-  statIcon: {
-    fontSize: 24,
+  statIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 8,
   },
-  statArrowIcon: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#3498db',
+  statIcon: {
     marginBottom: 8,
   },
   statLabel: {

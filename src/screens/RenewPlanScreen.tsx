@@ -13,6 +13,8 @@ import {
   Image,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import Feather from 'react-native-vector-icons/Feather';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {useTheme} from '../utils/ThemeContext';
 import {getThemeColors} from '../utils/themeStyles';
 import CommonHeader from '../components/CommonHeader';
@@ -20,6 +22,9 @@ import {useTranslation} from 'react-i18next';
 import {apiService} from '../services/api';
 import sessionManager from '../services/sessionManager';
 import dataCache from '../services/dataCache';
+import LeftBorderLine from '../components/LeftBorderLine';
+import useMenuSettings from '../hooks/useMenuSettings';
+import { getClientConfig } from '../config/client-config';
 
 interface Plan {
   id: string;
@@ -46,10 +51,20 @@ interface Plan {
   iptv?: string;
 }
 
+type DropdownOption = {
+  value: string;
+  label: string;
+};
+
+// Fixed speed filter options (temporarily limit to 3 buckets)
+const SPEED_FILTER_OPTIONS = ['Upto 50Mbps', '50-100Mbps', '100Mbps above'];
+
 const RenewPlanScreen = ({navigation}: any) => {
   const {isDark} = useTheme();
   const colors = getThemeColors(isDark);
   const {t} = useTranslation();
+  const { menu } = useMenuSettings();
+  const isMicroscan = getClientConfig().clientId === 'microscan';
 
   const [isLoading, setIsLoading] = useState(true);
   const [plansData, setPlansData] = useState<Plan[]>([]);
@@ -69,12 +84,82 @@ const RenewPlanScreen = ({navigation}: any) => {
     iptvPlan: '',
     fupPlan: '',
   });
+  // Dynamic filter options from Staticdropdown API
+  const [speedOptions, setSpeedOptions] = useState<DropdownOption[]>([]);
+  const [priceOptions, setPriceOptions] = useState<DropdownOption[]>([]);
+  const [staticValidityOptions, setStaticValidityOptions] = useState<string[]>([]);
+
+  const getUsageSubtitle = (limit: string | undefined): string => {
+    if (!limit) return '';
+    const lower = limit.toLowerCase();
+    if (lower === 'unlimited') return 'unlimited usage';
+    return `${limit} GB`;
+  };
+
+  // Read display_option_json settings for "Renew Plan" menu to control plan name visibility
+  // and whether to blend plan params (speed/validity/OTTs) into the header row.
+  const { showL2SPlanName, showPlanParamsBlend } = useMemo(() => {
+    let result = {
+      showL2SPlanName: true,
+      showPlanParamsBlend: false,
+    };
+    try {
+      if (!Array.isArray(menu)) return result;
+      const renewMenu = menu.find((m: any) =>
+        String(m?.menu_label).trim().toLowerCase() === 'renew plan'
+      );
+      if (!renewMenu) return result;
+
+      const jsonVal = renewMenu.display_option_json;
+      let parsed: any = {};
+      if (typeof jsonVal === 'string') {
+        const trimmed = jsonVal.trim();
+        if (trimmed && (trimmed.startsWith('{') || trimmed.startsWith('['))) {
+          try {
+            parsed = JSON.parse(trimmed);
+          } catch {
+            // Attempt to repair extra trailing braces (same strategy as AddTicketScreen)
+            const openCount = (trimmed.match(/\{/g) || []).length;
+            let s = trimmed;
+            let closeCount = (s.match(/\}/g) || []).length;
+            while (closeCount > openCount && s.endsWith('}')) {
+              s = s.slice(0, -1);
+              closeCount--;
+            }
+            try { parsed = JSON.parse(s); } catch { parsed = {}; }
+          }
+        }
+      } else if (jsonVal && typeof jsonVal === 'object') {
+        parsed = jsonVal;
+      }
+
+      const rawNameFlag = parsed?.display_plan_settings?.show_plan?.l2s_planname;
+      const rawBlendFlag = parsed?.display_plan_settings?.show_plan?.plan_params_blend;
+
+      let nameFlag = true;
+      let blendFlag = false;
+
+      if (typeof rawNameFlag === 'boolean') nameFlag = rawNameFlag;
+      else if (typeof rawNameFlag === 'string') nameFlag = rawNameFlag.toLowerCase() === 'true';
+
+      if (typeof rawBlendFlag === 'boolean') blendFlag = rawBlendFlag;
+      else if (typeof rawBlendFlag === 'string') blendFlag = rawBlendFlag.toLowerCase() === 'true';
+
+      return {
+        showL2SPlanName: nameFlag,
+        showPlanParamsBlend: blendFlag,
+      };
+    } catch {
+      return result;
+    }
+  }, [menu]);
 
   useEffect(() => {
     // Clear cache and load fresh data when component mounts
     const initializeData = async () => {
       await dataCache.clearAllCache();
       loadPlanData();
+      loadStaticFilterOptions();
     };
     initializeData();
   }, []);
@@ -106,7 +191,7 @@ const RenewPlanScreen = ({navigation}: any) => {
       const {username} = session;
       
       // Always fetch fresh data for RenewPlanScreen
-      console.log('Fetching fresh data from API');
+      //console.log('Fetching fresh data from API');
       
       // Get user authentication data
       const authResponse = await apiService.makeAuthenticatedRequest(async (token) => {
@@ -147,30 +232,64 @@ const RenewPlanScreen = ({navigation}: any) => {
           'default'
         );
         // FULL RAW RESPONSE (Plan List)
-        try {
-          // console.log('=== FULL PLAN LIST RAW RESPONSE START ===');
-          // console.log(JSON.stringify(planList, null, 2));
-          // console.log('=== FULL PLAN LIST RAW RESPONSE END ===');
-        } catch (e) {}
+        console.log('=== FULL PLAN LIST RAW RESPONSE START ===');
+        console.log('Plan List Type:', typeof planList);
+        console.log('Plan List Is Array:', Array.isArray(planList));
+        console.log('Plan List Length:', Array.isArray(planList) ? planList.length : 'N/A');
+        // try {
+        //   console.log('=== FULL PLAN LIST JSON ===');
+        //   console.log(JSON.stringify(planList, null, 2));
+        //   console.log('=== END FULL PLAN LIST JSON ===');
+        // } catch (e) {
+        //   console.error('Error stringifying plan list:', e);
+        // }
         
-        // console.log('=== PLAN API RESPONSE SUCCESS ===');
-        // console.log('Plan Count:', planList?.length || 0);
-        if (planList?.[0]) {
-          // console.log('First Plan Name:', planList[0].name);
-          // console.log('First Plan Speed:', planList[0].downloadSpeed);
-          // console.log('First Plan Price:', planList[0].FinalAmount);
-          // console.log('First Plan Validity:', planList[0].days);
-          // console.log('First Plan Data Limit:', planList[0].limit);
-          // console.log('First Plan OTT Count:', planList[0].content_providers?.length || 0);
-        }
-        //console.log('=== END PLAN API RESPONSE ===');
+        console.log('=== PLAN API RESPONSE SUCCESS ===');
+        console.log('Plan Count:', planList?.length || 0);
+        // if (planList?.[0]) {
+        //   console.log('First Plan Name:', planList[0].name);
+        //   console.log('First Plan Speed:', planList[0].downloadSpeed);
+        //   console.log('First Plan Price:', planList[0].FinalAmount);
+        //   console.log('First Plan Validity:', planList[0].days);
+        //   console.log('First Plan Data Limit:', planList[0].limit);
+        //   console.log('First Plan OTT Count:', planList[0].content_providers?.length || 0);
+        //   console.log('First Plan content_providers:', planList[0].content_providers);
+        //   console.log('First Plan content_providers type:', typeof planList[0].content_providers);
+        //   console.log('First Plan content_providers is array:', Array.isArray(planList[0].content_providers));
+          
+        //   // Detailed OTT logo debugging
+        //   if (planList[0].content_providers) {
+        //     console.log('=== OTT CONTENT PROVIDERS DEBUG ===');
+        //     if (Array.isArray(planList[0].content_providers)) {
+        //       console.log('Content Providers Array Length:', planList[0].content_providers.length);
+        //       planList[0].content_providers.forEach((provider: any, idx: number) => {
+        //         console.log(`Provider ${idx + 1}:`, {
+        //           content_provider: provider.content_provider,
+        //           app_logo_file: provider.app_logo_file,
+        //           full_path_app_logo_file: provider.full_path_app_logo_file,
+        //           all_keys: Object.keys(provider),
+        //           full_object: JSON.stringify(provider, null, 2)
+        //         });
+        //       });
+        //     } else {
+        //       console.log('Content Providers is NOT an array:', planList[0].content_providers);
+        //       console.log('Content Providers type:', typeof planList[0].content_providers);
+        //     }
+        //     console.log('=== END OTT CONTENT PROVIDERS DEBUG ===');
+        //   } else {
+        //     console.log('No content_providers field in first plan');
+        //   }
+        // }
+        // console.log('=== END PLAN API RESPONSE ===');
         // Debug: print raw plan API payload (first item and count)
-        try {
-          //console.log('RAW planList length =>', Array.isArray(planList) ? planList.length : 'not array');
-          if (Array.isArray(planList) && planList.length > 0) {
-            //console.log('RAW planList[0] =>', JSON.stringify(planList[0], null, 2));
-          }
-        } catch (e) {}
+        // try {
+        //   console.log('RAW planList length =>', Array.isArray(planList) ? planList.length : 'not array');
+        //   if (Array.isArray(planList) && planList.length > 0) {
+        //     console.log('RAW planList[0] =>', JSON.stringify(planList[0], null, 2));
+        //   }
+        // } catch (e) {
+        //   console.error('Error logging raw plan list:', e);
+        // }
         try {
           // Alert.alert(
           //   'Plan API Debug',
@@ -221,8 +340,18 @@ const RenewPlanScreen = ({navigation}: any) => {
               const finalAmtRaw = p?.FinalAmount ?? p?.finalAmount ?? p?.mrp ?? p?.amt;
               const finalAmtNum = Number(finalAmtRaw);
               const userMrpNum = Number(p?.user_mrp);
-              return {
-                ...p,
+              
+              // Debug: Check for content_providers in various formats
+              // console.log(`=== Normalizing Plan: ${p?.name} ===`);
+              // console.log('Raw content_providers:', p?.content_providers);
+              // console.log('content_providers type:', typeof p?.content_providers);
+              // console.log('All plan keys:', Object.keys(p || {}));
+              
+              // DON'T normalize content_providers - preserve exactly as it comes from API (like UpgradePlanScreen)
+              // This ensures OTT content is not lost during normalization
+              
+              const normalizedPlan = {
+                ...p, // Spread all original properties including content_providers
                 FinalAmount: Number.isFinite(finalAmtNum) ? finalAmtNum : 0,
                 user_mrp: Number.isFinite(userMrpNum)
                   ? userMrpNum
@@ -230,53 +359,74 @@ const RenewPlanScreen = ({navigation}: any) => {
                 amt: Number.isFinite(Number(p?.amt)) ? Number(p?.amt) : p?.amt,
                 CGSTAmount: Number.isFinite(Number(p?.CGSTAmount)) ? Number(p?.CGSTAmount) : p?.CGSTAmount,
                 SGSTAmount: Number.isFinite(Number(p?.SGSTAmount)) ? Number(p?.SGSTAmount) : p?.SGSTAmount,
+                // content_providers is preserved from ...p spread above - don't overwrite it
               };
+              
+              // Debug: Log OTT content for plans that should have it
+              if (p?.ott_plan?.toLowerCase() === 'yes' || (normalizedPlan.content_providers && Array.isArray(normalizedPlan.content_providers) && normalizedPlan.content_providers.length > 0)) {
+                console.log(`[RenewPlan] Plan "${p?.name}": content_providers length = ${normalizedPlan.content_providers?.length || 0}`, normalizedPlan.content_providers);
+              }
+              
+              return normalizedPlan;
             })
           : [];
         
         // Debug: Print plan array with OTT information
-        console.log('=== PLAN ARRAY DEBUG ===');
-        console.log('Total Plans:', normalizedPlans.length);
-        normalizedPlans.forEach((plan: any, index: number) => {
-          console.log(`\n--- Plan ${index + 1}: ${plan.name} ---`);
-          console.log('Plan ID:', plan.id);
-          console.log('Plan Name:', plan.name);
-          console.log('Plan Description:', plan.description);
-          console.log('Download Speed:', plan.downloadSpeed);
-          console.log('Days:', plan.days);
-          console.log('Amount:', plan.amt);
-          console.log('Final Amount:', plan.FinalAmount);
-          console.log('CGST Amount:', plan.CGSTAmount);
-          console.log('SGST Amount:', plan.SGSTAmount);
-          console.log('Content Providers (OTT):', plan.content_providers);
-          console.log('Content Providers Type:', typeof plan.content_providers);
-          console.log('Content Providers Is Array:', Array.isArray(plan.content_providers));
-          console.log('Content Providers Length:', plan.content_providers?.length || 0);
-          if (plan.content_providers && Array.isArray(plan.content_providers) && plan.content_providers.length > 0) {
-            console.log('Content Providers Details:');
-            plan.content_providers.forEach((provider: any, pIndex: number) => {
-              console.log(`  Provider ${pIndex + 1}:`, {
-                content_provider: provider.content_provider,
-                app_logo_file: provider.app_logo_file,
-                full_path_app_logo_file: provider.full_path_app_logo_file,
-              });
-            });
-          }
-          console.log('OTT Plan:', plan.ott_plan);
-          console.log('Voice Plan:', plan.voice_plan);
-          console.log('IPTV:', plan.iptv);
-          console.log('FUP Flag:', plan.fup_flag);
-          console.log('Limit:', plan.limit);
-        });
-        console.log('=== END PLAN ARRAY DEBUG ===\n');
+        // console.log('=== PLAN ARRAY DEBUG (NORMALIZED) ===');
+        // console.log('Total Plans:', normalizedPlans.length);
+        // normalizedPlans.forEach((plan: any, index: number) => {
+        //   console.log(`\n--- Plan ${index + 1}: ${plan.name} ---`);
+        //   console.log('Plan ID:', plan.id);
+        //   console.log('Plan Name:', plan.name);
+        //   console.log('Plan Description:', plan.description);
+        //   console.log('Download Speed:', plan.downloadSpeed);
+        //   console.log('Days:', plan.days);
+        //   console.log('Amount:', plan.amt);
+        //   console.log('Final Amount:', plan.FinalAmount);
+        //   console.log('CGST Amount:', plan.CGSTAmount);
+        //   console.log('SGST Amount:', plan.SGSTAmount);
+        //   console.log('Content Providers (OTT):', plan.content_providers);
+        //   console.log('Content Providers Type:', typeof plan.content_providers);
+        //   console.log('Content Providers Is Array:', Array.isArray(plan.content_providers));
+        //   console.log('Content Providers Length:', plan.content_providers?.length || 0);
+        //   if (plan.content_providers && Array.isArray(plan.content_providers) && plan.content_providers.length > 0) {
+        //     console.log('=== Content Providers Details ===');
+        //     plan.content_providers.forEach((provider: any, pIndex: number) => {
+        //       console.log(`  Provider ${pIndex + 1}:`, {
+        //         content_provider: provider.content_provider,
+        //         app_logo_file: provider.app_logo_file,
+        //         full_path_app_logo_file: provider.full_path_app_logo_file,
+        //         all_keys: Object.keys(provider),
+        //         full_object: JSON.stringify(provider, null, 2)
+        //       });
+        //       // Check if URL is valid
+        //       if (provider.full_path_app_logo_file) {
+        //         console.log(`    URL Check: ${provider.full_path_app_logo_file}`);
+        //         console.log(`    URL starts with http: ${provider.full_path_app_logo_file.startsWith('http')}`);
+        //         console.log(`    URL length: ${provider.full_path_app_logo_file.length}`);
+        //       } else {
+        //         console.log(`    ⚠️ NO full_path_app_logo_file for provider ${pIndex + 1}`);
+        //       }
+        //     });
+        //     console.log('=== End Content Providers Details ===');
+        //   } else {
+        //     console.log('⚠️ No content_providers or empty array for plan:', plan.name);
+        //   }
+        //   console.log('OTT Plan:', plan.ott_plan);
+        //   console.log('Voice Plan:', plan.voice_plan);
+        //   console.log('IPTV:', plan.iptv);
+        //   console.log('FUP Flag:', plan.fup_flag);
+        //   console.log('Limit:', plan.limit);
+        // });
+        // console.log('=== END PLAN ARRAY DEBUG ===\n');
         
         setPlansData(normalizedPlans);
       } catch (planError: any) {
-        console.error('=== PLAN API ERROR ===');
-        console.error('Error:', planError);
-        console.error('Error Message:', planError.message);
-        console.error('Error Stack:', planError.stack);
-        console.error('=== END PLAN API ERROR ===');
+        // console.error('=== PLAN API ERROR ===');
+        // console.error('Error:', planError);
+        // console.error('Error Message:', planError.message);
+        // console.error('Error Stack:', planError.stack);
+        // console.error('=== END PLAN API ERROR ===');
         
         // Set empty array if API fails
         setPlansData([]);
@@ -299,7 +449,7 @@ const RenewPlanScreen = ({navigation}: any) => {
       }
 
     } catch (error: any) {
-      console.error('Load plan data error:', error);
+      // console.error('Load plan data error:', error);
       
       // Handle specific authentication errors
       if (error.message?.includes('Session expired') || 
@@ -365,8 +515,58 @@ const RenewPlanScreen = ({navigation}: any) => {
     return Math.round(total);
   };
 
+  // Format currency with comma separators (₹X,XXX)
+  const formatCurrency = (amount: number) => {
+    const rounded = Math.round(amount || 0);
+    const withCommas = rounded
+      .toString()
+      .replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return `₹${withCommas}`;
+  };
+
+  const proceedToPlanConfirmation = (plan: Plan) => {
+    if (!plan) {
+      Alert.alert('Error', 'Please select a plan first');
+      return;
+    }
+
+    const basePrice = calculateTotalAmount(plan);
+    const totalAmount = payDues > 0 ? basePrice + payDues : basePrice;
+
+    const planForConfirmation = {
+      id: plan.id,
+      name: plan.name,
+      description: plan.description,
+      speed: plan.downloadSpeed || '-',
+      upload: plan.uploadSpeed || '-',
+      download: plan.downloadSpeed || '-',
+      validity: plan.days ? `${plan.days} Days` : '-',
+      price: basePrice,
+      baseAmount: plan.amt,
+      cgst: plan.CGSTAmount,
+      sgst: plan.SGSTAmount,
+      mrp: basePrice,
+      dues: !payDues || isNaN(payDues) ? 0 : payDues,
+      gbLimit: plan.limit === 'Unlimited' ? -1 : plan.limit,
+      isCurrentPlan: plan.name === authData?.current_plan || plan.name === authData?.current_plan1,
+      ottServices: plan.content_providers ? plan.content_providers : [],
+      ott_plan: plan.ott_plan,
+      voice_plan: plan.voice_plan,
+      iptv: plan.iptv,
+      fup_flag: plan.fup_flag,
+    };
+
+    navigation.navigate('PlanConfirmation', {
+      selectedPlan: planForConfirmation,
+      totalAmount: totalAmount,
+      payDues: payDues,
+      admin_login_id: authData?.admin_login_id,
+    });
+  };
+
   const handlePlanSelect = (plan: Plan) => {
     setSelectedPlan(plan);
+    proceedToPlanConfirmation(plan);
   };
 
   const handlePlanExpand = (planId: string) => {
@@ -383,34 +583,165 @@ const RenewPlanScreen = ({navigation}: any) => {
   };
 
   const handleRefresh = async () => {
-    console.log('Manual refresh triggered');
+    // console.log('Manual refresh triggered');
     await dataCache.clearAllCache();
     await loadPlanData();
   };
 
+  // Load dynamic speed / validity / price filter options from Staticdropdown API
+  const loadStaticFilterOptions = async () => {
+    try {
+      const { getClientConfig } = require('../config/client-config');
+      const clientConfig = getClientConfig();
+      const realm = clientConfig.clientId;
+
+      const dataObj = {
+        selfcare_speed_options: ['general', 'selfcare_speed_options'],
+        selfcare_validity_options: ['general', 'selfcare_validity_options'],
+        selfcare_price_options: ['general', 'selfcare_price_options'],
+      };
+
+      const dropdownRes = await apiService.Staticdropdown(dataObj, realm);
+      console.log('=== STATIC FILTER OPTIONS (RenewPlanScreen) ===');
+      console.log('Raw dropdownRes:', JSON.stringify(dropdownRes, null, 2));
+
+      const extractDropdownOptions = (arr: any): DropdownOption[] => {
+        if (!Array.isArray(arr)) return [];
+        const result: DropdownOption[] = [];
+        arr.forEach((item: any) => {
+          const rawValue = item?.value ?? item?.label ?? item;
+          const rawLabel = item?.label ?? item?.value ?? item;
+          if (rawValue == null || rawLabel == null) {
+            return;
+          }
+          const valueStr = String(rawValue).trim();
+          const labelStr = String(rawLabel).trim();
+          if (!valueStr || !labelStr) {
+            return;
+          }
+          result.push({ value: valueStr, label: labelStr });
+        });
+        return result;
+      };
+
+      const extractLabelList = (arr: any): string[] =>
+        extractDropdownOptions(arr).map(o => o.label);
+
+      if (dropdownRes) {
+        const speeds = extractDropdownOptions(dropdownRes.selfcare_speed_options);
+        const valids = extractLabelList(dropdownRes.selfcare_validity_options);
+        const prices = extractDropdownOptions(dropdownRes.selfcare_price_options);
+
+        console.log('Parsed speed options:', speeds);
+        console.log('Parsed validity options:', valids);
+        console.log('Parsed price options:', prices);
+
+        if (speeds.length) setSpeedOptions(speeds);
+        if (valids.length) setStaticValidityOptions(valids);
+        if (prices.length) setPriceOptions(prices);
+      }
+    } catch (e) {
+      console.error('Error loading static filter options:', e);
+      // On error, we simply fall back to existing hard-coded / derived options
+    }
+  };
+
+  // Normalize speed string (e.g. "100 Mbps", "1 Gbps", "100/50 Mbps" or raw "102400") into a numeric Mbps value
+  const getNumericSpeedMbps = (speed: string | undefined | null): number => {
+    if (!speed) return 0;
+    const lower = String(speed).toLowerCase();
+    // Take only the first numeric token (so "100/50 Mbps" becomes 100)
+    const match = lower.match(/(\d+(\.\d+)?)/);
+    const numeric = match ? parseFloat(match[1]) : 0;
+
+    if (!numeric) return 0;
+
+    // Explicit units
+    if (lower.includes('gbps') || lower.includes('gbit')) {
+      return numeric * 1000;
+    }
+    if (lower.includes('mbps') || lower.includes('mbit')) {
+      return numeric;
+    }
+    if (lower.includes('kbps') || lower.includes('kbit')) {
+      return numeric / 1000;
+    }
+
+    // No explicit unit: API sometimes sends raw Kbps in "download" (e.g. 102400 for ~100 Mbps)
+    // Heuristic: if value is very large, treat as Kbps and convert down
+    if (numeric > 2000) {
+      return numeric / 1024; // ~100 Mbps for 102400
+    }
+
+    // Otherwise assume it's already Mbps
+    return numeric;
+  };
+
   const getFilteredAndSortedPlans = () => {
     let filteredPlans = [...plansData];
+    
+    console.log('=== FILTERING PLANS ===');
+    console.log('Total plans before filtering:', filteredPlans.length);
+    console.log('Active filters:', filters);
+    console.log('Sort option:', sortOption);
 
     // Apply filters
     if (filters.speed) {
       filteredPlans = filteredPlans.filter(plan => {
-        const speedValue = parseInt(plan.downloadSpeed.replace(/[^0-9]/g, '')) || 0;
-        
-        switch (filters.speed) {
+        const speedMbps = getNumericSpeedMbps(plan.downloadSpeed);
+        // If we fail to parse speed, don't exclude the plan just because of bad data
+        if (!speedMbps) {
+          return true;
+        }
+        const speedKbps = speedMbps * 1024;
+        const v = filters.speed.trim();
+
+        // New dynamic format from Staticdropdown, e.g. "0 AND 51200" (Kbps range)
+        if (/and/i.test(v)) {
+          const parts = v.split(/and/i).map(p => p.trim());
+          const min = parseFloat(parts[0] || '');
+          const max = parseFloat(parts[1] || '');
+
+          if (!isNaN(min) && !isNaN(max)) {
+            return speedKbps >= min && speedKbps <= max;
+          }
+          if (!isNaN(min) && isNaN(max)) {
+            return speedKbps >= min;
+          }
+        }
+
+        // Single numeric value => treat as minimum Kbps
+        if (/^\d+(\.\d+)?$/.test(v)) {
+          const min = parseFloat(v);
+          if (!isNaN(min)) {
+            return speedKbps >= min;
+          }
+        }
+
+        // Fallback to label-based ranges
+        switch (v) {
+          // New 3-option buckets
+          case 'Upto 50Mbps':
+            return speedMbps <= 50;
+          case '50-100Mbps':
+            return speedMbps > 50 && speedMbps <= 100;
+          case '100Mbps above':
+            return speedMbps > 100;
+          // Legacy labels (kept for safety)
           case '10 to 50 Mbps':
-            return speedValue >= 10 && speedValue <= 50;
+            return speedMbps >= 10 && speedMbps <= 50;
           case '50 to 100 Mbps':
-            return speedValue > 50 && speedValue <= 100;
+            return speedMbps > 50 && speedMbps <= 100;
           case '100 to 200 Mbps':
-            return speedValue > 100 && speedValue <= 200;
+            return speedMbps > 100 && speedMbps <= 200;
           case '200 to 350 Mbps':
-            return speedValue > 200 && speedValue <= 350;
+            return speedMbps > 200 && speedMbps <= 350;
           case '350 to 500 Mbps':
-            return speedValue > 350 && speedValue <= 500;
+            return speedMbps > 350 && speedMbps <= 500;
           case '500 to 1000 Mbps':
-            return speedValue > 500 && speedValue <= 1000;
+            return speedMbps > 500 && speedMbps <= 1000;
           case '1000+ Mbps':
-            return speedValue > 1000;
+            return speedMbps > 1000;
           default:
             return true;
         }
@@ -421,13 +752,27 @@ const RenewPlanScreen = ({navigation}: any) => {
       filteredPlans = filteredPlans.filter(plan => plan.days === selValidity);
     }
     if (filters.price) {
-      const priceRange = filters.price.split('-');
+      const value = filters.price.trim();
+      const priceRange = value.split('-');
+      let minPrice: number | undefined;
+      let maxPrice: number | undefined;
+
       if (priceRange.length === 2) {
-        const minPrice = parseInt(priceRange[0]);
-        const maxPrice = parseInt(priceRange[1]);
-        filteredPlans = filteredPlans.filter(plan => 
-          plan.FinalAmount >= minPrice && plan.FinalAmount <= maxPrice
-        );
+        minPrice = parseInt(priceRange[0]);
+        maxPrice = parseInt(priceRange[1]);
+      } else if (priceRange.length === 1) {
+        // "10000" => 10000+
+        minPrice = parseInt(priceRange[0]);
+      }
+
+      if (!isNaN(minPrice as number) || !isNaN(maxPrice as number)) {
+        filteredPlans = filteredPlans.filter(plan => {
+          // Use the same tax-inclusive total that we display in the UI
+          const price = calculateTotalAmount(plan);
+          if (minPrice != null && !isNaN(minPrice) && price < minPrice) return false;
+          if (maxPrice != null && !isNaN(maxPrice) && price > maxPrice) return false;
+          return true;
+        });
       }
     }
     if (filters.gbLimit) {
@@ -452,15 +797,15 @@ const RenewPlanScreen = ({navigation}: any) => {
       );
     }
     if (filters.voipPlan) {
-      console.log('=== VOICE PLAN FILTER DEBUG ===');
-      console.log('Filter value:', filters.voipPlan);
-      console.log('Plans before filter:', filteredPlans.length);
-      console.log('Plan voice_plan values:', filteredPlans.map(p => ({ name: p.name, voice_plan: p.voice_plan })));
+      // console.log('=== VOICE PLAN FILTER DEBUG ===');
+      // console.log('Filter value:', filters.voipPlan);
+      // console.log('Plans before filter:', filteredPlans.length);
+      // console.log('Plan voice_plan values:', filteredPlans.map(p => ({ name: p.name, voice_plan: p.voice_plan })));
       filteredPlans = filteredPlans.filter(plan => 
         plan.voice_plan?.toLowerCase() === 'yes'
       );
-      console.log('Plans after filter:', filteredPlans.length);
-      console.log('=== END VOICE PLAN FILTER DEBUG ===');
+      // console.log('Plans after filter:', filteredPlans.length);
+      // console.log('=== END VOICE PLAN FILTER DEBUG ===');
     }
     if (filters.iptvPlan) {
       filteredPlans = filteredPlans.filter(plan => 
@@ -468,15 +813,15 @@ const RenewPlanScreen = ({navigation}: any) => {
       );
     }
     if (filters.fupPlan) {
-      console.log('=== FUP PLAN FILTER DEBUG ===');
-      console.log('Filter value:', filters.fupPlan);
-      console.log('Plans before filter:', filteredPlans.length);
-      console.log('Plan fup_flag values:', filteredPlans.map(p => ({ name: p.name, fup_flag: p.fup_flag })));
+      // console.log('=== FUP PLAN FILTER DEBUG ===');
+      // console.log('Filter value:', filters.fupPlan);
+      // console.log('Plans before filter:', filteredPlans.length);
+      // console.log('Plan fup_flag values:', filteredPlans.map(p => ({ name: p.name, fup_flag: p.fup_flag })));
       filteredPlans = filteredPlans.filter(plan => 
         plan.fup_flag?.toLowerCase() === 'yes'
       );
-      console.log('Plans after filter:', filteredPlans.length);
-      console.log('=== END FUP PLAN FILTER DEBUG ===');
+      // console.log('Plans after filter:', filteredPlans.length);
+      // console.log('=== END FUP PLAN FILTER DEBUG ===');
     }
 
     // Sort plans based on selected sort option
@@ -515,10 +860,14 @@ const RenewPlanScreen = ({navigation}: any) => {
       }
     });
 
+    console.log('Total plans after filtering and sorting:', filteredPlans.length);
+    console.log('Filtered plan names:', filteredPlans.map(p => p.name));
+    console.log('=== END FILTERING PLANS ===');
+
     return filteredPlans;
   };
 
-  // Dynamic filter options derived from plan API data
+  // Dynamic validity options derived from plan API data (fallback if Staticdropdown not available)
   const availableValidities = useMemo(() => {
     const vals = Array.from(new Set(plansData.map(p => p.days).filter(v => Number.isFinite(v)))) as number[];
     return vals.sort((a, b) => a - b).map(v => v.toString());
@@ -533,77 +882,53 @@ const RenewPlanScreen = ({navigation}: any) => {
       Alert.alert('Error', 'Please select a plan first');
       return;
     }
-
-    const basePrice = calculateTotalAmount(selectedPlan);
-    const totalAmount = payDues > 0 ? basePrice + payDues : basePrice;
-
-    // Map the selected plan to the expected structure for confirmation screen
-    const planForConfirmation = {
-      id: selectedPlan.id,
-      name: selectedPlan.name,
-      speed: selectedPlan.downloadSpeed || '-',
-      upload: selectedPlan.uploadSpeed || '-',
-      download: selectedPlan.downloadSpeed || '-',
-      validity: selectedPlan.days ? `${selectedPlan.days} Days` : '-',
-      price: basePrice,
-      baseAmount: selectedPlan.amt,
-      cgst: selectedPlan.CGSTAmount,
-      sgst: selectedPlan.SGSTAmount,
-      mrp: basePrice,
-      dues: !payDues || isNaN(payDues) ? 0 : payDues,
-      gbLimit: selectedPlan.limit === 'Unlimited' ? -1 : selectedPlan.limit,
-      isCurrentPlan: selectedPlan.name === authData?.current_plan || selectedPlan.name === authData?.current_plan1,
-      ottServices: selectedPlan.content_providers ? selectedPlan.content_providers : [],
-      ott_plan: selectedPlan.ott_plan,
-      voice_plan: selectedPlan.voice_plan,
-      iptv: selectedPlan.iptv,
-      fup_flag: selectedPlan.fup_flag,
-    };
-
-    navigation.navigate('PlanConfirmation', {
-      selectedPlan: planForConfirmation,
-      totalAmount: totalAmount,
-      payDues: payDues,
-      admin_login_id: authData?.admin_login_id,
-    });
+    proceedToPlanConfirmation(selectedPlan);
   };
 
   const renderOTTIcon = (provider: any) => {
-    if (provider.full_path_app_logo_file) {
+    // console.log('=== renderOTTIcon DEBUG ===');
+    // console.log('Provider object:', provider);
+    // console.log('Provider keys:', Object.keys(provider || {}));
+    // console.log('full_path_app_logo_file:', provider?.full_path_app_logo_file);
+    // console.log('app_logo_file:', provider?.app_logo_file);
+    // console.log('content_provider:', provider?.content_provider);
+    
+    if (provider?.full_path_app_logo_file) {
+      const imageUri = provider.full_path_app_logo_file;
+      // console.log('Using image URI:', imageUri);
+      // console.log('URI is valid:', typeof imageUri === 'string' && imageUri.length > 0);
       return (
         <Image 
-          source={{ uri: provider.full_path_app_logo_file }}
+          source={{ uri: imageUri }}
           style={styles.ottLogoNew}
           resizeMode="contain"
+          onError={(error) => {
+            // console.error('Image load error:', error.nativeEvent.error);
+            // console.error('Failed URI:', imageUri);
+          }}
+          onLoad={() => {
+            // console.log('Image loaded successfully:', imageUri);
+          }}
         />
       );
     }
-    // Fallback to emoji if no logo available
+    // Fallback to icon if no logo available
     const serviceName = provider.content_provider?.toLowerCase() || '';
-    let emoji = '🎬';
+    let iconName = 'movie';
     
     switch (serviceName) {
       case 'netflix':
-        emoji = '🎬';
-        break;
       case 'amazon prime':
-        emoji = '📺';
-        break;
       case 'disney+ hotstar':
       case 'jiohotstar':
-        emoji = '⭐';
-        break;
       case 'jiocinema':
-        emoji = '🎭';
-        break;
       case 'sonyliv':
-        emoji = '📡';
-        break;
       default:
-        emoji = '🎬';
+        iconName = 'movie';
+        break;
     }
     
-    return <Text style={styles.ottIconNew}>{emoji}</Text>;
+    return <MaterialIcons name={iconName} size={24} color={colors.primary} style={styles.ottIconNew} />;
   };
 
   const renderPlanItem = ({item}: {item: Plan}) => {
@@ -612,7 +937,7 @@ const RenewPlanScreen = ({navigation}: any) => {
       return (
     <View style={styles.planCardWrapper}>
       {(item.name === authData?.current_plan || item.name === authData?.current_plan1) && (
-        <View style={[styles.currentPlanTopBadge, {backgroundColor: colors.success}]}>
+        <View style={[styles.currentPlanTopBadge, {backgroundColor: colors.primary}]}>
           <Text style={styles.currentPlanTopText}>{t('renewPlan.currentPlan')}</Text>
         </View>
       )}
@@ -620,8 +945,7 @@ const RenewPlanScreen = ({navigation}: any) => {
         style={[
           styles.planCard,
           {backgroundColor: colors.card, shadowColor: colors.shadow},
-          selectedPlan?.id === item.id && {borderColor: colors.primaryLight, borderWidth: 1},
-          (item.name === authData?.current_plan || item.name === authData?.current_plan1) && {borderColor: colors.successLight, borderWidth: 1},
+          (item.name === authData?.current_plan || item.name === authData?.current_plan1) && {borderColor: colors.primaryLight, borderWidth: 1},
         ]}>
       
       {/* Compact Plan Header */}
@@ -632,9 +956,56 @@ const RenewPlanScreen = ({navigation}: any) => {
           <View style={styles.planTitleRow}>
             <Text style={styles.planIcon}>🚀</Text>
             <View style={styles.planTitleContainer}>
-              <Text style={[styles.planName, {color: colors.textSecondary}]}>{item.name}</Text>
-              {item.description && (
-                <Text style={[styles.planDescription, {color: colors.textSecondary}]}>{item.description}</Text>
+              {showL2SPlanName || !showPlanParamsBlend ? (
+                <>
+                  <Text style={styles.planName}>{item.name}</Text>
+                  {item.description && (
+                    <Text style={[styles.planDescription, {color: colors.textSecondary}]}>{item.description}</Text>
+                  )}
+                </>
+              ) : (
+                <>
+                  <ScrollView 
+                    horizontal 
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.metricHeadlineRowScroll}
+                    contentContainerStyle={styles.metricHeadlineRow}>
+                    <View style={[styles.metricHeadlineCol, styles.metricHeadlineColWide]}>
+                      <Text style={styles.planName}>{formatSpeed(item.downloadSpeed)}</Text>
+                      <Text style={styles.metricSubtitle} numberOfLines={1}>{getUsageSubtitle(item.limit)}</Text>
+                    </View>
+                    <View style={styles.metricHeadlineCol}>
+                      <Text style={styles.planName}>{item.days || 0} Days</Text>
+                      <Text style={styles.metricSubtitle}>validity</Text>
+                    </View>
+                    {item.content_providers &&
+                      Array.isArray(item.content_providers) &&
+                      item.content_providers.length > 0 && (
+                        <View style={styles.metricHeadlineCol}>
+                          <Text style={styles.planName}>{item.content_providers.length}</Text>
+                          <Text style={styles.metricSubtitle}>OTTs</Text>
+                        </View>
+                      )}
+                    {item.fup_flag?.toLowerCase() === 'yes' && (
+                      <View style={styles.metricHeadlineCol}>
+                        <Text style={styles.planName}>FUP</Text>
+                        <Text style={styles.metricSubtitle}>Yes</Text>
+                      </View>
+                    )}
+                    {item.voice_plan?.toLowerCase() === 'yes' && (
+                      <View style={styles.metricHeadlineCol}>
+                        <Text style={styles.planName}>VOIP</Text>
+                        <Text style={styles.metricSubtitle}>Yes</Text>
+                      </View>
+                    )}
+                    {item.iptv?.toLowerCase() === 'yes' && (
+                      <View style={styles.metricHeadlineCol}>
+                        <Text style={styles.planName}>IPTV</Text>
+                        <Text style={styles.metricSubtitle}>Yes</Text>
+                      </View>
+                    )}
+                  </ScrollView>
+                </>
               )}
               <View style={styles.planBadges}>
               </View>
@@ -646,12 +1017,12 @@ const RenewPlanScreen = ({navigation}: any) => {
             {/* First Row: Speed and Validity */}
             <View style={styles.speedValidityRow}>
               <View style={styles.compactDetailRow}>
-                <Text style={styles.detailIcon}>⚡</Text>
-                <Text style={[styles.detailValue, {color: colors.text}]}>{item.downloadSpeed || 'N/A'}</Text>
+                <MaterialIcons name="bolt" size={16} color={colors.primary} />
+                <Text style={styles.detailValue}>{item.downloadSpeed || 'N/A'}</Text>
               </View>
               <View style={styles.compactDetailRow}>
-                <Text style={styles.detailIcon}>⏰</Text>
-                <Text style={[styles.detailValue, {color: colors.text}]}>{item.days || 0} Days</Text>
+                <MaterialIcons name="access-time" size={16} color={colors.primary} />
+                <Text style={styles.detailValue}>{item.days || 0} Days</Text>
               </View>
             </View>
             
@@ -659,25 +1030,25 @@ const RenewPlanScreen = ({navigation}: any) => {
             <View style={styles.servicesRow}>
               {item.ott_plan?.toLowerCase() === 'yes' && (
                 <View style={[styles.serviceBadge, {backgroundColor: colors.successLight}]}>
-                  <Text style={[styles.serviceBadgeIcon, {color: colors.success}]}>🎬</Text>
+                  <MaterialIcons name="movie" size={16} color={colors.success} />
                   <Text style={[styles.serviceText, {color: colors.success}]}>OTT</Text>
                 </View>
               )}
               {item.voice_plan?.toLowerCase() === 'yes' && (
                 <View style={[styles.serviceBadge, {backgroundColor: colors.accentLight}]}>
-                  <Text style={[styles.serviceBadgeIcon, {color: colors.accent}]}>📞</Text>
+                  <MaterialIcons name="phone" size={16} color={colors.accent} />
                   <Text style={[styles.serviceText, {color: colors.accent}]}>VOIP</Text>
                 </View>
               )}
               {item.iptv?.toLowerCase() === 'yes' && (
                 <View style={[styles.serviceBadge, {backgroundColor: colors.primaryLight}]}>
-                  <Text style={[styles.serviceBadgeIcon, {color: colors.primary}]}>📺</Text>
+                  <MaterialIcons name="tv" size={16} color={colors.primary} />
                   <Text style={[styles.serviceText, {color: colors.primary}]}>IPTV</Text>
                 </View>
               )}
               {item.fup_flag?.toLowerCase() === 'yes' && (
                 <View style={[styles.serviceBadge, {backgroundColor: colors.surface}]}>
-                  <Text style={[styles.serviceBadgeIcon, {color: colors.text}]}>📊</Text>
+                  <MaterialIcons name="bar-chart" size={16} color={colors.text} />
                   <Text style={[styles.serviceText, {color: colors.text}]}>FUP</Text>
                 </View>
               )}
@@ -688,7 +1059,7 @@ const RenewPlanScreen = ({navigation}: any) => {
         </View>
         <View style={styles.planPriceContainer}>
           <View style={[styles.priceBadge, {backgroundColor: colors.primaryLight}]}>
-            <Text style={[styles.priceText, {color: colors.primary}]}>₹ {(item.user_mrp ?? item.FinalAmount) || 0}</Text>
+            <Text style={[styles.priceText, {color: colors.primary}]}>{formatCurrency((item.user_mrp ?? item.FinalAmount) || 0)}</Text>
           </View>
           <TouchableOpacity 
             style={styles.expandButton}
@@ -696,15 +1067,12 @@ const RenewPlanScreen = ({navigation}: any) => {
               e.stopPropagation();
               handlePlanExpand(item.id);
             }}>
-            <Text style={[styles.expandIcon, {color: colors.textSecondary}]}>
-              {item.isExpanded ? '▼' : '▶'}
-            </Text>
+            <MaterialIcons 
+              name={item.isExpanded ? 'expand-more' : 'chevron-right'} 
+              size={20} 
+              color={colors.textSecondary} 
+            />
           </TouchableOpacity>
-          {selectedPlan?.id === item.id && (
-            <View style={[styles.selectedIndicator, {backgroundColor: colors.primary}]}>
-              <Text style={styles.selectedIndicatorText}>✓</Text>
-            </View>
-          )}
         </View>
       </TouchableOpacity>
 
@@ -727,7 +1095,7 @@ const RenewPlanScreen = ({navigation}: any) => {
           
 
           {/* OTT Services */}
-          {item.content_providers && item.content_providers.length > 0 && (!selectedPlan || selectedPlan.id !== item.id) && (
+          {item.content_providers && item.content_providers.length > 0 && (
             <View style={styles.ottSection}>
               <Text style={[styles.ottTitle, {color: colors.textSecondary}]}>
                 {t('renewPlan.ottServices')}
@@ -769,24 +1137,22 @@ const RenewPlanScreen = ({navigation}: any) => {
           )} */}
 
           {/* Select Plan Button */}
-          {!selectedPlan || selectedPlan.id !== item.id ? (
-            <View style={styles.selectPlanContainer}>
-              <TouchableOpacity
-                style={[styles.selectPlanButton, {backgroundColor: colors.card, borderColor: colors.primary}]}
-                onPress={() => handlePlanSelect(item)}>
-                <Text style={[styles.selectPlanText, {color: colors.primary}]}>
-                  {t('renewPlan.selectPlan')}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          ) : null}
+          <View style={styles.selectPlanContainer}>
+            <TouchableOpacity
+              style={[styles.selectPlanButton, {backgroundColor: colors.card, borderColor: colors.primary}]}
+              onPress={() => handlePlanSelect(item)}>
+              <Text style={[styles.selectPlanText, {color: colors.primary}]}>
+                {t('renewPlan.selectPlan')}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
       </View>
     </View>
     );
     } catch (error) {
-      console.error('Error rendering plan item:', error);
+      // console.error('Error rendering plan item:', error);
       return (
         <View style={[styles.planCard, {backgroundColor: colors.card}]}>
           <Text style={[{color: colors.text}]}>Error loading plan: {item.name}</Text>
@@ -798,6 +1164,7 @@ const RenewPlanScreen = ({navigation}: any) => {
   if (isLoading) {
     return (
       <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}>
+        <LeftBorderLine />
         <CommonHeader navigation={navigation} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
@@ -821,18 +1188,27 @@ const RenewPlanScreen = ({navigation}: any) => {
   // Temporarily disabled - hiding recommended plan section until logic is finalized
   // const recommendedPlan = plansData.find((plan: Plan) => plan.id !== currentPlan?.id);
 
+  // Helper: whether current plan has any OTT content
+  const currentPlanHasOtt = !!(
+    currentPlan &&
+    currentPlan.content_providers &&
+    Array.isArray(currentPlan.content_providers) &&
+    currentPlan.content_providers.length > 0
+  );
+
   return (
     <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}>
+      <LeftBorderLine />
       <CommonHeader navigation={navigation} />
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Page Heading */}
         <View style={styles.headingContainer}>
           <Text style={[styles.pageHeading, {color: colors.text}]}>
-            Recharge
+            {t('renewPlan.title')}
           </Text>
           <Text style={[styles.pageSubheading, {color: colors.textSecondary}]}>
-            Choose your plan and recharge today
+            {t('renewPlan.subtitle')}
           </Text>
         </View>
 
@@ -843,7 +1219,7 @@ const RenewPlanScreen = ({navigation}: any) => {
               style={[styles.payDuesButton, {backgroundColor: colors.primary}]}
               onPress={handlePayNow}>
               <Text style={styles.payDuesButtonText}>
-                Pay Dues - ₹{payDues}
+                Pay Dues - {formatCurrency(payDues)}
               </Text>
             </TouchableOpacity>
           </View>
@@ -859,138 +1235,495 @@ const RenewPlanScreen = ({navigation}: any) => {
               console.log('Current Plan Content Providers Type:', typeof currentPlan.content_providers);
               console.log('Current Plan Content Providers Is Array:', Array.isArray(currentPlan.content_providers));
               console.log('Current Plan Content Providers Length:', currentPlan.content_providers?.length || 0);
+              console.log('Current Plan ott_plan:', currentPlan.ott_plan);
               if (currentPlan.content_providers) {
                 console.log('Current Plan Content Providers Full:', JSON.stringify(currentPlan.content_providers, null, 2));
               }
               console.log('=== END CURRENT PLAN DEBUG ===');
               return null;
             })()}
-            <View style={[styles.planCardNew, styles.currentPlanCard, {borderColor: '#4CAF50', backgroundColor: colors.card}]}>
-              <View style={[styles.planTag, {backgroundColor: '#4CAF50'}]}>
+              <View
+                style={[
+                  styles.planCardNew,
+                  styles.currentPlanCard,
+                  {
+                    borderColor: isMicroscan ? '#4CAF50' : colors.primary,
+                    backgroundColor: colors.card,
+                  },
+                ]}>
+              <View
+                style={[
+                  styles.planTag,
+                  {backgroundColor: isMicroscan ? '#4CAF50' : colors.primary},
+                ]}>
                 <Text style={styles.planTagText}>Current Plan</Text>
               </View>
               <View style={styles.planCardContent}>
-                <View style={styles.planCardTopRow}>
-                  <View style={styles.planCardLeft}>
-                    <Text style={[styles.planNameNew, {color: colors.text}]}>
-                      {currentPlan.name}
-                    </Text>
+                {showL2SPlanName ? (
+                  <>
+                    {/* Row 1: Plan Name (full width) */}
+                    <View style={styles.planNameRow}>
+                      <Text style={styles.planNameNew} numberOfLines={0}>
+                        {currentPlan.name}
+                      </Text>
+                    </View>
+
+                    {/* Row 2: Plan Description (full width, if exists) */}
                     {currentPlan.description && (
-                      <Text style={[styles.planDescriptionNew, {color: colors.textSecondary}]}>
-                        {currentPlan.description}
-                      </Text>
+                      <View style={styles.planDescriptionRow}>
+                        <Text style={[styles.planDescriptionNew, {color: colors.textSecondary}]} numberOfLines={0}>
+                          {currentPlan.description}
+                        </Text>
+                      </View>
                     )}
-                  </View>
-                  <View style={styles.planCardRight}>
-                    <Text style={[styles.planPriceNew, {color: colors.primary}]}>
-                      ₹{calculateTotalAmount(currentPlan)}
-                    </Text>
-                    <TouchableOpacity
-                      style={[styles.planActionButton, {backgroundColor: colors.primary}]}
-                      onPress={() => handlePlanSelect(currentPlan)}>
-                      <Text style={styles.planActionButtonText}>Renew</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-                <View style={styles.speedValiditySection}>
-                  <View style={styles.speedValidityHeaders}>
-                    <Text style={[styles.speedValidityLabel, {color: colors.textSecondary}]}>Speed</Text>
-                    <Text style={[styles.speedValidityLabel, {color: colors.textSecondary}]}>Validity</Text>
-                    {currentPlan.content_providers && Array.isArray(currentPlan.content_providers) && currentPlan.content_providers.length > 0 && (
-                      <Text style={[styles.speedValidityLabel, {color: colors.textSecondary}]}>OTTs</Text>
-                    )}
-                    {currentPlan.voice_plan?.toLowerCase() === 'yes' && (
-                      <Text style={[styles.speedValidityLabel, {color: colors.textSecondary}]}>VOICE</Text>
-                    )}
-                    {currentPlan.iptv?.toLowerCase() === 'yes' && (
-                      <Text style={[styles.speedValidityLabel, {color: colors.textSecondary}]}>IPTV</Text>
-                    )}
-                    {currentPlan.fup_flag?.toLowerCase() === 'yes' && (
-                      <Text style={[styles.speedValidityLabel, {color: colors.textSecondary}]}>FUP</Text>
-                    )}
-                  </View>
-                  <View style={styles.speedValidityValues}>
-                    <Text style={[styles.speedValidityValue, {color: colors.text}]}>
-                      {formatSpeed(currentPlan.downloadSpeed)}
-                    </Text>
-                    <Text style={[styles.speedValidityValue, {color: colors.text}]}>
-                      {currentPlan.days || 0} Days
-                    </Text>
-                    {currentPlan.content_providers && Array.isArray(currentPlan.content_providers) && currentPlan.content_providers.length > 0 && (
-                      <Text style={[styles.speedValidityValue, {color: colors.text}]}>
-                        {currentPlan.content_providers.length}
-                      </Text>
-                    )}
-                    {currentPlan.voice_plan?.toLowerCase() === 'yes' && (
-                      <Text style={[styles.speedValidityValue, {color: colors.text}]}>Yes</Text>
-                    )}
-                    {currentPlan.iptv?.toLowerCase() === 'yes' && (
-                      <Text style={[styles.speedValidityValue, {color: colors.text}]}>Yes</Text>
-                    )}
-                    {currentPlan.fup_flag?.toLowerCase() === 'yes' && (
-                      <Text style={[styles.speedValidityValue, {color: colors.text}]}>Yes</Text>
-                    )}
-                  </View>
-                </View>
-                {currentPlan.content_providers && Array.isArray(currentPlan.content_providers) && currentPlan.content_providers.length > 0 && (
-                  <View style={styles.ottLogosSection}>
-                    <ScrollView 
-                      horizontal 
-                      showsHorizontalScrollIndicator={true}
-                      contentContainerStyle={styles.ottLogosScrollContainer}
-                      style={styles.ottLogosScrollView}
-                      nestedScrollEnabled={true}>
-                      {currentPlan.content_providers.map((provider: any, index: number) => {
-                        console.log(`Rendering OTT Provider ${index + 1}:`, provider);
-                        return (
-                          <View key={index} style={styles.ottLogoItem}>
-                            <View style={styles.ottLogoWrapper}>
-                              {renderOTTIcon(provider)}
+
+                    {/* Row 3: Plan Params (left) | Price + Button (right) - SAME ROW */}
+                    <View style={styles.planCardBottomRow}>
+                      {/* Left: Plan Parameters + OTT logos (same column) */}
+                      <View style={styles.planCardLeft}>
+                        <View style={styles.speedValiditySection}>
+                          <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.speedValidityScrollContainer}>
+                            <View style={styles.speedValidityRowScrollable}>
+                              {/* Speed column */}
+                              <View style={styles.speedValidityCol}>
+                                <Text
+                                  style={[
+                                    styles.speedValidityLabel,
+                                    styles.speedValidityLabelLarge,
+                                  ]}>
+                                  Speed
+                                </Text>
+                                <Text
+                                  style={[
+                                    styles.speedValidityValue,
+                                    styles.speedValidityValueLarge,
+                                  ]}>
+                                  {formatSpeed(currentPlan.downloadSpeed)}
+                                </Text>
+                              </View>
+
+                              {/* Validity column */}
+                              <View style={styles.speedValidityCol}>
+                                <Text
+                                  style={[
+                                    styles.speedValidityLabel,
+                                    styles.speedValidityLabelLarge,
+                                  ]}>
+                                  Validity
+                                </Text>
+                                <Text
+                                  style={[
+                                    styles.speedValidityValue,
+                                    styles.speedValidityValueLarge,
+                                  ]}>
+                                  {currentPlan.days || 0} Days
+                                </Text>
+                              </View>
+
+                              {/* OTTs column - Always show like Speed and Validity */}
+                              <View style={styles.speedValidityCol}>
+                                <Text
+                                  style={[
+                                    styles.speedValidityLabel,
+                                    styles.speedValidityLabelLarge,
+                                  ]}>
+                                  OTTs
+                                </Text>
+                                <Text
+                                  style={[
+                                    styles.speedValidityValue,
+                                    styles.speedValidityValueLarge,
+                                  ]}>
+                                  {(() => {
+                                    // Check if content_providers exists and has items
+                                    if (
+                                      currentPlan.content_providers &&
+                                      Array.isArray(currentPlan.content_providers) &&
+                                      currentPlan.content_providers.length > 0
+                                    ) {
+                                      return currentPlan.content_providers.length;
+                                    }
+                                    // If ott_plan is yes but no content_providers, show 1 or Yes
+                                    if (currentPlan.ott_plan?.toLowerCase() === 'yes') {
+                                      return '1';
+                                    }
+                                    // Otherwise show 0
+                                    return '0';
+                                  })()}
+                                </Text>
+                              </View>
+
+                              {/* VOICE column */}
+                              {currentPlan.voice_plan?.toLowerCase() === 'yes' && (
+                                <View style={styles.speedValidityCol}>
+                                  <Text
+                                    style={[
+                                      styles.speedValidityLabel,
+                                      styles.speedValidityLabelLarge,
+                                    ]}>
+                                    VOICE
+                                  </Text>
+                                  <Text
+                                    style={[
+                                      styles.speedValidityValue,
+                                      styles.speedValidityValueLarge,
+                                    ]}>
+                                    Yes
+                                  </Text>
+                                </View>
+                              )}
+
+                              {/* IPTV column */}
+                              {currentPlan.iptv?.toLowerCase() === 'yes' && (
+                                <View style={styles.speedValidityCol}>
+                                  <Text
+                                    style={[
+                                      styles.speedValidityLabel,
+                                      styles.speedValidityLabelLarge,
+                                    ]}>
+                                    IPTV
+                                  </Text>
+                                  <Text
+                                    style={[
+                                      styles.speedValidityValue,
+                                      styles.speedValidityValueLarge,
+                                    ]}>
+                                    Yes
+                                  </Text>
+                                </View>
+                              )}
+
+                              {/* FUP column */}
+                              {currentPlan.fup_flag?.toLowerCase() === 'yes' && (
+                                <View style={styles.speedValidityCol}>
+                                  <Text
+                                    style={[
+                                      styles.speedValidityLabel,
+                                      styles.speedValidityLabelLarge,
+                                    ]}>
+                                    FUP
+                                  </Text>
+                                  <Text
+                                    style={[
+                                      styles.speedValidityValue,
+                                      styles.speedValidityValueLarge,
+                                    ]}>
+                                    Yes
+                                  </Text>
+                                </View>
+                              )}
                             </View>
-                            <Text style={[styles.ottServiceName, {color: colors.textSecondary}]} numberOfLines={1}>
-                              {provider.content_provider || 'OTT'}
-                            </Text>
+                          </ScrollView>
+                        </View>
+
+                        {/* Thin grey separator + OTT row (only if OTT data exists) */}
+                        {currentPlan.content_providers && Array.isArray(currentPlan.content_providers) && currentPlan.content_providers.length > 0 && (
+                          <>
+                            <View
+                              style={{
+                                height: StyleSheet.hairlineWidth * 2,
+                                backgroundColor: colors.border || '#B0B0B0',
+                                marginTop: 2,
+                                marginBottom: 2,
+                              }}
+                            />
+                            <View style={styles.ottLogosSection}>
+                              <ScrollView 
+                                horizontal 
+                                scrollEnabled={true}
+                                showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={styles.ottLogosScrollContainer}
+                                style={styles.ottLogosScrollView}
+                                nestedScrollEnabled={true}>
+                                {currentPlan.content_providers.map((provider: any, index: number) => (
+                                  <View key={index} style={styles.ottLogoItem}>
+                                    <View style={styles.ottLogoWrapper}>
+                                      {renderOTTIcon(provider)}
+                                    </View>
+                                    <Text style={[styles.ottServiceName, {color: colors.textSecondary}]} numberOfLines={1}>
+                                      {provider.content_provider || 'OTT'}
+                                    </Text>
+                                  </View>
+                                ))}
+                              </ScrollView>
+                            </View>
+                          </>
+                        )}
+                      </View>
+
+                      {/* Vertical separator */}
+                      <View style={styles.planVerticalSeparator} />
+
+                      {/* Right: Price + Button */}
+                      <View style={styles.planCardRight}>
+                        <View style={styles.planPriceBlock}>
+                          <Text style={[styles.planPriceNew, {color: colors.primary}]}>
+                            {formatCurrency(calculateTotalAmount(currentPlan))}
+                          </Text>
+                          <TouchableOpacity
+                            style={[styles.planActionButton, {backgroundColor: colors.primary}]}
+                            onPress={() => handlePlanSelect(currentPlan)}>
+                            <Text style={styles.planActionButtonText}>Renew</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </View>
+                  </>
+                ) : (
+                  <>
+                    {/* Original layout when showL2SPlanName is false */}
+                    <View style={styles.planCardTopRow}>
+                      <View style={styles.planCardLeft}>
+                        <ScrollView 
+                          horizontal 
+                          showsHorizontalScrollIndicator={false}
+                          style={styles.metricHeadlineRowScroll}
+                          contentContainerStyle={styles.metricHeadlineRow}>
+                          <View style={[styles.metricHeadlineCol, styles.metricHeadlineColWide]}>
+                            <Text style={styles.planNameNew}>{formatSpeed(currentPlan.downloadSpeed)}</Text>
+                            <Text style={styles.metricSubtitle} numberOfLines={1}>{getUsageSubtitle(currentPlan.limit)}</Text>
                           </View>
-                        );
-                      })}
-                    </ScrollView>
-                    {currentPlan.content_providers.length > 5 && (
-                      <Text style={[styles.scrollHint, {color: colors.textSecondary}]}>
-                        ← Scroll to see more →
-                      </Text>
-                    )}
-                  </View>
+                          <View style={[styles.metricHeadlineCol, styles.metricHeadlineColWide]}>
+                            <Text style={styles.planNameNew}>{currentPlan.days || 0} Days</Text>
+                            <Text style={styles.metricSubtitle}>validity</Text>
+                          </View>
+                          <View style={styles.metricHeadlineCol}>
+                            <Text style={styles.planNameNew}>
+                              {currentPlan.content_providers &&
+                              Array.isArray(currentPlan.content_providers) &&
+                              currentPlan.content_providers.length > 0
+                                ? currentPlan.content_providers.length
+                                : '0'}
+                            </Text>
+                            <Text style={styles.metricSubtitle}>OTTs</Text>
+                          </View>
+                          {currentPlan.fup_flag?.toLowerCase() === 'yes' && (
+                            <View style={styles.metricHeadlineCol}>
+                              <Text style={styles.planNameNew}>FUP</Text>
+                              <Text style={styles.metricSubtitle}>Yes</Text>
+                            </View>
+                          )}
+                          {currentPlan.voice_plan?.toLowerCase() === 'yes' && (
+                            <View style={styles.metricHeadlineCol}>
+                              <Text style={styles.planNameNew}>VOIP</Text>
+                              <Text style={styles.metricSubtitle}>Yes</Text>
+                            </View>
+                          )}
+                          {currentPlan.iptv?.toLowerCase() === 'yes' && (
+                            <View style={styles.metricHeadlineCol}>
+                              <Text style={styles.planNameNew}>IPTV</Text>
+                              <Text style={styles.metricSubtitle}>Yes</Text>
+                            </View>
+                          )}
+                        </ScrollView>
+                        
+                        {/* Thin grey separator + OTT row (only if OTT data exists) */}
+                        {currentPlan.content_providers && Array.isArray(currentPlan.content_providers) && currentPlan.content_providers.length > 0 && (
+                          <>
+                            <View
+                              style={{
+                                height: StyleSheet.hairlineWidth * 2,
+                                backgroundColor: colors.border || '#B0B0B0',
+                                marginTop: 2,
+                                marginBottom: 2,
+                              }}
+                            />
+                            <View style={styles.ottLogosSection}>
+                              <ScrollView 
+                                horizontal 
+                                scrollEnabled={true}
+                                showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={styles.ottLogosScrollContainer}
+                                style={styles.ottLogosScrollView}
+                                nestedScrollEnabled={true}>
+                                {currentPlan.content_providers.map((provider: any, index: number) => (
+                                  <View key={index} style={styles.ottLogoItem}>
+                                    <View style={styles.ottLogoWrapper}>
+                                      {renderOTTIcon(provider)}
+                                    </View>
+                                    <Text style={[styles.ottServiceName, {color: colors.textSecondary}]} numberOfLines={1}>
+                                      {provider.content_provider || 'OTT'}
+                                    </Text>
+                                  </View>
+                                ))}
+                              </ScrollView>
+                            </View>
+                          </>
+                        )}
+                      </View>
+                      <View style={styles.planVerticalSeparator} />
+                      <View style={styles.planCardRight}>
+                        <View style={styles.planPriceBlock}>
+                          <Text style={[styles.planPriceNew, {color: colors.primary}]}>
+                            {formatCurrency(calculateTotalAmount(currentPlan))}
+                          </Text>
+                          <TouchableOpacity
+                            style={[styles.planActionButton, {backgroundColor: colors.primary}]}
+                            onPress={() => handlePlanSelect(currentPlan)}>
+                            <Text style={styles.planActionButtonText}>Renew</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </View>
+                  </>
                 )}
               </View>
             </View>
           </View>
         )}
 
+        {/* Separator line */}
+        <View style={styles.separatorLine}>
+          <View style={[styles.separator, {backgroundColor: '#B4B4B4'}]} />
+        </View>
+
         {/* Change your plan section */}
         <View style={styles.changePlanSection}>
-          {currentPlan && (
-            <Text style={[styles.changePlanTitle, {color: colors.primary}]}>
-              Change your plan
-            </Text>
-          )}
-          <View style={styles.filterButtonsRow}>
+          <View style={styles.compactFilterRow}>
             <TouchableOpacity
-              style={[styles.filterButtonNew, {backgroundColor: colors.card, borderColor: colors.border}]}
+              style={[styles.compactFilterButton, {borderColor: colors.border}]}
               onPress={() => setShowFilterModal(true)}>
-              <Text style={styles.filterButtonIconNew}>🔍</Text>
-              <Text style={[styles.filterButtonTextNew, {color: colors.text}]}>
-                Filter
-              </Text>
+              <Feather name="filter" size={14} color={colors.primary} style={styles.compactFilterIcon} />
+              <Text style={styles.compactFilterText}>Filter</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.filterButtonNew, {backgroundColor: colors.card, borderColor: colors.border}]}
+              style={[styles.compactFilterButton, {borderColor: colors.border}]}
               onPress={() => setShowSortModal(true)}>
-              <Text style={styles.filterButtonIconNew}>⇅</Text>
-              <Text style={[styles.filterButtonTextNew, {color: colors.text}]}>
-                Sort
-              </Text>
+              <Text style={[styles.compactFilterIcon, {color: colors.primary, fontSize: 18}]}>⇅</Text>
+              <Text style={styles.compactFilterText}>Sort</Text>
             </TouchableOpacity>
           </View>
+
+          {/* Active Filters Summary (just below Filter & Sort buttons) */}
+          {(Object.values(filters).some(filter => filter !== '') || sortOption !== '') && (
+            <View style={styles.activeFiltersContainer}>
+              <View style={styles.activeFiltersHeaderRow}>
+                <Text style={[styles.activeFiltersTitle, {color: colors.textSecondary}]}>
+                  Active Filters:
+                </Text>
+                <TouchableOpacity 
+                  style={styles.clearAllButton}
+                  onPress={() => {
+                    setFilters({
+                      speed: '',
+                      validity: '',
+                      price: '',
+                      gbLimit: '',
+                      ottPlan: '',
+                      voipPlan: '',
+                      iptvPlan: '',
+                      fupPlan: '',
+                    });
+                    setSortOption('');
+                  }}>
+                  <Text style={[styles.clearAllText, {color: colors.primary}]}>
+                    Clear All Filters
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.activeFiltersList}>
+                {/* Speed Filter */}
+                {filters.speed && (
+                  <View style={[styles.activeFilterChip, {backgroundColor: colors.primaryLight}]}>
+                    <Text style={[styles.activeFilterText, {color: colors.primary}]}>
+                      Speed: {filters.speed}
+                    </Text>
+                    <TouchableOpacity onPress={() => setFilters(prev => ({...prev, speed: ''}))}>
+                      <MaterialIcons name="close" size={16} color={colors.primary} />
+                    </TouchableOpacity>
+                  </View>
+                )}
+                
+                {/* Validity Filter */}
+                {filters.validity && (
+                  <View style={[styles.activeFilterChip, {backgroundColor: colors.primaryLight}]}>
+                    <Text style={[styles.activeFilterText, {color: colors.primary}]}>
+                      Validity: {filters.validity} Days
+                    </Text>
+                    <TouchableOpacity onPress={() => setFilters(prev => ({...prev, validity: ''}))}>
+                      <MaterialIcons name="close" size={16} color={colors.primary} />
+                    </TouchableOpacity>
+                  </View>
+                )}
+                
+                {/* Price Filter */}
+                {filters.price && (
+                  <View style={[styles.activeFilterChip, {backgroundColor: colors.primaryLight}]}>
+                    <Text style={[styles.activeFilterText, {color: colors.primary}]}>
+                      Price: ₹{filters.price}
+                    </Text>
+                    <TouchableOpacity onPress={() => setFilters(prev => ({...prev, price: ''}))}>
+                      <MaterialIcons name="close" size={16} color={colors.primary} />
+                    </TouchableOpacity>
+                  </View>
+                )}
+                
+                {/* Plan Features Filters */}
+                {filters.ottPlan && (
+                  <View style={[styles.activeFilterChip, {backgroundColor: colors.primaryLight}]}>
+                    <View style={{flexDirection: 'row', alignItems: 'center', gap: 4}}>
+                      <MaterialIcons name="movie" size={16} color={colors.primary} />
+                      <Text style={[styles.activeFilterText, {color: colors.primary}]}>OTT</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => setFilters(prev => ({...prev, ottPlan: ''}))}>
+                      <MaterialIcons name="close" size={16} color={colors.primary} />
+                    </TouchableOpacity>
+                  </View>
+                )}
+                
+                {filters.voipPlan && (
+                  <View style={[styles.activeFilterChip, {backgroundColor: colors.primaryLight}]}>
+                    <View style={{flexDirection: 'row', alignItems: 'center', gap: 4}}>
+                      <MaterialIcons name="phone" size={16} color={colors.primary} />
+                      <Text style={[styles.activeFilterText, {color: colors.primary}]}>VOIP</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => setFilters(prev => ({...prev, voipPlan: ''}))}>
+                      <MaterialIcons name="close" size={16} color={colors.primary} />
+                    </TouchableOpacity>
+                  </View>
+                )}
+                
+                {filters.iptvPlan && (
+                  <View style={[styles.activeFilterChip, {backgroundColor: colors.primaryLight}]}>
+                    <View style={{flexDirection: 'row', alignItems: 'center', gap: 4}}>
+                      <MaterialIcons name="tv" size={16} color={colors.primary} />
+                      <Text style={[styles.activeFilterText, {color: colors.primary}]}>IPTV</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => setFilters(prev => ({...prev, iptvPlan: ''}))}>
+                      <MaterialIcons name="close" size={16} color={colors.primary} />
+                    </TouchableOpacity>
+                  </View>
+                )}
+                
+                {filters.fupPlan && (
+                  <View style={[styles.activeFilterChip, {backgroundColor: colors.primaryLight}]}>
+                    <View style={{flexDirection: 'row', alignItems: 'center', gap: 4}}>
+                      <MaterialIcons name="bar-chart" size={16} color={colors.primary} />
+                      <Text style={[styles.activeFilterText, {color: colors.primary}]}>FUP</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => setFilters(prev => ({...prev, fupPlan: ''}))}>
+                      <MaterialIcons name="close" size={16} color={colors.primary} />
+                    </TouchableOpacity>
+                  </View>
+                )}
+                {/* Sort Option */}
+                {sortOption && (
+                  <View style={[styles.activeFilterChip, {backgroundColor: colors.successLight}]}>
+                    <Text style={[styles.activeFilterText, {color: colors.success}]}>
+                      Sort: {sortOption.replace('-', ' ').replace(/([A-Z])/g, ' $1').trim()}
+                    </Text>
+                    <TouchableOpacity onPress={() => setSortOption('')}>
+                      <Text style={[styles.removeFilterText, {color: colors.success}]}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            </View>
+          )}
         </View>
 
         {/* Recommended Plan Card - Temporarily hidden until recommendation logic is finalized */}
@@ -1066,262 +1799,335 @@ const RenewPlanScreen = ({navigation}: any) => {
         */}
 
         {/* Other Plans List */}
-        {getFilteredAndSortedPlans()
-          .filter((plan: Plan) => 
+        {(() => {
+          const filteredPlans = getFilteredAndSortedPlans();
+          const otherPlans = filteredPlans.filter((plan: Plan) => 
             plan.id !== currentPlan?.id
             // plan.id !== recommendedPlan?.id // Temporarily disabled - recommended plan section is hidden
-          )
-          .map((plan: Plan) => (
+          );
+          console.log('=== RENDERING PLANS ===');
+          console.log('Current plan ID:', currentPlan?.id);
+          console.log('Current plan name:', currentPlan?.name);
+          console.log('Total filtered plans:', filteredPlans.length);
+          console.log('Other plans (excluding current):', otherPlans.length);
+          console.log('Other plan names:', otherPlans.map(p => p.name));
+          console.log('=== END RENDERING PLANS ===');
+          
+          return otherPlans.map((plan: Plan) => {
+            const planHasOtt = !!(
+              plan.content_providers &&
+              Array.isArray(plan.content_providers) &&
+              plan.content_providers.length > 0
+            );
+            return (
             <View key={plan.id} style={styles.otherPlanSection}>
               <View style={[styles.planCardNew, styles.otherPlanCard, {borderColor: colors.border, backgroundColor: colors.card}]}>
                 <View style={styles.planCardContent}>
-                  <View style={styles.planCardTopRow}>
-                    <View style={styles.planCardLeft}>
-                      <Text style={[styles.planNameNew, {color: colors.text}]}>
-                        {plan.name}
-                      </Text>
+                  {showL2SPlanName ? (
+                    <>
+                      {/* Row 1: Plan Name (full width) */}
+                      <View style={styles.planNameRow}>
+                        <Text style={styles.planNameNew} numberOfLines={0}>
+                          {plan.name}
+                        </Text>
+                      </View>
+
+                      {/* Row 2: Plan Description (full width, if exists) */}
                       {plan.description && (
-                        <Text style={[styles.planDescriptionNew, {color: colors.textSecondary}]}>
-                          {plan.description}
-                        </Text>
+                        <View style={styles.planDescriptionRow}>
+                          <Text style={[styles.planDescriptionNew, {color: colors.textSecondary}]} numberOfLines={0}>
+                            {plan.description}
+                          </Text>
+                        </View>
                       )}
-                    </View>
-                    <View style={styles.planCardRight}>
-                      <Text style={[styles.planPriceNew, {color: colors.primary}]}>
-                        ₹{calculateTotalAmount(plan)}
-                      </Text>
-                      <TouchableOpacity
-                        style={[
-                          styles.planActionButton, 
-                          {
-                            backgroundColor: selectedPlan?.id === plan.id ? colors.success : colors.primary
-                          }
-                        ]}
-                        onPress={() => handlePlanSelect(plan)}>
-                        <Text style={styles.planActionButtonText}>
-                          {selectedPlan?.id === plan.id ? 'Selected' : 'Select'}
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                  <View style={styles.speedValiditySection}>
-                    <View style={styles.speedValidityHeaders}>
-                      <Text style={[styles.speedValidityLabel, {color: colors.textSecondary}]}>Speed</Text>
-                      <Text style={[styles.speedValidityLabel, {color: colors.textSecondary}]}>Validity</Text>
-                      {plan.content_providers && Array.isArray(plan.content_providers) && plan.content_providers.length > 0 && (
-                        <Text style={[styles.speedValidityLabel, {color: colors.textSecondary}]}>OTTs</Text>
-                      )}
-                      {plan.voice_plan?.toLowerCase() === 'yes' && (
-                        <Text style={[styles.speedValidityLabel, {color: colors.textSecondary}]}>VOICE</Text>
-                      )}
-                      {plan.iptv?.toLowerCase() === 'yes' && (
-                        <Text style={[styles.speedValidityLabel, {color: colors.textSecondary}]}>IPTV</Text>
-                      )}
-                      {plan.fup_flag?.toLowerCase() === 'yes' && (
-                        <Text style={[styles.speedValidityLabel, {color: colors.textSecondary}]}>FUP</Text>
-                      )}
-                    </View>
-                    <View style={styles.speedValidityValues}>
-                      <Text style={[styles.speedValidityValue, {color: colors.text}]}>
-                        {formatSpeed(plan.downloadSpeed)}
-                      </Text>
-                      <Text style={[styles.speedValidityValue, {color: colors.text}]}>
-                        {plan.days || 0} Days
-                      </Text>
-                      {plan.content_providers && Array.isArray(plan.content_providers) && plan.content_providers.length > 0 && (
-                        <Text style={[styles.speedValidityValue, {color: colors.text}]}>
-                          {plan.content_providers.length}
-                        </Text>
-                      )}
-                      {plan.voice_plan?.toLowerCase() === 'yes' && (
-                        <Text style={[styles.speedValidityValue, {color: colors.text}]}>Yes</Text>
-                      )}
-                      {plan.iptv?.toLowerCase() === 'yes' && (
-                        <Text style={[styles.speedValidityValue, {color: colors.text}]}>Yes</Text>
-                      )}
-                      {plan.fup_flag?.toLowerCase() === 'yes' && (
-                        <Text style={[styles.speedValidityValue, {color: colors.text}]}>Yes</Text>
-                      )}
-                    </View>
-                  </View>
-                  {plan.content_providers && Array.isArray(plan.content_providers) && plan.content_providers.length > 0 && (
-                    <View style={styles.ottLogosSection}>
-                      <ScrollView 
-                        horizontal 
-                        showsHorizontalScrollIndicator={true}
-                        contentContainerStyle={styles.ottLogosScrollContainer}
-                        style={styles.ottLogosScrollView}
-                        nestedScrollEnabled={true}>
-                        {plan.content_providers.map((provider: any, index: number) => {
-                          console.log(`Rendering Other Plan OTT Provider ${index + 1} for plan ${plan.name}:`, provider);
-                          return (
-                            <View key={index} style={styles.ottLogoItem}>
-                              <View style={styles.ottLogoWrapper}>
-                                {renderOTTIcon(provider)}
+
+                      {/* Row 3: Plan Params (left, scrollable) | Price + Button (right) - SAME ROW */}
+                      <View style={styles.planCardBottomRow}>
+                        {/* Left: Plan Parameters + OTT logos (same column) */}
+                      <View style={styles.planCardLeft}>
+                          <View style={styles.speedValiditySection}>
+                            <ScrollView
+                              horizontal
+                              showsHorizontalScrollIndicator={false}
+                              contentContainerStyle={styles.speedValidityScrollContainer}>
+                              <View style={styles.speedValidityRowScrollable}>
+                                {/* Speed column */}
+                                <View style={styles.speedValidityCol}>
+                                  <Text
+                                    style={[
+                                      styles.speedValidityLabel,
+                                      styles.speedValidityLabelLarge,
+                                    ]}>
+                                    Speed
+                                  </Text>
+                                  <Text
+                                    style={[
+                                      styles.speedValidityValue,
+                                      styles.speedValidityValueLarge,
+                                    ]}>
+                                    {formatSpeed(plan.downloadSpeed)}
+                                  </Text>
+                                </View>
+
+                                {/* Validity column */}
+                                <View style={styles.speedValidityCol}>
+                                  <Text
+                                    style={[
+                                      styles.speedValidityLabel,
+                                      styles.speedValidityLabelLarge,
+                                    ]}>
+                                    Validity
+                                  </Text>
+                                  <Text
+                                    style={[
+                                      styles.speedValidityValue,
+                                      styles.speedValidityValueLarge,
+                                    ]}>
+                                    {plan.days || 0} Days
+                                  </Text>
+                                </View>
+
+                                {/* OTTs column */}
+                                {plan.content_providers &&
+                                  Array.isArray(plan.content_providers) &&
+                                  plan.content_providers.length > 0 && (
+                                    <View style={styles.speedValidityCol}>
+                                      <Text
+                                        style={[
+                                          styles.speedValidityLabel,
+                                          styles.speedValidityLabelLarge,
+                                        ]}>
+                                        OTTs
+                                      </Text>
+                                      <Text
+                                        style={[
+                                          styles.speedValidityValue,
+                                          styles.speedValidityValueLarge,
+                                        ]}>
+                                        {plan.content_providers.length}
+                                      </Text>
+                                    </View>
+                                  )}
+
+                                {/* VOICE column */}
+                                {plan.voice_plan?.toLowerCase() === 'yes' && (
+                                  <View style={styles.speedValidityCol}>
+                                    <Text
+                                      style={[
+                                        styles.speedValidityLabel,
+                                        styles.speedValidityLabelLarge,
+                                      ]}>
+                                      VOICE
+                                    </Text>
+                                    <Text
+                                      style={[
+                                        styles.speedValidityValue,
+                                        styles.speedValidityValueLarge,
+                                      ]}>
+                                      Yes
+                                    </Text>
+                                  </View>
+                                )}
+
+                                {/* IPTV column */}
+                                {plan.iptv?.toLowerCase() === 'yes' && (
+                                  <View style={styles.speedValidityCol}>
+                                    <Text
+                                      style={[
+                                        styles.speedValidityLabel,
+                                        styles.speedValidityLabelLarge,
+                                      ]}>
+                                      IPTV
+                                    </Text>
+                                    <Text
+                                      style={[
+                                        styles.speedValidityValue,
+                                        styles.speedValidityValueLarge,
+                                      ]}>
+                                      Yes
+                                    </Text>
+                                  </View>
+                                )}
+
+                                {/* FUP column */}
+                                {plan.fup_flag?.toLowerCase() === 'yes' && (
+                                  <View style={styles.speedValidityCol}>
+                                    <Text
+                                      style={[
+                                        styles.speedValidityLabel,
+                                        styles.speedValidityLabelLarge,
+                                      ]}>
+                                      FUP
+                                    </Text>
+                                    <Text
+                                      style={[
+                                        styles.speedValidityValue,
+                                        styles.speedValidityValueLarge,
+                                      ]}>
+                                      Yes
+                                    </Text>
+                                  </View>
+                                )}
                               </View>
-                              <Text style={[styles.ottServiceName, {color: colors.textSecondary}]} numberOfLines={1}>
-                                {provider.content_provider || 'OTT'}
-                              </Text>
+                            </ScrollView>
+                          </View>
+
+                          {/* Thin grey separator + OTT row (only if OTT data exists) */}
+                          {plan.content_providers && Array.isArray(plan.content_providers) && plan.content_providers.length > 0 && (
+                            <>
+                              <View
+                                style={{
+                                  height: StyleSheet.hairlineWidth * 2,
+                                  backgroundColor: colors.border || '#B0B0B0',
+                                  marginTop: 2,
+                                  marginBottom: 2,
+                                }}
+                              />
+                              <View style={styles.ottLogosSection}>
+                                <ScrollView 
+                                  horizontal 
+                                  scrollEnabled={true}
+                                  showsHorizontalScrollIndicator={false}
+                                  contentContainerStyle={styles.ottLogosScrollContainer}
+                                  style={styles.ottLogosScrollView}
+                                  nestedScrollEnabled={true}>
+                                  {plan.content_providers.map((provider: any, index: number) => (
+                                    <View key={index} style={styles.ottLogoItem}>
+                                      <View style={styles.ottLogoWrapper}>
+                                        {renderOTTIcon(provider)}
+                                      </View>
+                                      <Text style={[styles.ottServiceName, {color: colors.textSecondary}]} numberOfLines={1}>
+                                        {provider.content_provider || 'OTT'}
+                                      </Text>
+                                    </View>
+                                  ))}
+                                </ScrollView>
+                              </View>
+                            </>
+                          )}
+                        </View>
+
+                        {/* Vertical separator */}
+                        <View style={styles.planVerticalSeparator} />
+
+                        {/* Right: Price + Button */}
+                        <View style={styles.planCardRight}>
+                          <View style={styles.planPriceBlock}>
+                            <Text style={[styles.planPriceNew, {color: colors.primary}]}>
+                              {formatCurrency(calculateTotalAmount(plan))}
+                            </Text>
+                            <TouchableOpacity
+                              style={[styles.planActionButton, {backgroundColor: colors.primary}]}
+                              onPress={() => handlePlanSelect(plan)}>
+                              <Text style={styles.planActionButtonText}>Select</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      </View>
+                    </>
+                  ) : (
+                    <>
+                      {/* Original layout when showL2SPlanName is false */}
+                      <View style={styles.planCardTopRow}>
+                        <View style={styles.planCardLeft}>
+                          <ScrollView 
+                            horizontal 
+                            showsHorizontalScrollIndicator={false}
+                            style={styles.metricHeadlineRowScroll}
+                            contentContainerStyle={styles.metricHeadlineRow}>
+                            <View style={styles.metricHeadlineCol}>
+                              <Text style={styles.planNameNew}>{formatSpeed(plan.downloadSpeed)}</Text>
+                              <Text style={styles.metricSubtitle} numberOfLines={1}>{getUsageSubtitle(plan.limit)}</Text>
                             </View>
-                          );
-                        })}
-                      </ScrollView>
-                      {plan.content_providers.length > 5 && (
-                        <Text style={[styles.scrollHint, {color: colors.textSecondary}]}>
-                          ← Scroll to see more →
-                        </Text>
-                      )}
-                    </View>
+                            <View style={styles.metricHeadlineCol}>
+                              <Text style={styles.planNameNew}>{plan.days || 0} Days</Text>
+                              <Text style={styles.metricSubtitle}>validity</Text>
+                            </View>
+                            {plan.content_providers &&
+                              Array.isArray(plan.content_providers) &&
+                              plan.content_providers.length > 0 && (
+                                <View style={styles.metricHeadlineCol}>
+                                  <Text style={styles.planNameNew}>{plan.content_providers.length}</Text>
+                                  <Text style={styles.metricSubtitle}>OTTs</Text>
+                                </View>
+                              )}
+                            {plan.fup_flag?.toLowerCase() === 'yes' && (
+                              <View style={styles.metricHeadlineCol}>
+                                <Text style={styles.planNameNew}>FUP</Text>
+                                <Text style={styles.metricSubtitle}>Yes</Text>
+                              </View>
+                            )}
+                            {plan.voice_plan?.toLowerCase() === 'yes' && (
+                              <View style={styles.metricHeadlineCol}>
+                                <Text style={styles.planNameNew}>VOIP</Text>
+                                <Text style={styles.metricSubtitle}>Yes</Text>
+                              </View>
+                            )}
+                            {plan.iptv?.toLowerCase() === 'yes' && (
+                              <View style={styles.metricHeadlineCol}>
+                                <Text style={styles.planNameNew}>IPTV</Text>
+                                <Text style={styles.metricSubtitle}>Yes</Text>
+                              </View>
+                            )}
+                          </ScrollView>
+                          
+                          {/* Thin grey separator + OTT row (only if OTT data exists) */}
+                          {plan.content_providers && Array.isArray(plan.content_providers) && plan.content_providers.length > 0 && (
+                            <>
+                              <View
+                                style={{
+                                  height: StyleSheet.hairlineWidth * 2,
+                                  backgroundColor: colors.border || '#B0B0B0',
+                                  marginTop: 2,
+                                  marginBottom: 2,
+                                }}
+                              />
+                              <View style={styles.ottLogosSection}>
+                                <ScrollView 
+                                  horizontal 
+                                  scrollEnabled={true}
+                                  showsHorizontalScrollIndicator={false}
+                                  contentContainerStyle={styles.ottLogosScrollContainer}
+                                  style={styles.ottLogosScrollView}
+                                  nestedScrollEnabled={true}>
+                                  {plan.content_providers.map((provider: any, index: number) => (
+                                    <View key={index} style={styles.ottLogoItem}>
+                                      <View style={styles.ottLogoWrapper}>
+                                        {renderOTTIcon(provider)}
+                                      </View>
+                                      <Text style={[styles.ottServiceName, {color: colors.textSecondary}]} numberOfLines={1}>
+                                        {provider.content_provider || 'OTT'}
+                                      </Text>
+                                    </View>
+                                  ))}
+                                </ScrollView>
+                              </View>
+                            </>
+                          )}
+                        </View>
+                        <View style={styles.planVerticalSeparator} />
+                        <View style={styles.planCardRight}>
+                          <View style={styles.planPriceBlock}>
+                            <Text style={[styles.planPriceNew, {color: colors.primary}]}>
+                              {formatCurrency(calculateTotalAmount(plan))}
+                            </Text>
+                            <TouchableOpacity
+                              style={[styles.planActionButton, {backgroundColor: colors.primary}]}
+                              onPress={() => handlePlanSelect(plan)}>
+                              <Text style={styles.planActionButtonText}>Select</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      </View>
+                    </>
                   )}
                 </View>
               </View>
             </View>
-          ))}
+          )});
+        })()}
 
-        {/* Active Filters Summary */}
-        {(Object.values(filters).some(filter => filter !== '') || sortOption !== '') && (
-          <View style={styles.activeFiltersContainer}>
-            <Text style={[styles.activeFiltersTitle, {color: colors.textSecondary}]}>
-              Active Filters:
-            </Text>
-            <View style={styles.activeFiltersList}>
-            {/* Speed Filter */}
-            {filters.speed && (
-              <View style={[styles.activeFilterChip, {backgroundColor: colors.primaryLight}]}>
-                <Text style={[styles.activeFilterText, {color: colors.primary}]}>
-                  Speed: {filters.speed}
-                </Text>
-                <TouchableOpacity onPress={() => setFilters(prev => ({...prev, speed: ''}))}>
-                  <Text style={[styles.removeFilterText, {color: colors.primary}]}>✕</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-            
-            {/* Validity Filter */}
-            {filters.validity && (
-              <View style={[styles.activeFilterChip, {backgroundColor: colors.primaryLight}]}>
-                <Text style={[styles.activeFilterText, {color: colors.primary}]}>
-                  Validity: {filters.validity} Days
-                </Text>
-                <TouchableOpacity onPress={() => setFilters(prev => ({...prev, validity: ''}))}>
-                  <Text style={[styles.removeFilterText, {color: colors.primary}]}>✕</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-            
-            {/* Price Filter */}
-            {filters.price && (
-              <View style={[styles.activeFilterChip, {backgroundColor: colors.primaryLight}]}>
-                <Text style={[styles.activeFilterText, {color: colors.primary}]}>
-                  Price: ₹{filters.price}
-                </Text>
-                <TouchableOpacity onPress={() => setFilters(prev => ({...prev, price: ''}))}>
-                  <Text style={[styles.removeFilterText, {color: colors.primary}]}>✕</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-            
-            {/* Plan Features Filters */}
-            {filters.ottPlan && (
-              <View style={[styles.activeFilterChip, {backgroundColor: colors.primaryLight}]}>
-                <Text style={[styles.activeFilterText, {color: colors.primary}]}>
-                  🎬 OTT
-                </Text>
-                <TouchableOpacity onPress={() => setFilters(prev => ({...prev, ottPlan: ''}))}>
-                  <Text style={[styles.removeFilterText, {color: colors.primary}]}>✕</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-            
-            {filters.voipPlan && (
-              <View style={[styles.activeFilterChip, {backgroundColor: colors.primaryLight}]}>
-                <Text style={[styles.activeFilterText, {color: colors.primary}]}>
-                  📞 VOIP
-                </Text>
-                <TouchableOpacity onPress={() => setFilters(prev => ({...prev, voipPlan: ''}))}>
-                  <Text style={[styles.removeFilterText, {color: colors.primary}]}>✕</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-            
-            {filters.iptvPlan && (
-              <View style={[styles.activeFilterChip, {backgroundColor: colors.primaryLight}]}>
-                <Text style={[styles.activeFilterText, {color: colors.primary}]}>
-                  📺 IPTV
-                </Text>
-                <TouchableOpacity onPress={() => setFilters(prev => ({...prev, iptvPlan: ''}))}>
-                  <Text style={[styles.removeFilterText, {color: colors.primary}]}>✕</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-            
-            {filters.fupPlan && (
-              <View style={[styles.activeFilterChip, {backgroundColor: colors.primaryLight}]}>
-                <Text style={[styles.activeFilterText, {color: colors.primary}]}>
-                  📊 FUP
-                </Text>
-                <TouchableOpacity onPress={() => setFilters(prev => ({...prev, fupPlan: ''}))}>
-                  <Text style={[styles.removeFilterText, {color: colors.primary}]}>✕</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-            
-            {/* Sort Option */}
-            {sortOption && (
-              <View style={[styles.activeFilterChip, {backgroundColor: colors.successLight}]}>
-                <Text style={[styles.activeFilterText, {color: colors.success}]}>
-                  Sort: {sortOption.replace('-', ' ').replace(/([A-Z])/g, ' $1').trim()}
-                </Text>
-                <TouchableOpacity onPress={() => setSortOption('')}>
-                  <Text style={[styles.removeFilterText, {color: colors.success}]}>✕</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-          
-          {/* Clear All Filters Button */}
-          <TouchableOpacity 
-            style={styles.clearAllButton}
-            onPress={() => {
-              setFilters({
-                speed: '',
-                validity: '',
-                price: '',
-                gbLimit: '',
-                ottPlan: '',
-                voipPlan: '',
-                iptvPlan: '',
-                fupPlan: '',
-              });
-              setSortOption('');
-            }}>
-            <Text style={[styles.clearAllText, {color: colors.primary}]}>
-              Clear All Filters
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-        {/* Add bottom padding to prevent content from being hidden behind fixed button */}
-        {selectedPlan && <View style={{ height: 80 }} />}
       </ScrollView>
-
-      {/* Pay Now Button - Fixed at bottom */}
-      {selectedPlan && (
-        <View style={[styles.payButtonContainer, {backgroundColor: colors.background, borderTopColor: colors.border}]}>
-          <TouchableOpacity
-            style={[styles.payButton, {backgroundColor: colors.primary}]}
-            onPress={handlePayNow}>
-            <Text style={[styles.payButtonText, {color: '#ffffff'}]}>
-              {(() => {
-                const displayBase = calculateTotalAmount(selectedPlan);
-                const displayTotal = payDues > 0 ? displayBase + payDues : displayBase;
-                return `Pay Now ₹ ${displayTotal}`;
-              })()}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
 
       {/* Filter Modal */}
       <Modal
@@ -1335,7 +2141,7 @@ const RenewPlanScreen = ({navigation}: any) => {
                 {t('renewPlan.filter')}
               </Text>
               <TouchableOpacity onPress={() => setShowFilterModal(false)}>
-                <Text style={[styles.modalCloseButton, {color: colors.text}]}>✕</Text>
+                <MaterialIcons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
             
@@ -1344,68 +2150,88 @@ const RenewPlanScreen = ({navigation}: any) => {
               <View style={styles.filterSection}>
                 <Text style={[styles.filterSectionTitle, {color: colors.text}]}>Validity</Text>
                 <View style={styles.filterOptions}>
-                  {availableValidities.map((validity) => (
+                  {(staticValidityOptions.length
+                    ? staticValidityOptions
+                    : availableValidities.map(v => `${v} Days`)
+                  ).map((label) => (
                     <TouchableOpacity
-                      key={`val-${validity}`}
+                      key={`val-${label}`}
                       style={[
                         styles.filterOption,
                         {borderColor: colors.border},
-                        filters.validity === validity && {backgroundColor: colors.primary, borderColor: colors.primary}
+                        filters.validity === label && {backgroundColor: colors.primary, borderColor: colors.primary}
                       ]}
-                      onPress={() => setFilters(prev => ({...prev, validity: prev.validity === validity ? '' : validity}))}>
+                      onPress={() => {
+                        setFilters(prev => ({
+                          ...prev,
+                          validity: prev.validity === label ? '' : label
+                        }));
+                      }}>
                       <Text style={[
                         styles.filterOptionText,
-                        {color: filters.validity === validity ? '#fff' : colors.text}
+                        {color: filters.validity === label ? '#fff' : colors.text}
                       ]}>
-                        {validity} Days
+                        {label}
                       </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
               </View>
 
-              {/* Price Filter (Static) */}
+              {/* Price Filter (Dynamic from Staticdropdown, fallback to static ranges) */}
               <View style={styles.filterSection}>
                 <Text style={[styles.filterSectionTitle, {color: colors.text}]}>Price Range</Text>
                 <View style={styles.filterOptions}>
-                  {['0-1000', '1000-2000', '2000-5000', '5000-10000'].map((price) => (
+                  {(priceOptions.length
+                    ? priceOptions.map(opt => ({ value: opt.value, label: opt.label }))
+                    : ['0-1000', '1000-2000', '2000-5000', '5000-10000'].map(p => ({ value: p, label: p }))
+                  ).map((opt) => (
                     <TouchableOpacity
-                      key={`pr-${price}`}
+                      key={`pr-${opt.value}`}
                       style={[
                         styles.filterOption,
                         {borderColor: colors.border},
-                        filters.price === price && {backgroundColor: colors.primary, borderColor: colors.primary}
+                        filters.price === opt.value && {backgroundColor: colors.primary, borderColor: colors.primary}
                       ]}
-                      onPress={() => setFilters(prev => ({...prev, price: prev.price === price ? '' : price}))}>
+                      onPress={() => setFilters(prev => ({
+                        ...prev,
+                        price: prev.price === opt.value ? '' : opt.value
+                      }))}>
                       <Text style={[
                         styles.filterOptionText,
-                        {color: filters.price === price ? '#fff' : colors.text}
+                        {color: filters.price === opt.value ? '#fff' : colors.text}
                       ]}>
-                        ₹{price}
+                        ₹{opt.label}
                       </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
               </View>
 
-              {/* Speed Filter (Static) */}
+              {/* Speed Filter (temporarily fixed to 3 buckets) */}
               <View style={styles.filterSection}>
                 <Text style={[styles.filterSectionTitle, {color: colors.text}]}>Speed</Text>
                 <View style={styles.filterOptions}>
-                  {['10 to 50 Mbps', '50 to 100 Mbps', '100 to 200 Mbps', '200 to 350 Mbps', '350 to 500 Mbps', '500 to 1000 Mbps', '1000+ Mbps'].map((speed) => (
+                  {(speedOptions.length
+                    ? speedOptions.map(opt => ({ value: opt.value, label: opt.label }))
+                    : SPEED_FILTER_OPTIONS.map(label => ({ value: label, label }))
+                  ).map((opt) => (
                     <TouchableOpacity
-                      key={`sp-${speed}`}
+                      key={`sp-${opt.value}`}
                       style={[
                         styles.filterOption,
                         {borderColor: colors.border},
-                        filters.speed === speed && {backgroundColor: colors.primary, borderColor: colors.primary}
+                        filters.speed === opt.value && {backgroundColor: colors.primary, borderColor: colors.primary}
                       ]}
-                      onPress={() => setFilters(prev => ({...prev, speed: prev.speed === speed ? '' : speed}))}>
+                      onPress={() => setFilters(prev => ({
+                        ...prev,
+                        speed: prev.speed === opt.value ? '' : opt.value
+                      }))}>
                       <Text style={[
                         styles.filterOptionText,
-                        {color: filters.speed === speed ? '#fff' : colors.text}
+                        {color: filters.speed === opt.value ? '#fff' : colors.text}
                       ]}>
-                        {speed}
+                        {opt.label}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -1417,10 +2243,10 @@ const RenewPlanScreen = ({navigation}: any) => {
                 <Text style={[styles.filterSectionTitle, {color: colors.text}]}>Plan Features</Text>
                 <View style={styles.featuresGrid}>
                   {[
-                    { key: 'ottPlan', label: 'OTT', icon: '🎬' },
-                    { key: 'voipPlan', label: 'VOIP', icon: '📞' },
-                    { key: 'iptvPlan', label: 'IPTV', icon: '📺' },
-                    { key: 'fupPlan', label: 'FUP', icon: '📊' }
+                    { key: 'ottPlan', label: 'OTT', icon: 'movie' },
+                    { key: 'voipPlan', label: 'VOIP', icon: 'phone' },
+                    { key: 'iptvPlan', label: 'IPTV', icon: 'tv' },
+                    { key: 'fupPlan', label: 'FUP', icon: 'bar-chart' }
                   ].map((feature) => (
                     <TouchableOpacity
                       key={feature.key}
@@ -1436,9 +2262,11 @@ const RenewPlanScreen = ({navigation}: any) => {
                           [feature.key]: currentValue ? '' : `With ${feature.label}`
                         }));
                       }}>
-                      <Text style={[styles.featureIcon, {color: filters[feature.key as keyof typeof filters] ? '#fff' : colors.text}]}>
-                        {feature.icon}
-                      </Text>
+                      <MaterialIcons 
+                        name={feature.icon} 
+                        size={20} 
+                        color={filters[feature.key as keyof typeof filters] ? '#fff' : colors.text} 
+                      />
                       <Text style={[
                         styles.featureText,
                         {color: filters[feature.key as keyof typeof filters] ? '#fff' : colors.text}
@@ -1476,7 +2304,7 @@ const RenewPlanScreen = ({navigation}: any) => {
                 {t('renewPlan.sort')}
               </Text>
               <TouchableOpacity onPress={() => setShowSortModal(false)}>
-                <Text style={[styles.modalCloseButton, {color: colors.text}]}>✕</Text>
+                <MaterialIcons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
             
@@ -1522,6 +2350,8 @@ const RenewPlanScreen = ({navigation}: any) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    position: 'relative',
+    overflow: 'visible',
   },
   headingContainer: {
     paddingHorizontal: 20,
@@ -1573,8 +2403,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   planName: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
+    fontFamily: 'Inter',
+    color: '#000000',
     marginBottom: 2,
   },
   planDescription: {
@@ -1605,7 +2437,7 @@ const styles = StyleSheet.create({
     left: 12,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 10,
+    borderRadius: 6,
     zIndex: 2,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
@@ -1644,6 +2476,33 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
   },
+  metricHeadlineRowScroll: {
+    marginBottom: 4,
+    minHeight: 50,
+  },
+  metricHeadlineRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    paddingVertical: 2,
+    gap: 12,
+    paddingRight: 8,
+  },
+  metricHeadlineCol: {
+    minWidth: 80,
+  },
+  metricHeadlineColWide: {
+    minWidth: 120,
+  },
+  metricSubtitle: {
+    fontSize: 10,
+    color: '#4D4D4D',
+    flexShrink: 0,
+  },
+  metricHeadlineSeparator: {
+    marginTop: 4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#cccccc',
+  },
   planDetails: {
     gap: 4,
   },
@@ -1656,8 +2515,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   detailValue: {
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: 10,
+    fontWeight: '400',
+    fontFamily: 'Inter',
+    color: '#4D4D4D',
   },
 
   payButton: {
@@ -1681,6 +2542,7 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   planTitleContainer: {
+    minHeight: 50,
     flex: 1,
   },
   detailIcon: {
@@ -1688,10 +2550,10 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   ottSection: {
-    marginTop: 4,
-    paddingTop: 4,
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    marginTop: 14,    // space above the separator line
+    paddingTop: 22,   // slightly more space between the line and OTT content
+    borderTopWidth: 2,
+    borderTopColor: '#B0B0B0', // slightly darker separator
   },
   ottTitle: {
     fontSize: 14,
@@ -1972,19 +2834,24 @@ const styles = StyleSheet.create({
   },
   activeFiltersContainer: {
     paddingHorizontal: 20,
-    paddingVertical: 12,
-    marginBottom: 8,
+    paddingVertical: 6,
+    marginBottom: 4,
+  },
+  activeFiltersHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   activeFiltersTitle: {
     fontSize: 14,
     fontWeight: '600',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   activeFiltersList: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 12,
+    marginBottom: 4,
   },
   activeFilterChip: {
     flexDirection: 'row',
@@ -2004,7 +2871,7 @@ const styles = StyleSheet.create({
   },
   clearAllButton: {
     alignSelf: 'flex-start',
-    paddingVertical: 4,
+    paddingVertical: 2,
   },
   clearAllText: {
     fontSize: 12,
@@ -2052,7 +2919,7 @@ const styles = StyleSheet.create({
 
   ottItem: {
     alignItems: 'center',
-    marginVertical: 4,
+    marginVertical: 0,  // reduce extra space above/below OTT icons
     minWidth: 80,
     paddingHorizontal: 8,
   },
@@ -2068,12 +2935,17 @@ const styles = StyleSheet.create({
   ottName: {
     fontSize: 10,
     textAlign: 'center',
+    marginTop: 4,
   },
   ottServiceName: {
-    fontSize: 9,
-    textAlign: 'center',
+    fontSize: 10,
+    fontFamily: 'Inter',
     fontWeight: '500',
-    marginTop: 2,
+    textAlign: 'center',
+    marginTop: 6,
+    lineHeight: 12,
+    maxWidth: 55,
+    flexShrink: 1,
   },
   selectPlanText: {
     fontSize: 14,
@@ -2240,20 +3112,22 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   planCardNew: {
-    borderRadius: 12,
-    borderWidth: 2,
-    padding: 16,
-    minHeight: 140,
+    borderRadius: 8,
+    borderWidth: 1,
+    padding: 8,
+    minHeight: 124,
+    // Allow the top badge (planTag) to render fully above the card
+    overflow: 'visible',
     shadowOffset: {
       width: 0,
       height: 2,
     },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowRadius: 3,
     elevation: 3,
   },
   currentPlanCard: {
-    borderColor: '#4CAF50',
+    // borderColor will be set dynamically via inline style using colors.primary
   },
   recommendedPlanCard: {
     borderColor: '#2196F3',
@@ -2265,47 +3139,92 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -12,
     left: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
+    width: 106,
+    height: 21,
+    // backgroundColor will be set dynamically via inline style using colors.primary
+    borderRadius: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
     zIndex: 1,
   },
   planTagText: {
-    color: '#ffffff',
+    color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.3,
   },
+  // Container that holds the top row (name + price block) and the details below.
+  // This should remain vertical so that all plan details are visible.
   planCardContent: {
     flexDirection: 'column',
-    marginTop: 8,
+    marginTop: 0,
     flex: 1,
   },
   planCardTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    marginBottom: 0,
+  },
+  planNameRow: {
+    width: '100%',
+    marginTop: 4,   // add breathing space below "Current Plan" heading
+    marginBottom: 4,
+    paddingLeft: 6, // align with plan content columns
+  },
+  planDescriptionRow: {
+    width: '100%',
     marginBottom: 8,
+    paddingLeft: 6, // keep description aligned with plan name/content
+  },
+  planCardBottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 0,
   },
   planCardLeft: {
     flex: 1,
-    marginRight: 16,
+    marginRight: 0,
+    justifyContent: 'flex-start',
   },
   planCardRight: {
-    alignItems: 'flex-end',
-    justifyContent: 'flex-start',
-    marginLeft: 8,
+    width: 101.01,
+    alignItems: 'stretch',
+    justifyContent: 'center',
+    marginLeft: 0,
+    alignSelf: 'stretch',
+    backgroundColor: '#F9F9F9',        // full-height grey strip
+    borderTopRightRadius: 10,
+    borderBottomRightRadius: 10,
+  },
+  planVerticalSeparator: {
+    width: 1,
+    backgroundColor: '#E0E0E0',
+    marginHorizontal: 8,
+    alignSelf: 'stretch',
+  },
+  planPriceBlock: {
+    // Inner block for price + button (no background, centered)
+    width: 101.01,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    flex: 1,
   },
   planNameNew: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 4,
+    fontSize: 13,
+    fontWeight: '600',
+    fontFamily: 'Inter',
+    color: '#000000',
+    marginBottom: 2,
   },
   planDescriptionNew: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '400',
-    marginBottom: 8,
-    lineHeight: 16,
+    marginBottom: 2,
+    lineHeight: 14,
   },
   planDetailsRow: {
     flexDirection: 'row',
@@ -2328,44 +3247,41 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   ottLogosSection: {
-    marginTop: 8,
-    marginBottom: 4,
+    // Visually separate OTT logos from plan row (more top, less bottom)
+    marginTop: 14,
+    marginBottom: 2,
     width: '100%',
   },
   ottLogosScrollView: {
-    maxHeight: 90,
-    paddingVertical: 4,
+    paddingVertical: 0,
     width: '100%',
   },
   ottLogosScrollContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    paddingRight: 4,
+    paddingRight: 8,
     paddingLeft: 0,
-    gap: 4,
+    gap: 6,
   },
   ottLogoItem: {
     alignItems: 'center',
-    width: 48,
+    width: 55,
     marginRight: 0,
+    marginBottom: 4,
   },
-  scrollHint: {
-    fontSize: 10,
-    textAlign: 'center',
-    marginTop: 4,
-    fontStyle: 'italic',
-  },
+  // scrollHint style no longer used (text removed)
   ottLogoWrapper: {
-    width: 32,
-    height: 32,
+    width: 28,
+    height: 28,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 2,
   },
   planPriceNew: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 8,
+    fontSize: 16,
+    fontFamily: 'Inter',
+    fontWeight: '600',
+    marginBottom: 4,
   },
   planPriceStrikethrough: {
     fontSize: 14,
@@ -2373,22 +3289,32 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   planActionButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 5,
+    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 70,
+    minWidth: 75,
   },
   planActionButtonText: {
     color: '#ffffff',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
+  },
+  separatorLine: {
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  separator: {
+    width: '100%',
+    height: 1,
   },
   changePlanSection: {
     paddingHorizontal: 20,
-    marginTop: 12,
-    marginBottom: 16,
+    marginTop: 2,
+    marginBottom: 12,
   },
   changePlanTitle: {
     fontSize: 18,
@@ -2399,6 +3325,31 @@ const styles = StyleSheet.create({
   filterButtonsRow: {
     flexDirection: 'row',
     gap: 12,
+  },
+  compactFilterRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  compactFilterButton: {
+    flex: 1,
+    height: 29,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    opacity: 1,
+    borderRadius: 5,
+    borderWidth: 1,
+  },
+  compactFilterIcon: {
+    fontSize: 18,
+    marginRight: 6,
+  },
+  compactFilterText: {
+    fontSize: 12,
+    fontWeight: '500',
+    fontFamily: 'Inter',
+    color: '#4D4D4D',
   },
   filterButtonNew: {
     flex: 1,
@@ -2419,27 +3370,35 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   ottLogoNew: {
-    width: 28,
-    height: 28,
+    width: 30,
+    height: 30,
   },
   ottIconNew: {
     fontSize: 24,
   },
   speedValiditySection: {
-    marginTop: 4,
-    marginBottom: 8,
+    marginTop: 1,
+    marginBottom: 1,
   },
   speedValidityHeaders: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 4,
-    gap: 12,
+    marginBottom: 2,
+    gap: 8,
   },
   speedValidityLabel: {
+    fontSize: 9,
+    fontWeight: '400',
+    fontFamily: 'Inter',
+    color: '#4D4D4D',
+    marginHorizontal: 4,
+    flexShrink: 0, // prevent wrapping; allow horizontal scroll instead
+  },
+  // Larger heading font when there is no OTT content so that
+  // Speed / Validity / FUP details are more visible.
+  speedValidityLabelLarge: {
     fontSize: 12,
-    fontWeight: '500',
-    flex: 1,
-    marginHorizontal: 6,
+    fontWeight: '600',
   },
   speedValidityValues: {
     flexDirection: 'row',
@@ -2447,10 +3406,32 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   speedValidityValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    flex: 1,
-    marginHorizontal: 6,
+    fontSize: 9,
+    fontWeight: '400',
+    fontFamily: 'Inter',
+    color: '#4D4D4D',
+    marginHorizontal: 4,
+    flexShrink: 0, // prevent wrapping; allow horizontal scroll instead
+  },
+  speedValidityScrollContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingRight: 8,
+  },
+  // One column in the Speed/Validity/OTTs/FUP horizontal row (used inside horizontal ScrollView)
+  speedValidityRowScrollable: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  speedValidityCol: {
+    minWidth: 80,
+    marginRight: 12,
+  },
+  // Larger value font when there is no OTT content
+  speedValidityValueLarge: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#5A5A5A',
   },
 });
 

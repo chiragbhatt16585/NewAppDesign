@@ -20,10 +20,10 @@ const fixBuildConfig = () => {
     
     // Check if the file contains the wrong package
     if (content.includes('com.h8.dnasubscriber.BuildConfig')) {
-      content = content.replace(oldPackagePattern, 'com.microscan.app.BuildConfig');
+      content = content.replace(oldPackagePattern, 'in.spacecom.log2space.client.microscan.BuildConfig');
       fs.writeFileSync(generatedFilePath, content);
       console.log('✅ Fixed BuildConfig package reference');
-    } else if (content.includes('com.microscan.app.BuildConfig')) {
+    } else if (content.includes('in.spacecom.log2space.client.microscan.BuildConfig')) {
       console.log('✅ BuildConfig package reference is already correct');
     } else {
       console.log('⚠️ No BuildConfig reference found in file');

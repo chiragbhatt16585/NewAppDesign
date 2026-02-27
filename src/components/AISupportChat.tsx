@@ -14,6 +14,17 @@ import { useTheme } from '../utils/ThemeContext';
 import { getThemeColors } from '../utils/themeStyles';
 import { apiService } from '../services/api';
 import sessionManager from '../services/sessionManager';
+import {
+  isLLMEnabled,
+  isDemoMode,
+  getLLMResponse,
+  getDemoResponse,
+  buildUserContext,
+  type ChatMessage as LLMChatMessage,
+} from '../services/llmService';
+import { getDaysRemainingNumber } from '../utils/usageUtils';
+import { getClientConfig } from '../config/client-config';
+import type { Ticket } from '../services/api';
 
 interface ChatMessage {
   id: string;
@@ -30,7 +41,7 @@ const AISupportChat = ({ navigation }: { navigation?: any }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: '1',
-      text: 'Hello! I\'m your AI assistant. How can I help you today?',
+      text: 'Hello! I\'m your AI assistant. How can I help you today? Ask me about bills, plans, usage, or any account question.',
       isUser: false,
       timestamp: new Date(),
       type: 'text',
@@ -69,6 +80,7 @@ const AISupportChat = ({ navigation }: { navigation?: any }) => {
     'I want to upgrade my plan',
     'My internet is slow',
     'Check my data usage',
+    'Show my past tickets',
     'Report an issue',
   ];
 
@@ -78,18 +90,28 @@ const AISupportChat = ({ navigation }: { navigation?: any }) => {
     const dataAllotted = usageDetails?.plan_data || '100 GB';
     const daysUsed = parseInt(usageDetails?.days_used || '0');
     const daysAllotted = parseInt(usageDetails?.plan_days || '30');
-    const planPrice = userData?.planPrice || '₹1200';
-    const currentPlan = userData?.currentPlan || 'Basic Plan';
-    const paymentDues = userData?.paymentDues || '0';
-    
+    const planPrice = userData?.planPrice || userData?.plan_price || '₹1200';
+    const currentPlan = userData?.currentPlan || userData?.current_plan || 'Basic Plan';
+    const paymentDues = userData?.paymentDues ?? userData?.payment_dues ?? '0';
+    let expDate = (userData?.exp_date ?? userData?.expiry_date ?? usageDetails?.exp_date ?? '').toString().trim();
+    const daysRemaining = getDaysRemainingNumber(usageDetails, userData);
+    if (!expDate && daysRemaining >= 0) {
+      const d = new Date();
+      d.setDate(d.getDate() + daysRemaining);
+      expDate = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+    if (!expDate) expDate = 'N/A';
+
     const dataUsedGB = parseFloat(dataUsed) / (1024 * 1024 * 1024);
-    // Handle plan_data format like "100 GB" or "Unlimited"
     const isUnlimited = dataAllotted === 'Unlimited';
     const planDataGB = isUnlimited ? 1000 : parseFloat(dataAllotted.split(' ')[0]);
     const usagePercentage = isUnlimited ? 0 : (dataUsedGB / planDataGB) * 100;
-    const daysRemaining = daysAllotted - daysUsed;
 
     return {
+      'expire': {
+        text: `Your **${currentPlan}** expires on **${expDate}** (${daysRemaining} days remaining).\n\nRenew now to avoid service interruption. You can renew from the app or pay your dues to extend automatically.`,
+        actions: ['Renew Plan', 'Pay Now', 'View Bill Details'],
+      },
       'bill': {
         text: `I can help you with bill payment! You have several options:\n\n💳 **Online Payment**: Use the Pay Bill section in the app\n🏦 **Bank Transfer**: Use your account details\n🏪 **Cash Payment**: Visit any authorized center\n\nYour current plan: ${currentPlan} (${planPrice})\nPayment dues: ₹${paymentDues}\n\nWould you like me to help you pay now?`,
         actions: ['Pay Now', 'View Bill Details', 'Set Auto-Pay'],
@@ -117,7 +139,7 @@ const AISupportChat = ({ navigation }: { navigation?: any }) => {
     };
   };
 
-  const sendMessage = (text: string) => {
+  const sendMessage = async (text: string) => {
     if (!text.trim()) return;
 
     const userMessage: ChatMessage = {
@@ -132,37 +154,117 @@ const AISupportChat = ({ navigation }: { navigation?: any }) => {
     setInputText('');
     setIsTyping(true);
 
-    // Simulate AI thinking time
-    setTimeout(() => {
-      generateAIResponse(text.toLowerCase());
-    }, 1000);
+    await generateAIResponse(text.trim());
   };
 
-  const generateAIResponse = (userText: string) => {
-    const aiResponses = getAIResponses();
-    let response = aiResponses.default;
+  const isExpiryQuery = (text: string) => {
+    const t = text.toLowerCase();
+    return t.includes('expire') || t.includes('expiry') || t.includes('expiration') || (t.includes('when') && t.includes('plan'));
+  };
 
-    if (userText.includes('bill') || userText.includes('pay')) {
-      response = aiResponses.bill;
-    } else if (userText.includes('upgrade') || userText.includes('plan')) {
-      response = aiResponses.upgrade;
-    } else if (userText.includes('slow') || userText.includes('internet') || userText.includes('speed')) {
-      response = aiResponses.slow;
-    } else if (userText.includes('usage') || userText.includes('data')) {
-      response = aiResponses.usage;
+  const isTicketsQuery = (text: string) => {
+    const t = text.toLowerCase();
+    return t.includes('ticket') || t.includes('complaint') || t.includes('past ticket') || t.includes('my ticket') || (t.includes('display') && t.includes('ticket'));
+  };
+
+  const formatTicketDate = (dateString: string): string => {
+    if (!dateString) return 'N/A';
+    if (dateString.match(/^\d{1,2}-[A-Za-z]{3},\d{2}\s+\d{1,2}:\d{2}$/)) return dateString;
+    if (dateString.match(/^\d{1,2}-\d{2}-\d{4}\s+\d{1,2}:\d{2}$/)) {
+      const [d, m, y, ...time] = dateString.split(/[\s-]/);
+      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const mi = parseInt(m, 10) - 1;
+      return `${d}-${months[mi] || m},${y.slice(-2)} ${time.join(':') || ''}`.trim();
+    }
+    return dateString;
+  };
+
+  const fetchAndFormatTickets = async (): Promise<string> => {
+    try {
+      const clientConfig = getClientConfig();
+      const realm = clientConfig.clientId;
+      const tickets: Ticket[] = await apiService.lastTenComplaints(realm);
+      if (!tickets || tickets.length === 0) {
+        return 'You don\'t have any past tickets or complaints. Would you like to create a new one?';
+      }
+      const lines = ['**Your past tickets/complaints:**\n'];
+      tickets.forEach((t, i) => {
+        const status = t.status || 'Open';
+        const created = formatTicketDate(t.dateCreated);
+        lines.push(`${i + 1}. **${t.ticketNo}** – ${t.title}\n   Status: ${status} • Created: ${created}`);
+      });
+      lines.push('\nTap below to open the full Tickets screen or create a new complaint.');
+      return lines.join('\n');
+    } catch (err: any) {
+      console.warn('[AISupportChat] Failed to fetch tickets:', err);
+      return 'Sorry, I couldn\'t load your tickets. Please try opening the Tickets screen from the menu.';
+    }
+  };
+
+  const generateAIResponse = async (userText: string) => {
+    const aiResponses = getAIResponses();
+    let responseText: string;
+    let responseActions: string[] | undefined;
+
+    // Expiry queries: always use direct response with exp_date (LLM often returns wrong answer)
+    if (isExpiryQuery(userText)) {
+      responseText = aiResponses.expire.text;
+      responseActions = aiResponses.expire.actions;
+    } else if (isTicketsQuery(userText)) {
+      responseText = await fetchAndFormatTickets();
+      responseActions = ['Report Issue', 'View All Tickets'];
+    } else if (isLLMEnabled()) {
+      try {
+        const history: LLMChatMessage[] = [];
+        const recent = messages.slice(-6);
+        for (const m of recent) {
+          if (m.isUser) history.push({ role: 'user', content: m.text });
+          else history.push({ role: 'assistant', content: m.text });
+        }
+
+        const userContext = buildUserContext(userData);
+        const llmResult = await getLLMResponse(userText, history, userContext);
+        responseText = llmResult.text;
+        responseActions = llmResult.suggestedActions ?? [
+          'Pay Now', 'View Bill Details', 'Upgrade Plan', 'Report Issue', 'Talk to Human',
+        ];
+      } catch (err) {
+        console.warn('[AISupportChat] LLM failed, using fallback:', err);
+        const fallback = getKeywordResponse(userText.toLowerCase(), aiResponses);
+        responseText = fallback.text;
+        responseActions = fallback.actions;
+      }
+    } else if (isDemoMode()) {
+      // Demo mode: simulated AI responses with dummy/real data (expiry uses direct response above)
+      const demoResult = getDemoResponse(userText, userData);
+      responseText = demoResult.text;
+      responseActions = demoResult.suggestedActions;
+    } else {
+      const fallback = getKeywordResponse(userText.toLowerCase(), aiResponses);
+      responseText = fallback.text;
+      responseActions = fallback.actions;
     }
 
     const aiMessage: ChatMessage = {
       id: (Date.now() + 1).toString(),
-      text: response.text,
+      text: responseText,
       isUser: false,
       timestamp: new Date(),
       type: 'text',
-      actions: response.actions,
+      actions: responseActions,
     };
 
     setMessages(prev => [...prev, aiMessage]);
     setIsTyping(false);
+  };
+
+  const getKeywordResponse = (userText: string, aiResponses: ReturnType<typeof getAIResponses>) => {
+    if (userText.includes('bill') || userText.includes('pay')) return aiResponses.bill;
+    if (userText.includes('expire') || userText.includes('expiry') || userText.includes('renew') || (userText.includes('when') && userText.includes('plan'))) return aiResponses.expire;
+    if (userText.includes('upgrade') || userText.includes('plan')) return aiResponses.upgrade;
+    if (userText.includes('slow') || userText.includes('internet') || userText.includes('speed')) return aiResponses.slow;
+    if (userText.includes('usage') || userText.includes('data')) return aiResponses.usage;
+    return aiResponses.default;
   };
 
   const handleQuickReply = (reply: string) => {
@@ -205,11 +307,26 @@ const AISupportChat = ({ navigation }: { navigation?: any }) => {
         break;
       case 'Check Usage':
       case 'Usage Query':
-        navigation.navigate('UsageDetails');
+      case 'View Details':
+        sendMessage('Show my current data usage');
         break;
       case 'Report Issue':
       case 'Technical Issue':
+      case 'View All Tickets':
         navigation.navigate('Tickets');
+        break;
+      case 'Talk to Human':
+      case 'Contact Support':
+      case 'Contact Human Agent':
+        navigation.navigate('Tickets');
+        break;
+      case 'Set Auto-Pay':
+      case 'Set Usage Alerts':
+        navigation.navigate('AccountDetails');
+        break;
+      case 'Compare Plans':
+      case 'Compare Speeds':
+        navigation.navigate('RenewPlan', { reason: 'compare' });
         break;
       default:
         Alert.alert('Action', `Processing: ${action}`);
@@ -234,7 +351,11 @@ const AISupportChat = ({ navigation }: { navigation?: any }) => {
           🤖 AI Support Assistant
         </Text>
         <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
-          Available 24/7 • Instant responses
+          {isLLMEnabled()
+            ? 'Powered by AI • Understands natural language'
+            : isDemoMode()
+              ? 'Demo mode • Simulated AI with sample data'
+              : 'Available 24/7 • Instant responses'}
         </Text>
       </View>
 
@@ -328,10 +449,15 @@ const AISupportChat = ({ navigation }: { navigation?: any }) => {
           ]}
           value={inputText}
           onChangeText={setInputText}
-          placeholder="Type your message..."
+          placeholder={
+            isLLMEnabled() || isDemoMode()
+              ? 'Ask anything about your account...'
+              : 'Type your message...'
+          }
           placeholderTextColor={colors.textSecondary}
           multiline
           maxLength={500}
+          onSubmitEditing={() => sendMessage(inputText)}
         />
         <TouchableOpacity
           style={[

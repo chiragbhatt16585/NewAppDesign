@@ -362,12 +362,100 @@ const PaymentResponseScreen = ({ route, navigation }: any) => {
   };
   
   const parsedParams = parseRouteParams();
-  const { txnRef, source, pgInfo, amount, status } = extractedData || parsedParams;
+  const combinedParams = extractedData || parsedParams || {};
+  const { txnRef, source, pgInfo, amount, status } = combinedParams;
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
+  const [isVerifyingActivation, setIsVerifyingActivation] = useState(false);
 
+  const rawParams = route.params || {};
+  const tpGatewayId =
+    combinedParams.tpGatewayId ||
+    rawParams.tpGatewayId ||
+    rawParams.gatewayId ||
+    rawParams.tp_gw_id ||
+    (typeof pgInfo === 'string' ? pgInfo : null);
+
+  const deriveGatewayResponse = () => {
+    const possibleResponse =
+      combinedParams.gatewayResponse ||
+      rawParams.gatewayResponse ||
+      rawParams.gw_response_json ||
+      rawParams.responseData ||
+      null;
+
+    if (typeof possibleResponse === 'string') {
+      try {
+        const decoded = decodeURIComponent(possibleResponse);
+        return JSON.parse(decoded);
+      } catch (e) {
+        try {
+          return JSON.parse(possibleResponse);
+        } catch {
+          return possibleResponse;
+        }
+      }
+    }
+    return possibleResponse;
+  };
+
+  const gatewayResponsePayload = deriveGatewayResponse();
+
+  const normalizeStatusValue = (value: any) => {
+    if (!value) return '';
+    if (typeof value === 'string') {
+      const lower = value.toLowerCase();
+      if (['ok', 'success', 's', 'completed'].includes(lower)) {
+        return 'success';
+      }
+      if (['failure', 'fail', 'failed'].includes(lower)) {
+        return 'failed';
+      }
+      return lower;
+    }
+    return value;
+  };
+
+  // CRITICAL: Check if payment was cancelled by user (Razorpay cancellation)
+  // This overrides backend status which might incorrectly show 'ok' or 'new'
+  const isCancelled = gatewayResponsePayload?.cancelled === true ||
+                      gatewayResponsePayload?.error?.code === 'BAD_REQUEST_ERROR' ||
+                      gatewayResponsePayload?.error?.code === 'GATEWAY_ERROR' ||
+                      gatewayResponsePayload?.error?.code === 'PAYMENT_CANCELLED' ||
+                      (gatewayResponsePayload?.error?.description && 
+                       (gatewayResponsePayload.error.description.toLowerCase().includes('cancel') ||
+                        gatewayResponsePayload.error.description.toLowerCase().includes('cancelled'))) ||
+                      (gatewayResponsePayload?.description && 
+                       (gatewayResponsePayload.description.toLowerCase().includes('cancel') ||
+                        gatewayResponsePayload.description.toLowerCase().includes('cancelled')));
+
+  // Also check if backend status is 'new' (unprocessed transaction) - this often means cancellation
+  const backendTxnStatus = combinedParams?.data?.[0]?.txn_status || 
+                          combinedParams?.data?.txn_status || 
+                          status || '';
+  const isBackendNew = backendTxnStatus.toLowerCase() === 'new';
+  
   // Use the status from route params, default to 'success' only if not provided
-  const paymentStatus = status || 'success';
+  let paymentStatus = normalizeStatusValue(status) || 'success';
+  
+  // CRITICAL: Override status if payment was cancelled
+  if (isCancelled || (isBackendNew && isCancelled)) {
+    console.log('⚠️ Payment was cancelled by user, overriding status to failed');
+    console.log('Gateway response:', gatewayResponsePayload);
+    console.log('Backend status:', backendTxnStatus);
+    paymentStatus = 'failed';
+  } else if (isBackendNew && pgInfo === 'RAZORPAY') {
+    // For Razorpay, if status is 'new' and we don't have a payment_id, it's likely cancelled
+    const hasPaymentId = gatewayResponsePayload?.razorpay_payment_id || 
+                        gatewayResponsePayload?.payment_id;
+    if (!hasPaymentId) {
+      console.log('⚠️ Razorpay payment has no payment_id and status is new, treating as failed');
+      paymentStatus = 'failed';
+    }
+  }
+  
   console.log('Final payment status:', paymentStatus);
+  console.log('Is cancelled:', isCancelled);
+  console.log('Backend txn_status:', backendTxnStatus);
   
   // Additional validation to ensure we have valid data
   if (!txnRef && !pgInfo && !amount) {
@@ -483,7 +571,9 @@ const PaymentResponseScreen = ({ route, navigation }: any) => {
       console.log('Extracted status:', actualStatus);
       console.log('Status message:', statusMessage);
       
-      if (actualStatus === 'success' || actualStatus === 'S' || actualStatus === 'completed') {
+      const normalizedActualStatus = typeof actualStatus === 'string' ? actualStatus.toLowerCase() : actualStatus;
+
+      if (normalizedActualStatus === 'success' || normalizedActualStatus === 's' || normalizedActualStatus === 'completed' || normalizedActualStatus === 'ok') {
         Alert.alert(
           'Payment Status Updated', 
           'Great! Your payment was successful. Your plan has been activated.',
@@ -491,13 +581,13 @@ const PaymentResponseScreen = ({ route, navigation }: any) => {
             { text: 'OK', onPress: () => navigation.navigate('Home') }
           ]
         );
-      } else if (actualStatus === 'failed' || actualStatus === 'F' || actualStatus === 'fail' || actualStatus === 'cancelled') {
+      } else if (normalizedActualStatus === 'failed' || normalizedActualStatus === 'f' || normalizedActualStatus === 'fail' || normalizedActualStatus === 'cancelled') {
         Alert.alert(
           'Payment Status', 
-          `Payment status: ${actualStatus.toUpperCase()}. ${statusMessage || 'Please try again later.'}`,
+          `Payment status: ${String(actualStatus).toUpperCase()}. ${statusMessage || 'Please try again later.'}`,
           [{ text: 'OK' }]
         );
-      } else if (actualStatus === 'pending' || actualStatus === 'in_progress' || actualStatus === 'pg_pending') {
+      } else if (normalizedActualStatus === 'pending' || normalizedActualStatus === 'in_progress' || normalizedActualStatus === 'pg_pending') {
         Alert.alert(
           'Payment Status', 
           'Payment is still being processed. Please wait a few minutes and try again.',
@@ -518,7 +608,56 @@ const PaymentResponseScreen = ({ route, navigation }: any) => {
     }
   };
 
-  const isFailedPayment = paymentStatus === 'failure' || paymentStatus === 'failed' || paymentStatus === 'fail' || paymentStatus === 'pending' || paymentStatus === 'in_progress' || paymentStatus === 'pg_pending';
+  const handleManualVerification = async () => {
+    if (!txnRef) {
+      Alert.alert('Error', 'Transaction reference not found');
+      return;
+    }
+    if (!tpGatewayId) {
+      Alert.alert('Verification Unavailable', 'Gateway identifier missing for this transaction.');
+      return;
+    }
+    if (!gatewayResponsePayload) {
+      Alert.alert('Verification Unavailable', 'Gateway response payload not found.');
+      return;
+    }
+
+    setIsVerifyingActivation(true);
+    try {
+      const clientConfig = getClientConfig();
+      const realm = clientConfig.clientId;
+      const formattedPayload =
+        typeof gatewayResponsePayload === 'string'
+          ? gatewayResponsePayload
+          : JSON.stringify(gatewayResponsePayload);
+
+      await apiService.activatePaymentGatewayResponse(
+        tpGatewayId,
+        txnRef,
+        formattedPayload,
+        realm,
+      );
+
+      Alert.alert(
+        'Verification Submitted',
+        'Payment details have been sent for manual activation. Please check again shortly.',
+      );
+    } catch (error: any) {
+      console.error('Manual verification error:', error);
+      Alert.alert('Error', error.message || 'Failed to submit verification. Please try again.');
+    } finally {
+      setIsVerifyingActivation(false);
+    }
+  };
+
+  const isFailedPayment =
+    paymentStatus === 'failure' ||
+    paymentStatus === 'failed' ||
+    paymentStatus === 'fail' ||
+    paymentStatus === 'pending' ||
+    paymentStatus === 'in_progress' ||
+    paymentStatus === 'pg_pending';
+  const showManualVerificationButton = false;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -556,9 +695,8 @@ const PaymentResponseScreen = ({ route, navigation }: any) => {
           </View>
         </View>
         
-        {/* Buttons in same row */}
+        {/* Buttons */}
         <View style={styles.buttonContainer}>
-          {/* Show Check Status button for failed payments */}
           {isFailedPayment && (
             <TouchableOpacity
               style={[styles.button, styles.checkStatusButton, { backgroundColor: colors.primary || '#007AFF' }]}
@@ -570,7 +708,7 @@ const PaymentResponseScreen = ({ route, navigation }: any) => {
               </Text>
             </TouchableOpacity>
           )}
-          
+
           <TouchableOpacity
             style={[styles.button, { backgroundColor: info.color }]}
             onPress={() => navigation.navigate('Home')}

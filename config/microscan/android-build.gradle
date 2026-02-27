@@ -77,13 +77,13 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.microscan.app"
+    namespace "in.spacecom.log2space.client.microscan"
     defaultConfig {
-        applicationId "com.microscan.app"
+        applicationId "in.spacecom.log2space.client.microscan"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 33
-        versionName "33.0.0"
+        versionCode 39
+        versionName "1.0.1"
     }
     
     signingConfigs {
@@ -94,6 +94,7 @@ android {
             keyPassword 'android'
         }
         release {
+            // Microscan Play Store upload key
             storeFile file('Log2SpaceEndUserMicroscan.jks')
             storePassword 'log2space'
             keyAlias 'log2space'

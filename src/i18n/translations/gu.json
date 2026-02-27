@@ -39,15 +39,24 @@
     "login": "લૉગિન",
     "forgotPassword": "પાસવર્ડ ભૂલી ગયા?",
     "dontHaveAccount": "એકાઉન્ટ નથી?",
-    "signUp": "સાઇન અપ કરો"
+    "signUp": "સાઇન અપ કરો",
+    "sendOtp": "OTP મોકલો",
+    "resendOtp": "OTP ફરીથી મોકલો",
+    "loginWithOtp": "OTP સાથે લૉગિન કરો",
+    "loginWithPassword": "પાસવર્ડ સાથે લૉગિન કરો",
+    "usernameRequired": "કૃપા કરીને તમારું વપરાશકર્તા નામ દાખલ કરો",
+    "passwordRequired": "કૃપા કરીને તમારો પાસવર્ડ દાખલ કરો",
+    "otpRequired": "કૃપા કરીને OTP દાખલ કરો",
+    "enterOtp": "OTP દાખલ કરો"
   },
   "navigation": {
-    "home": "હોમ",
-    "account": "એકાઉન્ટ",
-    "ledger": "લેજર",
-    "tickets": "ટિકિટ",
-    "sessions": "સેશન",
-    "more": "વધુ"
+   "home": "હોમ",
+   "account": "એકાઉન્ટ",
+   "ledger": "લેજર",
+   "billingHistory": "બિલિંગ ઇતિહાસ",
+   "tickets": "ટિકિટ",
+   "sessions": "સેશન",
+   "more": "વધુ"
   },
   "account": {
     "title": "એકાઉન્ટ વિગતો",
@@ -265,8 +274,8 @@
     "pinChangeSubtitle": "તમારી સુરક્ષા સેટિંગ્સ અપડેટ કરવા માટે નવો PIN દાખલ કરો"
   },
   "renewPlan": {
-    "title": "પ્લાન નવીકરણ",
-    "subtitle": "તમારો પ્લાન પસંદ કરો અને તમારી સદસ્યતા નવીકરણ કરો",
+    "title": "Renew Plan",
+    "subtitle": "આજે તમારી વર્તમાન યોજના નવીકરણ કરો.",
     "availablePlans": "ઉપલબ્ધ પ્લાન",
     "currentPlan": "વર્તમાન પ્લાન",
     "upgradeYourPlan": "તમારી પ્લાન અપગ્રેડ કરો",
@@ -301,6 +310,10 @@
     "paymentSuccess": "ચુકવણી સફળ",
     "paymentSuccessMessage": "તમારો પ્લાન સફળતાપૂર્વક નવીકરણ થયો છે!"
   },
+  "upgradePlan": {
+    "title": "પ્લાન અપગ્રેડ",
+    "subtitle": "આજે જ તમારી હાલની પ્લાન અપગ્રેડ કરો."
+  },
   "planConfirmation": {
     "title": "પ્લાન પુષ્ટિ",
     "subtitle": "આગળ વધતા પહેલા કૃપા કરી તમારા પસંદ કરેલા પ્લાન વિગતોની સમીક્ષા કરો",
@@ -321,7 +334,7 @@
     "proceedToPay": "ચુકવણી માટે આગળ વધો",
     "paymentSuccess": "ચુકવણી સફળ",
     "paymentSuccessMessage": "તમારો પ્લાન સફળતાપૂર્વક નવીકરણ થયો છે! તમને ટૂંક સમયમાં પુષ્ટિ ઈમેલ મળશે.",
-    "advanceRenewalNote": "નોંધ: તમારો વર્તમાન પ્લાન સક્રિય છે, તેથી આ રીન્યુઅલ એડવાન્સ રીન્યુઅલ પાઇપલાઇનમાં ઉમેરવામાં આવશે."
+    "advanceRenewalNote": "તમારી વર્તમાન યોજના પૂર્ણ થયા પછી નવી યોજના આપમેળે સક્રિય થઈ જશે."
   },
   "payBill": {
     "title": "બિલ ચૂકવો",
@@ -370,8 +383,8 @@
     "checkStatus": "સ્થિતિ તપાસો"
   },
   "contactUs": {
-    "title": "સંપર્ક કરો",
-    "subtitle": "અમારી સહાય ટીમ સાથે સંપર્ક કરો",
+  "title": "સપોર્ટ",
+  "subtitle": "અમારો સંપર્ક કરો",
     "tagline": "તમારો વિશ્વસનીય ઇન્ટરનેટ સેવા પ્રદાતા",
     "headOffice": "મુખ્ય કાર્યાલય",
     "branchOffice": "શાખા કાર્યાલય",
@@ -405,14 +418,14 @@
     "contactUs": "સંપર્ક માહિતી ખોલી રહ્યા છીએ..."
   },
   "usageDetails": {
-    "title": "📊 ઉપયોગ વિગતો",
+    "title": "ઉપયોગ વિગતો",
     "subtitle": "તમારા ડેટા ઉપયોગની દેખરેખ રાખો",
-    "selectDateRange": "📅 તારીખ શ્રેણી પસંદ કરો",
+    "selectDateRange": "તારીખ શ્રેણી પસંદ કરો",
     "selectDateSubtitle": "ઉપયોગ આંકડા મેળવવા માટે સમયગાળો પસંદ કરો",
     "from": "થી",
     "to": "સુધી",
-    "fetchUsage": "📊 ઉપયોગ મેળવો",
-    "usageStatistics": "📈 ઉપયોગ આંકડા",
+    "fetchUsage": "ઉપયોગ મેળવો",
+    "usageStatistics": "ઉપયોગ આંકડા",
     "download": "ડાઉનલોડ",
     "upload": "અપલોડ",
     "total": "કુલ",

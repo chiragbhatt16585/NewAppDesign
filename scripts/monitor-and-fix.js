@@ -19,13 +19,13 @@ function fixGeneratedFile() {
       // Replace the wrong package reference with the correct one
       content = content.replace(
         /com\.h8\.dnasubscriber\.BuildConfig/g,
-        'com.microscan.app.BuildConfig'
+        'in.spacecom.log2space.client.microscan.BuildConfig'
       );
       
       // Also comment out the new architecture check
       content = content.replace(
         /if \(com\.microscan\.app\.BuildConfig\.IS_NEW_ARCHITECTURE_ENABLED\) \{\s+DefaultNewArchitectureEntryPoint\.load\(\);\s+\}/g,
-        '// if (com.microscan.app.BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {\n    //   DefaultNewArchitectureEntryPoint.load();\n    // }'
+        '// if (in.spacecom.log2space.client.microscan.BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {\n    //   DefaultNewArchitectureEntryPoint.load();\n    // }'
       );
       
       fs.writeFileSync(generatedFilePath, content);

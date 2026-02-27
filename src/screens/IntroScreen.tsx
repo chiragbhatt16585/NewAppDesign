@@ -10,6 +10,7 @@ import {
   Easing,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import LogoImage from '../components/LogoImage';
 
 const { width, height } = Dimensions.get('window');
 
@@ -142,10 +143,9 @@ const IntroScreen = ({ navigation }: any) => {
             },
           ]}
         >
-          <Image
-            source={require('../assets/isp_logo.png')}
+          <LogoImage
+            type="login"
             style={styles.logo}
-            resizeMode="contain"
           />
         </Animated.View>
       </View>

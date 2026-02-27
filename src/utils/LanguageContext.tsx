@@ -13,7 +13,18 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 export const useLanguage = () => {
   const context = useContext(LanguageContext);
   if (!context) {
-    throw new Error('useLanguage must be used within a LanguageProvider');
+    // In production, return a default language instead of throwing
+    if (__DEV__) {
+      throw new Error('useLanguage must be used within a LanguageProvider');
+    }
+    // Fallback language for production
+    return {
+      currentLanguage: 'en',
+      changeLanguage: () => {},
+      availableLanguages: [
+        {code: 'en', name: 'English', nativeName: 'English'},
+      ],
+    };
   }
   return context;
 };

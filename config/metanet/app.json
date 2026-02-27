@@ -1,0 +1,36 @@
+{
+  "name": "MetanetApp",
+  "expo": {
+    "name": "Metanet",
+    "slug": "metanet",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./app-icons/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./app-icons/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.l2sClient.metanet",
+      "buildNumber": "1"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./app-icons/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "package": "com.spacecom.log2space.metanet",
+      "versionCode": 1
+    },
+    "web": {
+      "favicon": "./app-icons/favicon.png"
+    }
+  }
+}
+

@@ -63,10 +63,10 @@ const troubleshootAPKInstall = () => {
     console.log('');
     console.log('2️⃣ Checking existing installation...');
     try {
-      const packageInfo = execSync('adb shell pm list packages com.microscan.app', { encoding: 'utf8' });
-      if (packageInfo.includes('com.microscan.app')) {
+      const packageInfo = execSync('adb shell pm list packages in.spacecom.log2space.client.microscan', { encoding: 'utf8' });
+      if (packageInfo.includes('in.spacecom.log2space.client.microscan')) {
         console.log('   ✅ App is already installed');
-        console.log('   💡 Try uninstalling first: adb uninstall com.microscan.app');
+        console.log('   💡 Try uninstalling first: adb uninstall in.spacecom.log2space.client.microscan');
       } else {
         console.log('   ℹ️ App is not installed');
       }
@@ -84,7 +84,7 @@ const troubleshootAPKInstall = () => {
       
       console.log('');
       console.log('🚀 Launching app...');
-      execSync('adb shell am start -n com.microscan.app/.MainActivity', { stdio: 'inherit' });
+      execSync('adb shell am start -n in.spacecom.log2space.client.microscan/.MainActivity', { stdio: 'inherit' });
       console.log('   ✅ App launched successfully!');
       
     } catch (error) {

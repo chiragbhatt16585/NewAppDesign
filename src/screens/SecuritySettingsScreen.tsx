@@ -8,12 +8,15 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Feather from 'react-native-vector-icons/Feather';
 import { pinStorage } from '../services/pinStorage';
 import { BiometricAuthService } from '../services/biometricAuth';
 import { useTheme } from '../utils/ThemeContext';
 import { getThemeColors } from '../utils/themeStyles';
 import CommonHeader from '../components/CommonHeader';
 import { useTranslation } from 'react-i18next';
+import LeftBorderLine from '../components/LeftBorderLine';
+import { getClientConfig } from '../config/client-config';
 
 export default function SecuritySettingsScreen({ navigation }: any) {
   const [pinStatus, setPinStatus] = useState<string>('Not Set');
@@ -24,6 +27,8 @@ export default function SecuritySettingsScreen({ navigation }: any) {
   const colors = getThemeColors(isDark);
   const biometricAuthService = BiometricAuthService.getInstance();
   const { t } = useTranslation();
+  const clientConfig = getClientConfig();
+  const isBiometricEnabled = clientConfig.features?.biometricAuth === true;
 
   useEffect(() => {
     loadSecurityStatus();
@@ -212,13 +217,13 @@ export default function SecuritySettingsScreen({ navigation }: any) {
 
   const getStatusIcon = (status: string) => {
     if (status === t('security.status.set') || status === t('security.status.enabled')) {
-      return '✅';
+      return 'check-circle';
     } else if (status === t('security.status.available')) {
-      return '⚠️';
+      return 'alert-circle';
     } else if (status === t('security.status.notSet') || status === t('security.status.notAvailable')) {
-      return '❌';
+      return 'x-circle';
     }
-    return '❓';
+    return 'help-circle';
   };
 
   if (isLoading) {
@@ -234,6 +239,7 @@ export default function SecuritySettingsScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <LeftBorderLine />
       {/* Header */}
       <CommonHeader navigation={navigation} />
 
@@ -259,9 +265,7 @@ export default function SecuritySettingsScreen({ navigation }: any) {
             activeOpacity={0.8}
           >
             <View style={styles.optionHeader}>
-              <View style={[styles.optionIcon, { backgroundColor: colors.primaryLight }]}>
-                <Text style={styles.iconText}>🔢</Text>
-              </View>
+              <Feather name="hash" size={24} color={colors.primary} style={styles.optionIcon} />
               <View style={styles.optionContent}>
                 <Text style={[styles.optionTitle, { color: colors.text }]}>{t('security.pinAuthentication')}</Text>
                 <Text style={[styles.optionSubtitle, { color: colors.textSecondary }]}>
@@ -269,7 +273,7 @@ export default function SecuritySettingsScreen({ navigation }: any) {
                 </Text>
               </View>
               <View style={styles.statusContainer}>
-                <Text style={styles.statusIcon}>{getStatusIcon(pinStatus)}</Text>
+                <Feather name={getStatusIcon(pinStatus)} size={20} color={getStatusColor(pinStatus)} style={styles.statusIcon} />
                 <Text style={[styles.statusText, { color: getStatusColor(pinStatus) }]}>
                   {pinStatus}
                 </Text>
@@ -277,36 +281,39 @@ export default function SecuritySettingsScreen({ navigation }: any) {
             </View>
           </TouchableOpacity>
 
-          {/* Biometric Settings */}
-          <TouchableOpacity
-            style={[styles.optionCard, { backgroundColor: colors.card, shadowColor: colors.shadow }]}
-            onPress={handleBiometricSettings}
-            activeOpacity={0.8}
-          >
-            <View style={styles.optionHeader}>
-              <View style={[styles.optionIcon, { backgroundColor: colors.primaryLight }]}>
-                <Text style={styles.iconText}>🔐</Text>
+          {/* Biometric Settings - Only show if enabled for client */}
+          {isBiometricEnabled && (
+            <TouchableOpacity
+              style={[styles.optionCard, { backgroundColor: colors.card, shadowColor: colors.shadow }]}
+              onPress={handleBiometricSettings}
+              activeOpacity={0.8}
+            >
+              <View style={styles.optionHeader}>
+                <Feather name="eye" size={24} color={colors.primary} style={styles.optionIcon} />
+                <View style={styles.optionContent}>
+                  <Text style={[styles.optionTitle, { color: colors.text }]}>
+                    {biometricType || t('security.biometricAuthentication')}
+                  </Text>
+                  <Text style={[styles.optionSubtitle, { color: colors.textSecondary }]}>
+                    {t('security.biometricSubtitle')}
+                  </Text>
+                </View>
+                <View style={styles.statusContainer}>
+                  <Feather name={getStatusIcon(biometricStatus)} size={20} color={getStatusColor(biometricStatus)} style={styles.statusIcon} />
+                  <Text style={[styles.statusText, { color: getStatusColor(biometricStatus) }]}>
+                    {biometricStatus}
+                  </Text>
+                </View>
               </View>
-              <View style={styles.optionContent}>
-                <Text style={[styles.optionTitle, { color: colors.text }]}>
-                  {biometricType || t('security.biometricAuthentication')}
-                </Text>
-                <Text style={[styles.optionSubtitle, { color: colors.textSecondary }]}>
-                  {t('security.biometricSubtitle')}
-                </Text>
-              </View>
-              <View style={styles.statusContainer}>
-                <Text style={styles.statusIcon}>{getStatusIcon(biometricStatus)}</Text>
-                <Text style={[styles.statusText, { color: getStatusColor(biometricStatus) }]}>
-                  {biometricStatus}
-                </Text>
-              </View>
-            </View>
-          </TouchableOpacity>
+            </TouchableOpacity>
+          )}
 
           {/* Security Info */}
           <View style={[styles.infoCard, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
-            <Text style={[styles.infoTitle, { color: colors.text }]}>🔒 {t('security.securityInfo')}</Text>
+            <View style={styles.infoTitleRow}>
+              <Feather name="lock" size={16} color={colors.primary} style={styles.infoTitleIcon} />
+              <Text style={[styles.infoTitle, { color: colors.text }]}>{t('security.securityInfo')}</Text>
+            </View>
             <Text style={[styles.infoText, { color: colors.textSecondary }]}>
               {t('security.securityInfoText')}
             </Text>
@@ -320,6 +327,8 @@ export default function SecuritySettingsScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    position: 'relative',
+    overflow: 'visible',
   },
   headingContainer: {
     paddingHorizontal: 20,
@@ -375,15 +384,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   optionIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
     marginRight: 16,
-  },
-  iconText: {
-    fontSize: 24,
   },
   optionContent: {
     flex: 1,
@@ -401,7 +402,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statusIcon: {
-    fontSize: 20,
     marginBottom: 4,
   },
   statusText: {
@@ -420,10 +420,17 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
+  infoTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  infoTitleIcon: {
+    marginRight: 8,
+  },
   infoTitle: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 12,
   },
   infoText: {
     fontSize: 14,

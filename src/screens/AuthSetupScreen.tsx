@@ -13,6 +13,9 @@ import { getThemeColors } from '../utils/themeStyles';
 import biometricAuthService from '../services/biometricAuth';
 import { pinStorage } from '../services/pinStorage';
 import { useTranslation } from 'react-i18next';
+import Feather from 'react-native-vector-icons/Feather';
+import LeftBorderLine from '../components/LeftBorderLine';
+import { getClientConfig } from '../config/client-config';
 
 const { width } = Dimensions.get('window');
 
@@ -30,13 +33,24 @@ const AuthSetupScreen = ({ navigation }: any) => {
 
   const checkBiometricAvailability = async () => {
     try {
+      // Check client config first
+      const clientConfig = getClientConfig();
+      const isBiometricEnabledForClient = clientConfig.features?.biometricAuth === true;
+      
+      // Only check device availability if enabled for client
+      if (!isBiometricEnabledForClient) {
+        setBiometricAvailable(false);
+        setBiometricType('none');
+        return;
+      }
+      
       const isAvailable = await biometricAuthService.isBiometricAvailable();
       const type = await biometricAuthService.getBiometricType();
       
       setBiometricAvailable(isAvailable);
       setBiometricType(type);
       
-      console.log('Biometric availability check:', { isAvailable, type });
+      console.log('Biometric availability check:', { isAvailable, type, isBiometricEnabledForClient });
     } catch (error) {
       console.error('Error checking biometric availability:', error);
       setBiometricAvailable(false);
@@ -129,11 +143,11 @@ const AuthSetupScreen = ({ navigation }: any) => {
   const getBiometricIcon = () => {
     switch (biometricType) {
       case 'FaceID':
-        return '👁️';
+        return 'eye';
       case 'TouchID':
-        return '👆';
+        return 'fingerprint';
       default:
-        return '🔐';
+        return 'lock';
     }
   };
 
@@ -163,9 +177,10 @@ const AuthSetupScreen = ({ navigation }: any) => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <LeftBorderLine />
       <View style={styles.content}>
         <View style={styles.iconContainer}>
-          <Text style={styles.setupIcon}>🔒</Text>
+          <Feather name="lock" size={80} color={colors.primary} />
         </View>
         
         <Text style={[styles.title, { color: colors.text }]}>
@@ -183,7 +198,7 @@ const AuthSetupScreen = ({ navigation }: any) => {
               onPress={handleSetupBiometric}
               activeOpacity={0.8}
             >
-              <Text style={styles.optionIcon}>{getBiometricIcon()}</Text>
+              <Feather name={getBiometricIcon()} size={32} color="#ffffff" style={styles.optionIcon} />
               <Text style={[styles.optionTitle, { color: '#ffffff' }]}>
                 Set up {getBiometricText()}
               </Text>
@@ -201,7 +216,7 @@ const AuthSetupScreen = ({ navigation }: any) => {
             onPress={handleSetupPin}
             activeOpacity={0.8}
           >
-            <Text style={styles.optionIcon}>🔢</Text>
+            <Feather name="hash" size={32} color="#ffffff" style={styles.optionIcon} />
             <Text style={[styles.optionTitle, { color: '#ffffff' }]}>
               Set up PIN
             </Text>
@@ -229,6 +244,8 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
+    overflow: 'visible',
   },
   content: {
     width: width * 0.85,
@@ -236,9 +253,6 @@ const styles = StyleSheet.create({
   },
   iconContainer: {
     marginBottom: 32,
-  },
-  setupIcon: {
-    fontSize: 80,
   },
   title: {
     fontSize: 28,
@@ -272,7 +286,6 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   optionIcon: {
-    fontSize: 32,
     marginBottom: 8,
   },
   optionTitle: {

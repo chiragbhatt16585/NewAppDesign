@@ -39,15 +39,24 @@
     "login": "लॉगिन",
     "forgotPassword": "पासवर्ड भूल गए?",
     "dontHaveAccount": "खाता नहीं है?",
-    "signUp": "साइन अप करें"
+    "signUp": "साइन अप करें",
+    "sendOtp": "OTP भेजें",
+    "resendOtp": "OTP पुनः भेजें",
+    "loginWithOtp": "OTP के साथ लॉगिन करें",
+    "loginWithPassword": "पासवर्ड के साथ लॉगिन करें",
+    "usernameRequired": "कृपया अपना उपयोगकर्ता नाम दर्ज करें",
+    "passwordRequired": "कृपया अपना पासवर्ड दर्ज करें",
+    "otpRequired": "कृपया OTP दर्ज करें",
+    "enterOtp": "OTP दर्ज करें"
   },
   "navigation": {
-    "home": "होम",
-    "account": "खाता",
-    "ledger": "लेजर",
-    "tickets": "टिकट",
-    "sessions": "सत्र",
-    "more": "अधिक"
+   "home": "होम",
+   "account": "खाता",
+   "ledger": "लेजर",
+   "billingHistory": "बिलिंग इतिहास",
+   "tickets": "टिकट",
+   "sessions": "सत्र",
+   "more": "अधिक"
   },
   "account": {
     "title": "खाता विवरण",
@@ -265,8 +274,8 @@
     "pinChangeSubtitle": "अपनी सुरक्षा सेटिंग्स अपडेट करने के लिए नया PIN दर्ज करें"
   },
   "renewPlan": {
-    "title": "योजना नवीनीकरण",
-    "subtitle": "अपनी योजना चुनें और अपनी सदस्यता नवीनीकरण करें",
+    "title": "Renew Plan",
+    "subtitle": "आज अपनी मौजूदा योजना नवीनीकरण करें।",
     "availablePlans": "उपलब्ध योजनाएं",
     "currentPlan": "वर्तमान योजना",
     "upgradeYourPlan": "अपनी योजना अपग्रेड करें",
@@ -301,6 +310,10 @@
     "paymentSuccess": "भुगतान सफल",
     "paymentSuccessMessage": "आपकी योजना सफलतापूर्वक नवीनीकरण हो गई है!"
   },
+  "upgradePlan": {
+    "title": "योजना अपग्रेड",
+    "subtitle": "आज ही अपनी मौजूदा योजना अपग्रेड करें।"
+  },
   "planConfirmation": {
     "title": "योजना पुष्टि",
     "subtitle": "आगे बढ़ने से पहले कृपया अपनी चयनित योजना विवरण की समीक्षा करें",
@@ -321,7 +334,7 @@
     "proceedToPay": "भुगतान के लिए आगे बढ़ें",
     "paymentSuccess": "भुगतान सफल",
     "paymentSuccessMessage": "आपकी योजना सफलतापूर्वक नवीनीकरण हो गई है! आपको शीघ्र ही एक पुष्टि ईमेल प्राप्त होगा।",
-    "advanceRenewalNote": "नोट: आपका वर्तमान प्लान सक्रिय है, इसलिए यह नवीनीकरण अग्रिम नवीनीकरण पाइपलाइन में जोड़ा जाएगा।"
+    "advanceRenewalNote": "आपकी वर्तमान योजना की समाप्ति के बाद नई योजना स्वचालित रूप से सक्रिय हो जाएगी।"
   },
   "payBill": {
     "title": "बिल भुगतान",
@@ -370,8 +383,8 @@
     "checkStatus": "स्थिति जांचें"
   },
   "contactUs": {
-    "title": "संपर्क करें",
-    "subtitle": "हमारी सहायता टीम से संपर्क करें",
+  "title": "सपोर्ट",
+  "subtitle": "हमसे संपर्क करें",
     "tagline": "आपका विश्वसनीय इंटरनेट सेवा प्रदाता",
     "headOffice": "मुख्य कार्यालय",
     "branchOffice": "शाखा कार्यालय",
@@ -405,14 +418,14 @@
     "contactUs": "संपर्क जानकारी खोल रहा है..."
   },
   "usageDetails": {
-    "title": "📊 उपयोग विवरण",
+    "title": "उपयोग विवरण",
     "subtitle": "अपने डेटा उपयोग की निगरानी करें",
-    "selectDateRange": "📅 दिनांक सीमा चुनें",
+    "selectDateRange": "दिनांक सीमा चुनें",
     "selectDateSubtitle": "उपयोग आँकड़े प्राप्त करने के लिए अवधि चुनें",
     "from": "से",
     "to": "तक",
-    "fetchUsage": "📊 उपयोग प्राप्त करें",
-    "usageStatistics": "📈 उपयोग सांख्यिकी",
+    "fetchUsage": "उपयोग प्राप्त करें",
+    "usageStatistics": "उपयोग सांख्यिकी",
     "download": "डाउनलोड",
     "upload": "अपलोड",
     "total": "कुल",

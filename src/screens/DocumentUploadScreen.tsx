@@ -1024,27 +1024,36 @@ const DocumentUploadScreen = ({ navigation, route }: DocumentUploadScreenProps) 
             
             <View style={styles.uploadButtonsContainer}>
               <TouchableOpacity 
-                style={[styles.uploadButton, { backgroundColor: colors.primary }]}
+                style={styles.uploadButton}
                 onPress={openCamera}
+                activeOpacity={0.7}
               >
-                <Feather name="camera" size={24} color="white" style={styles.uploadIcon} />
-                <Text style={styles.uploadButtonText}>{t('documentUpload.camera')}</Text>
+                <Feather name="camera" size={32} color={colors.primary} />
+                <Text style={[styles.uploadButtonLabel, { color: colors.textSecondary }]}>
+                  {t('documentUpload.camera')}
+                </Text>
               </TouchableOpacity>
               
               <TouchableOpacity 
-                style={[styles.uploadButton, { backgroundColor: colors.primary }]}
+                style={styles.uploadButton}
                 onPress={openGallery}
+                activeOpacity={0.7}
               >
-                <Feather name="image" size={24} color="white" style={styles.uploadIcon} />
-                <Text style={styles.uploadButtonText}>{t('documentUpload.gallery')}</Text>
+                <Feather name="image" size={32} color={colors.primary} />
+                <Text style={[styles.uploadButtonLabel, { color: colors.textSecondary }]}>
+                  {t('documentUpload.gallery')}
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity 
-                style={[styles.uploadButton, { backgroundColor: colors.primary }]}
+                style={styles.uploadButton}
                 onPress={openDocumentPicker}
+                activeOpacity={0.7}
               >
-                <Feather name="file-text" size={24} color="white" style={styles.uploadIcon} />
-                <Text style={styles.uploadButtonText}>{t('documentUpload.pdf')}</Text>
+                <Feather name="file-text" size={32} color={colors.primary} />
+                <Text style={[styles.uploadButtonLabel, { color: colors.textSecondary }]}>
+                  {t('documentUpload.pdf')}
+                </Text>
               </TouchableOpacity>
             </View>
 
@@ -1399,26 +1408,37 @@ const styles = StyleSheet.create({
   },
   uploadButtonsContainer: {
     flexDirection: 'row',
-    gap: 8,
-    marginTop: 8,
-    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    marginTop: 16,
+    gap: 32,
   },
   uploadButton: {
-    flex: 1,
-    minWidth: '30%',
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 12,
+  },
+  uploadButtonLabel: {
+    fontSize: 12,
+    marginTop: 8,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  uploadIconContainer: {
+    width: 56,
+    height: 56,
     borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
   },
   uploadIcon: {
     marginRight: 8,
   },
   uploadButtonText: {
-    color: 'white',
     fontWeight: '600',
     fontSize: 16,
+    flex: 1,
   },
   browseButton: {
     flexDirection: 'row',

@@ -6,93 +6,70 @@ import { apiService } from './api'
 import messaging from '@react-native-firebase/messaging'
 import firebase from '@react-native-firebase/app'
 import { initializeFirebase, waitForFirebaseAppReady } from './firebaseInit'
+import { getClientConfig } from '../config/client-config'
 
 let isInitialized = false
+let isInitializing = false
 let lastRegisteredToken: string | null = null
 let pendingToken: string | null = null
 
 export async function initializePushNotifications(realm?: string): Promise<void> {
   if (isInitialized) return
-  isInitialized = true
+  if (isInitializing) {
+    console.log('[Push] initializePushNotifications already running, skipping duplicate call')
+    return
+  }
+  isInitializing = true
   // eslint-disable-next-line no-console
   console.log('[Push] initializePushNotifications start', { realm })
   try { /* require('react-native').Alert.alert('PushDebug', `Init start realm: ${realm || 'default'}`) */ } catch {}
   try {
-    if (Platform.OS === 'ios') {
-      const isEmu = await DeviceInfo.isEmulator()
-      if (isEmu) {
-        // eslint-disable-next-line no-console
-        console.warn('[Push] iOS Simulator detected: APNs tokens are not available')
-        try { /* require('react-native').Alert.alert('PushDebug', 'iOS Simulator: APNs token not available') */ } catch {}
+    try {
+      if (Platform.OS === 'ios') {
+        const isEmu = await DeviceInfo.isEmulator()
+        if (isEmu) {
+          // eslint-disable-next-line no-console
+          console.warn('[Push] iOS Simulator detected: APNs tokens are not available')
+          try { /* require('react-native').Alert.alert('PushDebug', 'iOS Simulator: APNs token not available') */ } catch {}
+        }
+        // Ensure device is registered with APNs so FCM can provide a token
+        try {
+          await messaging().registerDeviceForRemoteMessages()
+        } catch {}
       }
-      // Ensure device is registered with APNs so FCM can provide a token
-      try {
-        await messaging().registerDeviceForRemoteMessages()
-      } catch {}
-    }
-  } catch {}
-  const hasPerm = await requestNotificationPermissions()
-  // eslint-disable-next-line no-console
-  console.log('[Push] notification permission result', { granted: hasPerm })
-  try { /* require('react-native').Alert.alert('PushDebug', `Permission: ${hasPerm}`) */ } catch {}
+    } catch {}
+    const hasPerm = await requestNotificationPermissions()
+    // eslint-disable-next-line no-console
+    console.log('[Push] notification permission result', { granted: hasPerm })
+    try { /* require('react-native').Alert.alert('PushDebug', `Permission: ${hasPerm}`) */ } catch {}
 
-  // Ensure Firebase app is initialized and ready before using messaging
-  try {
-    if (!firebase.apps || firebase.apps.length === 0) {
-      console.warn('[Push] Firebase default app not found, attempting initialization...')
-      initializeFirebase()
-    }
-    const ready = await waitForFirebaseAppReady(7000, 200)
-    if (!ready) {
-      console.warn('[Push] Firebase app not ready yet; deferring FCM setup')
+    // Ensure Firebase app is initialized and ready before using messaging
+    try {
+      if (!firebase.apps || firebase.apps.length === 0) {
+        console.warn('[Push] Firebase default app not found, attempting initialization...')
+        initializeFirebase()
+      }
+      const ready = await waitForFirebaseAppReady(7000, 200)
+      if (!ready) {
+        console.warn('[Push] Firebase app not ready yet; deferring FCM setup')
+        return
+      }
+    } catch (e) {
+      console.warn('[Push] Firebase initialization check failed; deferring FCM setup', e)
       return
     }
-  } catch (e) {
-    console.warn('[Push] Firebase initialization check failed; deferring FCM setup', e)
-    return
-  }
 
-  // Firebase Messaging: request permission (iOS), get FCM token, and register
-  try {
-    const authStatus = await messaging().requestPermission()
-    // eslint-disable-next-line no-console
-    console.log('[Push][FCM] permission status', authStatus)
-    const fcmToken = await messaging().getToken()
-    // eslint-disable-next-line no-console
-    console.log('[Push][FCM] getToken', fcmToken ? fcmToken.substring(0, 12) + '...' : 'none')
-    try { /* require('react-native').Alert.alert('PushDebug', `FCM token: ${fcmToken ? fcmToken.substring(0,10)+'...' : 'none'}`) */ } catch {}
-    if (fcmToken) {
-      pendingToken = fcmToken
-      const device_info = {
-        deviceId: DeviceInfo.getDeviceId(),
-        brand: DeviceInfo.getBrand(),
-        model: DeviceInfo.getModel(),
-        systemName: DeviceInfo.getSystemName(),
-        systemVersion: DeviceInfo.getSystemVersion(),
-        appVersion: DeviceInfo.getVersion(),
-        buildNumber: DeviceInfo.getBuildNumber(),
-        uniqueId: DeviceInfo.getUniqueId(),
-      }
-      const hostname = await DeviceInfo.getDeviceName()
-      let mac = ''
-      // iOS does not expose MAC addresses; keep blank and rely on uniqueId/deviceId
-      if (Platform.OS === 'android') {
-        try { mac = await (DeviceInfo as any).getMacAddress?.() } catch {}
-      }
+    // Firebase Messaging: request permission (iOS), get FCM token, and register
+    try {
+      const authStatus = await messaging().requestPermission()
       // eslint-disable-next-line no-console
-      console.log('[Push][FCM] registering device', { hostname, macPreview: mac ? mac : 'blank', realm })
-      await apiService.addDeviceDetails(fcmToken, mac || '', hostname || 'unknown-device', device_info, realm || 'default')
-      pendingToken = null
+      console.log('[Push][FCM] permission status', authStatus)
+      const fcmToken = await messaging().getToken()
       // eslint-disable-next-line no-console
-      console.log('[Push][FCM] device registration success')
-    }
-
-    // Listen for token refresh
-    messaging().onTokenRefresh(async (newToken) => {
-      try {
-        // eslint-disable-next-line no-console
-        console.log('[Push][FCM] onTokenRefresh', newToken ? newToken.substring(0, 12) + '...' : 'none')
-        pendingToken = newToken
+      console.log('[Push][FCM] getToken', fcmToken ? fcmToken.substring(0, 12) + '...' : 'none')
+      try { /* require('react-native').Alert.alert('PushDebug', `FCM token: ${fcmToken ? fcmToken.substring(0,10)+'...' : 'none'}`) */ } catch {}
+      if (fcmToken) {
+        pendingToken = fcmToken
         const device_info = {
           deviceId: DeviceInfo.getDeviceId(),
           brand: DeviceInfo.getBrand(),
@@ -105,117 +82,154 @@ export async function initializePushNotifications(realm?: string): Promise<void>
         }
         const hostname = await DeviceInfo.getDeviceName()
         let mac = ''
+        // iOS does not expose MAC addresses; keep blank and rely on uniqueId/deviceId
         if (Platform.OS === 'android') {
           try { mac = await (DeviceInfo as any).getMacAddress?.() } catch {}
         }
-        await apiService.addDeviceDetails(newToken, mac || '', hostname || 'unknown-device', device_info, realm || 'default')
+        // eslint-disable-next-line no-console
+        console.log('[Push][FCM] registering device', { hostname, macPreview: mac ? mac : 'blank', realm })
+        await apiService.addDeviceDetails(fcmToken, mac || '', hostname || 'unknown-device', device_info, realm || 'default')
         pendingToken = null
-      } catch (e) {
         // eslint-disable-next-line no-console
-        console.warn('[Push][FCM] token refresh registration failed', e)
+        console.log('[Push][FCM] device registration success')
       }
-    })
-  } catch (e) {
-    // eslint-disable-next-line no-console
-    console.warn('[Push][FCM] initialization failed', e)
-  }
 
-  // Android: ensure a default channel exists
-  if (Platform.OS === 'android') {
-    // eslint-disable-next-line no-console
-    console.log('[Push] Creating Android notification channel')
-    try { /* require('react-native').Alert.alert('PushDebug', 'Creating Android channel') */ } catch {}
-    PushNotification.createChannel(
-      {
-        channelId: 'default-channel',
-        channelName: 'Default Notifications',
-        channelDescription: 'General notifications',
-        importance: 4,
-        vibrate: true,
-      },
-      () => {}
-    )
-  }
-
-  PushNotification.configure({
-    // Called when Token is generated (iOS and Android)
-    onRegister: async function ({ token }: { token: string }) {
-      // eslint-disable-next-line no-console
-      console.log('[Push] onRegister token received')
-      try { /* require('react-native').Alert.alert('PushDebug', 'onRegister received token') */ } catch {}
-      try {
-        if (!token || token === lastRegisteredToken) return
-        lastRegisteredToken = token
-        pendingToken = token
-
-        const device_info = {
-          deviceId: DeviceInfo.getDeviceId(),
-          brand: DeviceInfo.getBrand(),
-          model: DeviceInfo.getModel(),
-          systemName: DeviceInfo.getSystemName(),
-          systemVersion: DeviceInfo.getSystemVersion(),
-          appVersion: DeviceInfo.getVersion(),
-          buildNumber: DeviceInfo.getBuildNumber(),
-          uniqueId: DeviceInfo.getUniqueId(),
-        }
-        const hostname = await DeviceInfo.getDeviceName()
-        let mac = ''
-        if (Platform.OS === 'android') {
-          try { mac = await (DeviceInfo as any).getMacAddress?.() } catch {}
-        }
-
-        // mac address is not generally available; send empty string
+      // Listen for token refresh
+      messaging().onTokenRefresh(async (newToken) => {
         try {
           // eslint-disable-next-line no-console
-          console.log('[Push] Registering device with backend', {
-            tokenPreview: token?.slice(0, 10) + '...',
-            hostname,
-            realm,
-          })
-          await apiService.addDeviceDetails(token, mac || '', hostname || 'unknown-device', device_info, realm || 'default')
-          // eslint-disable-next-line no-console
-          console.log('[Push] Device registration success')
-          try { /* require('react-native').Alert.alert('PushDebug', 'Device registration success') */ } catch {}
+          console.log('[Push][FCM] onTokenRefresh', newToken ? newToken.substring(0, 12) + '...' : 'none')
+          pendingToken = newToken
+          const device_info = {
+            deviceId: DeviceInfo.getDeviceId(),
+            brand: DeviceInfo.getBrand(),
+            model: DeviceInfo.getModel(),
+            systemName: DeviceInfo.getSystemName(),
+            systemVersion: DeviceInfo.getSystemVersion(),
+            appVersion: DeviceInfo.getVersion(),
+            buildNumber: DeviceInfo.getBuildNumber(),
+            uniqueId: DeviceInfo.getUniqueId(),
+          }
+          const hostname = await DeviceInfo.getDeviceName()
+          let mac = ''
+          if (Platform.OS === 'android') {
+            try { mac = await (DeviceInfo as any).getMacAddress?.() } catch {}
+          }
+          await apiService.addDeviceDetails(newToken, mac || '', hostname || 'unknown-device', device_info, realm || 'default')
           pendingToken = null
-        } catch (e: any) {
-          // Likely not logged in yet; keep token pending and retry after login
-          pendingToken = token
+        } catch (e) {
           // eslint-disable-next-line no-console
-          console.warn('[Push] Device registration deferred (likely not logged in)', e?.message || e)
-          try { /* require('react-native').Alert.alert('PushDebug', `Registration deferred: ${e?.message || e}`) */ } catch {}
-          throw e
+          console.warn('[Push][FCM] token refresh registration failed', e)
         }
-      } catch (e) {
-        // eslint-disable-next-line no-console
-        console.warn('Failed to register push token with backend', e)
-        try { /* require('react-native').Alert.alert('PushDebug', `Register error: ${e}`) */ } catch {}
-      }
-    },
-
-    // Called on receipt of a notification
-    onNotification: function (notification: any) {
-      // For iOS, you must call completion to let the OS know you have finished
-      if (Platform.OS === 'ios') {
-        notification.finish(PushNotificationIOS.FetchResult.NoData)
-      }
-    },
-
-    // (optional) Called when Action is pressed (Android)
-    onAction: function () {},
-
-    // (optional) Called when registration has an error
-    onRegistrationError: function (err: any) {
+      })
+    } catch (e) {
       // eslint-disable-next-line no-console
-      console.error(err.message, err)
-    },
+      console.warn('[Push][FCM] initialization failed', e)
+    }
 
-    // iOS permission will be requested manually via requestNotificationPermissions
-    requestPermissions: false,
-    popInitialNotification: true,
-  })
-  // eslint-disable-next-line no-console
-  console.log('[Push] PushNotification.configure completed')
-  try { /* require('react-native').Alert.alert('PushDebug', 'Configure completed') */ } catch {}
+    // Android: ensure a default channel exists
+    if (Platform.OS === 'android') {
+      // eslint-disable-next-line no-console
+      console.log('[Push] Creating Android notification channel')
+      try { /* require('react-native').Alert.alert('PushDebug', 'Creating Android channel') */ } catch {}
+      const clientConfig = getClientConfig()
+      const appName = clientConfig.branding.appName || 'App'
+      PushNotification.createChannel(
+        {
+          channelId: 'default-channel',
+          channelName: `${appName} Notifications`,
+          channelDescription: `Notifications from ${appName}`,
+          importance: 4,
+          vibrate: true,
+        },
+        () => {}
+      )
+    }
+
+    PushNotification.configure({
+      // Called when Token is generated (iOS and Android)
+      onRegister: async function ({ token }: { token: string }) {
+        // eslint-disable-next-line no-console
+        console.log('[Push] onRegister token received')
+        try { /* require('react-native').Alert.alert('PushDebug', 'onRegister received token') */ } catch {}
+        try {
+          if (!token || token === lastRegisteredToken) return
+          lastRegisteredToken = token
+          pendingToken = token
+
+          const device_info = {
+            deviceId: DeviceInfo.getDeviceId(),
+            brand: DeviceInfo.getBrand(),
+            model: DeviceInfo.getModel(),
+            systemName: DeviceInfo.getSystemName(),
+            systemVersion: DeviceInfo.getSystemVersion(),
+            appVersion: DeviceInfo.getVersion(),
+            buildNumber: DeviceInfo.getBuildNumber(),
+            uniqueId: DeviceInfo.getUniqueId(),
+          }
+          const hostname = await DeviceInfo.getDeviceName()
+          let mac = ''
+          if (Platform.OS === 'android') {
+            try { mac = await (DeviceInfo as any).getMacAddress?.() } catch {}
+          }
+
+          // mac address is not generally available; send empty string
+          try {
+            // eslint-disable-next-line no-console
+            console.log('[Push] Registering device with backend', {
+              tokenPreview: token?.slice(0, 10) + '...',
+              hostname,
+              realm,
+            })
+            await apiService.addDeviceDetails(token, mac || '', hostname || 'unknown-device', device_info, realm || 'default')
+            // eslint-disable-next-line no-console
+            console.log('[Push] Device registration success')
+            try { /* require('react-native').Alert.alert('PushDebug', 'Device registration success') */ } catch {}
+            pendingToken = null
+          } catch (e: any) {
+            // Likely not logged in yet; keep token pending and retry after login
+            pendingToken = token
+            // eslint-disable-next-line no-console
+            console.warn('[Push] Device registration deferred (likely not logged in)', e?.message || e)
+            try { /* require('react-native').Alert.alert('PushDebug', `Registration deferred: ${e?.message || e}`) */ } catch {}
+            throw e
+          }
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.warn('Failed to register push token with backend', e)
+          try { /* require('react-native').Alert.alert('PushDebug', `Register error: ${e}`) */ } catch {}
+        }
+      },
+
+      // Called on receipt of a notification
+      onNotification: function (notification: any) {
+        // For iOS, you must call completion to let the OS know you have finished
+        if (Platform.OS === 'ios') {
+          notification.finish(PushNotificationIOS.FetchResult.NoData)
+        }
+      },
+
+      // (optional) Called when Action is pressed (Android)
+      onAction: function () {},
+
+      // (optional) Called when registration has an error
+      onRegistrationError: function (err: any) {
+        // eslint-disable-next-line no-console
+        console.error(err.message, err)
+      },
+
+      // iOS permission will be requested manually via requestNotificationPermissions
+      requestPermissions: false,
+      popInitialNotification: true,
+    })
+    // eslint-disable-next-line no-console
+    console.log('[Push] PushNotification.configure completed')
+    try { /* require('react-native').Alert.alert('PushDebug', 'Configure completed') */ } catch {}
+
+    isInitialized = true
+  } finally {
+    isInitializing = false
+  }
 }
 
 export async function requestNotificationPermissions(): Promise<boolean> {
@@ -320,7 +334,7 @@ export async function registerPendingPushToken(realm?: string): Promise<boolean>
     
     if (!pendingToken) {
       console.log('[Push] No FCM token available after all attempts');
-      return true; // No token to register, but not an error
+      return false;
     }
   }
   
@@ -345,12 +359,12 @@ export async function registerPendingPushToken(realm?: string): Promise<boolean>
     await apiService.addDeviceDetails(pendingToken, '', hostname || 'unknown-device', device_info, realm || 'default')
     // eslint-disable-next-line no-console
     console.log('[Push] Pending device registration success')
-    pendingToken = null
-    return true
+    pendingToken = null;
+    return true;
   } catch (e) {
     // eslint-disable-next-line no-console
-    console.warn('Retry register push token failed', e)
-    return false
+    console.warn('Retry register push token failed', e);
+    return false;
   }
 }
 
@@ -609,6 +623,55 @@ export async function updateDeviceWithRealFCMToken(realm?: string): Promise<bool
     console.warn('[Push] Failed to update device with real FCM token:', error);
     return false;
   }
+}
+
+/**
+ * Helper to run the full device registration flow once a user is authenticated.
+ */
+export async function ensureDeviceRegistrationAfterLogin(realm?: string): Promise<boolean> {
+  const clientRealm = realm || getClientConfig().clientId;
+  let registrationSuccess = false;
+
+  try {
+    await initializePushNotifications(clientRealm);
+  } catch (initError) {
+    console.warn('[Push] initializePushNotifications during ensureDeviceRegistration failed', initError);
+  }
+
+  if (Platform.OS === 'ios') {
+    console.log('[Push] iOS detected, waiting 2 seconds before device registration to ensure FCM token readiness...');
+    await new Promise(resolve => setTimeout(resolve, 2000)); // Reduced from 3s to 2s for faster login
+  }
+
+  try {
+    registrationSuccess = await registerPendingPushToken(clientRealm);
+    if (registrationSuccess) {
+      return true;
+    }
+  } catch (pendingError) {
+    console.warn('[Push] Pending token registration failed after login', pendingError);
+  }
+
+  try {
+    registrationSuccess = await registerDeviceManually(clientRealm);
+    if (registrationSuccess) {
+      return true;
+    }
+  } catch (manualError) {
+    console.warn('[Push] Manual device registration failed after login', manualError);
+  }
+
+  try {
+    registrationSuccess = await updateDeviceWithRealFCMToken(clientRealm);
+    if (registrationSuccess) {
+      return true;
+    }
+  } catch (updateError) {
+    console.warn('[Push] Real FCM token update failed after login', updateError);
+  }
+
+  console.warn('[Push] Device registration flow did not complete successfully after login');
+  return false;
 }
 
 

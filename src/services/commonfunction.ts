@@ -5,8 +5,84 @@ import { apiService } from './api';
 // @ts-ignore
 import RazorpayCheckout from 'react-native-razorpay';
 import queryString from 'query-string';
+import sessionManager from './sessionManager';
+import { getClientConfig } from '../config/client-config';
 
 const domain = ''; // TODO: Set your domain if needed for EBS/PayuMoney
+
+async function navigateWithServerStatus(
+  navigation: any,
+  txnRef: string,
+  source: any,
+  pgInfo: string,
+  amount: number,
+  fallbackStatus: string,
+  gatewayResponse?: any,
+  tpGatewayId?: string,
+) {
+  try {
+    const session = await sessionManager.getCurrentSession();
+    const username = session?.username;
+    if (!username) {
+      throw new Error('User session not found');
+    }
+    const realm = getClientConfig().clientId;
+    const paymentStatusResponse = await apiService.getPaymentStatus(username, txnRef, realm);
+    
+    // CRITICAL: Check if payment was cancelled by user
+    // If gatewayResponse indicates cancellation, override backend status
+    const isCancelled = gatewayResponse?.cancelled === true || 
+                        gatewayResponse?.error?.code === 'BAD_REQUEST_ERROR' ||
+                        gatewayResponse?.error?.code === 'GATEWAY_ERROR' ||
+                        gatewayResponse?.error?.code === 'PAYMENT_CANCELLED';
+    
+    // Also check if backend status is 'new' (unprocessed) and we have cancellation indicator
+    const backendTxnStatus = paymentStatusResponse?.data?.[0]?.txn_status || 
+                             paymentStatusResponse?.data?.txn_status || 
+                             '';
+    const isBackendNew = backendTxnStatus.toLowerCase() === 'new';
+    
+    // Determine final status
+    let finalStatus = fallbackStatus;
+    if (isCancelled || (isBackendNew && isCancelled)) {
+      console.log('⚠️ Payment was cancelled, overriding backend status to failed');
+      finalStatus = 'failed';
+      // Override the backend response status
+      if (paymentStatusResponse?.data?.[0]) {
+        paymentStatusResponse.data[0].txn_status = 'failed';
+      } else if (paymentStatusResponse?.data) {
+        paymentStatusResponse.data.txn_status = 'failed';
+      }
+    } else if (paymentStatusResponse?.data?.[0]?.txn_status) {
+      // Use backend status if not cancelled
+      finalStatus = paymentStatusResponse.data[0].txn_status;
+    } else if (paymentStatusResponse?.data?.txn_status) {
+      finalStatus = paymentStatusResponse.data.txn_status;
+    }
+    
+    navigation.navigate('PaymentResponse', {
+      ...paymentStatusResponse,
+      status: finalStatus, // Override with our determined status
+      txnRef,
+      source,
+      pgInfo,
+      amount,
+      gatewayResponse,
+      tpGatewayId,
+    });
+  } catch (error) {
+    console.error('Failed to fetch gateway payment status:', error);
+    navigation.navigate('PaymentResponse', {
+      txnRef,
+      source,
+      pgInfo,
+      amount,
+      status: fallbackStatus,
+      gatewayResponse,
+      tpGatewayId,
+    });
+  }
+}
 
 export function handlePayment(params: any, payActionType: string, navigation: any, realm: string) {
   console.log('=== HANDLE PAYMENT DEBUG ===');
@@ -145,16 +221,16 @@ export function handlePayment(params: any, payActionType: string, navigation: an
     } else if (pgInfo === 'RAZORPAY') {
       txnInfo.merTxnId = res.data.txn_ref_no;
       const data = res.data.parameters;
-      
+      const tpGatewayId = selectedPg || pgInfo || 'RAZORPAY';
+
       console.log('=== RAZORPAY PAYMENT DEBUG ===');
-      console.log('Backend amount from data:', data.amount);
-      console.log('Our calculated amount (params.amount):', params.amount);
-      console.log('Using amount for Razorpay:', params.amount);
-      console.log('=== END RAZORPAY DEBUG ===');
-      
+      console.log('Backend parameters:', JSON.stringify(data, null, 2));
+      console.log('Txn Ref:', txnInfo.merTxnId);
+      console.log('=== END RAZORPAY PAYMENT DEBUG ===');
+
       const options = {
         key: data.key,
-        amount: data.amount, // Use backend order amount to match server-created Razorpay order
+        amount: data.amount, // Use backend order amount to match Razorpay order
         name: data.name,
         description: data.description,
         image: '',
@@ -168,13 +244,155 @@ export function handlePayment(params: any, payActionType: string, navigation: an
         },
         order_id: data.razorpayOrderId
       };
+
       RazorpayCheckout.open(options)
-        .then((result: any) => {
-          navigation.navigate('PaymentResponse', { txnRef: txnInfo.merTxnId, source, pgInfo, amount: params.amount, status: 'success' });
-          // TODO: Optionally call activateUser and toPaymentFeedback if needed
+        .then(async (result: any) => {
+          console.log('=== RAZORPAY RESPONSE ===');
+          try {
+            console.log(JSON.stringify(result, null, 2));
+          } catch (err) {
+            console.log(result);
+          }
+          console.log('=== END RESPONSE ===');
+
+          // CRITICAL: Validate that this is actually a successful payment
+          // Check if result indicates cancellation or failure
+          const isCancelled = 
+            !result || 
+            result === null ||
+            (result.error && (
+              result.error.code === 'BAD_REQUEST_ERROR' ||
+              result.error.code === 'GATEWAY_ERROR' ||
+              result.error.code === 'PAYMENT_CANCELLED' ||
+              (result.error.description && (
+                result.error.description.toLowerCase().includes('cancel') ||
+                result.error.description.toLowerCase().includes('cancelled') ||
+                result.error.description.toLowerCase().includes('aborted')
+              ))
+            )) ||
+            (result.description && (
+              result.description.toLowerCase().includes('cancel') ||
+              result.description.toLowerCase().includes('cancelled') ||
+              result.description.toLowerCase().includes('aborted')
+            )) ||
+            // Check if payment_id is missing (cancelled payments won't have payment_id)
+            (!result.razorpay_payment_id && !result.payment_id);
+
+          if (isCancelled) {
+            console.log('⚠️ Razorpay payment was cancelled by user');
+            await navigateWithServerStatus(
+              navigation,
+              txnInfo.merTxnId,
+              null,
+              pgInfo,
+              params.amount,
+              'failed',
+              { ...result, cancelled: true, description: 'Payment cancelled by user' },
+              tpGatewayId,
+            );
+            return;
+          }
+
+          // Validate that we have a payment ID (required for successful payment)
+          if (!result.razorpay_payment_id && !result.payment_id) {
+            console.log('⚠️ Razorpay response missing payment_id, treating as failed');
+            await navigateWithServerStatus(
+              navigation,
+              txnInfo.merTxnId,
+              null,
+              pgInfo,
+              params.amount,
+              'failed',
+              { ...result, description: 'Payment failed: Missing payment ID' },
+              tpGatewayId,
+            );
+            return;
+          }
+
+          console.log('✅ Razorpay payment successful');
+          try {
+            await apiService.activatePaymentGatewayResponse(
+              tpGatewayId,
+              txnInfo.merTxnId,
+              {
+                ...result,
+                amount: params.amount,
+                pgInfo,
+              },
+              realm,
+            );
+            console.log('✅ Razorpay activation sent to backend');
+          } catch (activationError) {
+            console.error('Failed to activate Razorpay payment:', activationError);
+          }
+
+          await navigateWithServerStatus(
+            navigation,
+            txnInfo.merTxnId,
+            null,
+            pgInfo,
+            params.amount,
+            'success',
+            result,
+            tpGatewayId,
+          );
         })
-        .catch((error: any) => {
-          navigation.navigate('PaymentResponse', { txnRef: txnInfo.merTxnId, source, pgInfo, amount: params.amount, status: 'failed' });
+        .catch(async (error: any) => {
+          console.log('=== RAZORPAY ERROR RESPONSE ===');
+          try {
+            console.log(JSON.stringify(error, null, 2));
+          } catch (err) {
+            console.log(error);
+          }
+          console.log('=== END ERROR RESPONSE ===');
+
+          // Check if this is a cancellation error
+          const isCancelled = 
+            error === null ||
+            error === undefined ||
+            (error.error && (
+              error.error.code === 'BAD_REQUEST_ERROR' ||
+              error.error.code === 'GATEWAY_ERROR' ||
+              error.error.code === 'PAYMENT_CANCELLED' ||
+              (error.error.description && (
+                error.error.description.toLowerCase().includes('cancel') ||
+                error.error.description.toLowerCase().includes('cancelled') ||
+                error.error.description.toLowerCase().includes('aborted')
+              ))
+            )) ||
+            (error.code && (
+              error.code === 'BAD_REQUEST_ERROR' ||
+              error.code === 'GATEWAY_ERROR' ||
+              error.code === 'PAYMENT_CANCELLED'
+            )) ||
+            (error.description && (
+              error.description.toLowerCase().includes('cancel') ||
+              error.description.toLowerCase().includes('cancelled') ||
+              error.description.toLowerCase().includes('aborted')
+            )) ||
+            (typeof error === 'string' && (
+              error.toLowerCase().includes('cancel') ||
+              error.toLowerCase().includes('cancelled') ||
+              error.toLowerCase().includes('aborted')
+            ));
+
+          const status = isCancelled ? 'failed' : 'failed';
+          const errorMessage = isCancelled 
+            ? 'Payment cancelled by user' 
+            : (error?.description || error?.message || 'Payment failed');
+
+          console.log(`⚠️ Razorpay payment ${isCancelled ? 'cancelled' : 'failed'}:`, errorMessage);
+
+          await navigateWithServerStatus(
+            navigation,
+            txnInfo.merTxnId,
+            null,
+            pgInfo,
+            params.amount,
+            status,
+            { ...error, cancelled: isCancelled, description: errorMessage },
+            tpGatewayId,
+          );
         });
     } else if (pgInfo) {
       txnInfo.merTxnId = res.data.txn_ref_no;

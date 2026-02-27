@@ -8,10 +8,12 @@ const { execSync } = require('child_process');
 const CLIENTS = {
   microscan: {
     name: 'Microscan',
-    packageName: 'com.microscan.app',
-    namespace: 'com.microscan.app',
-    versionCode: 33,
-    versionName: '33.0.0',
+    // Must match OLD app (microscanEndUserApp-master-new) so install overwrites and migration works.
+    packageName: 'in.spacecom.log2space.client.microscan',
+    namespace: 'in.spacecom.log2space.client.microscan',
+    versionCode: 39,
+    versionName: '1.0.1',
+    // Use original Microscan upload key for Play Store (SHA1: 08:1C:A0:54:CA:45:95:5B:B3:8B:3A:B8:B2:53:93:FA:F5:64:D0:AE)
     keystore: 'Log2SpaceEndUserMicroscan.jks',
     configDir: 'config/microscan',
   },
@@ -19,8 +21,8 @@ const CLIENTS = {
     name: 'DNA Infotel',
     packageName: 'com.h8.dnasubscriber',
     namespace: 'com.h8.dnasubscriber',
-    versionCode: 294,
-    versionName: '294.0.0',
+    versionCode: 298,
+    versionName: '1.0.298',
     keystore: 'Log2spaceDNAInfotelAppKey.jks',
     configDir: 'config/dna-infotel',
   },
@@ -29,9 +31,100 @@ const CLIENTS = {
     packageName: 'com.logon.broadband',
     namespace: 'com.logon.broadband',
     versionCode: 1,
-    versionName: '1.0.0',
+    versionName: '1.0.1',
     keystore: 'LogonBroadband.jks',
     configDir: 'config/logon-broadband',
+  },
+  linkway: {
+    name: 'Linkway',
+    packageName: 'com.spacecom.log2space.linkway',
+    namespace: 'com.spacecom.log2space.linkway',
+    versionCode: 7,
+    versionName: '1.0.1',
+    keystore: 'Linkway.jks',
+    configDir: 'config/linkway',
+  },
+  'dna-goa': {
+    name: 'DNA Goa',
+    packageName: 'com.dnagoa',
+    namespace: 'com.dnagoa',
+    versionCode: 1,
+    versionName: '1.0.1',
+    keystore: 'Log2spaceDNAGoaAppKey.jks',
+    configDir: 'config/dna-goa',
+  },
+  gatewayftth: {
+    name: 'Gateway FTTH',
+    packageName: 'com.spacecom.log2space.gatewayftth',
+    namespace: 'com.spacecom.log2space.gatewayftth',
+    versionCode: 1,
+    versionName: '1.0.1',
+    // For now we use the debug keystore; configure a real release keystore later
+    keystore: 'GatewayFTTH.jks',
+    configDir: 'config/gatewayftth',
+  },
+  netfix: {
+    name: 'Netfix',
+    packageName: 'in.spacecom.log2space.client.netfix',
+    namespace: 'in.spacecom.log2space.client.netfix',
+    versionCode: 3,
+    versionName: '1.0.1',
+    keystore: 'Log2spaceNetfix.keystore',
+    configDir: 'config/netfix',
+  },
+  'inshansa-dnagoa': {
+    name: 'Inshansa',
+    packageName: 'com.spacecom.log2space.inshansa',
+    namespace: 'com.spacecom.log2space.inshansa',
+    versionCode: 1,
+    versionName: '1.0.1',
+    keystore: 'Log2spaceInsHansaAppKey.jks',
+    configDir: 'config/inshansa-dnagoa',
+  },
+  'spacecom-local': {
+    name: 'Spacecom Local',
+    packageName: 'com.log2space.spacecom.local',
+    namespace: 'com.log2space.spacecom.local',
+    versionCode: 1,
+    versionName: '1.0.1',
+    keystore: 'Log2SpaceEndUserMicroscan.jks',
+    configDir: 'config/spacecom-local',
+  },
+  'spacecom-live': {
+    name: 'Spacecom Live',
+    packageName: 'com.spacecom.log2space.spacecomlive',
+    namespace: 'com.spacecom.log2space.spacecomlive',
+    versionCode: 299,
+    versionName: '1.0.1',
+    keystore: 'Log2spaceDNAInfotelAppKey.jks',
+    configDir: 'config/spacecom-live',
+  },
+  netplanet: {
+    name: 'Net Planet',
+    packageName: 'com.spacecom.log2space.netplanet',
+    namespace: 'com.spacecom.log2space.netplanet',
+    versionCode: 1,
+    versionName: '1.0.1',
+    keystore: 'Log2spaceNetPlanetAppKey.jks',
+    configDir: 'config/netplanet',
+  },
+  metanet: {
+    name: 'Metanet',
+    packageName: 'com.spacecom.log2space.metanet',
+    namespace: 'com.spacecom.log2space.metanet',
+    versionCode: 1,
+    versionName: '1.0.1',
+    keystore: 'MetanetAppKey.jks',
+    configDir: 'config/metanet',
+  },
+  successbroadband: {
+    name: 'Success Broadband',
+    packageName: 'com.spacecom.log2space.successbroadband',
+    namespace: 'com.spacecom.log2space.successbroadband',
+    versionCode: 3,
+    versionName: '1.0.3',
+    keystore: 'Log2spaceSuccessBroadbandAppKey.jks',
+    configDir: 'config/successbroadband',
   },
 };
 
@@ -87,13 +180,9 @@ function copyClientConfig(clientId) {
     logSuccess('Copied app.json');
   }
 
-  // Copy API configuration
-  const apiSrc = path.join(configDir, 'api.ts');
-  const apiDest = path.join(appDir, 'src', 'services', 'api.ts');
-  if (fs.existsSync(apiSrc)) {
-    fs.copyFileSync(apiSrc, apiDest);
-    logSuccess('Copied api.ts');
-  }
+  // NOTE: api.ts is no longer copied per client.
+  // The shared src/services/api.ts dynamically handles client configuration.
+  log('ℹ️  Skipping api.ts copy (shared dynamic API in use)', 'blue');
 
   // Copy assets
   const assetsSrc = path.join(configDir, 'assets');
@@ -107,16 +196,57 @@ function copyClientConfig(clientId) {
   const androidIconsSrc = path.join(configDir, 'app-icons', 'android');
   const androidIconsDest = path.join(appDir, 'android', 'app', 'src', 'main', 'res');
   if (fs.existsSync(androidIconsSrc)) {
+    // Copy all icon files and folders (mipmap-*, drawable, etc.)
     execSync(`cp -r "${androidIconsSrc}"/* "${androidIconsDest}/"`, { stdio: 'inherit' });
+    
+    // Convert filenames to lowercase and replace hyphens with underscores in drawable folders (Android requirement)
+    const drawableDirs = ['drawable', 'drawable-hdpi', 'drawable-mdpi', 'drawable-xhdpi', 'drawable-xxhdpi', 'drawable-xxxhdpi'];
+    drawableDirs.forEach(drawableDir => {
+      const drawablePath = path.join(androidIconsDest, drawableDir);
+      if (fs.existsSync(drawablePath)) {
+        const files = fs.readdirSync(drawablePath);
+        files.forEach(file => {
+          const filePath = path.join(drawablePath, file);
+          if (fs.statSync(filePath).isFile()) {
+            // Convert to lowercase and replace hyphens with underscores
+            const normalizedFileName = file.toLowerCase().replace(/-/g, '_');
+            if (file !== normalizedFileName) {
+              const newFilePath = path.join(drawablePath, normalizedFileName);
+              fs.renameSync(filePath, newFilePath);
+              log(`Renamed ${file} to ${normalizedFileName} in ${drawableDir}`, 'yellow');
+            }
+          }
+        });
+      }
+    });
+    
+    // Specifically copy values folder contents to merge with existing values
+    const valuesSrc = path.join(androidIconsSrc, 'values');
+    const valuesDest = path.join(appDir, 'android', 'app', 'src', 'main', 'res', 'values');
+    if (fs.existsSync(valuesSrc)) {
+      if (!fs.existsSync(valuesDest)) {
+        fs.mkdirSync(valuesDest, { recursive: true });
+      }
+      execSync(`cp -r "${valuesSrc}"/* "${valuesDest}/"`, { stdio: 'inherit' });
+      logSuccess('Copied Android values resources');
+    }
+    
     logSuccess('Copied Android app icons');
   }
 
-  // Copy iOS app icons
-  const iosIconsSrc = path.join(configDir, 'app-icons', 'ios');
-  const iosIconsDest = path.join(appDir, 'ios', 'ISPApp', 'Images.xcassets');
-  if (fs.existsSync(iosIconsSrc)) {
-    execSync(`cp -r "${iosIconsSrc}"/* "${iosIconsDest}/"`, { stdio: 'inherit' });
+  // Copy iOS app icons - copy AppIcon.appiconset directly
+  const iosAppIconSrc = path.join(configDir, 'app-icons', 'ios', 'AppIcon.appiconset');
+  const iosAppIconDest = path.join(appDir, 'ios', 'ISPApp', 'Images.xcassets', 'AppIcon.appiconset');
+  if (fs.existsSync(iosAppIconSrc)) {
+    // Remove existing AppIcon.appiconset if it exists
+    if (fs.existsSync(iosAppIconDest)) {
+      execSync(`rm -rf "${iosAppIconDest}"`, { stdio: 'inherit' });
+    }
+    // Copy the new AppIcon.appiconset
+    execSync(`cp -r "${iosAppIconSrc}" "${iosAppIconDest}"`, { stdio: 'inherit' });
     logSuccess('Copied iOS app icons');
+  } else {
+    logWarning(`iOS app icons not found at ${iosAppIconSrc}`);
   }
 
   // Copy Android strings
@@ -127,12 +257,107 @@ function copyClientConfig(clientId) {
     logSuccess('Copied Android strings.xml');
   }
 
-  // Copy iOS Info.plist
+  // Copy iOS Info.plist and ensure UIAppFonts is present
   const infoPlistSrc = path.join(configDir, 'ios-Info.plist');
   const infoPlistDest = path.join(appDir, 'ios', 'ISPApp', 'Info.plist');
   if (fs.existsSync(infoPlistSrc)) {
-    fs.copyFileSync(infoPlistSrc, infoPlistDest);
-    logSuccess('Copied iOS Info.plist');
+    // CRITICAL: Validate source file first
+    try {
+      execSync(`plutil -lint "${infoPlistSrc}"`, { stdio: 'pipe' });
+    } catch (validationError) {
+      logWarning(`Source Info.plist has XML errors: ${infoPlistSrc}`);
+      throw new Error(`Invalid XML in source Info.plist: ${infoPlistSrc}. Please fix the XML structure.`);
+    }
+    
+    let infoPlistContent = fs.readFileSync(infoPlistSrc, 'utf8');
+    
+    // CRITICAL: Fix NSAppTransportSecurity if UIAppFonts is incorrectly nested inside it
+    // Check if UIAppFonts appears inside NSAppTransportSecurity dict
+    const nstsWithFontsPattern = /<key>NSAppTransportSecurity<\/key>\s*<dict>([\s\S]*?)<key>UIAppFonts<\/key>([\s\S]*?)<\/array>([\s\S]*?)<\/dict>/;
+    if (nstsWithFontsPattern.test(infoPlistContent)) {
+      logWarning('Found UIAppFonts incorrectly nested in NSAppTransportSecurity, fixing...');
+      // Replace the entire NSAppTransportSecurity block with a clean one
+      infoPlistContent = infoPlistContent.replace(
+        /<key>NSAppTransportSecurity<\/key>\s*<dict>[\s\S]*?<\/dict>/,
+        '<key>NSAppTransportSecurity</key>\n\t<dict>\n\t\t<key>NSAllowsArbitraryLoads</key>\n\t\t<false/>\n\t\t<key>NSAllowsLocalNetworking</key>\n\t\t<true/>\n\t</dict>'
+      );
+    }
+    
+    // Check if UIAppFonts already exists at root level (not inside any nested dict)
+    // Look for UIAppFonts that appears before the final </dict> tag
+    const hasUIAppFontsAtRoot = /<key>UIAppFonts<\/key>\s*<array>[\s\S]*?<\/array>\s*(?=<\/dict>\s*<\/plist>)/.test(infoPlistContent);
+    
+    if (!hasUIAppFontsAtRoot) {
+      // UIAppFonts block to insert - REQUIRED for iOS to recognize vector icon fonts
+      const uiAppFonts = `\t<key>UIAppFonts</key>
+\t<array>
+\t\t<string>AntDesign.ttf</string>
+\t\t<string>Entypo.ttf</string>
+\t\t<string>EvilIcons.ttf</string>
+\t\t<string>Feather.ttf</string>
+\t\t<string>FontAwesome.ttf</string>
+\t\t<string>FontAwesome5_Brands.ttf</string>
+\t\t<string>FontAwesome5_Regular.ttf</string>
+\t\t<string>FontAwesome5_Solid.ttf</string>
+\t\t<string>Foundation.ttf</string>
+\t\t<string>Ionicons.ttf</string>
+\t\t<string>MaterialIcons.ttf</string>
+\t\t<string>MaterialCommunityIcons.ttf</string>
+\t\t<string>SimpleLineIcons.ttf</string>
+\t\t<string>Octicons.ttf</string>
+\t\t<string>Zocial.ttf</string>
+\t\t<string>Fontisto.ttf</string>
+\t</array>`;
+      
+      // CRITICAL: Find the LAST </dict> before </plist> (this is the root dict)
+      // Match the pattern: whitespace, </dict>, whitespace, </plist>
+      const rootDictPattern = /(\s*)<\/dict>\s*<\/plist>/;
+      if (rootDictPattern.test(infoPlistContent)) {
+        infoPlistContent = infoPlistContent.replace(rootDictPattern, `${uiAppFonts}\n$1</dict>\n</plist>`);
+        log('Added UIAppFonts to Info.plist (required for iOS vector icons)', 'blue');
+      } else {
+        logWarning('Could not find root </dict> tag pattern, skipping UIAppFonts addition');
+      }
+    }
+    
+    // CRITICAL: Validate the final XML before writing
+    const tempFile = path.join(appDir, 'ios', 'ISPApp', 'Info.plist.tmp');
+    fs.writeFileSync(tempFile, infoPlistContent);
+    try {
+      execSync(`plutil -lint "${tempFile}"`, { stdio: 'pipe' });
+      // If validation passes, move temp file to final location
+      fs.renameSync(tempFile, infoPlistDest);
+      logSuccess('Copied iOS Info.plist (XML validated)');
+    } catch (validationError) {
+      // Remove temp file
+      if (fs.existsSync(tempFile)) {
+        fs.unlinkSync(tempFile);
+      }
+      logWarning('Generated Info.plist has XML errors, copying source file as-is');
+      // Copy source file as-is to avoid breaking the build
+      fs.copyFileSync(infoPlistSrc, infoPlistDest);
+      logWarning('Copied source Info.plist without modifications. Please ensure UIAppFonts is in the source file.');
+    }
+  }
+
+  // Copy Firebase config for Android (google-services.json)
+  const googleServicesSrc = path.join(configDir, 'google-services.json');
+  const googleServicesDest = path.join(appDir, 'android', 'app', 'google-services.json');
+  if (fs.existsSync(googleServicesSrc)) {
+    fs.copyFileSync(googleServicesSrc, googleServicesDest);
+    logSuccess('Copied google-services.json for Android (Firebase)');
+  } else {
+    logWarning('google-services.json not found in client config, skipping Firebase Android config copy');
+  }
+
+  // Copy Firebase config for iOS (GoogleService-Info.plist)
+  const googleServiceInfoSrc = path.join(configDir, 'GoogleService-Info.plist');
+  const googleServiceInfoDest = path.join(appDir, 'ios', 'ISPApp', 'GoogleService-Info.plist');
+  if (fs.existsSync(googleServiceInfoSrc)) {
+    fs.copyFileSync(googleServiceInfoSrc, googleServiceInfoDest);
+    logSuccess('Copied GoogleService-Info.plist for iOS (Firebase)');
+  } else {
+    logWarning('GoogleService-Info.plist not found in client config, skipping Firebase iOS config copy');
   }
 
   // Copy strings.json
@@ -142,6 +367,15 @@ function copyClientConfig(clientId) {
     fs.copyFileSync(stringsJsonSrc, stringsJsonDest);
     logSuccess('Copied strings.json');
   }
+
+  // Update current-client.json so app picks correct configuration
+  const currentClientPath = path.join(appDir, 'src', 'config', 'current-client.json');
+  const currentClientData = {
+    clientId,
+    updatedAt: new Date().toISOString(),
+  };
+  fs.writeFileSync(currentClientPath, JSON.stringify(currentClientData, null, 2));
+  logSuccess(`Updated current-client.json to ${clientId}`);
 
   // Copy keystore file
   const keystoreSrc = path.join(configDir, client.keystore);
@@ -166,6 +400,75 @@ function copyClientConfig(clientId) {
     fs.copyFileSync(logoConfigSrc, logoConfigDest);
     logSuccess('Copied logo config');
   }
+
+  // Update iOS project bundle identifier and display name
+  const buildConfigPath = path.join(configDir, 'build-config.json');
+  if (fs.existsSync(buildConfigPath)) {
+    try {
+      const buildConfig = JSON.parse(fs.readFileSync(buildConfigPath, 'utf8'));
+      const iosConfig = buildConfig?.ios;
+      
+      if (iosConfig) {
+        const pbxProjPath = path.join(appDir, 'ios', 'ISPApp.xcodeproj', 'project.pbxproj');
+        if (fs.existsSync(pbxProjPath)) {
+          let pbxProj = fs.readFileSync(pbxProjPath, 'utf8');
+          
+          // Update bundle identifier (handle both quoted and unquoted formats)
+          if (iosConfig.bundleIdentifier) {
+            // Match: PRODUCT_BUNDLE_IDENTIFIER = "bundle.id"; or PRODUCT_BUNDLE_IDENTIFIER = bundle.id;
+            pbxProj = pbxProj.replace(
+              /PRODUCT_BUNDLE_IDENTIFIER = (?:")?[^";]+(?:")?;/g,
+              `PRODUCT_BUNDLE_IDENTIFIER = ${iosConfig.bundleIdentifier};`
+            );
+            // Match: "PRODUCT_BUNDLE_IDENTIFIER[sdk=iphoneos*]" = bundle.id;
+            pbxProj = pbxProj.replace(
+              /"PRODUCT_BUNDLE_IDENTIFIER\[sdk=iphoneos\*\]" = [^;]+;/g,
+              `"PRODUCT_BUNDLE_IDENTIFIER[sdk=iphoneos*]" = ${iosConfig.bundleIdentifier};`
+            );
+          }
+          
+          // Update marketing version
+          if (iosConfig.marketingVersion) {
+            pbxProj = pbxProj.replace(
+              /MARKETING_VERSION = [^;]+;/g,
+              `MARKETING_VERSION = ${iosConfig.marketingVersion};`
+            );
+          }
+          
+          // Update build number
+          if (iosConfig.buildNumber) {
+            pbxProj = pbxProj.replace(
+              /CURRENT_PROJECT_VERSION = [^;]+;/g,
+              `CURRENT_PROJECT_VERSION = ${iosConfig.buildNumber};`
+            );
+          }
+          
+          // Update display name
+          if (iosConfig.displayName) {
+            const escapedDisplayName = iosConfig.displayName.replace(/"/g, '\\"');
+            pbxProj = pbxProj.replace(
+              /INFOPLIST_KEY_CFBundleDisplayName = [^;]+;/g,
+              `INFOPLIST_KEY_CFBundleDisplayName = "${escapedDisplayName}";`
+            );
+          }
+          
+          // Update PRODUCT_NAME (app executable name) - remove spaces and special chars
+          if (iosConfig.displayName) {
+            const productName = iosConfig.displayName.replace(/\s+/g, '') + 'App';
+            pbxProj = pbxProj.replace(
+              /PRODUCT_NAME = [^;]+;/g,
+              `PRODUCT_NAME = ${productName};`
+            );
+          }
+          
+          fs.writeFileSync(pbxProjPath, pbxProj);
+          logSuccess('Updated iOS project bundle identifier and settings');
+        }
+      }
+    } catch (error) {
+      logWarning(`Failed to update iOS project settings: ${error.message}`);
+    }
+  }
 }
 
 // Update Android build.gradle with client-specific settings
@@ -179,6 +482,28 @@ function updateAndroidBuildGradle(clientId) {
 
   const buildGradlePath = path.join(__dirname, '..', 'android', 'app', 'build.gradle');
   let buildGradleContent = fs.readFileSync(buildGradlePath, 'utf8');
+
+  // Read keystore config to extract passwords and aliases
+  const keystoreConfigPath = path.join(__dirname, '..', client.configDir, 'keystore-config.gradle');
+  let releaseStorePassword = 'dnasubscriber'; // fallback
+  let releaseKeyAlias = 'dnasubscriber'; // fallback
+  let releaseKeyPassword = 'dnasubscriber'; // fallback
+
+  if (fs.existsSync(keystoreConfigPath)) {
+    const keystoreConfigContent = fs.readFileSync(keystoreConfigPath, 'utf8');
+    // Extract release config values (handle any order)
+    const releaseBlock = keystoreConfigContent.match(/release\s*\{([^}]+)\}/s);
+    if (releaseBlock) {
+      const releaseContent = releaseBlock[1];
+      const storePasswordMatch = releaseContent.match(/storePassword\s+['"]([^'"]+)['"]/);
+      const keyAliasMatch = releaseContent.match(/keyAlias\s+['"]([^'"]+)['"]/);
+      const keyPasswordMatch = releaseContent.match(/keyPassword\s+['"]([^'"]+)['"]/);
+      
+      if (storePasswordMatch) releaseStorePassword = storePasswordMatch[1];
+      if (keyAliasMatch) releaseKeyAlias = keyAliasMatch[1];
+      if (keyPasswordMatch) releaseKeyPassword = keyPasswordMatch[1];
+    }
+  }
 
   // Update namespace
   buildGradleContent = buildGradleContent.replace(
@@ -204,11 +529,62 @@ function updateAndroidBuildGradle(clientId) {
     `versionName "${client.versionName}"`
   );
 
-  // Update keystore file reference
+  // Ensure debug signing config uses default debug keystore
   buildGradleContent = buildGradleContent.replace(
-    /storeFile\s+file\(['"][^'"]+['"]\)/g,
-    `storeFile file('${client.keystore}')`
+    /(debug\s*\{[^}]*storeFile\s+file\(['"])[^'"]+(['"])/s,
+    `$1debug.keystore$2`
   );
+  buildGradleContent = buildGradleContent.replace(
+    /(debug\s*\{[^}]*storePassword\s+['"])[^'"]+(['"])/s,
+    `$1android$2`
+  );
+  buildGradleContent = buildGradleContent.replace(
+    /(debug\s*\{[^}]*keyAlias\s+['"])[^'"]+(['"])/s,
+    `$1androiddebugkey$2`
+  );
+  buildGradleContent = buildGradleContent.replace(
+    /(debug\s*\{[^}]*keyPassword\s+['"])[^'"]+(['"])/s,
+    `$1android$2`
+  );
+
+  // Update keystore file reference in release config
+  buildGradleContent = buildGradleContent.replace(
+    /(release\s*\{[^}]*storeFile\s+file\(['"])[^'"]+(['"])/s,
+    `$1${client.keystore}$2`
+  );
+
+  // Update release storePassword
+  buildGradleContent = buildGradleContent.replace(
+    /(release\s*\{[^}]*storePassword\s+['"])[^'"]+(['"])/s,
+    `$1${releaseStorePassword}$2`
+  );
+
+  // Update release keyAlias
+  buildGradleContent = buildGradleContent.replace(
+    /(release\s*\{[^}]*keyAlias\s+['"])[^'"]+(['"])/s,
+    `$1${releaseKeyAlias}$2`
+  );
+
+  // Update release keyPassword
+  buildGradleContent = buildGradleContent.replace(
+    /(release\s*\{[^}]*keyPassword\s+['"])[^'"]+(['"])/s,
+    `$1${releaseKeyPassword}$2`
+  );
+
+  // When using "in" package (microscan, netfix), exclude only the other so the current client's path is included
+  if (client.namespace.startsWith('in.spacecom.log2space.client.')) {
+    const currentInClient = client.namespace.replace('in.spacecom.log2space.client.', '');
+    const otherInClient = currentInClient === 'microscan' ? 'netfix' : 'microscan';
+    buildGradleContent = buildGradleContent.replace(
+      /exclude '\*\*\/in\/spacecom\/log2space\/client\/__IN_CLIENT_OTHER__\/\*\*'/,
+      `exclude '**/in/spacecom/log2space/client/${otherInClient}/**'`
+    );
+  } else {
+    buildGradleContent = buildGradleContent.replace(
+      /exclude '\*\*\/in\/spacecom\/log2space\/client\/__IN_CLIENT_OTHER__\/\*\*'/,
+      "exclude '**/in/spacecom/log2space/client/microscan/**'\n                exclude '**/in/spacecom/log2space/client/netfix/**'"
+    );
+  }
 
   fs.writeFileSync(buildGradlePath, buildGradleContent);
   logSuccess('Updated Android build.gradle');
@@ -224,10 +600,23 @@ function updateIOSAppDelegate(clientId) {
   logStep('Updating iOS AppDelegate', client.name);
 
   const appDelegatePath = path.join(__dirname, '..', 'ios', 'ISPApp', 'AppDelegate.swift');
+  if (!fs.existsSync(appDelegatePath)) {
+    logWarning('AppDelegate.swift not found, skipping update');
+    return;
+  }
+
   let appDelegateContent = fs.readFileSync(appDelegatePath, 'utf8');
 
-  // Update module name
-  const moduleName = client.name.replace(/\s+/g, '') + 'App';
+  // Use fixed name so JS (index.js) and native always match; avoids "X has not been registered" on client switch.
+  const moduleName = 'ISPApp';
+
+  // Update withModuleName (for React Native 0.80+)
+  appDelegateContent = appDelegateContent.replace(
+    /withModuleName:\s*"[^"]*"/,
+    `withModuleName: "${moduleName}"`
+  );
+
+  // Also update getMainComponentName if it exists (for older React Native versions)
   appDelegateContent = appDelegateContent.replace(
     /getMainComponentName\(\)\s*->\s*String\s*\{[^}]+\}/,
     `getMainComponentName() -> String {
@@ -236,7 +625,7 @@ function updateIOSAppDelegate(clientId) {
   );
 
   fs.writeFileSync(appDelegatePath, appDelegateContent);
-  logSuccess('Updated iOS AppDelegate');
+  logSuccess(`Updated iOS AppDelegate module name to '${moduleName}'`);
 }
 
 // Update Android MainActivity
@@ -248,28 +637,110 @@ function updateAndroidMainActivity(clientId) {
 
   logStep('Updating Android MainActivity', client.name);
 
-  const mainActivityPath = path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'java', 'com', 'microscan', 'app', 'MainActivity.kt');
-  let mainActivityContent = fs.readFileSync(mainActivityPath, 'utf8');
-
-  // Update package name
+  // Build the correct package path
   const packageParts = client.packageName.split('.');
-  const newPackageName = packageParts.join('.');
-  mainActivityContent = mainActivityContent.replace(
-    /package\s+[^;]+;/,
-    `package ${newPackageName};`
-  );
+  const packageDir = path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'java', ...packageParts);
+  const mainActivityPath = path.join(packageDir, 'MainActivity.kt');
+  const mainApplicationPath = path.join(packageDir, 'MainApplication.kt');
 
-  // Update module name
-  const moduleName = client.name.replace(/\s+/g, '') + 'App';
+  // Clean up old package directories for this client (if package name changed)
+  // Find all directories that might contain old MainActivity files for this client
+  const javaDir = path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'java');
+  if (fs.existsSync(javaDir)) {
+    const oldDirs = [
+      path.join(javaDir, 'in', 'spacecom', 'log2space', 'client', 'microscan'),
+      path.join(javaDir, 'in', 'spacecom', 'log2space', 'client', 'netfix'),
+      path.join(javaDir, 'com', 'microscan', 'app'),
+      path.join(javaDir, 'com', 'spacecom', 'log2space', 'microscan'),
+      path.join(javaDir, 'com', 'netfixnetworks'),
+    ];
+    oldDirs.forEach(oldDir => {
+      if (fs.existsSync(oldDir) && oldDir !== packageDir) {
+        // Check if it contains MainActivity files
+        const oldMainActivity = path.join(oldDir, 'MainActivity.kt');
+        const oldMainApplication = path.join(oldDir, 'MainApplication.kt');
+        if (fs.existsSync(oldMainActivity) || fs.existsSync(oldMainApplication)) {
+          fs.rmSync(oldDir, { recursive: true, force: true });
+          logSuccess(`Cleaned up old package directory: ${oldDir}`);
+        }
+      }
+    });
+  }
+
+  // Create package directory if it doesn't exist
+  if (!fs.existsSync(packageDir)) {
+    fs.mkdirSync(packageDir, { recursive: true });
+    logSuccess(`Created package directory: ${packageDir}`);
+  }
+
+  // Find a source MainActivity to use as template
+  const sourcePaths = [
+    path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'java', 'in', 'spacecom', 'log2space', 'client', 'microscan', 'MainActivity.kt'),
+    path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'java', 'in', 'spacecom', 'log2space', 'client', 'netfix', 'MainActivity.kt'),
+    path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'java', 'com', 'spacecom', 'log2space', 'microscan', 'MainActivity.kt'),
+    path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'java', 'com', 'netfixnetworks', 'MainActivity.kt'),
+    path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'java', 'com', 'h8', 'dnasubscriber', 'MainActivity.kt'),
+    path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'java', 'com', 'dnagoa', 'MainActivity.kt'),
+    path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'java', 'com', 'microscan', 'app', 'MainActivity.kt'),
+  ];
+  
+  let sourceMainActivity = null;
+  for (const sourcePath of sourcePaths) {
+    if (fs.existsSync(sourcePath)) {
+      sourceMainActivity = sourcePath;
+      break;
+    }
+  }
+
+  if (!sourceMainActivity) {
+    throw new Error('Could not find source MainActivity.kt');
+  }
+
+  // Read and update MainActivity
+  let mainActivityContent = fs.readFileSync(sourceMainActivity, 'utf8');
+  const newPackageName = packageParts.join('.');
+  // Kotlin reserves "in" as a keyword; escape it so package in.spacecom... compiles
+  const packageDeclaration = newPackageName.startsWith('in.')
+    ? '`in`.' + newPackageName.substring(3)
+    : newPackageName;
+  const packageRegex = /package\s+[^\s;]+;?/;
+  mainActivityContent = mainActivityContent.replace(packageRegex, `package ${packageDeclaration}`);
+
+  // Use fixed name so JS (index.js) and native always match; avoids "X has not been registered" on client switch.
+  const moduleName = 'ISPApp';
   mainActivityContent = mainActivityContent.replace(
-    /getMainComponentName\(\)\s*:\s*String\s*\{[^}]+\}/,
-    `getMainComponentName(): String {
-        return "${moduleName}"
-    }`
+    /override\s+fun\s+getMainComponentName\(\)\s*:\s*String\s*=\s*"[^"]*"/,
+    `override fun getMainComponentName(): String = "${moduleName}"`
   );
 
   fs.writeFileSync(mainActivityPath, mainActivityContent);
   logSuccess('Updated Android MainActivity');
+
+  // Also update MainApplication if it exists or needs to be created
+  const sourceApplicationPaths = [
+    path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'java', 'in', 'spacecom', 'log2space', 'client', 'microscan', 'MainApplication.kt'),
+    path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'java', 'in', 'spacecom', 'log2space', 'client', 'netfix', 'MainApplication.kt'),
+    path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'java', 'com', 'spacecom', 'log2space', 'microscan', 'MainApplication.kt'),
+    path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'java', 'com', 'netfixnetworks', 'MainApplication.kt'),
+    path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'java', 'com', 'h8', 'dnasubscriber', 'MainApplication.kt'),
+    path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'java', 'com', 'dnagoa', 'MainApplication.kt'),
+    path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'java', 'com', 'microscan', 'app', 'MainApplication.kt'),
+  ];
+  
+  let sourceMainApplication = null;
+  for (const sourcePath of sourceApplicationPaths) {
+    if (fs.existsSync(sourcePath)) {
+      sourceMainApplication = sourcePath;
+      break;
+    }
+  }
+
+  if (sourceMainApplication) {
+    let mainApplicationContent = fs.readFileSync(sourceMainApplication, 'utf8');
+    mainApplicationContent = mainApplicationContent.replace(packageRegex, `package ${packageDeclaration}`);
+    fs.writeFileSync(mainApplicationPath, mainApplicationContent);
+    logSuccess('Updated Android MainApplication');
+  }
 }
 
 // Build APK for a specific client

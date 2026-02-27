@@ -1,0 +1,165 @@
+{
+  "migIndex": 1,
+  "data": [
+    {
+      "path": "node_modules/react-native-vector-icons/Fonts/Fontisto.ttf",
+      "sha1": "c090a3ec96a3f1bb9b615c2f3f204ce0dcdcdbc3"
+    },
+    {
+      "path": "node_modules/react-native-vector-icons/Fonts/Octicons.ttf",
+      "sha1": "56acefc0731f35ee23b195b1c8cb5fa94a0db97b"
+    },
+    {
+      "path": "node_modules/react-native-vector-icons/Fonts/Feather.ttf",
+      "sha1": "e6604258b1ced5efd51360875d782fca65381d47"
+    },
+    {
+      "path": "node_modules/react-native-vector-icons/Fonts/FontAwesome6_Regular.ttf",
+      "sha1": "775e2ecfc18d22b177274453d4c014ca6be63208"
+    },
+    {
+      "path": "node_modules/react-native-vector-icons/Fonts/Entypo.ttf",
+      "sha1": "12b5670eb178138f77285d5f2c246d3cc5fa67d6"
+    },
+    {
+      "path": "node_modules/react-native-vector-icons/Fonts/FontAwesome5_Brands.ttf",
+      "sha1": "3fa2d67cef22da5c3f3eb5730c6afbd6fecf0372"
+    },
+    {
+      "path": "node_modules/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf",
+      "sha1": "4c2a838b00dbb5e8bb1b368fce0de534e8eb241c"
+    },
+    {
+      "path": "node_modules/react-native-vector-icons/Fonts/AntDesign.ttf",
+      "sha1": "4e77868439280fb434d4697c7b911271406c81f3"
+    },
+    {
+      "path": "node_modules/react-native-vector-icons/Fonts/Foundation.ttf",
+      "sha1": "4b2bce6c792493a4a5716b6fec2dbefe89492c3f"
+    },
+    {
+      "path": "node_modules/react-native-vector-icons/Fonts/Ionicons.ttf",
+      "sha1": "86e07c3d974eb09099e6e5a9b3b8310303cf0feb"
+    },
+    {
+      "path": "node_modules/react-native-vector-icons/Fonts/FontAwesome5_Solid.ttf",
+      "sha1": "c1b9fae262f42868c075ac865a8ab34920e20a2c"
+    },
+    {
+      "path": "node_modules/react-native-vector-icons/Fonts/FontAwesome5_Regular.ttf",
+      "sha1": "7d849a3981a716e2ba4a84634bc57d0b8054a6a3"
+    },
+    {
+      "path": "node_modules/react-native-vector-icons/Fonts/FontAwesome.ttf",
+      "sha1": "13b1eab65a983c7a73bc7997c479d66943f7c6cb"
+    },
+    {
+      "path": "node_modules/react-native-vector-icons/Fonts/Zocial.ttf",
+      "sha1": "6a48a962b06cc3acbdfd61df0d9a34744eea5e8d"
+    },
+    {
+      "path": "node_modules/react-native-vector-icons/Fonts/EvilIcons.ttf",
+      "sha1": "91d377ea3cf47490b256c2ed081704a7dabdae0c"
+    },
+    {
+      "path": "node_modules/react-native-vector-icons/Fonts/FontAwesome6_Solid.ttf",
+      "sha1": "2b8e11389d98122399667cf64941eb58497dc128"
+    },
+    {
+      "path": "node_modules/react-native-vector-icons/Fonts/SimpleLineIcons.ttf",
+      "sha1": "9ffb81a5a11112e292f2cc323e98486bad597599"
+    },
+    {
+      "path": "node_modules/react-native-vector-icons/Fonts/FontAwesome6_Brands.ttf",
+      "sha1": "7ce89c71d5a51ac65b159c71422783dd86529c66"
+    },
+    {
+      "path": "node_modules/react-native-vector-icons/Fonts/MaterialIcons.ttf",
+      "sha1": "7e02c3f005532ff4d24148567c84089756a7848a"
+    },
+    {
+      "path": "src/assets/DNA3.jpg",
+      "sha1": "a1d612b9247d8d9d8ed6917a92a931b7dc681eb7"
+    },
+    {
+      "path": "src/assets/isp_app.png",
+      "sha1": "b8efee3b2723ff270de6c21a206b0bdcaefbdb5a"
+    },
+    {
+      "path": "src/assets/header_background.png",
+      "sha1": "f2439cbff7ccf96328d8ae03b603e7131e0473a9"
+    },
+    {
+      "path": "src/assets/microscan_logo.png",
+      "sha1": "49b04608d89fa87c740b402b7e2d07eff232bc5a"
+    },
+    {
+      "path": "src/assets/dna_logo.png",
+      "sha1": "49b04608d89fa87c740b402b7e2d07eff232bc5a"
+    },
+    {
+      "path": "src/assets/isp_logo.png",
+      "sha1": "eacd59144a1aa65eae7974ec60f5820d62647001"
+    },
+    {
+      "path": "src/assets/Group-60974.webp",
+      "sha1": "1069f530db928dab130e9cd6aba3fe5e7be2bed2"
+    },
+    {
+      "path": "src/assets/intro-icons/wifi.png",
+      "sha1": "5a13ecda28b91265e7c6c4ad9f5a6e7ff11e7485"
+    },
+    {
+      "path": "src/assets/intro-icons/payment-method.png",
+      "sha1": "c5158ed5a637e7dfac4beee47666a5f62f592d5e"
+    },
+    {
+      "path": "src/assets/intro-icons/game-controller.png",
+      "sha1": "804dfeca7f9e83b75aba6ef9bfbb8a89330f22a6"
+    },
+    {
+      "path": "src/assets/intro-icons/movie.png",
+      "sha1": "3a22c8b9a75085b3ddb125de019d427768b6f850"
+    },
+    {
+      "path": "src/assets/intro-icons/speed.png",
+      "sha1": "96254832ab2f7bffea1ce2173849261ee7320b8b"
+    },
+    {
+      "path": "src/assets/intro-icons/computer.png",
+      "sha1": "e7f86d388f59f3eade6974c6b692eb08d4d85600"
+    },
+    {
+      "path": "src/assets/intro-icons/security.png",
+      "sha1": "aed3664aeb2e0648b6743d32daa340f4a3e49aaf"
+    },
+    {
+      "path": "src/assets/isp_logo_old.png",
+      "sha1": "e273454bba2c42d22951efb4c7485954d2ae6982"
+    },
+    {
+      "path": "src/assets/isp_logo_.png",
+      "sha1": "e50f2fd1c5e72cb4451193b89d87ffd32da0b0dc"
+    },
+    {
+      "path": "src/assets/isip_logo.png",
+      "sha1": "0a42fe4784b4d271da60f609811f01b80f5d4048"
+    },
+    {
+      "path": "src/assets/internet-provider.jpeg",
+      "sha1": "a7bd8161ea3489f42d5375a5289473494d2bc713"
+    },
+    {
+      "path": "src/assets/_header_background.png",
+      "sha1": "e2c0b7b077a6cc681660e66b33364d4acb7eafe0"
+    },
+    {
+      "path": "src/assets/1st-slide-desk.webp",
+      "sha1": "dc8da4d7ce6ae33a89e5a2bc8f67520b4f3eeeda"
+    },
+    {
+      "path": "src/assets/titleLogo.png",
+      "sha1": "996dcfe2f7498d2f78334c4504cd14143d0bc135"
+    }
+  ]
+}

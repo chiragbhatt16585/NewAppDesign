@@ -14,6 +14,7 @@ export interface VersionInfo {
 
 export interface AuthUserResponse {
   end_user_app_version?: string;
+  end_user_app_version3?: string;
   [key: string]: any;
 }
 
@@ -70,20 +71,35 @@ class VersionCheckService {
       // Get username from session manager
       const username = await this.getCurrentUsername();
       if (!username) {
-        //console.log('No username found for version check');
+        // User is not logged in - this is expected, not an error
+        // Version check will be performed after login
         return null;
       }
 
       // Get version info from authUser API
       const authData = await apiService.authUser(username);
       
-      // Parse the end_user_app_version JSON string
+      // Check for version data - prioritize end_user_app_version3
       let versionData = null;
-      if (authData.end_user_app_version) {
+      let versionSource = '';
+      
+      // If end_user_app_version3 exists, use it exclusively (ignore end_user_app_version)
+      if (authData.end_user_app_version3) {
+        try {
+          versionData = JSON.parse(authData.end_user_app_version3);
+          versionSource = 'end_user_app_version3';
+          //console.log('✅ Using end_user_app_version3 (ignoring end_user_app_version)');
+        } catch (parseError) {
+          //console.error('Error parsing end_user_app_version3:', parseError);
+          // If parsing fails, don't fallback - return null
+          return null;
+        }
+      } else if (authData.end_user_app_version) {
+        // Only check end_user_app_version if end_user_app_version3 is not present
         try {
           versionData = JSON.parse(authData.end_user_app_version);
-          // console.log('Parsed version data from end_user_app_version:', versionData);
-          // console.log('Available version fields:', Object.keys(versionData));
+          versionSource = 'end_user_app_version';
+          //console.log('✅ Using end_user_app_version (end_user_app_version3 not available)');
         } catch (parseError) {
           //console.error('Error parsing end_user_app_version:', parseError);
           return null;
@@ -91,9 +107,25 @@ class VersionCheckService {
       }
 
       if (!versionData) {
-        // console.log('No version data found in end_user_app_version');
+        console.log('❌ No version data found. Checked: end_user_app_version3, end_user_app_version');
         return null;
       }
+      
+      // Print all version information
+      // console.log('📱 ========== VERSION INFORMATION ==========');
+      // console.log('📋 Version Source:', versionSource);
+      // console.log('📋 Using end_user_app_version3?', versionSource === 'end_user_app_version3');
+      // console.log('📋 Raw API Response - end_user_app_version3:', authData.end_user_app_version3 ? 'EXISTS' : 'NOT FOUND');
+      // console.log('📋 Raw API Response - end_user_app_version:', authData.end_user_app_version ? 'EXISTS' : 'NOT FOUND');
+      // console.log('📋 All Version Fields:', Object.keys(versionData));
+      // console.log('📋 Full Version Data:', JSON.stringify(versionData, null, 2));
+      // console.log('📱 iOS App Version:', versionData.iOSAppVersion || 'Not set');
+      // console.log('📱 iOS Beta App Version:', versionData.iOSBetaAppVersion || 'Not set');
+      // console.log('🤖 Android App Version:', versionData.androidAppVersion || 'Not set');
+      // console.log('🤖 Android Beta App Version:', versionData.androidBetaAppVersion || 'Not set');
+      // console.log('📱 Current App Version (iOS):', isIOS ? currentVersion : 'N/A');
+      // console.log('🤖 Current Build Number (Android):', !isIOS ? currentVersion : 'N/A');
+      // console.log('==========================================');
       
       // Determine latest server version for the current platform (fallback to beta if needed)
       const serverVersionRawForCompare = isIOS
@@ -148,13 +180,13 @@ class VersionCheckService {
         const serverVersion = serverVersionRaw != null ? String(serverVersionRaw) : '';
         const updateUrl = this.getStoreUrl();
         
-        // console.log('Update needed, returning version info:', {
-        //   currentVersion,
-        //   latestVersion: serverVersion,
-        //   needsUpdate,
-        //   updateUrl,
-        //   forceUpdate: true
-        // });
+        console.log('Update needed, returning version info:', {
+          currentVersion,
+          latestVersion: serverVersion,
+          needsUpdate,
+          updateUrl,
+          forceUpdate: true
+        });
         
         return {
           currentVersion,
@@ -187,7 +219,8 @@ class VersionCheckService {
       // Get username from session manager
       const username = await this.getCurrentUsername();
       if (!username) {
-        console.log('No username found for version check');
+        // User is not logged in - this is expected, not an error
+        // Version check will be performed after login
         return null;
       }
 
@@ -198,7 +231,7 @@ class VersionCheckService {
       let versionData = null;
       if (authData.end_user_app_version) {
         try {
-          versionData = JSON.parse(authData.end_user_app_version);
+          versionData = JSON.parse(authData.end_user_app_version3);
           // console.log('Parsed version data from end_user_app_version:', versionData);
           // console.log('Available version fields:', Object.keys(versionData));
         } catch (parseError) {
@@ -251,7 +284,17 @@ class VersionCheckService {
     try {
       // Import sessionManager dynamically to avoid circular dependencies
       const sessionManager = require('./sessionManager').default;
-      return await sessionManager.getUsername();
+      
+      // First check if user is logged in
+      const isLoggedIn = await sessionManager.isLoggedIn();
+      if (!isLoggedIn) {
+        // User is not logged in, this is expected - don't log as error
+        return null;
+      }
+      
+      // Get username from session
+      const username = await sessionManager.getUsername();
+      return username;
     } catch (error) {
       console.error('Error getting username:', error);
       return null;

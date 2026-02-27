@@ -46,6 +46,7 @@ const LedgerScreen = ({navigation}: any) => {
   const [summaryData, setSummaryData] = useState<any>(null);
   const [displayFlags, setDisplayFlags] = useState<{ invoice: boolean; receipt: boolean; proforma: boolean }>({ invoice: true, receipt: true, proforma: true });
   const [showCounts, setShowCounts] = useState<{ invoice: number; receipt: number; proforma: number }>({ invoice: 0, receipt: 0, proforma: 0 });
+  const [showLedgerSummary, setShowLedgerSummary] = useState<boolean>(true);
 
   useEffect(() => {
     // console.log('=== LEDGER SCREEN: useEffect triggered ===');
@@ -81,17 +82,20 @@ const LedgerScreen = ({navigation}: any) => {
         ledgerConfig.forEach((item: any) => {
           if (item && typeof item === 'object') {
             if (Object.prototype.hasOwnProperty.call(item, 'invoice')) {
-              nextFlags.invoice = item.invoice !== false;
+              // Explicitly check for true value, false means don't show
+              nextFlags.invoice = item.invoice === true;
               const n = typeof item.show_count === 'string' ? parseInt(item.show_count, 10) : Number(item.show_count);
               nextCounts.invoice = Number.isFinite(n) ? n : 0;
             }
             if (Object.prototype.hasOwnProperty.call(item, 'receipt')) {
-              nextFlags.receipt = item.receipt !== false;
+              // Explicitly check for true value, false means don't show
+              nextFlags.receipt = item.receipt === true;
               const n = typeof item.show_count === 'string' ? parseInt(item.show_count, 10) : Number(item.show_count);
               nextCounts.receipt = Number.isFinite(n) ? n : 0;
             }
             if (Object.prototype.hasOwnProperty.call(item, 'proforma')) {
-              nextFlags.proforma = item.proforma !== false;
+              // Explicitly check for true value, false means don't show
+              nextFlags.proforma = item.proforma === true;
               const n = typeof item.show_count === 'string' ? parseInt(item.show_count, 10) : Number(item.show_count);
               nextCounts.proforma = Number.isFinite(n) ? n : 0;
             }
@@ -99,15 +103,20 @@ const LedgerScreen = ({navigation}: any) => {
         });
       } else if (ledgerConfig && typeof ledgerConfig === 'object') {
         nextFlags = {
-          invoice: ledgerConfig.invoice !== false,
-          receipt: ledgerConfig.receipt !== false,
-          proforma: ledgerConfig.proforma !== false,
+          invoice: ledgerConfig.invoice === true,
+          receipt: ledgerConfig.receipt === true,
+          proforma: ledgerConfig.proforma === true,
         };
         // No counts provided in legacy format
       }
 
+      // Parse show_ledger_summary flag (default to true if not provided)
+      const summaryFlag = parsed?.show_ledger_summary;
+      const shouldShowSummary = summaryFlag !== undefined ? summaryFlag === true : true;
+
       setDisplayFlags(nextFlags);
       setShowCounts(nextCounts);
+      setShowLedgerSummary(shouldShowSummary);
     } catch {}
   }, [menu]);
 
@@ -122,7 +131,7 @@ const LedgerScreen = ({navigation}: any) => {
       // If session is valid, load ledger data
       loadLedgerData();
     } catch (error) {
-      console.error('=== LEDGER SCREEN: Session check error ===', error);
+      // console.error('=== LEDGER SCREEN: Session check error ===', error);
       Alert.alert(
         'Authentication Error',
         'Please login again to continue.',
@@ -145,7 +154,7 @@ const LedgerScreen = ({navigation}: any) => {
       const isSessionValid = await checkSessionAndHandle(navigation);
       if (!isSessionValid) {
         // Don't return immediately, let the API call handle token regeneration
-        console.log('Session validation failed, but continuing with API call');
+        // console.log('Session validation failed, but continuing with API call');
       }
       
       const session = await sessionManager.getCurrentSession();
@@ -159,13 +168,46 @@ const LedgerScreen = ({navigation}: any) => {
       const realm = clientConfig.clientId;
       
       const data = await apiService.userLedger(session.username, realm);
-      // console.log('=== LEDGER SCREEN: API response data ===', data);
+      console.log('=== LEDGER SCREEN: FULL API RESPONSE ===');
+      console.log('Full API data:', JSON.stringify(data, null, 2));
+      console.log('Data type:', typeof data);
+      console.log('Is array:', Array.isArray(data));
+      console.log('Data length:', Array.isArray(data) ? data.length : 'N/A');
       
       // Extract data from the response array
       const payments = data[0] || [];
       const invoices = data[1] || [];
       const proforma = data[2] || [];
       const summary = data[3] || {};
+      
+      console.log('=== EXTRACTED DATA ===');
+      console.log('Payments:', JSON.stringify(payments, null, 2));
+      console.log('Payments count:', payments.length);
+      console.log('Invoices:', JSON.stringify(invoices, null, 2));
+      console.log('Invoices count:', invoices.length);
+      console.log('Proforma:', JSON.stringify(proforma, null, 2));
+      console.log('Proforma count:', proforma.length);
+      console.log('Summary:', JSON.stringify(summary, null, 2));
+      
+      // Log sample items to see date format
+      if (payments.length > 0) {
+        console.log('=== SAMPLE PAYMENT ITEM ===');
+        console.log('First payment item:', JSON.stringify(payments[0], null, 2));
+        console.log('Date field:', payments[0].dateString);
+        console.log('Date type:', typeof payments[0].dateString);
+      }
+      if (invoices.length > 0) {
+        console.log('=== SAMPLE INVOICE ITEM ===');
+        console.log('First invoice item:', JSON.stringify(invoices[0], null, 2));
+        console.log('Date field:', invoices[0].dateString);
+        console.log('Date type:', typeof invoices[0].dateString);
+      }
+      if (proforma.length > 0) {
+        console.log('=== SAMPLE PROFORMA ITEM ===');
+        console.log('First proforma item:', JSON.stringify(proforma[0], null, 2));
+        console.log('Date field:', proforma[0].dateString);
+        console.log('Date type:', typeof proforma[0].dateString);
+      }
 
       // console.log('=== LEDGER SCREEN: Extracted data ===', {
       //   payments: payments.length,
@@ -175,18 +217,28 @@ const LedgerScreen = ({navigation}: any) => {
       // });
 
       // Transform data for display
-      const transformedPayments = payments.map((item: any) => ({
-        id: item.id,
-        no: item.no,
-        date: item.dateString,
-        particulars: item.content,
-        amount: `₹${item.amt}`,
-      }));
+      const transformedPayments = payments.map((item: any) => {
+        // Format payment method display
+        let particulars = item.content || '';
+        if (particulars.toLowerCase() === 'online_payment') {
+          particulars = 'Online Payment';
+        }
+        
+        return {
+          id: item.id,
+          no: item.no,
+          date: item.dateString,
+          dateRaw: item.dateString, // Keep raw date for sorting
+          particulars: particulars,
+          amount: `₹${item.amt}`,
+        };
+      });
 
       const transformedInvoices = invoices.map((item: any) => ({
         id: item.id,
         no: item.no,
         date: item.dateString,
+        dateRaw: item.dateString, // Keep raw date for sorting
         particulars: item.content,
         amount: `₹${item.amt}`,
       }));
@@ -195,25 +247,128 @@ const LedgerScreen = ({navigation}: any) => {
         id: item.id,
         no: item.no,
         date: item.dateString,
+        dateRaw: item.dateString, // Keep raw date for sorting
         particulars: item.content,
         amount: `₹${item.amt}`,
       }));
 
+      // Parse date string in format "DD-MMM,YY HH:mm" (e.g., "01-Jun,24 13:23")
+      const parseDateString = (dateStr: string): number => {
+        if (!dateStr || typeof dateStr !== 'string') return 0;
+        
+        try {
+          // Format: "01-Jun,24 13:23" -> "DD-MMM,YY HH:mm"
+          // Make regex case-insensitive for month abbreviation
+          const match = dateStr.trim().match(/^(\d{1,2})-([A-Za-z]{3}),(\d{2})\s+(\d{1,2}):(\d{2})$/i);
+          if (match) {
+            const [, day, monthAbbr, year2Digit, hour, minute] = match;
+            
+            // Convert 2-digit year to 4-digit (assuming 00-50 = 2000-2050, 51-99 = 1951-1999)
+            const year = parseInt(year2Digit, 10);
+            const fullYear = year <= 50 ? 2000 + year : 1900 + year;
+            
+            // Month abbreviations mapping (case-insensitive)
+            const monthMap: { [key: string]: number } = {
+              'jan': 0, 'feb': 1, 'mar': 2, 'apr': 3, 'may': 4, 'jun': 5,
+              'jul': 6, 'aug': 7, 'sep': 8, 'oct': 9, 'nov': 10, 'dec': 11
+            };
+            
+            const month = monthMap[monthAbbr.toLowerCase()];
+            if (month === undefined) {
+              console.warn('Unknown month abbreviation:', monthAbbr);
+              return 0;
+            }
+            
+            // Create date object
+            const date = new Date(fullYear, month, parseInt(day, 10), parseInt(hour, 10), parseInt(minute, 10));
+            const timestamp = date.getTime();
+            
+            // Validate the date was created correctly
+            if (isNaN(timestamp)) {
+              console.warn('Invalid date created from:', dateStr);
+              return 0;
+            }
+            
+            return timestamp;
+          }
+          
+          // Fallback: try standard Date parsing
+          const fallbackDate = new Date(dateStr);
+          if (!isNaN(fallbackDate.getTime())) {
+            return fallbackDate.getTime();
+          }
+        } catch (e) {
+          console.warn('Date parsing error for:', dateStr, e);
+        }
+        
+        return 0;
+      };
+
+      // Sort by date in descending order (latest first)
+      const sortByDateDesc = (a: any, b: any) => {
+        const dateAStr = a.dateRaw || a.date || '';
+        const dateBStr = b.dateRaw || b.date || '';
+        
+        const dateA = parseDateString(dateAStr);
+        const dateB = parseDateString(dateBStr);
+        
+        // If both dates parsed successfully, sort by timestamp (descending - newest first)
+        if (dateA > 0 && dateB > 0) {
+          return dateB - dateA; // Descending order (newest first)
+        }
+        
+        // If one date failed to parse, put it at the end
+        if (dateA === 0 && dateB > 0) return 1;
+        if (dateB === 0 && dateA > 0) return -1;
+        
+        // If both failed to parse, fallback to string comparison (descending)
+        // This ensures consistent sorting even if parsing fails
+        return dateBStr.localeCompare(dateAStr, undefined, { numeric: true, sensitivity: 'base' });
+      };
+
+      // Sort by date in descending order (latest first)
+      const sortedPayments = [...transformedPayments].sort(sortByDateDesc);
+      const sortedInvoices = [...transformedInvoices].sort(sortByDateDesc);
+      const sortedProforma = [...transformedProforma].sort(sortByDateDesc);
+      
+      // Debug: Verify sorting is working
+      if (sortedPayments.length > 0) {
+        const firstDate = parseDateString(sortedPayments[0].dateRaw || sortedPayments[0].date);
+        const lastDate = parseDateString(sortedPayments[sortedPayments.length - 1].dateRaw || sortedPayments[sortedPayments.length - 1].date);
+        if (firstDate > 0 && lastDate > 0 && firstDate < lastDate) {
+          console.warn('⚠️ Payments sorting issue: First item is older than last item');
+        }
+      }
+      if (sortedInvoices.length > 0) {
+        const firstDate = parseDateString(sortedInvoices[0].dateRaw || sortedInvoices[0].date);
+        const lastDate = parseDateString(sortedInvoices[sortedInvoices.length - 1].dateRaw || sortedInvoices[sortedInvoices.length - 1].date);
+        if (firstDate > 0 && lastDate > 0 && firstDate < lastDate) {
+          console.warn('⚠️ Invoices sorting issue: First item is older than last item');
+        }
+      }
+      if (sortedProforma.length > 0) {
+        const firstDate = parseDateString(sortedProforma[0].dateRaw || sortedProforma[0].date);
+        const lastDate = parseDateString(sortedProforma[sortedProforma.length - 1].dateRaw || sortedProforma[sortedProforma.length - 1].date);
+        if (firstDate > 0 && lastDate > 0 && firstDate < lastDate) {
+          console.warn('⚠️ Proforma sorting issue: First item is older than last item');
+        }
+      }
+
       // console.log('=== LEDGER SCREEN: Setting state with transformed data ===', {
-      //   payments: transformedPayments.length,
-      //   invoices: transformedInvoices.length,
-      //   proforma: transformedProforma.length
+      //   payments: sortedPayments.length,
+      //   invoices: sortedInvoices.length,
+      //   proforma: sortedProforma.length
       // });
 
-      setPaymentReceived(transformedPayments);
-      setInvoicesGenerated(transformedInvoices);
-      setProformaInvoices(transformedProforma);
+      setPaymentReceived(sortedPayments);
+      setInvoicesGenerated(sortedInvoices);
+      setProformaInvoices(sortedProforma);
       setSummaryData(summary);
       setLedgerData(data);
       
       // console.log('=== LEDGER SCREEN: Data loading completed successfully ===');
     } catch (err: any) {
-      console.error('=== LEDGER SCREEN: Error loading ledger data ===', err);
+      // console.error('=== LEDGER SCREEN: Error loading ledger data ===', err);
       setError(err.message || 'Failed to load ledger data');
       Alert.alert('Error', err.message || 'Failed to load ledger data');
     } finally {
@@ -264,7 +419,7 @@ const LedgerScreen = ({navigation}: any) => {
       
       // console.log('=== LEDGER SCREEN: Download completed successfully ===');
     } catch (error: any) {
-      console.error('=== LEDGER SCREEN: Download error ===', error);
+      // console.error('=== LEDGER SCREEN: Download error ===', error);
       Alert.alert('Download Error', error.message || 'Failed to download PDF');
     }
   };
@@ -299,10 +454,10 @@ const LedgerScreen = ({navigation}: any) => {
           <Text style={[styles.itemDate, {color: colors.textSecondary}]}>{item.date}</Text>
         </View>
         <TouchableOpacity 
-          style={styles.downloadButton}
+          style={[styles.downloadButton, {backgroundColor: colors.primaryLight || '#e3f2fd', borderColor: colors.primary || '#1976d2'}]}
           onPress={() => handleDownload(item)}
         >
-          <Feather name="download" size={20} color="#4caf50" />
+          <Feather name="download" size={20} color={colors.primary} />
         </TouchableOpacity>
       </View>
       <View style={styles.itemDetails}>
@@ -323,10 +478,10 @@ const LedgerScreen = ({navigation}: any) => {
           </View>
         </View>
         <TouchableOpacity 
-          style={styles.downloadButton}
+          style={[styles.downloadButton, {backgroundColor: colors.primaryLight || '#e3f2fd', borderColor: colors.primary || '#1976d2'}]}
           onPress={() => handleDownload(item)}
         >
-          <Feather name="download" size={20} color="#4caf50" />
+          <Feather name="download" size={20} color={colors.primary} />
         </TouchableOpacity>
       </View>
       <View style={styles.itemDetails}>
@@ -349,10 +504,10 @@ const LedgerScreen = ({navigation}: any) => {
           <Text style={[styles.itemDate, {color: colors.textSecondary}]}>{item.date}</Text>
         </View>
         <TouchableOpacity 
-          style={styles.downloadButton}
+          style={[styles.downloadButton, {backgroundColor: colors.primaryLight || '#e3f2fd', borderColor: colors.primary || '#1976d2'}]}
           onPress={() => handleDownload(item)}
         >
-          <Feather name="download" size={20} color="#4caf50" />
+          <Feather name="download" size={20} color={colors.primary} />
         </TouchableOpacity>
       </View>
       <View style={styles.itemDetails}>
@@ -381,56 +536,58 @@ const LedgerScreen = ({navigation}: any) => {
   const renderScrollableHeader = () => (
     <View>
       <View style={styles.headingContainer}>
-        <Text style={[styles.pageHeading, {color: colors.text}]}>{t('ledger.title')}</Text>
+        <Text style={[styles.pageHeading, {color: colors.text}]}>Billing History</Text>
         <Text style={[styles.pageSubheading, {color: colors.textSecondary}]}>
-          {t('ledger.subtitle')}
+          View your invoices
         </Text>
       </View>
 
-      <View style={[styles.bottomSection, {backgroundColor: colors.card, shadowColor: colors.shadow}]}> 
-        <View style={styles.summaryHeader}>
-          <View style={styles.summaryHeaderContent}>
-            <Text style={[styles.bottomSectionTitle, {color: colors.text}]}>{t('ledger.accountSummary')}</Text>
+      {showLedgerSummary && (
+        <View style={[styles.bottomSection, {backgroundColor: colors.card, shadowColor: colors.shadow}]}> 
+          <View style={styles.summaryHeader}>
+            <View style={styles.summaryHeaderContent}>
+              <Text style={[styles.bottomSectionTitle, {color: colors.text}]}>{t('ledger.accountSummary')}</Text>
+            </View>
+          </View>
+          <View style={styles.expandedSummary}>
+            <View style={styles.summaryRow}>
+              <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('ledger.openingBalance')}</Text>
+              <Text style={[styles.summaryValue, {color: colors.text}]}>₹{summaryData?.openingBalance || 0}</Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('ledger.proformaAmount')}</Text>
+              <Text style={[styles.summaryValue, {color: colors.text}]}>₹{summaryData?.proforma_invoice || 0}</Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('ledger.billAmount')}</Text>
+              <Text style={[styles.summaryValue, {color: colors.text}]}>₹{summaryData?.billAmount || 0}</Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('ledger.paidAmount')}</Text>
+              <Text style={[styles.summaryValue, {color: colors.text}]}>₹{summaryData?.paidAmount || 0}</Text>
+            </View>
+            <View style={[styles.summaryRow, {paddingTop: 10, borderTopWidth: 1, borderTopColor: '#e0e0e0'}]}>
+              <Text style={[styles.summaryLabel, {color: colors.textSecondary, fontWeight: '600'}]}>{t('ledger.currentBalance')}</Text>
+              {(() => {
+                const duesRaw = summaryData?.balance ?? 0;
+                const dues = Number(duesRaw) || 0;
+                const isZero = dues === 0;
+                const isDr = dues > 0;
+                const displayValue = Math.abs(dues).toFixed(2);
+                return (
+                  <Text style={[styles.summaryValue, {color: colors.text, fontWeight: 'bold'}]}>
+                    ₹{isZero ? '0.00' : displayValue}
+                    {!isZero ? ' ' : ''}
+                    {!isZero ? (
+                      <Text style={{color: isDr ? '#d32f2f' : '#2e7d32'}}>{isDr ? 'DR' : 'CR'}</Text>
+                    ) : null}
+                  </Text>
+                );
+              })()}
+            </View>
           </View>
         </View>
-        <View style={styles.expandedSummary}>
-          <View style={styles.summaryRow}>
-            <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('ledger.openingBalance')}</Text>
-            <Text style={[styles.summaryValue, {color: colors.text}]}>₹{summaryData?.openingBalance || 0}</Text>
-          </View>
-          <View style={styles.summaryRow}>
-            <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('ledger.proformaAmount')}</Text>
-            <Text style={[styles.summaryValue, {color: colors.text}]}>₹{summaryData?.proforma_invoice || 0}</Text>
-          </View>
-          <View style={styles.summaryRow}>
-            <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('ledger.billAmount')}</Text>
-            <Text style={[styles.summaryValue, {color: colors.text}]}>₹{summaryData?.billAmount || 0}</Text>
-          </View>
-          <View style={styles.summaryRow}>
-            <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>{t('ledger.paidAmount')}</Text>
-            <Text style={[styles.summaryValue, {color: colors.text}]}>₹{summaryData?.paidAmount || 0}</Text>
-          </View>
-          <View style={[styles.summaryRow, {paddingTop: 10, borderTopWidth: 1, borderTopColor: '#e0e0e0'}]}>
-            <Text style={[styles.summaryLabel, {color: colors.textSecondary, fontWeight: '600'}]}>{t('ledger.currentBalance')}</Text>
-            {(() => {
-              const duesRaw = summaryData?.balance ?? 0;
-              const dues = Number(duesRaw) || 0;
-              const isZero = dues === 0;
-              const isDr = dues > 0;
-              const displayValue = Math.abs(dues).toFixed(2);
-              return (
-                <Text style={[styles.summaryValue, {color: colors.text, fontWeight: 'bold'}]}>
-                  ₹{isZero ? '0.00' : displayValue}
-                  {!isZero ? ' ' : ''}
-                  {!isZero ? (
-                    <Text style={{color: isDr ? '#d32f2f' : '#2e7d32'}}>{isDr ? 'DR' : 'CR'}</Text>
-                  ) : null}
-                </Text>
-              );
-            })()}
-          </View>
-        </View>
-      </View>
+      )}
     </View>
   );
 
@@ -687,9 +844,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#e8f5e8',
     borderWidth: 1,
-    borderColor: '#4caf50',
   },
   downloadIcon: {
     fontSize: 20,
@@ -848,7 +1003,7 @@ const styles = StyleSheet.create({
   },
   emptyIcon: {
     fontSize: 48,
-    marginBottom: 16,
+    marginBottom: 24,
   },
   emptyTitle: {
     fontSize: 18,

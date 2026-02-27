@@ -6,12 +6,13 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.IBinder;
 import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
-import com.h8.dnasubscriber.R;
 
 public class KeepAliveService extends Service {
     private static final String TAG = "KeepAliveService";
@@ -33,15 +34,17 @@ public class KeepAliveService extends Service {
             stopSelf();
             return START_NOT_STICKY;
         }
-        Intent notificationIntent = new Intent(this, MainActivity.class);
+        Intent notificationIntent = getLaunchIntent();
         PendingIntent pendingIntent = PendingIntent.getActivity(
             this, 0, notificationIntent, 
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0
         );
+        
+        int smallIcon = getAppIcon();
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("ISP App Running")
             .setContentText("App is running in background")
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(smallIcon)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -81,6 +84,24 @@ public class KeepAliveService extends Service {
             NotificationManager manager = getSystemService(NotificationManager.class);
             if (manager != null) manager.createNotificationChannel(channel);
         }
+    }
+
+    private Intent getLaunchIntent() {
+        PackageManager pm = getPackageManager();
+        Intent intent = pm.getLaunchIntentForPackage(getPackageName());
+        if (intent == null) {
+            intent = new Intent(this, MainActivity.class);
+        }
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        return intent;
+    }
+
+    private int getAppIcon() {
+        ApplicationInfo appInfo = getApplicationInfo();
+        if (appInfo != null && appInfo.icon != 0) {
+            return appInfo.icon;
+        }
+        return android.R.drawable.sym_def_app_icon;
     }
 }
 

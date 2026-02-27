@@ -29,10 +29,12 @@ npm run ios:microscan    # or npm run ios:dna-infotel
 
 ## 📚 **Documentation**
 
-- **📖 [README.md](README.md)** - Complete setup and configuration guide
-- **⚡ [QUICK_START.md](QUICK_START.md)** - Quick reference for commands
-- **🍎 [IOS_DEVELOPMENT_NOTES.md](IOS_DEVELOPMENT_NOTES.md)** - iOS development guide
-- **🔧 [API_INTEGRATION.md](API_INTEGRATION.md)** - API integration details
+All documentation, guides, and quick reference files are in the **[Documentation/](Documentation/)** folder:
+
+- **⚡ [QUICK_START.md](Documentation/QUICK_START.md)** - Quick reference for commands
+- **🍎 [IOS_DEVELOPMENT_NOTES.md](Documentation/IOS_DEVELOPMENT_NOTES.md)** - iOS development guide
+- **🔧 [API_INTEGRATION.md](Documentation/API_INTEGRATION.md)** - API integration details
+- **📋 [Full index](Documentation/README.md)** - Complete list of all documentation
 
 ## Features
 
@@ -50,6 +52,7 @@ npm run ios:microscan    # or npm run ios:dna-infotel
 
 ```
 ISPApp/
+├── Documentation/             # All docs, guides, and quick reference
 ├── config/                    # Client configurations
 │   ├── microscan/            # Microscan client config
 │   │   ├── app.json          # App metadata

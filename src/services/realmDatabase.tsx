@@ -1,4 +1,6 @@
-const Realm = require('realm');
+// Realm disabled: native binary not used in this app (we use AsyncStorage). Loading Realm causes "Could not find the realm binary".
+// Set to null so RealmProvider and realmApi no-op; realmAuthService already handles null realm.
+let Realm: any = null;
 import * as React from 'react';
 import { createContext, useContext, useEffect, useState } from 'react';
 
@@ -117,6 +119,9 @@ export const RealmProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [realm, setRealm] = useState<any>(null);
 
   useEffect(() => {
+    if (!Realm) {
+      return;
+    }
     const initRealm = async () => {
       try {
         const realmInstance = await Realm.open(realmConfig);
@@ -298,6 +303,7 @@ export const realmApi = {
 
   // Utility functions
   clearAllData(realm: any) {
+    if (!realm) return;
     try {
       realm.write(() => {
         realm.delete(realm.objects('Credentials'));

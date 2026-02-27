@@ -20,6 +20,7 @@ import Feather from 'react-native-vector-icons/Feather';
 import {getClientConfig} from '../config/client-config';
 import useMenuSettings from '../hooks/useMenuSettings';
 import menuService from '../services/menuService';
+import { useAuthData } from '../utils/AuthDataContext';
 
 const MoreOptionsScreen = ({navigation}: any) => {
   const {isDark, themeMode, setThemeMode} = useTheme();
@@ -28,10 +29,46 @@ const MoreOptionsScreen = ({navigation}: any) => {
   const {logout} = useAuth();
   const { menu, loading: menuLoading, error: menuError, refresh } = useMenuSettings();
   const [refreshing, setRefreshing] = useState(false);
+  const { authData } = useAuthData();
   
   // Check if current client is microscan
   const clientConfig = getClientConfig();
   const isMicroscan = clientConfig.clientId === 'microscan';
+
+  // Check if AppSideNavigationMenu contains "First Payment" or proforma_invoices_dues exists
+  const shouldHideRenewAndUpgrade = useMemo(() => {
+    // Check for "First Payment" in menu
+    const hasFirstPayment = authData?.AppSideNavigationMenu && 
+      Array.isArray(authData.AppSideNavigationMenu) &&
+      authData.AppSideNavigationMenu.includes('First Payment');
+    
+    // Check for proforma_invoices_dues at root level
+    const proformaDues = authData?.proforma_invoices_dues;
+    const hasProformaDues = proformaDues !== null && 
+      proformaDues !== undefined && 
+      proformaDues !== '' && 
+      String(proformaDues).trim() !== '0' &&
+      !isNaN(parseFloat(String(proformaDues))) &&
+      parseFloat(String(proformaDues)) > 0;
+    
+    const result = hasFirstPayment || hasProformaDues;
+
+    // Debug log to verify why Renew / Upgrade should be hidden or shown
+    try {
+      console.log('[MoreOptions] shouldHideRenewAndUpgrade debug:', {
+        AppSideNavigationMenu: authData?.AppSideNavigationMenu,
+        proforma_invoices_dues: authData?.proforma_invoices_dues,
+        hasFirstPayment,
+        hasProformaDues,
+        result,
+      });
+    } catch {
+      // ignore logging errors
+    }
+    
+    // Hide if either condition is true
+    return result;
+  }, [authData]);
 
   // Removed auto-refresh on focus to avoid unnecessary calls; rely on pull-to-refresh
 
@@ -171,20 +208,27 @@ const MoreOptionsScreen = ({navigation}: any) => {
       'Speed Test',
       'Partner Apps',
       'Settings',
-    ];
+    ].filter(label => {
+      // Hide "Renew Plan" and "Upgrade Plan" if "First Payment" is in AppSideNavigationMenu
+      if (shouldHideRenewAndUpgrade && (label === 'Renew Plan' || label === 'Upgrade Plan')) {
+        return false;
+      }
+      return true;
+    });
 
-    const iconMap: Record<string, { icon: string; iconType?: 'feather' }> = {
-      'Renew Plan': { icon: '🔄' },
-      'Upgrade Plan': { icon: '⬆️' },
-      'Ledger': { icon: '📊' },
-      'Usage Details': { icon: '📈' },
+    const iconMap: Record<string, { icon: string; iconType: 'feather' }> = {
+      'Renew Plan': { icon: 'refresh-cw', iconType: 'feather' },
+      'Upgrade Plan': { icon: 'arrow-up', iconType: 'feather' },
+      'Ledger': { icon: 'book', iconType: 'feather' },
+      'Usage Details': { icon: 'bar-chart-2', iconType: 'feather' },
       'Sessions': { icon: 'clock', iconType: 'feather' },
-      'KYC': { icon: '🆔' },
-      'Refer Friend': { icon: '👥' },
+      'KYC': { icon: 'user-check', iconType: 'feather' },
+      'Refer Friend': { icon: 'users', iconType: 'feather' },
       'Update SSID': { icon: 'wifi', iconType: 'feather' },
-      'Speed Test': { icon: '⚡' },
-      'Partner Apps': { icon: '📱' },
-      'Settings': { icon: '⚙️' },
+      'Speed Test': { icon: 'activity', iconType: 'feather' },
+      'Partner Apps': { icon: 'smartphone', iconType: 'feather' },
+      'Settings': { icon: 'settings', iconType: 'feather' },
+      'AI Assistant': { icon: 'message-circle', iconType: 'feather' },
     };
 
     const routeMap: Record<string, () => void> = {
@@ -199,12 +243,13 @@ const MoreOptionsScreen = ({navigation}: any) => {
       'Speed Test': handleSpeedTest,
       'Partner Apps': handlePartnerApps,
       'Settings': handleSettings,
+      'AI Assistant': handleAIDemo,
     };
 
     const subtitleMap: Record<string, string> = {
       'Renew Plan': 'Extend your plan',
       'Upgrade Plan': 'Change your plan',
-      'Ledger': 'Transaction history',
+      'Ledger': 'Billing history',
       'Usage Details': 'Detailed statistics',
       'Sessions': 'Session history',
       'KYC': 'Identity verification',
@@ -213,11 +258,37 @@ const MoreOptionsScreen = ({navigation}: any) => {
       'Speed Test': 'Test your internet speed',
       'Partner Apps': 'Download Partner Apps',
       'Settings': 'Language, Theme & Security',
+      'AI Assistant': 'Chat with AI support',
     };
 
+    // Debug: log raw menu coming from API
+    try {
+      console.log('[MoreOptions] Raw menu from API:', Array.isArray(menu)
+        ? menu.map((m: any) => ({
+            menu_label: m?.menu_label,
+            menu_api_type: m?.menu_api_type,
+            status: m?.status,
+            statusLower: m?.status ? String(m.status).toLowerCase().trim() : null,
+          }))
+        : menu);
+    } catch {
+      // ignore logging errors
+    }
+
     const items = Array.isArray(menu)
-      ? menu.filter((m: any) => String(m?.status).toLowerCase() === 'active')
+      ? menu.filter((m: any) => String(m?.status).toLowerCase().trim() === 'active')
       : [];
+
+    try {
+      console.log('[MoreOptions] Active menu items after status filter:', items.map((m: any) => ({
+        menu_label: m?.menu_label,
+        menu_api_type: m?.menu_api_type,
+        status: m?.status,
+      })));
+      console.log('[MoreOptions] shouldHideRenewAndUpgrade:', shouldHideRenewAndUpgrade);
+    } catch {
+      // ignore logging errors
+    }
 
     const byLabel = new Map<string, any>();
     items.forEach((m: any) => { if (m?.menu_label) byLabel.set(m.menu_label, m); });
@@ -226,25 +297,43 @@ const MoreOptionsScreen = ({navigation}: any) => {
       .filter(label => byLabel.has(label))
       .map(label => ({
         id: label.toLowerCase().replace(/\s+/g, '-'),
-        title: label,
+        title: label === 'Ledger' ? t('navigation.billingHistory') : label,
         subtitle: subtitleMap[label] || '',
         icon: iconMap[label]?.icon || '•',
         iconType: iconMap[label]?.iconType,
         onPress: routeMap[label],
       }));
 
+    // AI Assistant: always show (not controlled by backend menu)
+    built.unshift({
+      id: 'ai-assistant',
+      title: 'AI Assistant',
+      subtitle: 'Chat with AI support',
+      icon: 'message-circle',
+      iconType: 'feather',
+      onPress: handleAIDemo,
+    });
+
+    // Debug: final items that will be rendered (excluding Logout)
+    try {
+      console.log('[MoreOptions] Final dynamic menu items (without Logout):', built.map(i => i.title));
+    } catch {
+      // ignore logging errors
+    }
+
     // Append Logout at the end
     built.push({
       id: 'logout',
       title: t('common.logout'),
       subtitle: 'Sign out of your account',
-      icon: '⏏️',
+      icon: 'log-out',
+      iconType: 'feather',
       onPress: handleLogout,
       isLogout: true,
     });
 
     return built;
-  }, [menu, t]);
+  }, [menu, t, shouldHideRenewAndUpgrade]);
 
   return (
     <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}>
@@ -265,6 +354,26 @@ const MoreOptionsScreen = ({navigation}: any) => {
           />
         )}
       >
+        {/* User Profile Card */}
+        {authData && (
+          <View style={[styles.profileCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
+            <View style={[styles.avatarContainer, {backgroundColor: colors.primary || '#FF6B35'}]}>
+              <Text style={styles.avatarText}>
+                {authData.first_name?.[0] || ''}{authData.last_name?.[0] || ''}
+                {!authData.first_name && !authData.last_name && authData.username?.[0]?.toUpperCase() || ''}
+              </Text>
+            </View>
+            <View style={styles.profileInfo}>
+              <Text style={[styles.profileName, {color: colors.primary || '#FF6B35'}]}>
+                {authData.full_name || `${authData.first_name || ''} ${authData.last_name || ''}`.trim() || 'User'}
+              </Text>
+              <Text style={[styles.profileUsername, {color: colors.text}]}>
+                {authData.username || 'N/A'}
+              </Text>
+            </View>
+          </View>
+        )}
+
         <View style={styles.content}>
           {(() => {
             const nonLogoutItems = dynamicMenuItems.filter(item => !item.isLogout);
@@ -288,15 +397,11 @@ const MoreOptionsScreen = ({navigation}: any) => {
                           styles.gridMenuIcon, 
                           {backgroundColor: colors.primaryLight}
                         ]}>
-                          {item.iconType === 'feather' ? (
-                            <Feather 
-                              name={item.icon} 
-                              size={18} 
-                              color={colors.primary} 
-                            />
-                          ) : (
-                            <Text style={styles.gridIconText}>{item.icon}</Text>
-                          )}
+                          <Feather 
+                            name={item.icon} 
+                            size={18} 
+                            color={colors.primary} 
+                          />
                         </View>
                         <Text style={[styles.gridMenuTitle, {color: colors.text}]} numberOfLines={1}>
                           {item.title}
@@ -320,13 +425,24 @@ const MoreOptionsScreen = ({navigation}: any) => {
             <TouchableOpacity
               style={[
                 styles.logoutButton,
-                {backgroundColor: colors.card, shadowColor: colors.shadow, borderColor: colors.accent}
+                {
+                  backgroundColor: colors.card,
+                  shadowColor: colors.shadow,
+                  borderColor: colors.primary || '#0E5EF7',
+                }
               ]}
               onPress={logoutItem.onPress}
               activeOpacity={0.85}
             >
-              <View style={[styles.logoutIcon, {backgroundColor: colors.accentLight}]}> 
-                <Text style={styles.gridIconText}>{logoutItem.icon}</Text>
+              <View style={[
+                styles.logoutIcon,
+                {backgroundColor: colors.primaryLight || '#E5F1FF'}
+              ]}> 
+                <Feather 
+                  name={logoutItem.icon} 
+                  size={18} 
+                  color={colors.primary} 
+                />
               </View>
               <Text style={[styles.logoutTitle, {color: colors.text}]}> {logoutItem.title}</Text>
             </TouchableOpacity>
@@ -342,9 +458,49 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
+  profileCard: {
+    marginHorizontal: 20,
+    marginTop: 16,
+    marginBottom: 20,
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  avatarContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  avatarText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  profileInfo: {
+    flex: 1,
+  },
+  profileName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  profileUsername: {
+    fontSize: 14,
+  },
   content: {
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 0,
   },
   menuItem: {
     flexDirection: 'row',

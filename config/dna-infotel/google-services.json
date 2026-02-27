@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "3474272485",
+    "project_id": "genstar-network---push",
+    "storage_bucket": "genstar-network---push.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:3474272485:android:21e164dd7d36618010e40c",
+        "android_client_info": {
+          "package_name": "com.h8.dnasubscriber"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "3474272485-99982nr2jsa13tr80upfgem7rj2lrj1m.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCiUfEhRDorEgygOsiLGqWLOiqVWVHtoIE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "3474272485-99982nr2jsa13tr80upfgem7rj2lrj1m.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

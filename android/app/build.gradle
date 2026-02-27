@@ -54,27 +54,29 @@ react {
     autolinkLibrariesWithApp()
 }
 
-// Task to fix generated file with correct package name
+/**
+ * Fix ReactNativeApplicationEntryPoint so it always uses the current namespace
+ */
 task fixGeneratedFile {
-    description = 'Fix generated ReactNativeApplicationEntryPoint.java with correct package name'
+    description = 'Fix ReactNativeApplicationEntryPoint.java with the current namespace'
     doLast {
         def generatedFile = file("${projectDir}/build/generated/autolinking/src/main/java/com/facebook/react/ReactNativeApplicationEntryPoint.java")
         if (generatedFile.exists()) {
             def content = generatedFile.text
             def namespace = android.namespace
-            // Replace any BuildConfig reference with the correct namespace
-            content = content.replaceAll(/com\.\w+\.\w+\.\w+\.BuildConfig/, "${namespace}.BuildConfig")
-            content = content.replaceAll(/com\.\w+\.\w+\.BuildConfig/, "${namespace}.BuildConfig")
-            generatedFile.text = content
-            println "✅ Fixed generated file with namespace: ${namespace}"
+            // Match any package name pattern (com., in., etc.) followed by BuildConfig
+            def updated = content.replaceAll(/([a-z]+\.)+[A-Za-z0-9_.]+\.BuildConfig/, "${namespace}.BuildConfig")
+            if (content != updated) {
+                generatedFile.text = updated
+                println "✅ Fixed generated entry point namespace: ${namespace}"
+            }
         }
     }
 }
 
-// Run fix after React Native entry point is generated
 afterEvaluate {
-    tasks.named('generateReactNativeEntryPoint').configure {
-        finalizedBy 'fixGeneratedFile'
+    tasks.matching { it.name == 'generateReactNativeEntryPoint' }.configureEach {
+        finalizedBy fixGeneratedFile
     }
 }
 
@@ -101,17 +103,38 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.h8.dnasubscriber"
+    namespace "in.spacecom.log2space.client.microscan"
     defaultConfig {
-        applicationId "com.h8.dnasubscriber"
+        applicationId "in.spacecom.log2space.client.microscan"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 296
-        versionName "296.0.0"
+        versionCode 39
+        versionName "1.0.1"
         buildConfigField "boolean", "IS_NEW_ARCHITECTURE_ENABLED", "false"
     }
     
-    signingConfigs {
+    sourceSets {
+        main {
+            java {
+                srcDirs = ['src/main/java']
+                // Exclude all other client packages, only include the current namespace
+                exclude '**/com/h8/**'
+                exclude '**/com/dnagoa/**'
+                exclude '**/com/logon/**'
+                exclude '**/com/spacecom/log2space/linkway/**'
+                exclude '**/com/spacecom/log2space/netplanet/**'
+                exclude '**/com/spacecom/log2space/onesevenstar/**'
+                exclude '**/com/log2space/**'
+                exclude '**/com/microscan/**'
+                exclude '**/com/netfixnetworks/**'
+                // When building one 'in' client, exclude the other (script sets this to microscan or netfix)
+                exclude '**/in/spacecom/log2space/client/microscan/**'
+                // Exclude other 'in' packages if needed, but not 'in/spacecom/log2space/client/microscan'
+            }
+        }
+    }
+    
+                                signingConfigs {
         debug {
             storeFile file('debug.keystore')
             storePassword 'android'
@@ -119,13 +142,14 @@ android {
             keyPassword 'android'
         }
         release {
-            storeFile file('Log2spaceDNAInfotelAppKey.jks')
-            storePassword 'dnasubscriber'
-            keyAlias 'dnasubscriber'
-            keyPassword 'dnasubscriber'
+            // Microscan Play Store upload key (matches SHA1: 08:1C:A0:54:CA:45:95:5B:B3:8B:3A:B8:B2:53:93:FA:F5:64:D0:AE)
+            storeFile file('Log2SpaceEndUserMicroscan.jks')
+            storePassword 'log2space'
+            keyAlias 'log2space'
+            keyPassword 'log2space'
         }
     }
-    
+
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
@@ -135,6 +159,10 @@ android {
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
+    }
+    
+    kotlinOptions {
+        jvmTarget = "17"
     }
 }
 
@@ -147,4 +175,7 @@ dependencies {
     } else {
         implementation jscFlavor
     }
-} 
+}
+
+// Enable Google Services plugin for Firebase auto-initialization
+apply plugin: "com.google.gms.google-services"

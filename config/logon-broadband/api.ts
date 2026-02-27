@@ -670,41 +670,74 @@ class ApiService {
 
   private formatDate(dateString: string, format: string): string {
     try {
+      // Handle the specific format 'DD-MMM,YY HH:mm' (e.g., "12-May,26 01:05")
       if (format === 'DD-MMM,YY HH:mm') {
+        // If the date is already in the expected format, return it as-is
+        if (dateString.match(/^\d{1,2}-[A-Za-z]{3},\d{2}\s+\d{1,2}:\d{2}$/)) {
+          return dateString;
+        }
+        
+        // Handle "DD-MM-YYYY HH:mm" format (e.g., "25-04-2025 10:56")
+        if (dateString.match(/^\d{1,2}-\d{2}-\d{4}\s+\d{1,2}:\d{2}$/)) {
+          const parts = dateString.split(' ');
+          const datePart = parts[0]; // "25-04-2025"
+          const timePart = parts[1] || ''; // "10:56"
+          
+          const [day, month, year] = datePart.split('-');
+          const monthNum = parseInt(month, 10) - 1; // Month is 0-indexed
+          const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          const monthAbbr = monthNames[monthNum];
+          const year2Digit = year.slice(-2);
+          
+          return `${day}-${monthAbbr},${year2Digit} ${timePart}`;
+        }
+        
+        // Parse the date string manually if it's in a different format
         const parts = dateString.split(' ');
         if (parts.length >= 2) {
-          const datePart = parts[0];
-          const dateComponents = datePart.split('-');
-          if (dateComponents.length >= 2) {
-            const day = dateComponents[0];
-            const monthYear = dateComponents[1];
-            const monthYearParts = monthYear.split(',');
-            if (monthYearParts.length >= 2) {
-              const month = monthYearParts[0];
-              const year = monthYearParts[1];
-              const fullYear = year.length === 2 ? `20${year}` : year;
-              const properDateString = `${day} ${month} ${fullYear}`;
-              const date = new Date(properDateString);
-              
-              if (!isNaN(date.getTime())) {
-                return date.toLocaleDateString('en-GB', {
-                  day: '2-digit',
-                  month: 'short',
-                  year: 'numeric'
-                });
-              }
-            }
+          const datePart = parts[0]; // Could be "12-May,26" or "2026-05-12" or "12/05/2026"
+          const timePart = parts[1] || ''; // "01:05" or empty
+          
+          // Try to parse as ISO date or standard date format
+          let date: Date;
+          if (datePart.includes('-') && datePart.match(/^\d{4}-\d{2}-\d{2}/)) {
+            // ISO format: "2026-05-12"
+            date = new Date(dateString);
+          } else if (datePart.includes('/')) {
+            // Format like "12/05/2026"
+            const [day, month, year] = datePart.split('/');
+            date = new Date(`${year}-${month}-${day} ${timePart}`);
+          } else {
+            // Try standard Date parsing
+            date = new Date(dateString);
+          }
+          
+          if (!isNaN(date.getTime())) {
+            // Format to "DD-MMM,YY HH:mm" (e.g., "12-May,26 01:05")
+            const day = date.getDate().toString();
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const month = monthNames[date.getMonth()];
+            const year = date.getFullYear().toString().slice(-2);
+            const hours = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            
+            return `${day}-${month},${year} ${hours}:${minutes}`;
           }
         }
       }
       
+      // Fallback: try to parse as regular date and format to expected format
       const date = new Date(dateString);
       if (!isNaN(date.getTime())) {
-        return date.toLocaleDateString('en-GB', {
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric'
-        });
+        // Format to "DD-MMM,YY HH:mm" (e.g., "12-May,26 01:05")
+        const day = date.getDate().toString();
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const month = monthNames[date.getMonth()];
+        const year = date.getFullYear().toString().slice(-2);
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        
+        return `${day}-${month},${year} ${hours}:${minutes}`;
       }
       
       return dateString;
@@ -869,6 +902,89 @@ class ApiService {
           throw new Error(networkErrorMsg);
         } else {
           throw new Error(e.message || 'Failed to fetch complaint problems');
+        }
+      }
+    });
+  }
+
+  async getFaqList(complaintId: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const username = await sessionManager.getUsername();
+      if (!username) {
+        throw new Error('No username found in session');
+      }
+
+      const data = {
+        crm_csi_id: complaintId,
+        username: username.toLowerCase().trim(),
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+
+      try {
+        const res = await fetch(`${url}/selfcareComplaintWiseFAQ`, options);
+        const response = await res.json();
+
+        if ((response.status !== 'ok' && response.code !== 200) || response.code === 999) {
+          throw new Error(response.message || 'Failed to fetch FAQs');
+        }
+
+        return response.data || [];
+      } catch (e: any) {
+        if (isNetworkError(e)) {
+          throw new Error(networkErrorMsg);
+        } else {
+          throw new Error(e.message || 'Failed to fetch FAQs');
+        }
+      }
+    });
+  }
+
+  async getSubComplaintList(parentComplaintId: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const username = await sessionManager.getUsername();
+      if (!username) {
+        throw new Error('No username found in session');
+      }
+
+      const data = {
+        combo_code: 'fetch_parent_complaints',
+        column: 'parent_id',
+        value: parentComplaintId,
+        'extraparams[selfcare_display]': 'yes',
+        username: username.toLowerCase().trim(),
+        request_source: 'app',
+        request_app: 'user_app'
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout
+      };
+
+      try {
+        const res = await fetch(`${url}/selfcareDropdown`, options);
+        const response = await res.json();
+
+        if ((response.status !== 'ok' && response.code !== 200) || response.code === 999) {
+          throw new Error(response.message || 'Failed to fetch sub complaints');
+        }
+
+        return response.data || [];
+      } catch (e: any) {
+        if (isNetworkError(e)) {
+          throw new Error(networkErrorMsg);
+        } else {
+          throw new Error(e.message || 'Failed to fetch sub complaints');
         }
       }
     });

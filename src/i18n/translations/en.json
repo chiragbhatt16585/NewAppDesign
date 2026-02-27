@@ -39,15 +39,24 @@
     "login": "Login",
     "forgotPassword": "Forgot Password?",
     "dontHaveAccount": "Don't have an account?",
-    "signUp": "Sign Up"
+    "signUp": "Sign Up",
+    "sendOtp": "Send OTP",
+    "resendOtp": "Resend OTP",
+    "loginWithOtp": "Login with OTP",
+    "loginWithPassword": "Login with Password",
+    "usernameRequired": "Please enter your username",
+    "passwordRequired": "Please enter your password",
+    "otpRequired": "Please enter OTP",
+    "enterOtp": "Enter OTP"
   },
   "navigation": {
-    "home": "Home",
-    "account": "Account",
-    "ledger": "Ledger",
-    "tickets": "Tickets",
-    "sessions": "Sessions",
-    "more": "More"
+   "home": "Home",
+   "account": "Account",
+   "ledger": "Ledger",
+   "billingHistory": "Billing History",
+   "tickets": "Tickets",
+   "sessions": "Sessions",
+   "more": "More"
   },
   "account": {
     "title": "Account Details",
@@ -164,7 +173,7 @@
   },
   "renewPlan": {
     "title": "Renew Plan",
-    "subtitle": "Choose your plan and renew your subscription",
+    "subtitle": "Renew your existing plan today.",
     "availablePlans": "Available Plans",
     "currentPlan": "Current Plan",
     "upgradeYourPlan": "Upgrade your plan",
@@ -173,7 +182,7 @@
     "download": "Download",
     "validity": "Validity",
     "ottServices": "OTT Services",
-    "pricingBreakdown": "Price Breakup",
+    "pricingBreakdown": "Price Breakdown",
     "baseAmount": "Base Amount",
     "cgst": "CGST",
     "sgst": "SGST",
@@ -200,12 +209,17 @@
     "paymentSuccess": "Payment Successful",
     "paymentSuccessMessage": "Your plan has been renewed successfully!"
   },
+  "upgradePlan": {
+    "title": "Upgrade Plan",
+    "subtitle": "Upgrade your existing plan today.",
+    "paymentBreakdown": "Price Breakdown"
+  },
   "planConfirmation": {
     "title": "Your Selected Plan",
     "subtitle": "Please review before proceeding",
     "currentPlan": "Current Plan",
     "ottServices": "OTT Services",
-    "pricingBreakdown": "Price Breakup",
+    "pricingBreakdown": "Price Breakdown",
     "baseAmount": "Base Amount",
     "cgst": "CGST",
     "sgst": "SGST",
@@ -220,7 +234,7 @@
     "proceedToPay": "Proceed to Pay",
     "paymentSuccess": "Payment Successful",
     "paymentSuccessMessage": "Your plan has been renewed successfully! You will receive a confirmation email shortly.",
-    "advanceRenewalNote": "Note: Your current plan is active hence this renewal will be added in Advance Renewal pipeline."
+    "advanceRenewalNote": "The new plan will activate automatically after your current plan expires."
   },
   "payBill": {
     "title": "Pay Bill",
@@ -269,8 +283,8 @@
     "checkStatus": "Check Status"
   },
   "contactUs": {
-    "title": "Contact Us",
-    "subtitle": "Get in touch with our support team",
+  "title": "Support",
+  "subtitle": "Get in touch with us",
     "tagline": "Your trusted internet service provider",
     "headOffice": "Head Office",
     "branchOffice": "Branch Office",
@@ -419,14 +433,14 @@
     "contactUs": "Opening contact information..."
   },
   "usageDetails": {
-    "title": "📊 Usage Details",
+    "title": "Usage Details",
     "subtitle": "Monitor your data consumption",
-    "selectDateRange": "📅 Select Date Range",
+    "selectDateRange": "Select Date Range",
     "selectDateSubtitle": "Choose the period to fetch usage statistics",
     "from": "From",
     "to": "To",
-    "fetchUsage": "📊 Fetch Usage",
-    "usageStatistics": "📈 Usage Statistics",
+    "fetchUsage": "Fetch Usage",
+    "usageStatistics": "Usage Statistics",
     "download": "Download",
     "upload": "Upload",
     "total": "Total",

@@ -10,6 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import Feather from 'react-native-vector-icons/Feather';
 import {useTheme} from '../utils/ThemeContext';
 import {getThemeColors} from '../utils/themeStyles';
 import CommonHeader from '../components/CommonHeader';
@@ -20,6 +21,7 @@ import sessionManager from '../services/sessionManager';
 import {useFocusEffect} from '@react-navigation/native';
 import {useSessionValidation} from '../utils/useSessionValidation';
 import {useScreenDataReload} from '../utils/useAutoDataReload';
+import LeftBorderLine from '../components/LeftBorderLine';
 
 const {width: screenWidth} = Dimensions.get('window');
 
@@ -226,6 +228,7 @@ const SessionsScreen = ({navigation}: any) => {
   if (loading) {
     return (
       <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}>
+        <LeftBorderLine />
         <CommonHeader navigation={navigation} />
         <View style={styles.loadingContainer}>
           <Text style={[styles.loadingText, {color: colors.textSecondary}]}>Loading...</Text>
@@ -246,7 +249,7 @@ const SessionsScreen = ({navigation}: any) => {
           </Text>
         </View>
         <View style={styles.errorContainer}>
-          <Text style={[styles.errorIcon, {color: colors.textSecondary}]}>⚠️</Text>
+          <Feather name="alert-triangle" size={48} color={colors.primary} style={styles.errorIcon} />
           <Text style={[styles.errorTitle, {color: colors.text}]}>Error</Text>
           <Text style={[styles.errorSubtitle, {color: colors.textSecondary}]}>{error}</Text>
         </View>
@@ -281,23 +284,17 @@ const SessionsScreen = ({navigation}: any) => {
           <View style={styles.sessionDetails}>
             <View style={styles.collapsedStatsRow}>
               <View style={styles.collapsedStatItem}>
-                <View style={[styles.collapsedIconContainer, {backgroundColor: colors.accent + '15'}]}>
-                  <Text style={[styles.collapsedIcon, {color: colors.accent}]}>↑</Text>
-                </View>
+                <Feather name="upload" size={14} color={colors.primary} style={styles.collapsedIcon} />
                 <Text style={[styles.collapsedValue, {color: colors.text}]}>{item.totalUpload}</Text>
               </View>
 
               <View style={styles.collapsedStatItem}>
-                <View style={[styles.collapsedIconContainer, {backgroundColor: colors.success + '15'}]}>
-                  <Text style={[styles.collapsedIcon, {color: colors.success}]}>↓</Text>
-                </View>
+                <Feather name="download" size={14} color={colors.primary} style={styles.collapsedIcon} />
                 <Text style={[styles.collapsedValue, {color: colors.text}]}>{item.totalDownload}</Text>
               </View>
 
               <View style={styles.collapsedStatItem}>
-                <View style={[styles.collapsedIconContainer, {backgroundColor: colors.primary + '15'}]}>
-                  <Text style={[styles.collapsedIcon, {color: colors.primary}]}>⇅</Text>
-                </View>
+                <Feather name="activity" size={14} color={colors.primary} style={styles.collapsedIcon} />
                 <Text style={[styles.collapsedValue, {color: colors.text}]}>{item.totalDataGB}</Text>
             </View>
             </View>
@@ -432,8 +429,8 @@ const SessionsScreen = ({navigation}: any) => {
         
         <View style={styles.summaryGrid}>
           <View style={styles.summaryItem}>
-            <View style={[styles.summaryIconContainer, {backgroundColor: colors.primary + '15'}]}>
-              <Text style={[styles.summaryIcon, {color: colors.primary}]}>📊</Text>
+            <View style={[styles.summaryIconContainer, {backgroundColor: colors.primaryLight}]}>
+              <Feather name="bar-chart-2" size={20} color={colors.primary} />
             </View>
             <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>
               {t('sessions.totalSessions')}
@@ -442,8 +439,8 @@ const SessionsScreen = ({navigation}: any) => {
           </View>
           
           <View style={styles.summaryItem}>
-            <View style={[styles.summaryIconContainer, {backgroundColor: colors.accent + '15'}]}>
-              <Text style={[styles.summaryIcon, {color: colors.accent}]}>⏱️</Text>
+            <View style={[styles.summaryIconContainer, {backgroundColor: colors.primaryLight}]}>
+              <Feather name="clock" size={20} color={colors.primary} />
             </View>
             <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>
               {t('sessions.totalDuration')}
@@ -452,23 +449,23 @@ const SessionsScreen = ({navigation}: any) => {
           </View>
           
           <View style={styles.summaryItem}>
-            <View style={[styles.summaryIconContainer, {backgroundColor: colors.primary + '15'}]}>
-              <Text style={[styles.summaryIcon, {color: colors.primary}]}>↑</Text>
+            <View style={[styles.summaryIconContainer, {backgroundColor: colors.primaryLight}]}>
+              <Feather name="upload" size={20} color={colors.primary} />
             </View>
             <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>
               {t('sessions.totalUpload')}
             </Text>
-            <Text style={[styles.summaryValue, {color: colors.accent}]}>{summary.totalUpload}</Text>
+            <Text style={[styles.summaryValue, {color: colors.text}]}>{summary.totalUpload}</Text>
           </View>
           
           <View style={styles.summaryItem}>
-            <View style={[styles.summaryIconContainer, {backgroundColor: colors.success + '15'}]}>
-              <Text style={[styles.summaryIcon, {color: colors.success}]}>↓</Text>
+            <View style={[styles.summaryIconContainer, {backgroundColor: colors.primaryLight}]}>
+              <Feather name="download" size={20} color={colors.primary} />
             </View>
             <Text style={[styles.summaryLabel, {color: colors.textSecondary}]}>
               {t('sessions.totalDownload')}
             </Text>
-            <Text style={[styles.summaryValue, {color: colors.success}]}>{summary.totalDownload}</Text>
+            <Text style={[styles.summaryValue, {color: colors.text}]}>{summary.totalDownload}</Text>
           </View>
         </View>
       </View>
@@ -477,6 +474,7 @@ const SessionsScreen = ({navigation}: any) => {
 
   return (
     <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}>
+      <LeftBorderLine />
       {/* Header */}
       <CommonHeader navigation={navigation} />
 
@@ -502,7 +500,7 @@ const SessionsScreen = ({navigation}: any) => {
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={[styles.emptyIcon, {color: colors.textSecondary}]}>📊</Text>
+            <Feather name="bar-chart-2" size={48} color={colors.primary} style={styles.emptyIcon} />
             <Text style={[styles.emptyTitle, {color: colors.text}]}>
               {loading ? 'Loading sessions...' : 'No sessions found'}
             </Text>
@@ -524,6 +522,8 @@ const SessionsScreen = ({navigation}: any) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    position: 'relative',
+    overflow: 'visible',
   },
   headingContainer: {
     paddingHorizontal: 20,
@@ -556,7 +556,6 @@ const styles = StyleSheet.create({
     paddingVertical: 60,
   },
   errorIcon: {
-    fontSize: 48,
     marginBottom: 16,
   },
   errorTitle: {
@@ -624,13 +623,13 @@ const styles = StyleSheet.create({
   summaryIconContainer: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
   },
   summaryIcon: {
-    fontSize: 20,
+    marginBottom: 8,
   },
   summaryLabel: {
     fontSize: 12,
@@ -687,16 +686,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-  collapsedIconContainer: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   collapsedIcon: {
-    fontSize: 14,
-    fontWeight: 'bold',
+    marginRight: 6,
   },
   collapsedValue: {
     fontSize: 12,
@@ -744,7 +735,6 @@ const styles = StyleSheet.create({
     paddingVertical: 60,
   },
   emptyIcon: {
-    fontSize: 48,
     marginBottom: 16,
   },
   emptyTitle: {

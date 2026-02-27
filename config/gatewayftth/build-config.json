@@ -1,0 +1,29 @@
+{
+  "android": {
+    "namespace": "com.spacecom.log2space.gatewayftth",
+    "applicationId": "com.spacecom.log2space.gatewayftth",
+    "versionCode": 1,
+    "versionName": "1.0.1",
+    "signing": {
+      "debug": {
+        "storeFile": "GatewayFTTH.jks",
+        "storePassword": "log2space",
+        "keyAlias": "log2space",
+        "keyPassword": "log2space"
+      },
+      "release": {
+        "storeFile": "GatewayFTTH.jks",
+        "storePassword": "log2space",
+        "keyAlias": "log2space",
+        "keyPassword": "log2space"
+      }
+    }
+  },
+  "ios": {
+    "bundleIdentifier": "com.spacecom.log2space.gatewayftth",
+    "marketingVersion": "1.0.1",
+    "buildNumber": "1",
+    "displayName": "Gateway FTTH"
+  }
+}
+

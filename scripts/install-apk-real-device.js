@@ -38,7 +38,7 @@ const installAPKOnRealDevice = () => {
     console.log('');
     console.log('🗑️ Uninstalling existing app...');
     try {
-      execSync('adb uninstall com.microscan.app', { stdio: 'inherit' });
+      execSync('adb uninstall in.spacecom.log2space.client.microscan', { stdio: 'inherit' });
       console.log('✅ Existing app uninstalled');
     } catch (error) {
       console.log('ℹ️ No existing app to uninstall');
@@ -51,7 +51,7 @@ const installAPKOnRealDevice = () => {
     
     console.log('');
     console.log('🚀 Launching app...');
-    execSync('adb shell am start -n com.microscan.app/.MainActivity', { stdio: 'inherit' });
+    execSync('adb shell am start -n in.spacecom.log2space.client.microscan/.MainActivity', { stdio: 'inherit' });
     
     console.log('');
     console.log('✅ APK installed and launched successfully!');
@@ -60,7 +60,7 @@ const installAPKOnRealDevice = () => {
     console.log(`   📂 APK: ${apkPath}`);
     console.log(`   📏 Size: ${(fs.statSync(apkPath).size / 1024 / 1024).toFixed(1)}MB`);
     console.log('   🔧 Build Type: Release (AR-optimized)');
-    console.log('   📱 Package: com.microscan.app');
+    console.log('   📱 Package: in.spacecom.log2space.client.microscan');
     console.log('');
     console.log('🎉 The app should now be running on your device!');
     console.log('');

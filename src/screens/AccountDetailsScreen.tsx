@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useMemo, useRef} from 'react';
 import {
   View,
   Text,
@@ -15,13 +15,124 @@ import {apiService} from '../services/api';
 import sessionManager from '../services/sessionManager';
 import CommonHeader from '../components/CommonHeader';
 import {navigateToLogin} from '../utils/navigationUtils';
+import { getSafeDaysRemaining } from '../utils/usageUtils';
+import LeftBorderLine from '../components/LeftBorderLine';
+import {useAuth} from '../utils/AuthContext';
+import {useFocusEffect} from '@react-navigation/native';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import Feather from 'react-native-vector-icons/Feather';
+import { getClientConfig } from '../config/client-config';
+import useMenuSettings from '../hooks/useMenuSettings';
 
 const AccountDetailsScreen = ({navigation}: any) => {
   const {isDark} = useTheme();
   const colors = getThemeColors(isDark);
   const {t} = useTranslation();
+  const {isAuthenticated} = useAuth();
   const [authData, setAuthData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const lastUsernameRef = useRef<string | null>(null);
+  const primaryUsageDetail = authData?.usage_details?.[0];
+  const usageDaysRemainingText = getSafeDaysRemaining(primaryUsageDetail);
+  const isMicroscan = getClientConfig().clientId === 'microscan';
+  const accountActiveColor = isMicroscan ? '#4CAF50' : 'black';
+
+  const { menu } = useMenuSettings();
+  // Plan display flags from Home menu display_plan_settings.show_plan (l2s_planname, plan_params_blend)
+  const planDisplayConfig = useMemo(() => {
+    const defaults = { showL2SPlanName: true, showPlanParamsBlend: false };
+    if (!Array.isArray(menu)) return defaults;
+    const homeItem = menu.find((item: any) => String(item?.menu_label || '').trim() === 'Home');
+    if (!homeItem) return defaults;
+    let displayOptions: any = homeItem.display_option_json;
+    if (typeof displayOptions === 'string') {
+      try {
+        displayOptions = displayOptions.trim() ? JSON.parse(displayOptions) : {};
+      } catch {
+        displayOptions = {};
+      }
+    }
+    const rawPlanSettings = displayOptions?.display_plan_settings?.show_plan || {};
+    const rawNameFlag = rawPlanSettings?.l2s_planname;
+    const rawBlendFlag = rawPlanSettings?.plan_params_blend;
+    const result = { ...defaults };
+    if (typeof rawNameFlag === 'boolean') result.showL2SPlanName = rawNameFlag;
+    else if (typeof rawNameFlag === 'string') result.showL2SPlanName = rawNameFlag.toLowerCase() === 'true';
+    if (typeof rawBlendFlag === 'boolean') result.showPlanParamsBlend = rawBlendFlag;
+    else if (typeof rawBlendFlag === 'string') result.showPlanParamsBlend = rawBlendFlag.toLowerCase() === 'true';
+    return result;
+  }, [menu]);
+
+  // Derive plan speed (prefer Mbps fields)
+  const planSpeedDisplay = useMemo(() => {
+    const topMbps =
+      typeof authData?.plan_download_speed_in_mb === 'number'
+        ? authData.plan_download_speed_in_mb
+        : authData?.plan_download_speed_in_mb
+        ? Number(authData.plan_download_speed_in_mb)
+        : null;
+    if (topMbps && !Number.isNaN(topMbps)) {
+      return `${topMbps} Mbps`;
+    }
+    const usage = authData?.usage_details?.[0];
+    if (!usage) return '';
+    const speed =
+      usage.downloadSpeed ||
+      usage.download_speed ||
+      usage.plan_speed ||
+      usage.speed;
+    if (speed) {
+      const num = Number(speed);
+      return Number.isNaN(num) ? String(speed) : `${num} Mbps`;
+    }
+    return '';
+  }, [authData]);
+
+  // Derive plan days (total or usage-level)
+  const planDaysDisplay = useMemo(() => {
+    const usage = authData?.usage_details?.[0];
+    const fromUsage = usage?.plan_days || usage?.days || usage?.validity;
+    const fromTop = authData?.total_days;
+    const days = fromTop || fromUsage;
+    return days ? String(days) : '';
+  }, [authData]);
+
+  // Current plan display: respect l2s_planname — hide plan name only when l2s_planname is false
+  const currentPlanDisplay = useMemo(() => {
+    const planNameRaw =
+      authData?.current_plan ??
+      authData?.currentPlan ??
+      authData?.usage_details?.[0]?.plan_name ??
+      authData?.usage_details?.[0]?.current_plan ??
+      authData?.plan_name ??
+      '';
+    const planName = (planNameRaw ?? '').toString().trim();
+    const showPlanName = planDisplayConfig.showL2SPlanName && planName;
+
+    // When l2s_planname is true (or not set): show plan name when available
+    if (showPlanName) {
+      if (planDisplayConfig.showPlanParamsBlend && (planSpeedDisplay || planDaysDisplay)) {
+        const parts = [planSpeedDisplay, planDaysDisplay ? `${planDaysDisplay} Days` : ''].filter(Boolean);
+        return parts.length ? `${planName} (${parts.join(', ')})` : planName;
+      }
+      return planName;
+    }
+
+    // When l2s_planname is false: hide plan name, show only speed + days
+    if (planSpeedDisplay && planDaysDisplay) {
+      return `${planSpeedDisplay} ${planDaysDisplay} Days`;
+    }
+    if (planSpeedDisplay) return planSpeedDisplay;
+    if (planDaysDisplay) return `${planDaysDisplay} Days`;
+    return planName || 'N/A';
+  }, [planSpeedDisplay, planDaysDisplay, authData?.current_plan, authData?.currentPlan, authData?.usage_details, authData?.plan_name, planDisplayConfig.showL2SPlanName, planDisplayConfig.showPlanParamsBlend]);
+
+  // Normalize renewal date value and filter placeholders like 'N/A', 'NA', '-', 'null'
+  const renewalDateValue = useMemo(() => {
+    const raw = (authData?.renew_date ?? '').toString().trim();
+    const invalids = ['N/A', 'NA', '-', 'NULL', 'UNDEFINED', ''];
+    return invalids.includes(raw.toUpperCase()) ? '' : raw;
+  }, [authData?.renew_date]);
 
   // Fetch account data on component mount
   useEffect(() => {
@@ -107,12 +218,31 @@ const AccountDetailsScreen = ({navigation}: any) => {
       const { username } = session;
       // console.log('Using session with username:', username);
       
+      // CRITICAL: Verify username matches before setting data
+      if (lastUsernameRef.current !== null && lastUsernameRef.current !== username) {
+        console.log('[AccountDetailsScreen] 🚨 Username changed during fetch! Skipping data set');
+        console.log('[AccountDetailsScreen] Expected:', lastUsernameRef.current, 'Got:', username);
+        setIsLoading(false);
+        return;
+      }
+      
       // Use the enhanced API service with automatic token regeneration
       const authResponse = await apiService.makeAuthenticatedRequest(async (token) => {
         return await apiService.authUser(username);
       });
       
       if (authResponse) {
+        // CRITICAL: Double-check username still matches before setting data
+        const currentSession = await sessionManager.getCurrentSession();
+        if (currentSession?.username !== username) {
+          console.log('[AccountDetailsScreen] 🚨 Username changed after API call! Skipping data set');
+          setIsLoading(false);
+          return;
+        }
+        
+        // Update username ref
+        lastUsernameRef.current = username;
+        
         // console.log('=== ACCOUNT DETAILS API RESPONSE ===');
         // console.log('Full Response:', JSON.stringify(authResponse, null, 2));
         // console.log('Response Type:', typeof authResponse);
@@ -221,7 +351,7 @@ const AccountDetailsScreen = ({navigation}: any) => {
 
   const renderDetailCard = (title: string, details: any) => (
     <View style={[styles.detailCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
-      <Text style={[styles.cardTitle, {color: colors.text}]}>{title}</Text>
+      <Text style={[styles.cardTitle, {color: colors.primary || '#FF6B35'}]}>{title}</Text>
       {Object.entries(details).map(([key, value]) => (
         <View key={key} style={styles.detailRow}>
           <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>
@@ -239,7 +369,7 @@ const AccountDetailsScreen = ({navigation}: any) => {
       {Object.entries(details).map(([key, value]) => (
         <View key={key} style={styles.detailRowWithIcon}>
           <View style={styles.detailIconContainer}>
-            <Text style={styles.detailIcon}>{getIconForKey(key)}</Text>
+            {getIconComponent(key, 20, colors.textSecondary)}
           </View>
           <Text style={[styles.detailValue, {color: colors.text}]}>{value as string}</Text>
         </View>
@@ -250,16 +380,21 @@ const AccountDetailsScreen = ({navigation}: any) => {
   const getIconForKey = (key: string) => {
     switch (key.toLowerCase()) {
       case 'name':
-        return '👨‍💻';
+        return 'person';
       case 'email':
-        return '✉️';
+        return 'email';
       case 'mobile':
-        return '📲';
+        return 'smartphone';
       case 'phone':
-        return '☎️';
+        return 'phone';
       default:
-        return '';
+        return 'info';
     }
+  };
+
+  const getIconComponent = (key: string, size: number = 20, color: string) => {
+    const iconName = getIconForKey(key);
+    return <MaterialIcons name={iconName} size={size} color={color} />;
   };
 
   const formatMobileNumber = (number: string) => {
@@ -298,121 +433,119 @@ const AccountDetailsScreen = ({navigation}: any) => {
 
   return (
     <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}>
+      <LeftBorderLine />
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <CommonHeader navigation={navigation} />
 
         {/* Page Title */}
         <View style={styles.titleSection}>
-          <Text style={[styles.pageTitle, {color: colors.text}]}>{t('accountDetails.title')}</Text>
-          {/* <Text style={[styles.pageSubtitle, {color: colors.textSecondary}]}>
-            {authData ? `${authData.first_name} ${authData.last_name}` : 'Account Details'}
-          </Text> */}
+          <Text style={[styles.pageTitle, {color: colors.text}]}>Account Details</Text>
+          <Text style={[styles.pageSubtitle, {color: colors.textSecondary}]}>
+            Complete account information
+          </Text>
         </View>
 
-        {/* Account Information */}
-        {renderDetailCard('Account Information', {
-          //'Account Number': authData?.account_no || 'N/A',
-          'Username': authData?.username || 'N/A',
-          //'Referral Code': authData?.referral_code || 'N/A',
-          'Registered Since': authData?.reg_date || 'N/A',
-          'First Activated On': authData?.activation_date || 'N/A',
-          //'Renewal Count': authData?.renewal_count || '0',
-          //'User Category': authData?.user_category || 'N/A',
-          //'User Profile': authData?.user_profile || 'N/A',
-        })}
-        
+        {/* Personal Information */}
+        <View style={[styles.detailCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
+          <Text style={[styles.cardTitle, {color: colors.primary || '#FF6B35'}]}>Personal Information</Text>
+          <View style={styles.detailRow}>
+            <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>User ID</Text>
+            <Text style={[styles.detailValue, {color: colors.text}]}>{authData?.username || 'N/A'}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>Registered Since</Text>
+            <Text style={[styles.detailValue, {color: colors.text}]}>{authData?.reg_date || 'N/A'}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>Contact Number</Text>
+            <Text style={[styles.detailValue, {color: colors.text}]}>{formatMobileNumber(authData?.primary_mobile)}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>Email Address</Text>
+            <Text style={[styles.detailValue, {color: colors.text}]}>{authData?.primary_email || 'N/A'}</Text>
+          </View>
+          <View style={[styles.detailRow, {borderBottomWidth: 0}]}>
+            <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>Address</Text>
+            <Text style={[styles.detailValue, {color: colors.text, textAlign: 'right', flex: 1}]}>
+              {authData?.flat_no && `${authData.flat_no}, `}
+              {authData?.address1 || ''}
+              {authData?.address2 && `, ${authData.address2}`}
+              {authData?.area_name && `, ${authData.area_name}`}
+              {authData?.city_name && `, ${authData.city_name}`}
+              {authData?.pincode && `-${authData.pincode}`}
+              {authData?.state && `, ${authData.state}`}
+              {authData?.country && `, ${authData.country}`}
+              {(!authData?.flat_no && !authData?.address1 && !authData?.address2 && !authData?.area_name && !authData?.city_name && !authData?.pincode && !authData?.state && !authData?.country) && 'N/A'}
+            </Text>
+          </View>
+        </View>
+
+        {/* Plan Information */}
+        <View style={[styles.detailCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
+          <Text style={[styles.cardTitle, {color: colors.primary || '#FF6B35'}]}>Plan Information</Text>
+          <View style={styles.detailRow}>
+            <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>Current Plan</Text>
+            <Text style={[styles.detailValue, {color: colors.text}]}>{currentPlanDisplay}</Text>
+          </View>
+          {renewalDateValue ? (
+            <View style={styles.detailRow}>
+              <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>Renewal Date</Text>
+              <Text style={[styles.detailValue, {color: colors.text}]}>{renewalDateValue}</Text>
+            </View>
+          ) : null}
+          <View style={[styles.detailRow, {borderBottomWidth: 0}]}>
+            <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>Expiry Date</Text>
+            <Text style={[styles.detailValue, {color: colors.text}]}>{authData?.exp_date || 'N/A'}</Text>
+          </View>
+        </View>
+
         {/* Account Status Card */}
         <View style={[styles.statusCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
           <View style={styles.statusHeader}>
-            <Text style={[styles.statusTitle, {color: colors.text}]}>Account Status</Text>
-            <View style={[styles.statusBadge, {backgroundColor: authData?.user_status === 'active' ? colors.success : '#F44336'}]}>
-              <Text style={styles.statusText}>{(authData?.user_status || 'Unknown').charAt(0).toUpperCase() + (authData?.user_status || 'Unknown').slice(1).toLowerCase()}</Text>
+            <Text style={[styles.statusTitle, {color: colors.primary || '#FF6B35'}]}>Account Status</Text>
+            <View style={[styles.statusBadge, {backgroundColor: authData?.user_status === 'active' ? accountActiveColor : '#F44336'}]}>
+              <Text style={styles.statusText}>
+                {(authData?.user_status || 'Unknown').charAt(0).toUpperCase() + (authData?.user_status || 'Unknown').slice(1).toLowerCase().replace(/_/g, ' ')}
+              </Text>
             </View>
           </View>
           <View style={styles.statusDetails}>
             <View style={styles.statusRow}>
               <Text style={[styles.statusLabel, {color: colors.textSecondary}]}>Login Status</Text>
-              <Text style={[styles.statusValue, {color: authData?.login_status === 'IN' ? '#4CAF50' : '#F44336'}]}>
+              <Text style={[styles.statusValue, {color: authData?.login_status === 'IN' ? 'black' : '#F44336'}]}>
                 {authData?.login_status === 'IN' ? 'Online' : 'Offline'}
               </Text>
             </View>
-            <View style={styles.statusRow}>
+            <View style={[styles.statusRow, {borderBottomWidth: 0}]}>
               <Text style={[styles.statusLabel, {color: colors.textSecondary}]}>Last Login</Text>
               <Text style={[styles.statusValue, {color: colors.text}]}>{authData?.user_last_login || 'N/A'}</Text>
-            </View>
-            <View style={styles.statusRow}>
-              <Text style={[styles.statusLabel, {color: colors.textSecondary}]}>Last Logout</Text>
-              <Text style={[styles.statusValue, {color: colors.text}]}>{authData?.user_last_logout || 'N/A'}</Text>
             </View>
           </View>
         </View>
 
-        {/* Personal Information */}
-        {renderDetailCardWithIcons('Personal & Contact Information', {
-          'Name': authData?.full_name || 'N/A',
-          'Email': authData?.primary_email || 'N/A',
-          'Mobile': formatMobileNumber(authData?.primary_mobile),
-          // 'First Name': authData?.first_name || 'N/A',
-          // 'Middle Name': authData?.middle_name || 'N/A',
-          // 'Last Name': authData?.last_name || 'N/A',
-          // 'Gender': authData?.user_gender || 'N/A',
-          // 'Birth Date': authData?.birth_date || 'N/A',
-          // 'Marital Status': authData?.marital_status || 'N/A',
-        })}
-
-        {/* Contact Information
-        {renderDetailCard('Contact Information', {
-          'Email': authData?.primary_email || 'N/A',
-          'Mobile': authData?.primary_mobile || 'N/A',
-          // 'Landline Phone': authData?.landline_phone || 'N/A',
-          // 'Alt Email': authData?.alt_email || 'N/A',
-          // 'Alt Mobile': authData?.alt_mobile || 'N/A',
-        })} */}
-
-         {/* Address Information */}
-         <View style={[styles.detailCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
-           <Text style={[styles.cardTitle, {color: colors.text}]}>Address</Text>
-           <Text style={[styles.addressText, {color: colors.text}]}>
-             {authData?.flat_no && `${authData.flat_no}, `}
-             {authData?.address1 || ''}
-             {authData?.address2 && `, ${authData.address2}`}
-             {authData?.area_name && `, ${authData.area_name}`}
-             {authData?.city_name && `, ${authData.city_name}`}
-             {authData?.pincode && ` - ${authData.pincode}`}
-             {authData?.state && `, ${authData.state}`}
-             {authData?.country && `, ${authData.country}`}
-             {(!authData?.flat_no && !authData?.address1 && !authData?.address2 && !authData?.area_name && !authData?.city_name && !authData?.pincode && !authData?.state && !authData?.country) && 'N/A'}
-           </Text>
-         </View>
-
-        
-        
-        
-        {/* Plan Information */}
-        {renderDetailCard('Plan Information', {
-          'Current Plan': authData?.current_plan || 'N/A',
-          'Renewed On': authData?.renew_date || 'N/A',
-          'Expiry Date': authData?.exp_date || 'N/A',
-          'Plan  Speed': `${authData?.plan_download_speed || 0} Mbps`,
-          //'Upload Speed': `${authData?.plan_upload_speed || 0} Mbps`,
-          //'Connection Type': authData?.connection_type || 'N/A',
-          //'User Auth Type': authData?.user_auth_type || 'N/A',
-          // 'FUP Flag': authData?.fup_flag || 'N/A',
-          // 'TBQ Flag': authData?.tbq_flag || 'N/A',
-          // 'Auto Renewal': authData?.auto_renewal || 'N/A',
-        })}
-
         {/* Usage Information */}
-        {authData?.usage_details?.[0] && renderDetailCard('Usage Information', {
-          'Plan Data': authData.usage_details[0].plan_data || 'N/A',
-          'Data Used': `${(parseFloat(authData.usage_details[0].data_used) / (1024 * 1024 * 1024)).toFixed(2)} GB`,
-          'Plan Hours': authData.usage_details[0].plan_hours || 'N/A',
-          'Hours Used': authData.usage_details[0].hours_used || 'N/A',
-          'Plan Days': authData.usage_details[0].plan_days || 'N/A',
-          'Days Used': authData.usage_details[0].days_used || 'N/A',
-          'Days Remaining': `${parseInt(authData.usage_details[0].plan_days) - parseInt(authData.usage_details[0].days_used)} days`,
-        })}
+        {primaryUsageDetail && (
+          <View style={[styles.detailCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
+            <Text style={[styles.cardTitle, {color: colors.primary || '#FF6B35'}]}>Usage Information</Text>
+            <View style={styles.detailRow}>
+              <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>Plan Data</Text>
+              <Text style={[styles.detailValue, {color: colors.text}]}>{primaryUsageDetail.plan_data || 'N/A'}</Text>
+            </View>
+            <View style={styles.detailRow}>
+              <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>Data Used</Text>
+              <Text style={[styles.detailValue, {color: colors.text}]}>
+                {`${(parseFloat(primaryUsageDetail.data_used) / (1024 * 1024 * 1024)).toFixed(2)} GB`}
+              </Text>
+            </View>
+            <View style={[styles.detailRow, {borderBottomWidth: 0}]}>
+              <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>Plan Validity</Text>
+              <Text style={[styles.detailValue, {color: colors.text}]}>
+                {primaryUsageDetail.plan_days ? `${primaryUsageDetail.plan_days} Days` : 'N/A'}
+              </Text>
+            </View>
+          </View>
+        )}
 
        
 
@@ -496,6 +629,8 @@ const AccountDetailsScreen = ({navigation}: any) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    position: 'relative',
+    overflow: 'visible',
   },
   loadingContainer: {
     flex: 1,
@@ -507,21 +642,22 @@ const styles = StyleSheet.create({
   },
   titleSection: {
     paddingHorizontal: 20,
-    paddingVertical: 20,
+    paddingVertical: 16,
   },
   pageTitle: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 4,
   },
   pageSubtitle: {
-    fontSize: 16,
+    fontSize: 13,
+    marginTop: 2,
   },
   statusCard: {
     marginHorizontal: 20,
-    marginBottom: 20,
-    borderRadius: 16,
-    padding: 20,
+    marginBottom: 12,
+    borderRadius: 12,
+    padding: 14,
     shadowOffset: {
       width: 0,
       height: 2,
@@ -534,24 +670,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   statusTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
   },
   statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
   statusText: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
   },
   statusDetails: {
-    gap: 12,
+    gap: 8,
   },
   statusRow: {
     flexDirection: 'row',
@@ -559,17 +695,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statusLabel: {
-    fontSize: 14,
+    fontSize: 13,
   },
   statusValue: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
   detailCard: {
     marginHorizontal: 20,
-    marginBottom: 20,
-    borderRadius: 16,
-    padding: 20,
+    marginBottom: 12,
+    borderRadius: 12,
+    padding: 14,
     shadowOffset: {
       width: 0,
       height: 2,
@@ -579,9 +715,9 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   cardTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   detailRow: {
     flexDirection: 'row',
@@ -609,11 +745,11 @@ const styles = StyleSheet.create({
     fontSize: 20,
   },
   detailLabel: {
-    fontSize: 14,
+    fontSize: 13,
     flex: 1,
   },
   detailValue: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     flex: 1,
     textAlign: 'right',
@@ -722,8 +858,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   addressText: {
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 13,
+    lineHeight: 18,
     textAlign: 'left',
   },
 });

@@ -1,6 +1,7 @@
 import ReactNativeBiometrics, { BiometryTypes } from 'react-native-biometrics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform, Alert } from 'react-native';
+import { getClientConfig } from '../config/client-config';
 
 const rnBiometrics = new ReactNativeBiometrics();
 
@@ -38,7 +39,22 @@ export class BiometricAuthService {
     }
   }
 
+  private isBiometricEnabledForClient(): boolean {
+    try {
+      const clientConfig = getClientConfig();
+      return clientConfig.features?.biometricAuth === true;
+    } catch (error) {
+      console.error('Failed to check client config for biometric:', error);
+      return false;
+    }
+  }
+
   async isBiometricAvailable(): Promise<boolean> {
+    // First check if biometric is enabled for this client
+    if (!this.isBiometricEnabledForClient()) {
+      return false;
+    }
+    
     try {
       const { available, biometryType } = await rnBiometrics.isSensorAvailable();
       return available;
@@ -59,6 +75,12 @@ export class BiometricAuthService {
   }
 
   async setupBiometricAuth(): Promise<boolean> {
+    // Check if biometric is enabled for this client
+    if (!this.isBiometricEnabledForClient()) {
+      console.log('Biometric authentication is disabled for this client');
+      return false;
+    }
+
     try {
       const { available, biometryType } = await rnBiometrics.isSensorAvailable();
       
@@ -87,6 +109,12 @@ export class BiometricAuthService {
   }
 
   async enableBiometricAuth(): Promise<boolean> {
+    // Check if biometric is enabled for this client
+    if (!this.isBiometricEnabledForClient()) {
+      console.log('Biometric authentication is disabled for this client');
+      return false;
+    }
+
     try {
       const { available, biometryType } = await rnBiometrics.isSensorAvailable();
       
@@ -166,6 +194,12 @@ export class BiometricAuthService {
   }
 
   private async authenticateBiometric(): Promise<boolean> {
+    // Check if biometric is enabled for this client
+    if (!this.isBiometricEnabledForClient()) {
+      console.log('Biometric authentication is disabled for this client');
+      return false;
+    }
+
     try {
       const { success } = await rnBiometrics.simplePrompt({
         promptMessage: 'Authenticate to continue',

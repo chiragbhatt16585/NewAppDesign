@@ -105,42 +105,42 @@ const KYCScreen = ({navigation}: any) => {
       // Call the viewUserKyc API to get KYC information
       const kycResponse = await apiService.viewUserKyc(username, realm);
       
-      // Define all required document types
+      // Define all required document types (using Feather icon names)
       const allRequiredDocuments = [
         {
           doc_type: 'id_proof',
           doc_name: 'Identity Proof',
-          icon: '🆔',
+          icon: 'file-text', // Feather icon
           subtitle: 'Aadhaar card, PAN card, or driving license'
         },
         {
           doc_type: 'address_proof',
           doc_name: 'Address Proof',
-          icon: '🏠',
+          icon: 'home', // Feather icon
           subtitle: 'Utility bill, rental agreement, or bank statement'
         },
         {
           doc_type: 'user_photo',
           doc_name: 'User Photo',
-          icon: '📸',
+          icon: 'camera', // Feather icon
           subtitle: 'Recent passport size photograph'
         },
         {
           doc_type: 'gst_certificate',
           doc_name: 'GST Certificate',
-          icon: '🏢',
+          icon: 'file-text', // Feather icon
           subtitle: 'GST registration certificate'
         },
         {
           doc_type: 'user_sign',
           doc_name: 'User Signature',
-          icon: '✍️',
+          icon: 'edit-3', // Feather icon
           subtitle: 'Digital signature or handwritten signature'
         },
         {
           doc_type: 'other',
           doc_name: 'Additional Documents',
-          icon: '📄',
+          icon: 'file', // Feather icon
           subtitle: 'Additional supporting documents'
         }
       ];
@@ -229,46 +229,18 @@ const KYCScreen = ({navigation}: any) => {
 
         setKycData(mergedData);
       } else {
-        console.log('No KYC data received, showing test data with uploaded documents');
-        // Show test data with some uploaded documents for testing (excluding User Signature and Other)
-        const testKYCData: KYCItem[] = [
-          {
-            id: '1',
-            title: 'Identity Proof',
-            subtitle: 'ID No. : A123456789',
-            icon: '🆔',
-            status: 'pending',
-            uploadedDate: '2024-01-15 14:30:00',
-            documentName: 'aadhar_card.pdf',
-          },
-          {
-            id: '2',
-            title: 'Address Proof',
-            subtitle: 'ID No. : 123456789',
-            icon: '🏠',
-            status: 'verified',
-            uploadedDate: '2024-01-10 09:15:00',
-            documentName: 'utility_bill.pdf',
-          },
-          {
-            id: '3',
-            title: 'User Photo',
-            subtitle: 'Recent passport size photograph',
-            icon: '📸',
-            status: 'not_uploaded',
-          },
-          {
-            id: '4',
-            title: 'GST Certificate',
-            subtitle: 'GST registration certificate',
-            icon: '🏢',
-            status: 'rejected',
-            uploadedDate: '2024-01-12 16:45:00',
-            documentName: 'gst_cert.pdf',
-          },
-        ];
+        console.log('No KYC data received, showing placeholder cards without uploads');
+        const placeholderData: KYCItem[] = allRequiredDocuments
+          .filter(doc => doc.doc_type !== 'user_sign' && doc.doc_type !== 'other')
+          .map((doc, index) => ({
+            id: `placeholder_${index}`,
+            title: doc.doc_name,
+            subtitle: doc.subtitle,
+            icon: doc.icon,
+            status: 'not_uploaded' as const,
+          }));
         
-        setKycData(testKYCData);
+        setKycData(placeholderData);
       }
     } catch (error: any) {
       console.error('Error loading KYC data:', error);
@@ -279,28 +251,28 @@ const KYCScreen = ({navigation}: any) => {
           id: '1',
           title: 'Identity Proof',
           subtitle: 'Aadhaar card, PAN card, or driving license',
-          icon: '🆔',
+          icon: 'file-text',
           status: 'not_uploaded',
         },
         {
           id: '2',
           title: 'Address Proof',
           subtitle: 'Utility bill, rental agreement, or bank statement',
-          icon: '🏠',
+          icon: 'home',
           status: 'not_uploaded',
         },
         {
           id: '3',
           title: 'User Photo',
           subtitle: 'Recent passport size photograph',
-          icon: '📸',
+          icon: 'camera',
           status: 'not_uploaded',
         },
         {
           id: '4',
           title: 'GST Certificate',
           subtitle: 'GST registration certificate',
-          icon: '🏢',
+          icon: 'file-text',
           status: 'not_uploaded',
         },
       ];
@@ -460,8 +432,8 @@ const KYCScreen = ({navigation}: any) => {
         style={[styles.kycCard, {backgroundColor: colors.card}]}>
         <View style={styles.kycCardContent}>
           <View style={styles.kycCardLeft}>
-            <View style={[styles.kycIconContainer, {backgroundColor: getStatusColor(item.status) + '15'}]}>
-              <Text style={styles.kycIcon}>{item.icon}</Text>
+            <View style={styles.kycIconContainer}>
+              <Feather name={item.icon} size={24} color={colors.primary} />
             </View>
             <View style={styles.kycTextContainer}>
               <Text style={[styles.kycTitle, {color: colors.text}]}>{item.title}</Text>
@@ -740,9 +712,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   kycIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,

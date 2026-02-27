@@ -7,7 +7,7 @@ console.log('🍎 Setting up iOS targets and schemes for multi-client support...
 const clients = {
   microscan: {
     name: 'Microscan',
-    bundleId: 'com.microscan.app',
+    bundleId: 'com.l2sClient.microscan',
     displayName: 'Microscan',
     scheme: 'MicroscanApp',
     target: 'MicroscanApp'

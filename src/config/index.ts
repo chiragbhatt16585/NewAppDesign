@@ -35,10 +35,10 @@ const clientConfigs: Record<string, ClientConfig> = {
     companyName: 'Microscan Internet Private Limited',
     apiUrl: 'https://mydesk.microscan.co.in',
     supportEmail: 'support@microscan.in',
-    website: 'https://www.microscan.co.in/',
+    website: 'https://www.microscaninternet.com/',
     poweredBy: 'Spacecom Software LLP',
     poweredByWebsite: 'https://spacecom.in',
-    bundleId: 'com.microscan.app',
+    bundleId: 'in.spacecom.log2space.client.microscan',
   },
   'dna-infotel': {
     name: 'DNA Infotel App',
@@ -49,6 +49,36 @@ const clientConfigs: Record<string, ClientConfig> = {
     poweredBy: 'Spacecom Software LLP',
     poweredByWebsite: 'https://spacecom.in',
     bundleId: 'com.h8.dnasubscriber',
+  },
+  'dna-goa': {
+    name: 'DNA Goa',
+    companyName: 'DNA Goa',
+    apiUrl: 'https://crm.dnagoa.com',
+    supportEmail: 'sales@dnagoa.com',
+    website: 'https://dnagoa.com/',
+    poweredBy: 'Spacecom Software LLP',
+    poweredByWebsite: 'https://spacecom.in',
+    bundleId: 'com.dnagoa',
+  },
+  netfix: {
+    name: 'Netfix',
+    companyName: 'NETFIX NETWORKS (OPC) PVT LTD',
+    apiUrl: 'https://nnpl.l2s.biz',
+    supportEmail: 'info@netfixnetworks.in',
+    website: 'https://netfix.org.in/',
+    poweredBy: 'Spacecom Software LLP',
+    poweredByWebsite: 'https://spacecom.in',
+    bundleId: 'in.spacecom.log2space.client.netfix',
+  },
+  'inshansa-dnagoa': {
+    name: 'Inshansa',
+    companyName: 'Inshansa',
+    apiUrl: 'https://inshansa.dnabroadband.com',
+    supportEmail: 'crm@dnagoa.com',
+    website: 'https://dnagoa.com/',
+    poweredBy: 'Spacecom Software LLP',
+    poweredByWebsite: 'https://spacecom.in',
+    bundleId: 'com.spacecom.log2space.inshansa',
   },
   'one-sevenstar': {
     name: 'One Seven Star',
@@ -70,6 +100,56 @@ const clientConfigs: Record<string, ClientConfig> = {
     poweredByWebsite: 'https://spacecom.in',
     bundleId: 'com.spacecom.log2space.linkway',
   },
+  netplanet: {
+    name: 'Net Planet',
+    companyName: 'Net Planet',
+    apiUrl: 'https://netplanet.l2s.biz/l2s/api',
+    supportEmail: 'netplanetservices@gmail.com',
+    website: '', // No website for Net Planet
+    poweredBy: 'Spacecom Software LLP',
+    poweredByWebsite: 'https://spacecom.in',
+    bundleId: 'com.spacecom.log2space.netplanet',
+  },
+  'spacecom-local': {
+    name: 'Spacecom Local',
+    companyName: 'Spacecom Local',
+    apiUrl: 'http://103.105.110.250:81',
+    supportEmail: 'support@spacecom.in',
+    website: 'https://spacecom.in',
+    poweredBy: 'Spacecom Software LLP',
+    poweredByWebsite: 'https://spacecom.in',
+    bundleId: 'com.log2space.spacecom.local',
+  },
+  'spacecom-live': {
+    name: 'Spacecom Live',
+    companyName: 'Spacecom Software LLP',
+    apiUrl: 'https://newbalaji.l2s.biz',
+    supportEmail: 'info@spacecom.in',
+    website: 'https://spacecom.in',
+    poweredBy: 'Spacecom Software LLP',
+    poweredByWebsite: 'https://spacecom.in',
+    bundleId: 'com.spacecom.log2space.spacecomlive',
+  },
+  'logon-broadband': {
+    name: 'Logon Broadband',
+    companyName: 'Logon Broadband',
+    apiUrl: 'https://admin.logonbroadband.com',
+    supportEmail: 'support@logonbroadband.com',
+    website: 'https://logonbroadband.com',
+    poweredBy: 'Spacecom Software LLP',
+    poweredByWebsite: 'https://spacecom.in',
+    bundleId: 'com.spacecom.log2space.logonbrodband',
+  },
+  successbroadband: {
+    name: 'Success Broadband',
+    companyName: 'Success Broadband',
+    apiUrl: 'https://successbroadband.l2s.biz',
+    supportEmail: 'sucessbroadband2020@gmail.com',
+    website: 'https://successbroadband.in',
+    poweredBy: 'Spacecom Software LLP',
+    poweredByWebsite: 'https://spacecom.in',
+    bundleId: 'com.spacecom.log2space.successbroadband',
+  },
 };
 
 // Export current client configuration
@@ -81,6 +161,17 @@ export const getCompanyName = (): string => CLIENT_CONFIG.companyName;
 export const getApiUrl = (): string => CLIENT_CONFIG.apiUrl;
 export const getSupportEmail = (): string => CLIENT_CONFIG.supportEmail;
 export const getWebsite = (): string => {
+  try {
+    // First, try to get website from the new client-config.ts
+    const clientConfig = getClientConfig();
+    if (clientConfig.website) {
+      return clientConfig.website;
+    }
+  } catch (e) {
+    // Fall through to old config if new config fails
+  }
+  
+  // Fallback to old hardcoded configs
   const id = getCurrentClient();
   const cfg = clientConfigs[id] || CLIENT_CONFIG;
   return cfg.website;

@@ -8,6 +8,7 @@
 import 'react-native-gesture-handler';
 import React, { useState, useEffect } from 'react';
 import {StatusBar, AppState, View, Text} from 'react-native';
+import type { ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import AppNavigator from './src/navigation/AppNavigator';
@@ -15,8 +16,10 @@ import BiometricAuthScreen from './src/screens/BiometricAuthScreen';
 import {ThemeProvider, useTheme} from './src/utils/ThemeContext';
 import {LanguageProvider} from './src/utils/LanguageContext';
 import {AuthProvider} from './src/utils/AuthContext';
+import {AuthDataProvider} from './src/utils/AuthDataContext';
 import biometricAuthService from './src/services/biometricAuth';
 import sessionManager from './src/services/sessionManager';
+import { migrateRealmToAsyncStorage } from './src/services/realmMigration';
 import autoDataReloader from './src/services/autoDataReloader';
 import { pinStorage } from './src/services/pinStorage';
 import testCredentialStorage from './src/services/credentialStorageTest';
@@ -31,15 +34,35 @@ import UpdateModal from './src/components/UpdateModal';
 import { initializePushNotifications, registerPendingPushToken } from './src/services/notificationService';
 import { initializeFirebase } from './src/services/firebaseInit';
 import appLifecycleManager from './src/services/appLifecycleManager';
+import ErrorBoundary from './src/components/ErrorBoundary';
+import { getClientConfig } from './src/config/client-config';
 
-import './src/i18n';
+// Temporary performance hardening:
+// Disable all console output in all builds to reduce JS thread and disk I/O overhead.
+{
+  const noop = () => {};
+  console.log = noop;
+  console.info = noop;
+  console.warn = noop;
+  console.error = noop;
+  console.debug = noop;
+}
+
+// Safely import i18n - if it fails, app should still work
+try {
+  require('./src/i18n');
+} catch (error) {
+  if (__DEV__) {
+    console.error('Failed to load i18n:', error);
+  }
+  // Continue without i18n - app will use default language
+}
 
 function AppContent() {
   const {isDark} = useTheme();
   const [showBiometricAuth, setShowBiometricAuth] = useState(false);
   const [isAuthInitialized, setIsAuthInitialized] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [appState, setAppState] = useState(AppState.currentState);
   const [lastAuthTime, setLastAuthTime] = useState(0);
   const [isRecentlyAuthenticated, setIsRecentlyAuthenticated] = useState(false);
   const [isAppInitialized, setIsAppInitialized] = useState(false);
@@ -59,29 +82,96 @@ function AppContent() {
   // Add error boundary for AuthProvider
 
   useEffect(() => {
-    initializeApp();
-    
-    // Initialize Firebase first
-    console.log('🔥 Initializing Firebase...');
-    const firebaseInitialized = initializeFirebase();
-    if (!firebaseInitialized) {
-      console.error('❌ Firebase initialization failed');
-    }
-    
+    // Add a timeout to ensure app doesn't get stuck in loading state
+    const timeoutId = setTimeout(() => {
+      if (!isAuthInitialized) {
+        console.warn('⚠️ App initialization timeout - forcing initialization complete');
+        setIsAuthInitialized(true);
+        setIsLoggedIn(false);
+      }
+    }, 10000); // 10 second timeout
+
+    // Wrap all initialization in try-catch to prevent crashes
     (async () => {
       try {
-        const client = (await AsyncStorage.getItem('current_client')) || 'dna-infotel';
-        initializePushNotifications(client);
-      } catch {
-        initializePushNotifications('dna-infotel');
+        console.log('🚀 Starting app initialization...');
+        await initializeApp();
+        console.log('✅ App initialization completed');
+        clearTimeout(timeoutId);
+      } catch (error) {
+        console.error('❌ App initialization failed:', error);
+        console.error('❌ Error stack:', (error as Error)?.stack);
+        clearTimeout(timeoutId);
+        // Ensure app can still render even if initialization fails
+        setIsAuthInitialized(true);
+        setIsLoggedIn(false);
       }
     })();
+    
+    // Initialize Firebase first - wrapped in try-catch with delay for production
+    // Add a small delay to ensure native modules are ready
+    setTimeout(() => {
+      (async () => {
+        try {
+          if (__DEV__) {
+            console.log('🔥 Initializing Firebase...');
+          }
+          const firebaseInitialized = initializeFirebase();
+          if (!firebaseInitialized && __DEV__) {
+            console.error('❌ Firebase initialization failed');
+          }
+        } catch (error) {
+          // Silently fail in production, log in dev
+          if (__DEV__) {
+            console.error('❌ Firebase initialization error:', error);
+          }
+          // Don't crash the app if Firebase fails
+        }
+      })();
+    }, 500); // 500ms delay to ensure native modules are ready
+    
+    // Initialize push notifications - wrapped in try-catch with delay
+    // Add delay to ensure Firebase is initialized first
+    setTimeout(() => {
+      (async () => {
+        try {
+          const client = (await AsyncStorage.getItem('current_client')) || 'dna-infotel';
+          await initializePushNotifications(client);
+        } catch (error) {
+          // Log in dev, silently fail in production
+          if (__DEV__) {
+            console.error('❌ Push notification initialization error:', error);
+          }
+          // Try with default client if current client fails
+          try {
+            await initializePushNotifications('dna-infotel');
+          } catch (fallbackError) {
+            if (__DEV__) {
+              console.error('❌ Push notification fallback initialization error:', fallbackError);
+            }
+            // Don't crash the app if push notifications fail
+          }
+        }
+      })();
+    }, 1000); // 1 second delay to ensure Firebase is ready
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
   }, []);
 
   // Check for biometric auth flag after login
   useEffect(() => {
     const checkBiometricAfterLogin = async () => {
       try {
+        // Check if biometric is enabled for client
+        const clientConfig = getClientConfig();
+        if (clientConfig.features?.biometricAuth !== true) {
+          // Biometric is disabled for this client, remove flag if exists
+          await AsyncStorage.removeItem('showBiometricAfterLogin');
+          return;
+        }
+
         const showBiometric = await AsyncStorage.getItem('showBiometricAfterLogin');
         if (showBiometric === 'true' && isLoggedIn && !hasAuthenticatedThisSession) {
           console.log('Showing biometric auth after login');
@@ -99,28 +189,45 @@ function AppContent() {
   }, [isLoggedIn, showBiometricAuth, hasAuthenticatedThisSession]);
 
   useEffect(() => {
+    let previousAppState = AppState.currentState;
     const handleAppStateChange = (nextAppState: any) => {
-      console.log('App state changed:', { from: appState, to: nextAppState });
-      
+      if (__DEV__) {
+        console.log('App state changed:', { from: previousAppState, to: nextAppState });
+      }
+
       // Only trigger biometric check when coming from background to active AND app is initialized
-      if (appState === 'background' && nextAppState === 'active' && isAppInitialized) {
-        console.log('App came to foreground from background, checking biometric auth...');
+      if (previousAppState === 'background' && nextAppState === 'active' && isAppInitialized) {
+        if (__DEV__) {
+          console.log('App came to foreground from background, checking biometric auth...');
+        }
         checkBiometricOnResume();
       }
-      
-      setAppState(nextAppState);
+
+      previousAppState = nextAppState;
     };
 
     const subscription = AppState.addEventListener('change', handleAppStateChange);
     return () => {
       subscription?.remove();
+    };
+  }, [isAppInitialized, isLoggedIn, showBiometricAuth, isRecentlyAuthenticated, hasAuthenticatedThisSession, lastAuthTime]);
+
+  useEffect(() => {
+    return () => {
       // Clean up app lifecycle manager when component unmounts
       appLifecycleManager.destroy();
     };
-  }, [appState, showBiometricAuth, lastAuthTime]);
+  }, []);
 
   const checkBiometricOnResume = async () => {
     try {
+      // Check if biometric is enabled for client
+      const clientConfig = getClientConfig();
+      if (clientConfig.features?.biometricAuth !== true) {
+        // Biometric is disabled for this client, skip biometric check
+        return;
+      }
+
       if (!isLoggedIn) return; // Only check if user is logged in
       if (showBiometricAuth) return; // Don't trigger if already showing
       if (isRecentlyAuthenticated) return; // Don't trigger if recently authenticated
@@ -152,31 +259,75 @@ function AppContent() {
 
   const initializeApp = async () => {
     try {
-      console.log('=== INITIALIZING APP ===');
+      if (__DEV__) {
+        console.log('=== INITIALIZING APP ===');
+      }
       
+      // One-time migration: copy old Realm auth/session into AsyncStorage so existing users stay logged in
+      try {
+        await migrateRealmToAsyncStorage();
+      } catch (error) {
+        if (__DEV__) {
+          console.warn('Realm migration error (non-fatal):', error);
+        }
+      }
 
-      
-      // Initialize session manager first
-      await sessionManager.initialize();
+      // Initialize session manager first - wrapped in try-catch
+      try {
+        await sessionManager.initialize();
+      } catch (error) {
+        // Log in dev, silently continue in production
+        if (__DEV__) {
+          console.error('❌ Session manager initialization failed:', error);
+        }
+        // Continue even if session manager fails
+      }
       
       // Initialize auto data reloader (this sets up app state listeners)
-      console.log('Initializing auto data reloader...');
+      if (__DEV__) {
+        console.log('Initializing auto data reloader...');
+      }
       // The autoDataReloader is already initialized as a singleton
       
-      // Test session persistence
-      await testSessionPersistence();
+      // Test session persistence - wrapped in try-catch
+      // Only run tests in dev mode to avoid production issues
+      if (__DEV__) {
+        try {
+          await testSessionPersistence();
+        } catch (error) {
+          console.error('❌ Session persistence test failed:', error);
+          // Continue even if test fails
+        }
+      }
       
       // Check if user is already logged in and session is valid
-      const loggedIn = await sessionManager.isLoggedIn();
-      console.log('App initialization - user logged in:', loggedIn);
+      let loggedIn = false;
+      try {
+        loggedIn = await sessionManager.isLoggedIn();
+        if (__DEV__) {
+          console.log('App initialization - user logged in:', loggedIn);
+        }
+      } catch (error) {
+        if (__DEV__) {
+          console.error('❌ Failed to check login status:', error);
+        }
+        loggedIn = false;
+      }
       
       if (loggedIn) {
         // User is logged in, always show authentication on app launch
         console.log('✅ User is logged in, checking authentication setup...');
         
-        await biometricAuthService.initialize();
-        const isBiometricEnabled = await biometricAuthService.isAuthEnabled();
-        const pin = await pinStorage.getPin();
+        let isBiometricEnabled = false;
+        let pin = null;
+        try {
+          await biometricAuthService.initialize();
+          isBiometricEnabled = await biometricAuthService.isAuthEnabled();
+          pin = await pinStorage.getPin();
+        } catch (error) {
+          console.error('❌ Biometric/PIN check failed:', error);
+          // Continue without biometric auth
+        }
         
         console.log('Biometric enabled:', isBiometricEnabled);
         console.log('PIN available:', !!pin);
@@ -190,11 +341,16 @@ function AppContent() {
           return; // Exit early to prevent home screen flash
         } else {
           console.log('No authentication set up, proceeding to app');
-          // Trigger initial auto reload if needed
-          const shouldReload = await autoDataReloader.shouldAutoReload();
-          if (shouldReload) {
-            console.log('Initial auto reload needed, triggering...');
-            await autoDataReloader.autoReloadUserData();
+          // Trigger initial auto reload if needed - wrapped in try-catch
+          try {
+            const shouldReload = await autoDataReloader.shouldAutoReload();
+            if (shouldReload) {
+              console.log('Initial auto reload needed, triggering...');
+              await autoDataReloader.autoReloadUserData();
+            }
+          } catch (error) {
+            console.error('❌ Auto reload failed:', error);
+            // Continue even if auto reload fails
           }
           
           setIsLoggedIn(true);
@@ -208,19 +364,30 @@ function AppContent() {
 
       console.log('❌ User is not logged in, proceeding to login screen');
       
-      // Test biometric availability first
-      console.log('=== TESTING BIOMETRIC AVAILABILITY ===');
-      const biometricTestResult = await testBiometricAvailability();
-      console.log('Biometric test result:', biometricTestResult);
+      // Test biometric availability first - wrapped in try-catch
+      try {
+        console.log('=== TESTING BIOMETRIC AVAILABILITY ===');
+        const biometricTestResult = await testBiometricAvailability();
+        console.log('Biometric test result:', biometricTestResult);
+      } catch (error) {
+        console.error('❌ Biometric availability test failed:', error);
+        // Continue even if test fails
+      }
       
       // If not logged in, just go to login screen
       // Don't show biometric auth until user logs in successfully
       setIsLoggedIn(false);
     } catch (error) {
-      console.error('Failed to initialize app:', error);
+      console.error('❌ Failed to initialize app:', error);
+      console.error('❌ Error details:', {
+        message: (error as Error)?.message,
+        stack: (error as Error)?.stack,
+        name: (error as Error)?.name,
+      });
       // Fallback to login screen
       setIsLoggedIn(false);
     } finally {
+      console.log('✅ Setting isAuthInitialized to true');
       setIsAuthInitialized(true);
     }
   };
@@ -235,7 +402,7 @@ function AppContent() {
     // Attempt to register any pending push token after user is authenticated
     (async () => {
       const client = (await AsyncStorage.getItem('current_client')) || 'dna-infotel';
-      registerPendingPushToken(client);
+      await registerPendingPushToken(client);
     })();
     
     // Reset the recently authenticated flag after 5 minutes
@@ -270,6 +437,11 @@ function AppContent() {
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? '#121212' : '#f8f9fa' }}>
           <Text style={{ color: isDark ? '#ffffff' : '#333333', fontSize: 16 }}>Loading...</Text>
+          {__DEV__ && (
+            <Text style={{ color: isDark ? '#888888' : '#666666', fontSize: 12, marginTop: 10 }}>
+              Initializing app...
+            </Text>
+          )}
         </View>
       </>
     );
@@ -278,19 +450,19 @@ function AppContent() {
   // Show biometric auth screen if enabled, regardless of login status
   if (showBiometricAuth) {
     return (
-      <>
+      <View style={{ flex: 1, backgroundColor: isDark ? '#000000' : '#ffffff' }}>
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
         <BiometricAuthScreen
           navigation={null}
           onAuthSuccess={handleAuthSuccess}
           onLoginRedirect={handleLoginRedirect}
         />
-      </>
+      </View>
     );
   }
 
   return (
-    <>
+    <View style={{ flex: 1, backgroundColor: isDark ? '#000000' : '#ffffff' }}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <AppNavigator initialRoute={isLoggedIn ? 'Home' : 'Login'} />
       
@@ -303,21 +475,60 @@ function AppContent() {
           onClose={closeUpdateModal}
         />
       )}
-    </>
+    </View>
   );
 }
 
+// Individual error boundaries for each provider to isolate failures
+const SafeThemeProvider = ({ children }: { children: ReactNode }) => {
+  return (
+    <ErrorBoundary fallback={<>{children}</>}>
+      <ThemeProvider>{children}</ThemeProvider>
+    </ErrorBoundary>
+  );
+};
+
+const SafeLanguageProvider = ({ children }: { children: ReactNode }) => {
+  return (
+    <ErrorBoundary fallback={<>{children}</>}>
+      <LanguageProvider>{children}</LanguageProvider>
+    </ErrorBoundary>
+  );
+};
+
+const SafeAuthProvider = ({ children }: { children: ReactNode }) => {
+  return (
+    <ErrorBoundary fallback={<>{children}</>}>
+      <AuthProvider>
+        <ErrorBoundary fallback={<>{children}</>}>
+          <AuthDataProvider>
+            {children}
+          </AuthDataProvider>
+        </ErrorBoundary>
+      </AuthProvider>
+    </ErrorBoundary>
+  );
+};
+
 function App() {
   return (
-    <SafeAreaProvider>
-      <LanguageProvider>
-        <ThemeProvider>
-          <AuthProvider>
-            <AppContent />
-          </AuthProvider>
-        </ThemeProvider>
-      </LanguageProvider>
-    </SafeAreaProvider>
+    <ErrorBoundary>
+      <SafeAreaProvider>
+        <ErrorBoundary>
+          <SafeLanguageProvider>
+            <ErrorBoundary>
+              <SafeThemeProvider>
+                <ErrorBoundary>
+                  <SafeAuthProvider>
+                    <AppContent />
+                  </SafeAuthProvider>
+                </ErrorBoundary>
+              </SafeThemeProvider>
+            </ErrorBoundary>
+          </SafeLanguageProvider>
+        </ErrorBoundary>
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }
 
