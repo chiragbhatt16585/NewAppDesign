@@ -7,6 +7,7 @@ import messaging from '@react-native-firebase/messaging'
 import firebase from '@react-native-firebase/app'
 import { initializeFirebase, waitForFirebaseAppReady } from './firebaseInit'
 import { getClientConfig } from '../config/client-config'
+import { navigate } from '../navigation/RootNavigation'
 
 let isInitialized = false
 let isInitializing = false
@@ -67,6 +68,10 @@ export async function initializePushNotifications(realm?: string): Promise<void>
       const fcmToken = await messaging().getToken()
       // eslint-disable-next-line no-console
       console.log('[Push][FCM] getToken', fcmToken ? fcmToken.substring(0, 12) + '...' : 'none')
+      if (__DEV__) {
+        // eslint-disable-next-line no-console
+        console.log('[Push][FCM] FULL FCM TOKEN (init)', fcmToken)
+      }
       try { /* require('react-native').Alert.alert('PushDebug', `FCM token: ${fcmToken ? fcmToken.substring(0,10)+'...' : 'none'}`) */ } catch {}
       if (fcmToken) {
         pendingToken = fcmToken
@@ -99,6 +104,10 @@ export async function initializePushNotifications(realm?: string): Promise<void>
         try {
           // eslint-disable-next-line no-console
           console.log('[Push][FCM] onTokenRefresh', newToken ? newToken.substring(0, 12) + '...' : 'none')
+          if (__DEV__) {
+            // eslint-disable-next-line no-console
+            console.log('[Push][FCM] FULL FCM TOKEN (refresh)', newToken)
+          }
           pendingToken = newToken
           const device_info = {
             deviceId: DeviceInfo.getDeviceId(),
@@ -203,8 +212,23 @@ export async function initializePushNotifications(realm?: string): Promise<void>
 
       // Called on receipt of a notification
       onNotification: function (notification: any) {
+        try {
+          const userInteraction = notification?.userInteraction
+          const targetScreen =
+            notification?.data?.screen && typeof notification.data.screen === 'string'
+              ? notification.data.screen
+              : 'Notifications'
+
+          if (userInteraction) {
+            navigate(targetScreen as string)
+          }
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.warn('[Push] onNotification navigation error', e)
+        }
+
         // For iOS, you must call completion to let the OS know you have finished
-        if (Platform.OS === 'ios') {
+        if (Platform.OS === 'ios' && typeof notification.finish === 'function') {
           notification.finish(PushNotificationIOS.FetchResult.NoData)
         }
       },
@@ -288,6 +312,9 @@ export async function registerPendingPushToken(realm?: string): Promise<boolean>
       const directToken = await messaging().getToken();
       if (directToken) {
         console.log('[Push] Got FCM token directly, registering...');
+        if (__DEV__) {
+          console.log('[Push] FULL FCM TOKEN (registerPending)', directToken);
+        }
         pendingToken = directToken; // Set it as pending for registration
       } else {
         console.log('[Push] No FCM token available from direct call');
@@ -410,6 +437,9 @@ export async function registerDeviceManually(realm?: string): Promise<boolean> {
         console.log('[Push] Method 1: Direct token request...');
         tokenToSend = await messaging().getToken();
         console.log('[Push] Method 1 result:', tokenToSend ? `${tokenToSend.substring(0, 10)}...` : 'null');
+        if (__DEV__) {
+          console.log('[Push] FULL FCM TOKEN (manual/m1)', tokenToSend);
+        }
       } catch (tokenError) {
         console.warn('[Push] Method 1 failed:', tokenError);
       }
@@ -433,6 +463,9 @@ export async function registerDeviceManually(realm?: string): Promise<boolean> {
           await new Promise(resolve => setTimeout(resolve, 2000));
           tokenToSend = await messaging().getToken();
           console.log('[Push] Method 2 token result:', tokenToSend ? `${tokenToSend.substring(0, 10)}...` : 'null');
+          if (__DEV__) {
+            console.log('[Push] FULL FCM TOKEN (manual/m2)', tokenToSend);
+          }
         } catch (permissionError) {
           console.warn('[Push] Method 2 failed:', permissionError);
         }
@@ -449,6 +482,9 @@ export async function registerDeviceManually(realm?: string): Promise<boolean> {
           await new Promise(resolve => setTimeout(resolve, 3000));
           tokenToSend = await messaging().getToken();
           console.log('[Push] Method 3 token result:', tokenToSend ? `${tokenToSend.substring(0, 10)}...` : 'null');
+          if (__DEV__) {
+            console.log('[Push] FULL FCM TOKEN (manual/m3)', tokenToSend);
+          }
         } catch (registerError) {
           console.warn('[Push] Method 3 failed:', registerError);
         }
@@ -463,6 +499,9 @@ export async function registerDeviceManually(realm?: string): Promise<boolean> {
           await new Promise(resolve => setTimeout(resolve, 1000));
           tokenToSend = await messaging().getToken();
           console.log('[Push] Method 4 token result:', tokenToSend ? `${tokenToSend.substring(0, 10)}...` : 'null');
+          if (__DEV__) {
+            console.log('[Push] FULL FCM TOKEN (manual/m4)', tokenToSend);
+          }
         } catch (refreshError) {
           console.warn('[Push] Method 4 failed:', refreshError);
         }
@@ -478,6 +517,9 @@ export async function registerDeviceManually(realm?: string): Promise<boolean> {
           await new Promise(resolve => setTimeout(resolve, 5000)); // 5 second wait
           tokenToSend = await messaging().getToken();
           console.log('[Push] Method 5 token result:', tokenToSend ? `${tokenToSend.substring(0, 10)}...` : 'null');
+          if (__DEV__) {
+            console.log('[Push] FULL FCM TOKEN (manual/m5)', tokenToSend);
+          }
         } catch (lastResortError) {
           console.warn('[Push] Method 5 failed:', lastResortError);
         }
@@ -585,6 +627,9 @@ export async function updateDeviceWithRealFCMToken(realm?: string): Promise<bool
     try {
       fcmToken = await messaging().getToken();
       console.log('[Push] FCM token obtained:', fcmToken ? `${fcmToken.substring(0, 20)}...` : 'null');
+      if (__DEV__) {
+        console.log('[Push] FULL FCM TOKEN (updateReal)', fcmToken);
+      }
     } catch (tokenError) {
       console.warn('[Push] Failed to get FCM token:', tokenError);
       return false;

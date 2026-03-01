@@ -3,6 +3,7 @@ import { View, Text } from 'react-native';
 import {NavigationContainer} from '@react-navigation/native';
 import {createStackNavigator} from '@react-navigation/stack';
 import MainTabs from './MainTabs';
+import {navigationRef, handlePendingNavigation} from './RootNavigation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import LoginScreen from '../screens/LoginScreen';
 import HomeScreen from '../screens/HomeScreen';
@@ -38,6 +39,7 @@ import OffersScreen from '../screens/OffersScreen';
 import PartnerAppsScreen from '../screens/PartnerAppsScreen';
 import IntroScreen from '../screens/IntroScreen';
 import NotificationTestScreen from '../screens/NotificationTestScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
 
 const Stack = createStackNavigator();
 
@@ -122,8 +124,10 @@ const AppNavigator: React.FC<AppNavigatorProps> = ({ initialRoute }) => {
 
   return (
     <NavigationContainer
+      ref={navigationRef}
       initialState={initialState}
-      onStateChange={onStateChange}>
+      onStateChange={onStateChange}
+      onReady={handlePendingNavigation}>
       <Stack.Navigator
         initialRouteName={initialState ? undefined : currentInitialRoute}
         screenOptions={{
@@ -163,6 +167,7 @@ const AppNavigator: React.FC<AppNavigatorProps> = ({ initialRoute }) => {
         <Stack.Screen name="PaymentLink" component={PaymentLinkScreen} options={{ headerShown: false }} />
         <Stack.Screen name="PaymentResponse" component={PaymentResponseScreen} options={{ headerShown: false }} />
         <Stack.Screen name="NotificationTest" component={NotificationTestScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

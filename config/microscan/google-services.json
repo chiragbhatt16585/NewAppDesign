@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "1010044921182",
-    "project_id": "log2space---microscan-new-app",
-    "storage_bucket": "log2space---microscan-new-app.firebasestorage.app"
+    "project_number": "545099161210",
+    "project_id": "log2space---microscan-app",
+    "storage_bucket": "log2space---microscan-app.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-      "mobilesdk_app_id": "1:1010044921182:android:735e3ff7e1ab6a90805bcf",
-      "android_client_info": {
-      "package_name": "in.spacecom.log2space.client.microscan"
+        "mobilesdk_app_id": "1:545099161210:android:9bdae30de3159f2d4b25c3",
+        "android_client_info": {
+          "package_name": "in.spacecom.log2space.client.microscan"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAcwwhvYv2G8LQtwIEU3WCGpdsuS4wbAdE"
+          "current_key": "AIzaSyA6pOcvcBeG8Ou_QWs-niJHmq1tbVTJ1j0"
         }
       ],
       "services": {

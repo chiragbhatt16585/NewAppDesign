@@ -570,7 +570,10 @@ class ApiService {
       //   keys: response ? Object.keys(response) : []
       // });
 
-      // Return full response for visibility even if status !== 'ok'
+      // Throw on error so makeAuthenticatedRequest can retry (e.g. token expired)
+      if (response?.status !== 'ok' && response?.code !== 200) {
+        throw new Error(response?.message || 'Failed to fetch menu settings');
+      }
       return response?.data ?? response;
     });
   }
@@ -2439,6 +2442,143 @@ class ApiService {
         }
       } catch (e: any) {
         console.error('Get coupon code error:', e);
+        const msg = isNetworkError(e) ? networkErrorMsg : e.message;
+        throw new Error(msg);
+      }
+    });
+  }
+
+  async lastTenNotification(realm: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const username = await sessionManager.getUsername();
+      if (!username) {
+        throw new Error('No username available');
+      }
+
+      const requestData = {
+        username,
+        request_source: 'app',
+        request_app: 'user_app',
+      };
+
+      const options = {
+        method,
+        headers: new Headers({Authentication: token, ...fixedHeaders}),
+        body: toFormData(requestData),
+        timeout,
+      };
+
+      try {
+        if (__DEV__) {
+          console.log('=== lastTenNotification REQUEST ===', {
+            realm,
+            username,
+            url: `${url}/selfcareGetLastTenNotification`,
+            requestData,
+          });
+        }
+
+        const res = await fetch(`${url}/selfcareFetchPushNotification`, options);
+        const response = await res.json();
+
+        if (__DEV__) {
+          console.log('=== lastTenNotification RAW RESPONSE ===', response);
+        }
+
+        if (response.success === false && response.error === true) {
+          throw new Error(response.message || 'Failed to load notifications');
+        }
+
+        let list = Array.isArray(response.data) ? response.data : [];
+
+        if (__DEV__) {
+          console.log('=== lastTenNotification RAW LIST ===', {
+            count: list.length,
+            first: list[0] || null,
+          });
+        }
+
+        // Keep only latest 10 notifications (API may send more)
+        list = list.slice(0, 10);
+
+        // Normalize to the shape used by NotificationsScreen
+        return list.map((notificationObj: any) => {
+          return {
+            id: String(
+              notificationObj.id ??
+                notificationObj.notificationNo ??
+                '',
+            ),
+            alert_event: notificationObj.alert_event ?? '',
+            msg_content: notificationObj.msg_content ?? '',
+            notification_seen_at:
+              notificationObj.notification_seen_at ?? null,
+            entry_date:
+              notificationObj.entry_date ??
+              notificationObj.sendDate ??
+              '',
+            alert_type:
+              notificationObj.alert_type ??
+              notificationObj.alertType ??
+              '',
+          };
+        });
+      } catch (e: any) {
+        const msg = isNetworkError(e) ? networkErrorMsg : e.message;
+        throw new Error(msg);
+      }
+    });
+  }
+
+  async updateNotificationStatusToSeen(notificationIds: string[], realm: string) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const username = await sessionManager.getUsername();
+      if (!username) {
+        throw new Error('No username available');
+      }
+
+      const idParam = notificationIds.join(',');
+      const requestData = {
+        username,
+        id: idParam,
+      };
+
+      const options = {
+        method,
+        headers: new Headers({Authentication: token, ...fixedHeaders}),
+        body: toFormData(requestData),
+        timeout,
+      };
+
+      try {
+        if (__DEV__) {
+          console.log('=== updateNotificationStatusToSeen REQUEST ===', {
+            realm,
+            username,
+            url: `${url}/selfcareUpdatePushNotificationSeen`,
+            ids: notificationIds,
+          });
+        }
+
+        const res = await fetch(`${url}/selfcareUpdatePushNotificationSeen`, options);
+        const response = await res.json();
+
+        if (__DEV__) {
+          console.log('=== updateNotificationStatusToSeen RESPONSE ===', response);
+        }
+
+        if (
+          (response.status !== 'ok' && response.code !== 200) ||
+          (response.status === 'ok' && response.code !== 200)
+        ) {
+          if (response.message === 'No Content') {
+            return [];
+          }
+          throw new Error(response.message || 'Failed to update notifications');
+        }
+
+        return response;
+      } catch (e: any) {
         const msg = isNetworkError(e) ? networkErrorMsg : e.message;
         throw new Error(msg);
       }

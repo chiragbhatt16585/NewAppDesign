@@ -64,6 +64,7 @@ const CommonHeader = ({
     // Add more entries here as you add header background images for other clients
     const backgroundImageMap: Record<string, ImageSourcePropType> = {
       'spacecom-live:header_background.png': require('../../config/spacecom-live/assets/header_background.png'),
+      'spacecom-local:header_background.png': require('../../config/spacecom-local/assets/header_background.png'),
       'linkway:header_background.png': require('../../config/linkway/assets/header_background.png'),
       'inshansa-dnagoa:header_background.png': require('../../config/inshansa-dnagoa/assets/header_background.png'),
       'successbroadband:header_background.png': require('../../config/successbroadband/assets/header_background.png'),
@@ -72,7 +73,6 @@ const CommonHeader = ({
       'dna-infotel:header_background.png': require('../../config/dna-infotel/assets/header_background.png'),
       'netfix:header_background.png': require('../../config/netfix/assets/header_background.png'),
       'gatewayftth:header_background.png': require('../../config/gatewayftth/assets/header_background.png'),
-      // 'logon-broadband:header_background.png': require('../../config/logon-broadband/assets/header_background.png'),
       // 'one-sevenstar:header_background.png': require('../../config/one-sevenstar/assets/header_background.png'),
       // 'netplanet:header_background.png': require('../../config/netplanet/assets/header_background.png'),
       // 'metanet:header_background.png': require('../../config/metanet/assets/header_background.png'),
@@ -88,6 +88,7 @@ const CommonHeader = ({
   const isHeaderBgClient =
     !!headerBackgroundImage &&
     (clientConfig.clientId === 'spacecom-live' ||
+      clientConfig.clientId === 'spacecom-local' ||
       clientConfig.clientId === 'linkway' ||
       clientConfig.clientId === 'inshansa-dnagoa' ||
       clientConfig.clientId === 'successbroadband' ||
@@ -123,12 +124,15 @@ const CommonHeader = ({
     (clientConfig.clientId === 'dna-goa' ||
       clientConfig.clientId === 'dna-infotel' ||
       clientConfig.clientId === 'netfix' ||
-      clientConfig.clientId === 'gatewayftth');
+      clientConfig.clientId === 'gatewayftth' ||
+      clientConfig.clientId === 'spacecom-local');
 
-  // Hide logo only for spacecom-live when using header background image.
-  // For linkway and inshansa-dnagoa, keep the logo visible (centered) over the background.
+  // Hide logo for spacecom-live and spacecom-local when using header background image.
+  // For other header-bg clients, keep the logo visible (centered) over the background.
   const shouldHideLogo =
-    !!headerBackgroundImage && clientConfig.clientId === 'spacecom-live';
+    !!headerBackgroundImage &&
+    (clientConfig.clientId === 'spacecom-live' ||
+      clientConfig.clientId === 'spacecom-local');
 
   return (
     <View style={[

@@ -69,7 +69,7 @@ const NotificationTestScreen = ({ navigation }: any) => {
 
   const handleTestPermission = async () => {
     try {
-      const { requestNotificationPermissions } = await import('../notificationService');
+      const { requestNotificationPermissions } = await import('../services/notificationService');
       const result = await requestNotificationPermissions();
       Alert.alert('Permission Test', `Permission granted: ${result}`);
       addTestResult(`Permission test: ${result ? 'GRANTED' : 'DENIED'}`);
@@ -80,7 +80,8 @@ const NotificationTestScreen = ({ navigation }: any) => {
 
   const handleTestLocalNotification = () => {
     try {
-      const { showLocalNotification } = require('../notificationService');
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { showLocalNotification } = require('../services/notificationService');
       showLocalNotification('Test Notification', 'This is a test notification from the test screen');
       addTestResult('Local notification sent');
     } catch (error) {

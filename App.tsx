@@ -36,10 +36,10 @@ import { initializeFirebase } from './src/services/firebaseInit';
 import appLifecycleManager from './src/services/appLifecycleManager';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import { getClientConfig } from './src/config/client-config';
+import { InAppNotificationProvider } from './src/utils/InAppNotificationContext';
 
-// Temporary performance hardening:
-// Disable all console output in all builds to reduce JS thread and disk I/O overhead.
-{
+// In production builds, disable console output to reduce JS thread and disk I/O overhead.
+if (!__DEV__) {
   const noop = () => {};
   console.log = noop;
   console.info = noop;
@@ -195,12 +195,20 @@ function AppContent() {
         console.log('App state changed:', { from: previousAppState, to: nextAppState });
       }
 
-      // Only trigger biometric check when coming from background to active AND app is initialized
+      // When coming from background to active: refresh token if stale and run biometric check
       if (previousAppState === 'background' && nextAppState === 'active' && isAppInitialized) {
         if (__DEV__) {
           console.log('App came to foreground from background, checking biometric auth...');
         }
         checkBiometricOnResume();
+        // Proactively refresh session/token so menu and other API calls don't show "Token Expired"
+        if (isLoggedIn) {
+          sessionManager.shouldAutoRefresh().then((should) => {
+            if (should) {
+              sessionManager.autoRefreshSession().catch(() => {});
+            }
+          });
+        }
       }
 
       previousAppState = nextAppState;
@@ -520,7 +528,9 @@ function App() {
               <SafeThemeProvider>
                 <ErrorBoundary>
                   <SafeAuthProvider>
-                    <AppContent />
+                    <InAppNotificationProvider>
+                      <AppContent />
+                    </InAppNotificationProvider>
                   </SafeAuthProvider>
                 </ErrorBoundary>
               </SafeThemeProvider>

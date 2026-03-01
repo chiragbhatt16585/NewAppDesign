@@ -1524,28 +1524,43 @@ const HomeScreen = ({navigation}: any) => {
           showBackButton={false}
           logoPosition="center"
           rightComponent={(
-            homeMenuConfig.profileMenuEnabled ? (
-              <TouchableOpacity 
-                style={styles.profileAvatarButton}
-                onPress={toggleProfileMenu}
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <TouchableOpacity
+                style={{ marginRight: 12 }}
+                onPress={() => navigation.navigate('Notifications')}
                 activeOpacity={0.8}
                 accessibilityRole="button"
-                accessibilityLabel="Profile menu"
+                accessibilityLabel="Notifications"
               >
-                <View style={[styles.profileAvatar, {backgroundColor: colors.primary || '#FF6B35'}]}>
-                  <Text style={styles.profileAvatarText}>{getUserInitials()}</Text>
-                </View>
+                <Feather
+                  name="bell"
+                  size={22}
+                  color={clientConfig.clientId === 'spacecom-local' ? '#FFFFFF' : (colors.primary || '#FF6B35')}
+                />
               </TouchableOpacity>
-            ) : homeMenuConfig.directLogoutEnabled ? (
-              <TouchableOpacity 
-                style={styles.logoutButtonHeader}
-                onPress={handleLogout}
-                activeOpacity={0.8}
-              >
-                <Feather name="log-out" size={20} color={colors.primary || '#FF6B35'} />
-                <Text style={[styles.logoutButtonText, {color: colors.primary || '#FF6B35'}]}>{t('common.logout')}</Text>
-              </TouchableOpacity>
-            ) : null
+              {homeMenuConfig.profileMenuEnabled ? (
+                <TouchableOpacity 
+                  style={styles.profileAvatarButton}
+                  onPress={toggleProfileMenu}
+                  activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Profile menu"
+                >
+                  <View style={[styles.profileAvatar, {backgroundColor: colors.primary || '#FF6B35'}]}>
+                    <Text style={styles.profileAvatarText}>{getUserInitials()}</Text>
+                  </View>
+                </TouchableOpacity>
+              ) : homeMenuConfig.directLogoutEnabled ? (
+                <TouchableOpacity 
+                  style={styles.logoutButtonHeader}
+                  onPress={handleLogout}
+                  activeOpacity={0.8}
+                >
+                  <Feather name="log-out" size={20} color={colors.primary || '#FF6B35'} />
+                  <Text style={[styles.logoutButtonText, {color: colors.primary || '#FF6B35'}]}>{t('common.logout')}</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
           )}
         />
 

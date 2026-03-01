@@ -228,7 +228,7 @@ const MoreOptionsScreen = ({navigation}: any) => {
       'Speed Test': { icon: 'activity', iconType: 'feather' },
       'Partner Apps': { icon: 'smartphone', iconType: 'feather' },
       'Settings': { icon: 'settings', iconType: 'feather' },
-      'AI Assistant': { icon: 'message-circle', iconType: 'feather' },
+      //'AI Assistant': { icon: 'message-circle', iconType: 'feather' },
     };
 
     const routeMap: Record<string, () => void> = {
@@ -243,7 +243,6 @@ const MoreOptionsScreen = ({navigation}: any) => {
       'Speed Test': handleSpeedTest,
       'Partner Apps': handlePartnerApps,
       'Settings': handleSettings,
-      'AI Assistant': handleAIDemo,
     };
 
     const subtitleMap: Record<string, string> = {
@@ -258,7 +257,6 @@ const MoreOptionsScreen = ({navigation}: any) => {
       'Speed Test': 'Test your internet speed',
       'Partner Apps': 'Download Partner Apps',
       'Settings': 'Language, Theme & Security',
-      'AI Assistant': 'Chat with AI support',
     };
 
     // Debug: log raw menu coming from API
@@ -303,16 +301,6 @@ const MoreOptionsScreen = ({navigation}: any) => {
         iconType: iconMap[label]?.iconType,
         onPress: routeMap[label],
       }));
-
-    // AI Assistant: always show (not controlled by backend menu)
-    built.unshift({
-      id: 'ai-assistant',
-      title: 'AI Assistant',
-      subtitle: 'Chat with AI support',
-      icon: 'message-circle',
-      iconType: 'feather',
-      onPress: handleAIDemo,
-    });
 
     // Debug: final items that will be rendered (excluding Logout)
     try {

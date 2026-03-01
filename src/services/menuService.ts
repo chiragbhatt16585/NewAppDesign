@@ -1,5 +1,4 @@
 import { apiService } from './api';
-import { getClientConfig } from '../config/client-config';
 
 export type MenuSettings = any;
 
@@ -21,8 +20,8 @@ class MenuService {
   }
 
   async fetch(): Promise<MenuSettings> {
-    const realm = getClientConfig().clientId;
-    return apiService.menuSettings(realm);
+    // Use getMenuSettings() so token expiry triggers auto-retry via makeAuthenticatedRequest
+    return apiService.getMenuSettings();
   }
 
   async get(): Promise<MenuSettings> {

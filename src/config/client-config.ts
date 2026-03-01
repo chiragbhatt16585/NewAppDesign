@@ -205,9 +205,14 @@ const clientConfigs: Record<string, ClientConfig> = {
     },
     branding: {
       logo: 'isp_logo.png',
-      primaryColor: '#FF791F',
-      secondaryColor: '#FF791F',
+      primaryColor: '#1976D2',
+      secondaryColor: '#42A5F5',
       appName: 'Spacecom Local',
+      headerBackgroundImage: 'header_background.png',
+      logoDimensions: {
+        header: { width: 200, height: 140 },
+        login: { width: 300, height: 200 },
+      },
     },
     features: {
       biometricAuth: true,
