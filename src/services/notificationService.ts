@@ -294,17 +294,19 @@ export async function registerPendingPushToken(realm?: string): Promise<boolean>
     // Guard: ensure Firebase app is ready
     try {
       if (!firebase.apps || firebase.apps.length === 0) {
-        console.warn('[Push] Firebase not initialized; attempting init before token fetch')
-        initializeFirebase()
+        console.warn('[Push] Firebase not initialized; attempting init before token fetch');
+        initializeFirebase();
       }
-      const ready = await waitForFirebaseAppReady(7000, 200)
+      const ready = await waitForFirebaseAppReady(7000, 200);
       if (!ready) {
-        console.warn('[Push] Firebase not ready; deferring token fetch')
-        return true
+        console.warn('[Push] Firebase not ready; will try registration later');
+        // Indicate that registration did NOT happen, so caller can try other paths
+        return false;
       }
     } catch {
-      console.warn('[Push] Firebase init state unknown; deferring token fetch')
-      return true
+      console.warn('[Push] Firebase init state unknown; will try registration later');
+      // Indicate that registration did NOT happen, so caller can try other paths
+      return false;
     }
 
     // Method 1: Try to get token directly

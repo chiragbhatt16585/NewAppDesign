@@ -126,6 +126,15 @@ const CLIENTS = {
     keystore: 'Log2spaceSuccessBroadbandAppKey.jks',
     configDir: 'config/successbroadband',
   },
+  'one-sevenstar': {
+    name: 'One Seven Star',
+    packageName: 'com.spacecom.log2space.onesevenstar',
+    namespace: 'com.spacecom.log2space.onesevenstar',
+    versionCode: 3,
+    versionName: '3.0.0',
+    keystore: 'OneSevenStar.jks',
+    configDir: 'config/one-sevenstar',
+  },
 };
 
 // Colors for console output

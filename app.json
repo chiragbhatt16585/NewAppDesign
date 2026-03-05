@@ -1,9 +1,9 @@
 {
-  "name": "MicroscanApp",
+  "name": "MetanetApp",
   "expo": {
-    "name": "Microscan",
-    "slug": "microscan",
-    "version": "3.0.1",
+    "name": "Metanet",
+    "slug": "metanet",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./app-icons/icon.png",
     "userInterfaceStyle": "light",
@@ -17,19 +17,20 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.l2sClient.microscan",
-      "buildNumber": "37"
+      "bundleIdentifier": "com.l2sClient.metanet",
+      "buildNumber": "1"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./app-icons/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
       },
-      "package": "in.spacecom.log2space.client.microscan",
-      "versionCode": 39
+      "package": "com.spacecom.log2space.metanet",
+      "versionCode": 1
     },
     "web": {
       "favicon": "./app-icons/favicon.png"
     }
   }
-} 
+}
+

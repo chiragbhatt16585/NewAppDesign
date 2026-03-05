@@ -2,8 +2,8 @@
   "android": {
     "namespace": "com.spacecom.log2space.onesevenstar",
     "applicationId": "com.spacecom.log2space.onesevenstar",
-    "versionCode": 1,
-    "versionName": "1.0.1",
+    "versionCode": 3,
+    "versionName": "3.0.0",
     "signing": {
       "debug": {
         "storeFile": "debug.keystore",

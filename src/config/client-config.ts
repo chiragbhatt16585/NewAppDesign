@@ -853,6 +853,18 @@ const clientConfigs: Record<string, ClientConfig> = {
       primaryColor: '#1976D2',
       secondaryColor: '#FF5722',
       appName: 'One Seven Star',
+      headerBackgroundImage: 'header_background.png',
+      logoDimensions: {
+        // Larger logo sizes for desktop-style/header and login views
+        header: {
+          width: 150,
+          height: 80,
+        },
+        login: {
+          width: 300,
+          height: 200,
+        },
+      },
     },
     features: {
       biometricAuth: true,
@@ -862,80 +874,62 @@ const clientConfigs: Record<string, ClientConfig> = {
     },
     contact: {
       gstin: '29AAFCM000000002',
-      whatsappNumber: '+919876543212',
       headOffice: {
-        title: 'Head Office',
-        address: '123 Main St, City, Country',
-        customerSupport: 'support@one-sevenstar.com',
+        title: 'Registered Office',
+        address: '304/305 Tulsi Com Pre Co-op So, Harshvardhan Chamber, Oshiwara, Jogeshwari West, Mumbai, Maharashtra, India, 400102',
+        customerSupport: '022249447777',
         customerSupportHours: 'Mon-Fri 9:00 AM - 6:00 PM',
-        corporateLandline: '+91-123-4567892',
         corporateHours: 'Mon-Fri 9:00 AM - 6:00 PM',
       },
-      branchOffices: [
-        {
-          title: 'Branch 1',
-          address: '456 Oak Ave, City, Country',
-          corporateLandline: '+91-987-6543212',
-          corporateHours: 'Mon-Fri 9:00 AM - 6:00 PM',
-        },
-        {
-          title: 'Branch 2',
-          address: '789 Pine Ln, City, Country',
-          corporateLandline: '+91-112-3456781',
-          corporateHours: 'Mon-Fri 9:00 AM - 6:00 PM',
-        },
-      ],
+      branchOffices: [],
       enterpriseEscalation: {
         title: 'Enterprise Escalation',
         l1: {
           level: 'Level 1',
-          emails: ['l1@one-sevenstar.com'],
-          phone: '+91-111-2222224',
+          emails: ['info@one7star.com'],
         },
         l2: {
           level: 'Level 2',
-          emails: ['l2@one-sevenstar.com'],
+          emails: ['info@one7star.com'],
         },
         l3: {
           level: 'Level 3',
-          emails: ['l3@one-sevenstar.com'],
+          emails: ['info@one7star.com'],
         },
       },
       emails: {
-        inquiries: 'inquiries@one-sevenstar.com',
-        sales: 'sales@one-sevenstar.com',
-        support: 'support@one-sevenstar.com',
+        inquiries: 'info@one7star.com',
+        sales: 'info@one7star.com',
+        support: 'info@one7star.com',
       },
-      tollFree: '+91-800-123-4569',
-      landline: '+91-123-4567892',
     },
     about: {
-      companyName: 'ONE SEVEN STAR',
+      companyName: 'ONE7STAR',
       establishedYear: '2015',
-      description: 'One Seven Star is a dynamic internet service provider focused on delivering reliable and fast internet connectivity to homes and businesses.',
+      description: 'ONE7STAR is a strategic alliance between ONEOTT iNTERTAINMENT Ltd. (OIL), India\'s 4th largest private Internet Service Provider, and 7Star Group, a prominent regional ISP. We are committed to transforming the digital landscape by providing reliable, high-speed internet services across Maharashtra and beyond.',
       specializations: [
-        'High-speed internet services',
+        'High-speed broadband internet',
+        '24 OTT Apps, 300+ Live TV Channels',
         'Fiber optic networks',
-        'Business internet solutions',
-        'Customer-focused service'
+        'Business internet solutions'
       ],
       serviceAreas: [
-        'Multiple cities across India',
-        'Urban and rural areas',
-        'Business districts'
+        'Mumbai',
+        'Maharashtra and beyond'
       ],
       achievements: [
-        'Growing customer base',
-        'Innovative service offerings',
-        'Reliable network infrastructure'
+        'Ranked on Netflix ISP Index',
+        'Ultra fast speed up to 1 Gbps',
+        'Strategic alliance of ONEOTT and 7Star Group'
       ],
     },
+    website: 'https://www.one7star.com/',
     reviewUrl: 'https://play.google.com/store/apps/details?id=com.h8.dnasubscriber',
     versionCheck: {
       enabled: true,
       checkInterval: 24, // Check every 24 hours
       forceUpdateEnabled: true,
-      packageName: 'com.h8.dnasubscriber',
+      packageName: 'com.spacecom.log2space.onesevenstar',
       appStoreId: '123456789',
     },
   },
@@ -1140,6 +1134,18 @@ const clientConfigs: Record<string, ClientConfig> = {
       primaryColor: '#1976D2',
       secondaryColor: '#42A5F5',
       appName: 'Metanet',
+      headerBackgroundImage: 'header_background.png',
+      logoDimensions: {
+        // Match One Seven Star header/login logo sizing
+        header: {
+          width: 150,
+          height: 80,
+        },
+        login: {
+          width: 300,
+          height: 200,
+        },
+      },
     },
     features: {
       biometricAuth: true,

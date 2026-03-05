@@ -1,4 +1,5 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
+import { AppState, AppStateStatus } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import Feather from 'react-native-vector-icons/Feather';
@@ -63,7 +64,21 @@ const MainTabs = React.memo(() => {
   const { isDark } = useTheme();
   const colors = getThemeColors(isDark);
   const { authData } = useAuthData();
-  const { menu } = useMenuSettings();
+  const { menu, refresh: refreshMenu } = useMenuSettings();
+  const [tabBarKey, setTabBarKey] = useState(0);
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+
+  // When app returns from background, force tab bar to re-layout so it doesn't stay missing (iOS/Android)
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (nextState: AppStateStatus) => {
+      if (appStateRef.current === 'background' && nextState === 'active') {
+        setTabBarKey((k) => k + 1);
+        refreshMenu().catch(() => {});
+      }
+      appStateRef.current = nextState;
+    });
+    return () => sub.remove();
+  }, [refreshMenu]);
 
   // Check if AppSideNavigationMenu contains "First Payment"
   const shouldHideRecharge = useMemo(() => {
@@ -186,7 +201,7 @@ const MainTabs = React.memo(() => {
   };
 
   return (
-    <Tab.Navigator screenOptions={screenOptions}>
+    <Tab.Navigator key={tabBarKey} screenOptions={screenOptions}>
       <Tab.Screen 
         name="Home" 
         component={HomeStack} 

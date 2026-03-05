@@ -354,12 +354,15 @@ const HomeScreen = ({navigation}: any) => {
       showPlanParamsBlend: defaults.showPlanParamsBlend,
     };
 
-    // Temporary client-specific override:
-    // For Linkway, ALWAYS hide the profile menu regardless of API flags
+    // Temporary client-specific overrides:
+    // - Linkway: ALWAYS hide the profile menu regardless of API flags
+    // - Metanet: ALWAYS show the profile menu (force enable avatar)
     try {
       const currentClientId = getClientConfig().clientId;
       if (currentClientId === 'linkway') {
         result.profileMenuEnabled = false;
+      } else if (currentClientId === 'metanet') {
+        result.profileMenuEnabled = true;
       }
     } catch {
       // If client-config fails, just keep parsed value

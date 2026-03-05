@@ -37,6 +37,7 @@
     "username": "Username",
     "password": "Password",
     "login": "Login",
+    "rememberMe": "Remember my login on this device",
     "forgotPassword": "Forgot Password?",
     "dontHaveAccount": "Don't have an account?",
     "signUp": "Sign Up",

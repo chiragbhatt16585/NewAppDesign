@@ -73,9 +73,9 @@ const CommonHeader = ({
       'dna-infotel:header_background.png': require('../../config/dna-infotel/assets/header_background.png'),
       'netfix:header_background.png': require('../../config/netfix/assets/header_background.png'),
       'gatewayftth:header_background.png': require('../../config/gatewayftth/assets/header_background.png'),
-      // 'one-sevenstar:header_background.png': require('../../config/one-sevenstar/assets/header_background.png'),
+      'one-sevenstar:header_background.png': require('../../config/one-sevenstar/assets/header_background.png'),
+      'metanet:header_background.png': require('../../config/metanet/assets/header_background.png'),
       // 'netplanet:header_background.png': require('../../config/netplanet/assets/header_background.png'),
-      // 'metanet:header_background.png': require('../../config/metanet/assets/header_background.png'),
     };
 
     const key = `${clientId}:${headerBgImage}`;
@@ -96,7 +96,9 @@ const CommonHeader = ({
       clientConfig.clientId === 'dna-goa' ||
       clientConfig.clientId === 'dna-infotel' ||
       clientConfig.clientId === 'netfix' ||
-      clientConfig.clientId === 'gatewayftth');
+      clientConfig.clientId === 'gatewayftth' ||
+      clientConfig.clientId === 'one-sevenstar' ||
+      clientConfig.clientId === 'metanet');
 
   // When there is no header background image, always show logo on the left.
   // When background image is active, respect the explicit logoPosition prop.
@@ -125,7 +127,9 @@ const CommonHeader = ({
       clientConfig.clientId === 'dna-infotel' ||
       clientConfig.clientId === 'netfix' ||
       clientConfig.clientId === 'gatewayftth' ||
-      clientConfig.clientId === 'spacecom-local');
+      clientConfig.clientId === 'spacecom-local' ||
+      clientConfig.clientId === 'one-sevenstar' ||
+      clientConfig.clientId === 'metanet');
 
   // Hide logo for spacecom-live and spacecom-local when using header background image.
   // For other header-bg clients, keep the logo visible (centered) over the background.

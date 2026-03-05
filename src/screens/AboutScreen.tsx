@@ -12,6 +12,7 @@ import { useTheme } from '../utils/ThemeContext';
 import { getThemeColors } from '../utils/themeStyles';
 import { getClientConfig } from '../config/client-config';
 import CommonHeader from '../components/CommonHeader';
+import { apiService } from '../services/api';
 
 const AboutScreen = ({ navigation }: any) => {
   const { isDark } = useTheme();
@@ -28,36 +29,52 @@ const AboutScreen = ({ navigation }: any) => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const clientConfig = getClientConfig();
       const baseUrl = clientConfig.api.baseURL;
-      
-      // Handle both cases: with and without https:// prefix
-      let domain;
+
+      let domain: string;
       if (baseUrl.startsWith('https://')) {
-        // If baseURL already has https://, extract domain and remove /l2s/api
         domain = baseUrl.replace('https://', '').split('/')[0];
       } else {
-        // If baseURL doesn't have https://, extract domain and remove /l2s/api
         domain = baseUrl.split('/')[0];
       }
-      
+
       const url = `https://${domain}/tmp/aboutus.html`;
-      
-      console.log('Fetching About Us from:', url);
-      
-      const response = await fetch(url);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const html = await response.text();
+
+      // Use authenticated request so token is sent and auto-refresh runs on expiry
+      const html = await apiService.makeAuthenticatedRequest(async (token) => {
+        const response = await fetch(url, {
+          headers: new Headers({
+            Authentication: token || '',
+            'cache-control': 'no-cache',
+            referer: 'L2S-System/User-App-Requests',
+          }),
+        });
+
+        const text = await response.text();
+        const lower = text.toLowerCase();
+
+        if (!response.ok) {
+          if (lower.includes('token') && (lower.includes('expired') || lower.includes('error'))) {
+            throw new Error('Token Expired');
+          }
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        // Server may return 200 with an error page; treat as token error so we retry
+        if (lower.includes('token') && (lower.includes('expired') || lower.includes('error'))) {
+          throw new Error('Token Expired');
+        }
+
+        return text;
+      });
+
       setHtmlContent(html);
-      console.log('About Us loaded successfully');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching About Us:', err);
-      setError('Failed to load About Us. Please try again later.');
+      const isTokenError = err?.message?.includes('Token') || err?.message?.includes('Session expired') || err?.message?.includes('Authentication required');
+      setError(isTokenError ? 'Session expired. Please try again.' : 'Failed to load About Us. Please try again later.');
       
       // Show fallback content
       setHtmlContent(`

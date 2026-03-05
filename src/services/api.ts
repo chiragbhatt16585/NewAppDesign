@@ -1873,6 +1873,7 @@ class ApiService {
         hostname,
         device_info: JSON.stringify(device_info),
         token_for: 'end_user_app',
+        token_owner: 'end_user',
         request_source: 'app',
         request_app: 'user_app'
       };
@@ -1888,11 +1889,14 @@ class ApiService {
         const res = await fetch(`${url}/selfcareAddDeviceInfo`, options);
         const response = await res.json();
         // eslint-disable-next-line no-console
-        //console.log('[API] POST /selfcareAddDeviceInfo response', {
-        //  status: response?.status,
-        //  code: response?.code,
-        //  message: response?.message,
-        //})
+        console.log('[API] POST /selfcareAddDeviceInfo response', {
+          status: response?.status,
+          code: response?.code,
+          message: response?.message,
+          dataKeys: response?.data ? Object.keys(response.data) : null,
+        });
+        // eslint-disable-next-line no-console
+        console.log('[API] POST /selfcareAddDeviceInfo full response', response);
         if (response.status !== 'ok' && response.code !== 200) {
           throw new Error('Invalid username or password');
         } else {

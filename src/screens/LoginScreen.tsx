@@ -87,6 +87,8 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
   const [showPasswordInput, setShowPasswordInput] = useState(false);
   const [showOtpSection, setShowOtpSection] = useState(false);
   const [currentStep, setCurrentStep] = useState<'username' | 'auth' | 'both'>('username');
+  // Remember me for password login – default ON so token regeneration works as before
+  const [rememberMe, setRememberMe] = useState(true);
 
   // Effective website URL
   // For Microscan, ALWAYS use the new official site (ignore old values from isp_details.json)
@@ -761,10 +763,16 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
         
         if (result.success) {
           try {
-            // Save credentials for session regeneration (non-blocking)
-            credentialStorage.saveCredentials(username, password).catch(err => {
-              console.warn('[LoginScreen] Failed to save credentials:', err);
-            });
+            // Save or clear credentials for session regeneration (non-blocking) based on rememberMe
+            if (rememberMe) {
+              credentialStorage.saveCredentials(username, password).catch(err => {
+                console.warn('[LoginScreen] Failed to save credentials:', err);
+              });
+            } else {
+              credentialStorage.clearCredentials().catch(err => {
+                console.warn('[LoginScreen] Failed to clear credentials:', err);
+              });
+            }
             
             // Device registration is already handled in AuthContext.login()
             // No need to call it again here - it would be duplicate and slow
@@ -1166,6 +1174,32 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
                 </>
               )}
 
+              {/* Remember me checkbox (password login only) */}
+              {loginMode === 'password' && allowPasswordLogin && (
+                <TouchableOpacity
+                  style={styles.rememberRow}
+                  activeOpacity={0.7}
+                  onPress={() => setRememberMe(prev => !prev)}
+                >
+                  <View
+                    style={[
+                      styles.rememberCheckbox,
+                      {
+                        borderColor: colors.border,
+                        backgroundColor: rememberMe ? colors.primary : 'transparent',
+                      },
+                    ]}
+                  >
+                    {rememberMe && (
+                      <Feather name="check" size={14} color="#ffffff" />
+                    )}
+                  </View>
+                  <Text style={[styles.rememberText, { color: colors.textSecondary }]}>
+                    {t('login.rememberMe') || 'Remember my login on this device'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+
               {/* Toggle between Password and OTP (only if both methods are allowed) */}
               {allowPasswordLogin && allowOtpLogin && (
                 <TouchableOpacity
@@ -1542,6 +1576,24 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  rememberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  rememberCheckbox: {
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  rememberText: {
+    fontSize: 13,
   },
   spinnerContainer: {
     alignItems: 'center',
