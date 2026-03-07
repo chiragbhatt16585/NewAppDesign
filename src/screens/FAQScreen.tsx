@@ -290,6 +290,38 @@ const styles = StyleSheet.create({
     padding: 20,
     alignItems: 'center',
   },
+  troubleshootingCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginBottom: 12,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  troubleshootingIconWrapper: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  troubleshootingIcon: {
+    fontSize: 22,
+  },
+  troubleshootingTextWrapper: {
+    flex: 1,
+  },
+  troubleshootingTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  troubleshootingSubtitle: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
   title: {
     fontSize: 24,
     fontWeight: 'bold',

@@ -243,6 +243,14 @@ const SettingsScreen = ({ navigation }: any) => {
         onPress: () => navigation.navigate('FAQScreen'),
       });
     }
+    // Always show dedicated Troubleshooting entry, separate from FAQ
+    supportItems.push({
+      id: 'troubleshooting',
+      title: t('settings.troubleshooting'),
+      subtitle: t('settings.troubleshootingSubtitle'),
+      icon: 'alert-triangle',
+      onPress: () => navigation.navigate('Troubleshooting'),
+    });
     if (showTerms) {
       supportItems.push({
         id: 'terms',

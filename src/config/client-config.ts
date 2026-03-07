@@ -540,6 +540,67 @@ const clientConfigs: Record<string, ClientConfig> = {
       appStoreId: '1559045355',
     },
   },
+  graceway: {
+    clientId: 'graceway',
+    clientName: 'Graceway',
+    api: {
+      baseURL: 'https://graceway.l2s.biz/l2s/api',
+      serverURL: 'https://graceway.l2s.biz',
+      timeout: 30000,
+    },
+    branding: {
+      logo: 'isp_logo.png',
+      primaryColor: '#1976D2',
+      secondaryColor: '#FF9800',
+      appName: 'Graceway',
+      headerBackgroundImage: 'header_background.png',
+      logoDimensions: {
+        header: { width: 200, height: 140 },
+        login: { width: 300, height: 200 },
+      },
+    },
+    features: {
+      biometricAuth: true,
+      pushNotifications: true,
+      fileUpload: true,
+      multiLanguage: true,
+    },
+    contact: {
+      gstin: '27AAHCG1218J1ZO',
+      headOffice: {
+        title: 'Registered Office',
+        address: 'Sector-21, LCB-12, near Amrita Vidyalaya, Yamuna Nagar, Nigdi, Pune, Maharashtra 411044',
+      },
+      branchOffices: [],
+      emails: {
+        inquiries: 'info@graceway.co.in',
+        sales: 'info@graceway.co.in',
+      },
+      landline: '020 27661661',
+    },
+    about: {
+      companyName: 'Graceway Infrastructure & Services Pvt. Ltd.',
+      establishedYear: '2017',
+      description: 'Graceway is one of Pune\'s leading and trusted Internet Service Providers (ISPs). GISPL operates on the Class \'B\' license for ISP provided by the Department of Telecommunications (DOT) in Maharashtra & Goa. Graceway provides Internet Leased-Line Solution, Fiber Broadband for Home & SOHO along with other Telecom Solutions.',
+      specializations: [
+        'Hi-Speed Broadband Internet connection',
+        'Fiber Broadband for Home & SOHO',
+        'Internet Leased-Line Solution',
+        'Enterprise Solutions',
+      ],
+      serviceAreas: ['Pune District', 'Maharashtra', 'Goa'],
+      achievements: [],
+    },
+    reviewUrl: undefined,
+    website: 'https://www.graceway.co.in/',
+    versionCheck: {
+      enabled: true,
+      checkInterval: 24,
+      forceUpdateEnabled: true,
+      packageName: 'com.spacecom.log2space.graceway',
+      appStoreId: undefined,
+    },
+  },
   gatewayftth: {
     clientId: 'gatewayftth',
     clientName: 'Gateway FTTH',

@@ -60,6 +60,16 @@ const clientConfigs: Record<string, ClientConfig> = {
     poweredByWebsite: 'https://spacecom.in',
     bundleId: 'com.dnagoa',
   },
+  graceway: {
+    name: 'Graceway',
+    companyName: 'Graceway Infrastructure & Services Pvt. Ltd.',
+    apiUrl: 'https://graceway.l2s.biz',
+    supportEmail: 'info@graceway.co.in',
+    website: 'https://www.graceway.co.in/',
+    poweredBy: 'Spacecom Software LLP',
+    poweredByWebsite: 'https://spacecom.in',
+    bundleId: 'com.spacecom.log2space.graceway',
+  },
   netfix: {
     name: 'Netfix',
     companyName: 'NETFIX NETWORKS (OPC) PVT LTD',

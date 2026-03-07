@@ -100,6 +100,7 @@ const LogoImage: React.FC<LogoImageProps> = ({style, width, height, type = 'head
         'netfix:isp_logo.png': require('../../config/netfix/assets/isp_logo.png'),
         'gatewayftth:isp_logo.png': require('../../config/gatewayftth/assets/isp_logo.png'),
         'metanet:isp_logo.png': require('../../config/metanet/assets/isp_logo.png'),
+        'graceway:isp_logo.png': require('../../config/graceway/assets/isp_logo.png'),
 
         // Legacy / older standalone logo files (if any)
         'microscan_logo.png': require('../assets/microscan_logo.png'),
@@ -110,22 +111,32 @@ const LogoImage: React.FC<LogoImageProps> = ({style, width, height, type = 'head
       const key = `${clientId}:${logoFileName}`;
 
       // Prefer exact client-specific match, then plain filename, then default
-      const logoSource =
+      let logoSource =
         logoMap[key] ||
         logoMap[logoFileName] ||
         logoMap['default:isp_logo.png'];
 
+      // Fallback: after prepare:graceway, assets are copied to src/assets — use that if client is graceway
+      if (clientId === 'graceway' && (!logoSource || imageError)) {
+        try {
+          const assetsLogo = require('../assets/isp_logo.png');
+          if (assetsLogo) return assetsLogo;
+        } catch (_) {}
+      }
       return logoSource;
     } catch (error) {
       //console.warn('[LogoImage] Failed to require logo:', error);
+      // Graceway: prepare script copies config/graceway/assets to src/assets
+      try {
+        if (clientConfig.clientId === 'graceway') {
+          return require('../assets/isp_logo.png');
+        }
+      } catch (_) {}
       // Try alternative paths for iOS
       if (Platform.OS === 'ios') {
         try {
-          // Try iOS-specific path
           return require('../../ios/ISPApp/isp_logo.png');
-        } catch (iosError) {
-          //console.warn('[LogoImage] Failed to require iOS logo path:', iosError);
-        }
+        } catch (iosError) {}
       }
       return null;
     }

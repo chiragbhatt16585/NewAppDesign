@@ -135,6 +135,15 @@ const CLIENTS = {
     keystore: 'OneSevenStar.jks',
     configDir: 'config/one-sevenstar',
   },
+  graceway: {
+    name: 'Graceway',
+    packageName: 'com.spacecom.log2space.graceway',
+    namespace: 'com.spacecom.log2space.graceway',
+    versionCode: 1,
+    versionName: '1.0.1',
+    keystore: 'Graceway.jks',
+    configDir: 'config/graceway',
+  },
 };
 
 // Colors for console output

@@ -1,0 +1,28 @@
+{
+  "android": {
+    "namespace": "com.spacecom.log2space.graceway",
+    "applicationId": "com.spacecom.log2space.graceway",
+    "versionCode": 1,
+    "versionName": "1.0.1",
+    "signing": {
+      "debug": {
+        "storeFile": "debug.keystore",
+        "storePassword": "android",
+        "keyAlias": "androiddebugkey",
+        "keyPassword": "android"
+      },
+      "release": {
+        "storeFile": "Graceway.jks",
+        "storePassword": "log2space",
+        "keyAlias": "graceway",
+        "keyPassword": "log2space"
+      }
+    }
+  },
+  "ios": {
+    "bundleIdentifier": "com.spacecom.log2space.graceway",
+    "marketingVersion": "1.0.1",
+    "buildNumber": "1",
+    "displayName": "Graceway"
+  }
+}
