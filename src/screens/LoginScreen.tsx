@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   TextInput,
   Alert,
   KeyboardAvoidingView,
@@ -34,6 +35,7 @@ import { pinStorage } from '../services/pinStorage';
 import biometricAuthService from '../services/biometricAuth';
 import { ensureDeviceRegistrationAfterLogin } from '../services/notificationService';
 import { getClientConfig } from '../config/client-config';
+import { getCustomApi } from '../config/customApiStorage';
 import { getWebsite } from '../config';
 import menuService from '../services/menuService';
 import Feather from 'react-native-vector-icons/Feather';
@@ -76,6 +78,7 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
   const [showThemeToggleOption, setShowThemeToggleOption] = useState<boolean>(true);
   const [ispWebsite, setIspWebsite] = useState<string | null>(null);
   const [showLanguageModal, setShowLanguageModal] = useState(false);
+  const [showDomainMenu, setShowDomainMenu] = useState(false);
   
   // Validation states
   const [usernameError, setUsernameError] = useState(false);
@@ -1001,6 +1004,18 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
         barStyle={isDark ? 'light-content' : 'dark-content'} 
         backgroundColor={colors.background} 
       />
+      {getClientConfig().clientId === 'log2space-common' && getCustomApi() && (
+        <View style={styles.changeDomainBar}>
+          <TouchableOpacity
+            onPress={() => setShowDomainMenu(true)}
+            style={styles.menuIconButton}
+            activeOpacity={0.7}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          >
+            <Feather name="menu" size={24} color={colors.text} />
+          </TouchableOpacity>
+        </View>
+      )}
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}>
@@ -1262,14 +1277,16 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
               <Feather name="activity" size={22} color={colors.primary} style={styles.featureIcon} />
               <Text style={[styles.featureText, {color: colors.text}]}>Speed Test</Text> 
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.featureCard, {backgroundColor: colors.card, borderColor: colors.border}]}
-              onPress={handleSupport}
-              activeOpacity={0.7}
-            > 
-              <Feather name="headphones" size={22} color={colors.primary} style={styles.featureIcon} />
-              <Text style={[styles.featureText, {color: colors.text}]}>Support</Text> 
-            </TouchableOpacity>
+            {getClientConfig().clientId !== 'log2space-common' && (
+              <TouchableOpacity 
+                style={[styles.featureCard, {backgroundColor: colors.card, borderColor: colors.border}]}
+                onPress={handleSupport}
+                activeOpacity={0.7}
+              > 
+                <Feather name="headphones" size={22} color={colors.primary} style={styles.featureIcon} />
+                <Text style={[styles.featureText, {color: colors.text}]}>Support</Text> 
+              </TouchableOpacity>
+            )}
             {effectiveWebsiteUrl && (
               <TouchableOpacity 
                 style={[styles.featureCard, {backgroundColor: colors.card, borderColor: colors.border}]}
@@ -1283,8 +1300,8 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
           </View>
 
 
-          {/* Language & Theme Row (controlled by isp_details.json settings) */}
-          {(showLanguageSwitcher || showThemeToggleOption) && (
+          {/* Language & Theme Row (controlled by isp_details.json settings; hidden for log2space-common) */}
+          {(showLanguageSwitcher || showThemeToggleOption) && getClientConfig().clientId !== 'log2space-common' && (
             <View style={{ width: '100%', alignItems: 'center', marginBottom: 8 }}>
               <View style={{ flexDirection: 'row', gap: 16 }}>
                 {showLanguageSwitcher && (
@@ -1322,6 +1339,32 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
           </Text>
         </View>
       </KeyboardAvoidingView>
+
+      {/* Change Domain / IP menu (log2space-common) */}
+      <Modal
+        visible={showDomainMenu}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDomainMenu(false)}
+      >
+        <View style={styles.domainMenuOverlay}>
+          <TouchableWithoutFeedback onPress={() => setShowDomainMenu(false)}>
+            <View style={styles.domainMenuBackdrop} />
+          </TouchableWithoutFeedback>
+          <View style={[styles.domainMenuCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <TouchableOpacity
+              style={[styles.domainMenuItem, { borderBottomColor: colors.border }]}
+              onPress={() => {
+                setShowDomainMenu(false);
+                navigation.navigate('DomainEntry');
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.domainMenuItemText, { color: colors.text }]}>Change Domain / IP</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Language Selection Modal */}
       <Modal
@@ -1398,6 +1441,49 @@ const styles = StyleSheet.create({
     flex: 1,
     position: 'relative',
     overflow: 'visible',
+  },
+  changeDomainBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  menuIconButton: {
+    padding: 4,
+  },
+  domainMenuOverlay: {
+    flex: 1,
+  },
+  domainMenuBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  domainMenuCard: {
+    position: 'absolute',
+    top: 56,
+    left: 16,
+    minWidth: 220,
+    borderRadius: 10,
+    borderWidth: 1,
+    overflow: 'hidden',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  domainMenuItem: {
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomWidth: 0,
+  },
+  domainMenuItemText: {
+    fontSize: 15,
+    fontWeight: '500',
   },
   keyboardView: {
     flex: 1,

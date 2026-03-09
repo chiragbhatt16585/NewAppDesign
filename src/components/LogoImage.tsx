@@ -101,6 +101,7 @@ const LogoImage: React.FC<LogoImageProps> = ({style, width, height, type = 'head
         'gatewayftth:isp_logo.png': require('../../config/gatewayftth/assets/isp_logo.png'),
         'metanet:isp_logo.png': require('../../config/metanet/assets/isp_logo.png'),
         'graceway:isp_logo.png': require('../../config/graceway/assets/isp_logo.png'),
+        'log2space-common:isp_logo.png': require('../../config/log2space-common/assets/isp_logo.png'),
 
         // Legacy / older standalone logo files (if any)
         'microscan_logo.png': require('../assets/microscan_logo.png'),
@@ -116,8 +117,8 @@ const LogoImage: React.FC<LogoImageProps> = ({style, width, height, type = 'head
         logoMap[logoFileName] ||
         logoMap['default:isp_logo.png'];
 
-      // Fallback: after prepare:graceway, assets are copied to src/assets — use that if client is graceway
-      if (clientId === 'graceway' && (!logoSource || imageError)) {
+      // Fallback: after prepare, assets are copied to src/assets — use that if client is graceway or log2space-common
+      if ((clientId === 'graceway' || clientId === 'log2space-common') && (!logoSource || imageError)) {
         try {
           const assetsLogo = require('../assets/isp_logo.png');
           if (assetsLogo) return assetsLogo;
@@ -126,9 +127,9 @@ const LogoImage: React.FC<LogoImageProps> = ({style, width, height, type = 'head
       return logoSource;
     } catch (error) {
       //console.warn('[LogoImage] Failed to require logo:', error);
-      // Graceway: prepare script copies config/graceway/assets to src/assets
+      // Graceway / log2space-common: prepare script copies config assets to src/assets
       try {
-        if (clientConfig.clientId === 'graceway') {
+        if (clientConfig.clientId === 'graceway' || clientConfig.clientId === 'log2space-common') {
           return require('../assets/isp_logo.png');
         }
       } catch (_) {}

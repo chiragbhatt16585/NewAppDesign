@@ -601,6 +601,61 @@ const clientConfigs: Record<string, ClientConfig> = {
       appStoreId: undefined,
     },
   },
+  'log2space-common': {
+    clientId: 'log2space-common',
+    clientName: 'Log2space',
+    api: {
+      baseURL: 'https://log2space-common.l2s.biz/l2s/api',
+      serverURL: 'https://log2space-common.l2s.biz',
+      timeout: 30000,
+    },
+    branding: {
+      logo: 'isp_logo.png',
+      primaryColor: '#1976D2',
+      secondaryColor: '#FF9800',
+      appName: 'Log2space',
+      headerBackgroundImage: 'header_background.png',
+      logoDimensions: {
+        header: { width: 200, height: 140 },
+        login: { width: 300, height: 200 },
+      },
+    },
+    features: {
+      biometricAuth: true,
+      pushNotifications: true,
+      fileUpload: true,
+      multiLanguage: true,
+    },
+    contact: {
+      headOffice: {
+        title: 'Registered Office',
+        address: 'Update address in client-config',
+      },
+      branchOffices: [],
+      emails: {
+        inquiries: 'support@log2space.in',
+        sales: 'support@log2space.in',
+      },
+      landline: '',
+    },
+    about: {
+      companyName: 'Log2space',
+      establishedYear: '',
+      description: 'Log2space – placeholder. Update in client-config.',
+      specializations: [],
+      serviceAreas: [],
+      achievements: [],
+    },
+    reviewUrl: undefined,
+    website: 'https://spacecom.in',
+    versionCheck: {
+      enabled: false, // No version check for log2space-common (dynamic domain)
+      checkInterval: 24,
+      forceUpdateEnabled: false,
+      packageName: 'in.spacecom.log2space.user',
+      appStoreId: undefined,
+    },
+  },
   gatewayftth: {
     clientId: 'gatewayftth',
     clientName: 'Gateway FTTH',
@@ -1278,6 +1333,19 @@ export const getClientConfig = (): ClientConfig => {
   const config = clientConfigs[currentClient];
   if (!config) {
     throw new Error(`Unknown client: ${currentClient}`);
+  }
+
+  // log2space-common: use user-entered domain when set
+  if (currentClient === 'log2space-common') {
+    try {
+      const { getCustomApi } = require('./customApiStorage');
+      const custom = getCustomApi();
+      if (custom) {
+        const baseURL = `${custom.protocol}${custom.domain}/l2s/api`;
+        const serverURL = `${custom.protocol}${custom.domain}`;
+        return { ...config, api: { ...config.api, baseURL, serverURL } };
+      }
+    } catch (_) {}
   }
   
   return config;

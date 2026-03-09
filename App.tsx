@@ -37,6 +37,9 @@ import appLifecycleManager from './src/services/appLifecycleManager';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import { getClientConfig } from './src/config/client-config';
 import { InAppNotificationProvider } from './src/utils/InAppNotificationContext';
+import { setSessionExpiredHandler } from './src/utils/sessionExpiryBridge';
+import { navigationRef } from './src/navigation/RootNavigation';
+import { useAuth } from './src/utils/AuthContext';
 
 // In production builds, disable console output to reduce JS thread and disk I/O overhead.
 if (!__DEV__) {
@@ -60,6 +63,7 @@ try {
 
 function AppContent() {
   const {isDark} = useTheme();
+  const { logout } = useAuth();
   const [showBiometricAuth, setShowBiometricAuth] = useState(false);
   const [isAuthInitialized, setIsAuthInitialized] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -67,6 +71,20 @@ function AppContent() {
   const [isRecentlyAuthenticated, setIsRecentlyAuthenticated] = useState(false);
   const [isAppInitialized, setIsAppInitialized] = useState(false);
   const [hasAuthenticatedThisSession, setHasAuthenticatedThisSession] = useState(false);
+  const [needsDomainEntry, setNeedsDomainEntry] = useState(false);
+
+  // When session expires (e.g. token regeneration failed), clear auth and go to Login
+  useEffect(() => {
+    setSessionExpiredHandler(async () => {
+      await logout();
+      setIsLoggedIn(false);
+      setHasAuthenticatedThisSession(false);
+      if (navigationRef.isReady()) {
+        navigationRef.reset({ index: 0, routes: [{ name: 'Login' }] });
+      }
+    });
+    return () => setSessionExpiredHandler(null);
+  }, [logout]);
 
   // Version check hook
   const {
@@ -290,6 +308,15 @@ function AppContent() {
         }
         // Continue even if session manager fails
       }
+
+      // log2space-common: load custom API domain from storage so api/client-config use it
+      try {
+        const currentClientConfig = require('./src/config/current-client.json');
+        if (currentClientConfig?.clientId === 'log2space-common') {
+          const { loadFromStorage } = require('./src/config/customApiStorage');
+          await loadFromStorage();
+        }
+      } catch (_) {}
       
       // Initialize auto data reloader (this sets up app state listeners)
       if (__DEV__) {
@@ -371,6 +398,22 @@ function AppContent() {
       }
 
       console.log('❌ User is not logged in, proceeding to login screen');
+
+      // log2space-common: require domain entry if not set
+      try {
+        const currentClientConfig = require('./src/config/current-client.json');
+        if (currentClientConfig?.clientId === 'log2space-common') {
+          const { loadFromStorage, getCustomApi } = require('./src/config/customApiStorage');
+          await loadFromStorage();
+          if (!getCustomApi()) {
+            setNeedsDomainEntry(true);
+          }
+        }
+      } catch (e) {
+        if (__DEV__) {
+          console.warn('Could not check log2space-common domain:', e);
+        }
+      }
       
       // Test biometric availability first - wrapped in try-catch
       try {
@@ -472,7 +515,7 @@ function AppContent() {
   return (
     <View style={{ flex: 1, backgroundColor: isDark ? '#000000' : '#ffffff' }}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <AppNavigator initialRoute={isLoggedIn ? 'Home' : 'Login'} />
+      <AppNavigator initialRoute={needsDomainEntry ? 'DomainEntry' : (isLoggedIn ? 'Home' : 'Login')} />
       
       {/* Version Update Modal */}
       {showUpdateModal && versionInfo && (

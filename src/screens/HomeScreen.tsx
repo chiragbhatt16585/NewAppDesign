@@ -356,12 +356,12 @@ const HomeScreen = ({navigation}: any) => {
 
     // Temporary client-specific overrides:
     // - Linkway: ALWAYS hide the profile menu regardless of API flags
-    // - Metanet: ALWAYS show the profile menu (force enable avatar)
+    // - Metanet / log2space-common: ALWAYS show the profile menu (force enable avatar)
     try {
       const currentClientId = getClientConfig().clientId;
       if (currentClientId === 'linkway') {
         result.profileMenuEnabled = false;
-      } else if (currentClientId === 'metanet') {
+      } else if (currentClientId === 'metanet' || currentClientId === 'log2space-common') {
         result.profileMenuEnabled = true;
       }
     } catch {

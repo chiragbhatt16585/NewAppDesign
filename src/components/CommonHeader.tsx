@@ -76,6 +76,7 @@ const CommonHeader = ({
       'one-sevenstar:header_background.png': require('../../config/one-sevenstar/assets/header_background.png'),
       'metanet:header_background.png': require('../../config/metanet/assets/header_background.png'),
       'graceway:header_background.png': require('../../config/graceway/assets/header_background.png'),
+      'log2space-common:header_background.png': require('../../config/log2space-common/assets/header_background.png'),
       // 'netplanet:header_background.png': require('../../config/netplanet/assets/header_background.png'),
     };
 
@@ -100,7 +101,8 @@ const CommonHeader = ({
       clientConfig.clientId === 'gatewayftth' ||
       clientConfig.clientId === 'one-sevenstar' ||
       clientConfig.clientId === 'metanet' ||
-      clientConfig.clientId === 'graceway');
+      clientConfig.clientId === 'graceway' ||
+      clientConfig.clientId === 'log2space-common');
 
   // When there is no header background image, always show logo on the left.
   // When background image is active, respect the explicit logoPosition prop.
@@ -122,7 +124,7 @@ const CommonHeader = ({
   const isLogonBroadbandHeaderBgClient =
     !!headerBackgroundImage && clientConfig.clientId === 'logon-broadband';
 
-  // dna-goa, dna-infotel, netfix, gatewayftth, graceway: grey header background, centered logo (same style as Inshansa)
+  // dna-goa, dna-infotel, netfix, gatewayftth, graceway, log2space-common: grey header background, centered logo (same style as Inshansa)
   const isDnaGoaOrInfotelHeaderBgClient =
     !!headerBackgroundImage &&
     (clientConfig.clientId === 'dna-goa' ||
@@ -132,7 +134,8 @@ const CommonHeader = ({
       clientConfig.clientId === 'spacecom-local' ||
       clientConfig.clientId === 'one-sevenstar' ||
       clientConfig.clientId === 'metanet' ||
-      clientConfig.clientId === 'graceway');
+      clientConfig.clientId === 'graceway' ||
+      clientConfig.clientId === 'log2space-common');
 
   // Hide logo for spacecom-live and spacecom-local when using header background image.
   // For other header-bg clients, keep the logo visible (centered) over the background.

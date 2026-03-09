@@ -144,6 +144,15 @@ const CLIENTS = {
     keystore: 'Graceway.jks',
     configDir: 'config/graceway',
   },
+  'log2space-common': {
+    name: 'Log2space',
+    packageName: 'in.spacecom.log2space.user',
+    namespace: 'in.spacecom.log2space.user',
+    versionCode: 1,
+    versionName: '1.0.1',
+    keystore: 'Log2spaceCommon.jks',
+    configDir: 'config/log2space-common',
+  },
 };
 
 // Colors for console output

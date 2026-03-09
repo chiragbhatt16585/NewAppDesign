@@ -7,6 +7,7 @@ import { useTheme } from '../utils/ThemeContext';
 import { getThemeColors } from '../utils/themeStyles';
 import { useAuthData } from '../utils/AuthDataContext';
 import useMenuSettings from '../hooks/useMenuSettings';
+import { getClientConfig } from '../config/client-config';
 
 // Screens
 import HomeScreen from '../screens/HomeScreen';
@@ -223,11 +224,13 @@ const MainTabs = React.memo(() => {
         options={{ title: 'Upgrade Plan', tabBarIcon: getTabBarIcon('UpgradePlan') }} 
       />
       )}
-      <Tab.Screen 
-        name="Support" 
-        component={SupportStack} 
-        options={{ title: 'Support', tabBarIcon: getTabBarIcon('Support') }} 
-      />
+      {getClientConfig().clientId !== 'log2space-common' && (
+        <Tab.Screen 
+          name="Support" 
+          component={SupportStack} 
+          options={{ title: 'Support', tabBarIcon: getTabBarIcon('Support') }} 
+        />
+      )}
       <Tab.Screen 
         name="Menu" 
         component={MenuStack} 

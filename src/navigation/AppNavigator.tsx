@@ -6,6 +6,7 @@ import MainTabs from './MainTabs';
 import {navigationRef, handlePendingNavigation} from './RootNavigation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import LoginScreen from '../screens/LoginScreen';
+import DomainEntryScreen from '../screens/DomainEntryScreen';
 import HomeScreen from '../screens/HomeScreen';
 import MoreOptionsScreen from '../screens/MoreOptionsScreen';
 import AccountDetailsScreen from '../screens/AccountDetailsScreen';
@@ -135,6 +136,7 @@ const AppNavigator: React.FC<AppNavigatorProps> = ({ initialRoute }) => {
           headerShown: false,
         }}>
         <Stack.Screen name="Intro" component={IntroScreen} />
+        <Stack.Screen name="DomainEntry" component={DomainEntryScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Home" component={MainTabs} />
         <Stack.Screen name="SetPinScreen" component={SetPinScreen} options={{ headerShown: false }} />

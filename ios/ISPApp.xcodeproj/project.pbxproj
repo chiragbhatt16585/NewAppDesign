@@ -422,7 +422,7 @@
 				DEVELOPMENT_TEAM = NADT67WN3N;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = ISPApp/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Graceway";
+				INFOPLIST_KEY_CFBundleDisplayName = "Log2space";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -436,8 +436,8 @@
 					"-lc++",
 					"-Wl,-rpath,@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.spacecom.log2space.graceway;
-				PRODUCT_NAME = GracewayApp;
+				PRODUCT_BUNDLE_IDENTIFIER = in.spacecom.log2space.user;
+				PRODUCT_NAME = Log2spaceApp;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
@@ -454,7 +454,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = NADT67WN3N;
 				INFOPLIST_FILE = ISPApp/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Graceway";
+				INFOPLIST_KEY_CFBundleDisplayName = "Log2space";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -468,8 +468,8 @@
 					"-lc++",
 					"-Wl,-rpath,@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.spacecom.log2space.graceway;
-				PRODUCT_NAME = GracewayApp;
+				PRODUCT_BUNDLE_IDENTIFIER = in.spacecom.log2space.user;
+				PRODUCT_NAME = Log2spaceApp;
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
 			};

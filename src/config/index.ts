@@ -70,6 +70,16 @@ const clientConfigs: Record<string, ClientConfig> = {
     poweredByWebsite: 'https://spacecom.in',
     bundleId: 'com.spacecom.log2space.graceway',
   },
+  'log2space-common': {
+    name: 'Log2space',
+    companyName: 'Log2space',
+    apiUrl: 'https://log2space-common.l2s.biz',
+    supportEmail: 'support@log2space.in',
+    website: 'https://spacecom.in',
+    poweredBy: 'Spacecom Software LLP',
+    poweredByWebsite: 'https://spacecom.in',
+    bundleId: 'in.spacecom.log2space.user',
+  },
   netfix: {
     name: 'Netfix',
     companyName: 'NETFIX NETWORKS (OPC) PVT LTD',

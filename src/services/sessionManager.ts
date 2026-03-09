@@ -597,26 +597,11 @@ export class SessionManager {
   }
 
   // Check if token is expired (basic check - can be enhanced with JWT parsing)
-  private async isTokenExpired(token: string): Promise<boolean> {
-    try {
-      // For now, we'll assume tokens expire after 24 hours of inactivity
-      // In a real implementation, you might want to parse JWT and check expiration
-      const lastActivity = this.currentSession?.lastActivityTime || 0;
-      const hoursSinceLastActivity = (Date.now() - lastActivity) / (60 * 60 * 1000);
-      
-      // Consider token expired if more than 24 hours of inactivity
-      const isExpired = hoursSinceLastActivity > 24;
-      
-      // console.log('Token expiry check:', {
-      //   hoursSinceLastActivity: Math.round(hoursSinceLastActivity),
-      //   isExpired
-      // });
-      
-      return isExpired;
-    } catch (error) {
-      console.error('Error checking token expiry:', error);
-      return false; // Assume not expired if we can't check
-    }
+  // We do NOT expire token based on inactivity — let the server decide. When the server
+  // returns 401, makeAuthenticatedRequest will try regeneration. This avoids "Session expired"
+  // when opening the app after a day while the server token may still be valid.
+  private async isTokenExpired(_token: string): Promise<boolean> {
+    return false;
   }
 
   // Enhanced method to check if session needs refresh

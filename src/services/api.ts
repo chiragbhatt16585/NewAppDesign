@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import param from 'jquery-param';
 import sessionManager from '../../src/services/sessionManager';
 import { getClientConfig } from '../config/client-config';
+import { notifySessionExpired } from '../utils/sessionExpiryBridge';
 
 // Dynamic API configuration based on client
 const getApiConfig = () => {
@@ -75,9 +76,9 @@ export const domain = `${cachedApiConfig.protocol}${cachedApiConfig.domainUrl}`;
 const url = `${cachedApiConfig.protocol}${cachedApiConfig.domainUrl}/l2s/api`;
 export const ispName = cachedApiConfig.ispName;
 
-// Get KYC document URL dynamically
+// Get KYC document URL dynamically (uses current config so log2space-common custom domain works)
 export const getKycDocumentUrl = (filename: string): string => {
-  return `${domain}/kyc_docs/${filename}`;
+  return `${getDomain()}/kyc_docs/${filename}`;
 };
 
 const method = 'POST';
@@ -251,7 +252,7 @@ class ApiService {
     };
     
     try {
-      const res = await fetch(`${domain}/tmp/isp_details.json`, options);
+      const res = await fetch(`${getDomain()}/tmp/isp_details.json`, options);
       const data = await res.json();
       return data.data[0];
     } catch (e: any) {
@@ -286,7 +287,7 @@ class ApiService {
       };
 
       console.log('Making token validation request...');
-      const res = await fetch(`${url}/selfcareCheckTokenValidity`, options);
+      const res = await fetch(`${getApiUrl()}/selfcareCheckTokenValidity`, options);
       const response = await res.json();
       console.log('Token validation response:', response);
       
@@ -311,7 +312,7 @@ class ApiService {
     };
 
     try {
-      const res = await fetch(`${url}/selfcareL2sUserLogin`, option);
+      const res = await fetch(`${getApiUrl()}/selfcareL2sUserLogin`, option);
       const response = await res.json();
       
       if (response.program === "L2S Login") {
@@ -367,7 +368,7 @@ class ApiService {
     };
 
     try {
-      const res = await fetch(`${url}/selfcareL2sUserLogin`, options);
+      const res = await fetch(`${getApiUrl()}/selfcareL2sUserLogin`, options);
       const response = await res.json();
       
       if (response.status === 'ok') {
@@ -428,8 +429,9 @@ class ApiService {
             await sessionManager.updateActivityTime();
             return await requestFn(regeneratedToken);
           } else {
-            console.log('[API] Token regeneration failed, preserving session (no auto-logout)');
-            // Do not clear session automatically; surface error to caller
+            console.log('[API] Token regeneration failed, clearing session and redirecting to login');
+            await sessionManager.clearSession();
+            notifySessionExpired();
             throw new Error('Authentication required. Please login again.');
           }
         }
@@ -453,8 +455,9 @@ class ApiService {
             console.log('[API] Token regenerated successfully, retrying request...');
             continue; // Retry with new token
           } else {
-            console.log('[API] Token regeneration failed, preserving session (no auto-logout)');
-            // Do not clear session automatically; surface error to caller
+            console.log('[API] Token regeneration failed, clearing session and redirecting to login');
+            await sessionManager.clearSession();
+            notifySessionExpired();
             throw new Error('Session expired. Please login again.');
           }
         } else {
@@ -497,7 +500,7 @@ class ApiService {
         console.log('Data:', data);
       }
 
-      const res = await fetch(`${url}/selfcareL2sUserLogin`, {
+      const res = await fetch(`${getApiUrl()}/selfcareL2sUserLogin`, {
         ...options,
         body: formData,
       });
@@ -561,7 +564,7 @@ class ApiService {
       } as any;
 
       ///console.log('[API] POST /selfcareMenuSettings start', { hasToken: !!token, username });
-      const res = await fetch(`${url}/selfcareMenuSettings`, options);
+      const res = await fetch(`${getApiUrl()}/selfcareMenuSettings`, options);
       const response = await res.json();
       // console.log('[API] POST /selfcareMenuSettings response', {
       //   status: response?.status,
@@ -606,7 +609,7 @@ class ApiService {
       } as any;
 
       //console.log('[API] POST /selfcareMenuSettings start (realm variant)', { hasToken: !!Authentication, username });
-      const res = await fetch(`${url}/selfcareMenuSettings`, options);
+      const res = await fetch(`${getApiUrl()}/selfcareMenuSettings`, options);
       const response = await res.json();
       //console.log('[API] POST /selfcareMenuSettings response (realm variant)', {
       //  status: response?.status,
@@ -724,7 +727,7 @@ class ApiService {
     };
 
     try {
-      const res = await fetch(`${url}/selfcareL2sUserLogin`, options);
+      const res = await fetch(`${getApiUrl()}/selfcareL2sUserLogin`, options);
       const response = await res.json();
 
       if (response.status !== 'ok' && response.code !== 200) {
@@ -780,7 +783,7 @@ class ApiService {
 
       try {
         //console.log('[API] Fetching fresh data for user:', normalizedUsername);
-        const res = await fetch(`${url}/selfcareHelpdesk`, options);
+        const res = await fetch(`${getApiUrl()}/selfcareHelpdesk`, options);
         const response = await res.json();
         if (response.status !== 'ok' && response.code !== 200) {
           throw new Error('Invalid username or password');
@@ -837,7 +840,7 @@ class ApiService {
 
   async testApiConnection() {
     try {
-      const res = await fetch(`${url}/selfcareL2sUserLogin`, {
+      const res = await fetch(`${getApiUrl()}/selfcareL2sUserLogin`, {
         method,
         headers: new Headers({ ...fixedHeaders })
       });
@@ -877,7 +880,7 @@ class ApiService {
       // console.log('=== API SERVICE: Making API call to ===', `${url}/selfcareGetUserInformation`);
 
       try {
-        const res = await fetch(`${url}/selfcareGetUserInformation`, options);
+        const res = await fetch(`${getApiUrl()}/selfcareGetUserInformation`, options);
         // console.log('=== API SERVICE: Response status ===', res.status);
         
         const response = await res.json();
@@ -995,7 +998,7 @@ class ApiService {
         body: toFormData(data)
       };
 
-      const res = await fetch(`${url}/selfcareGenerateInvoicePDF`, options);
+      const res = await fetch(`${getApiUrl()}/selfcareGenerateInvoicePDF`, options);
       
       if (!res.ok) {
         const errorResponse = await res.json();
@@ -1021,7 +1024,7 @@ class ApiService {
         body: toFormData(data)
       };
 
-      const res = await fetch(`${url}/selfcareGenerateReceiptPDF`, options);
+      const res = await fetch(`${getApiUrl()}/selfcareGenerateReceiptPDF`, options);
       
       if (!res.ok) {
         const errorResponse = await res.json();
@@ -1146,7 +1149,7 @@ class ApiService {
       };
 
       try {
-        const res = await fetch(`${url}/selfcareUsageDetails`, options);
+        const res = await fetch(`${getApiUrl()}/selfcareUsageDetails`, options);
         console.log('Response status:', res.status);
         
         const response = await res.json();
@@ -1230,7 +1233,7 @@ class ApiService {
       };
 
       try {
-        const res = await fetch(`${url}/selfcareCrmViewTickets`, options);
+        const res = await fetch(`${getApiUrl()}/selfcareCrmViewTickets`, options);
         const response = await res.json();
         
         if (response.status === 'ok' && response.code !== 200) {
@@ -1286,7 +1289,7 @@ class ApiService {
       };
 
       try {
-        const res = await fetch(`${url}/selfcareDropdown`, options);
+        const res = await fetch(`${getApiUrl()}/selfcareDropdown`, options);
         const response = await res.json();
         
         if (response.status !== 'ok' && response.code !== 200) {
@@ -1326,7 +1329,7 @@ class ApiService {
       };
 
       try {
-        const res = await fetch(`${url}/selfcareComplaintWiseFAQ`, options);
+        const res = await fetch(`${getApiUrl()}/selfcareComplaintWiseFAQ`, options);
         const response = await res.json();
 
         if ((response.status !== 'ok' && response.code !== 200) || response.code === 999) {
@@ -1369,7 +1372,7 @@ class ApiService {
       };
 
       try {
-        const res = await fetch(`${url}/selfcareDropdown`, options);
+        const res = await fetch(`${getApiUrl()}/selfcareDropdown`, options);
         const response = await res.json();
 
         if ((response.status !== 'ok' && response.code !== 200) || response.code === 999) {
@@ -1412,7 +1415,7 @@ class ApiService {
       };
 
       try {
-        const res = await fetch(`${url}/selfcareCreateTicket`, options);
+        const res = await fetch(`${getApiUrl()}/selfcareCreateTicket`, options);
         const response = await res.json();
         
         if (response.status !== 'ok' && response.code !== 200) {
@@ -1450,7 +1453,7 @@ class ApiService {
       };
 
       try {
-        const res = await fetch(`${url}/selfcareViewUserKyc`, options);
+        const res = await fetch(`${getApiUrl()}/selfcareViewUserKyc`, options);
         const response = await res.json();
         
         if (response.status !== 'ok' && response.code !== 200) {
@@ -1497,7 +1500,7 @@ class ApiService {
       };
 
       try {
-        const res = await fetch(`${url}/selfcareGetPlanAmount`, options);
+        const res = await fetch(`${getApiUrl()}/selfcareGetPlanAmount`, options);
         console.log('=== API SERVICE: Response status ===', res.status);
         const response = await res.json();
         console.log('=== API SERVICE: Response body ===', response);
@@ -1593,7 +1596,7 @@ class ApiService {
       };
 
       try {
-        const res = await fetch(`${url}/selfcareGetUserPaymentDues`, options);
+        const res = await fetch(`${getApiUrl()}/selfcareGetUserPaymentDues`, options);
         const response = await res.json();
         
         console.log('=== Payment dues API response ===', response);
@@ -1636,7 +1639,7 @@ class ApiService {
       };
 
       try {
-        const res = await fetch(`${url}/selfcareGetAdminDetails`, options);
+        const res = await fetch(`${getApiUrl()}/selfcareGetAdminDetails`, options);
         const response = await res.json();
         
         //console.log('=== Tax info API response ===', response);
@@ -1682,7 +1685,7 @@ class ApiService {
       };
 
       try {
-        const res = await fetch(`${url}/selfcareAdminWisePaymentGateway`, options);
+        const res = await fetch(`${getApiUrl()}/selfcareAdminWisePaymentGateway`, options);
         const response = await res.json();
         console.log('Payment Gateway API response:', response);
         if (response.status !== 'ok' && response.code !== 200) {
@@ -1783,7 +1786,7 @@ class ApiService {
       console.log('=== END REQUEST OPTIONS ===');
       
       try {
-        const res = await fetch(`${url}/selfcareMerchantPaymentRequest`, options);
+        const res = await fetch(`${getApiUrl()}/selfcareMerchantPaymentRequest`, options);
         const response = await res.json();
         if (response.status !== 'ok' && response.code !== 200) {
           throw new Error(response.message);
@@ -1836,7 +1839,7 @@ class ApiService {
       try {
         console.log('=== ACTIVATE PAYMENT REQUEST ===');
         console.log('Payload:', payload);
-        const res = await fetch(`${url}/selfcareAdminPaymentResponse`, options);
+        const res = await fetch(`${getApiUrl()}/selfcareAdminPaymentResponse`, options);
         const response = await res.json();
         console.log('Activate payment response:', response);
         if (response.status !== 'ok' && response.code !== 200) {
@@ -1886,7 +1889,7 @@ class ApiService {
       try {
         // eslint-disable-next-line no-console
         //console.log('[API] POST /selfcareAddDeviceInfo start')
-        const res = await fetch(`${url}/selfcareAddDeviceInfo`, options);
+        const res = await fetch(`${getApiUrl()}/selfcareAddDeviceInfo`, options);
         const response = await res.json();
         // eslint-disable-next-line no-console
         console.log('[API] POST /selfcareAddDeviceInfo response', {
@@ -1931,7 +1934,7 @@ class ApiService {
       
       //console.log('[API] bannerDisplay request payload:', data);
 
-      return fetch(`${url}/selfcareDisplayBanner`, options).then(async res => {
+      return fetch(`${getApiUrl()}/selfcareDisplayBanner`, options).then(async res => {
         const json = await res.json();
         //console.log('[API] bannerDisplay response:', json);
 
@@ -1976,7 +1979,7 @@ class ApiService {
         body: toFormData(data),
         timeout
       };
-      return fetch(`${url}/selfcareUsageSummary`, options).then(res => {
+      return fetch(`${getApiUrl()}/selfcareUsageSummary`, options).then(res => {
         setTimeout(() => null, 0);
         return res.json().then(res => {
           setTimeout(() => null, 0);
@@ -2028,7 +2031,7 @@ class ApiService {
       headers: headers(Authentication),
       timeout
     };
-    return fetch(`${url}/selfcareDropdown`, options).then(res => {
+    return fetch(`${getApiUrl()}/selfcareDropdown`, options).then(res => {
       setTimeout(() => null, 0);
       return res.json().then(res => {
         setTimeout(() => null, 0);
@@ -2064,7 +2067,7 @@ class ApiService {
       headers: headers(Authentication),
       timeout
     };
-    return fetch(`${url}/selfcareDropdown`, options).then(res => {
+    return fetch(`${getApiUrl()}/selfcareDropdown`, options).then(res => {
       setTimeout(() => null, 0);
       return res.json().then(res => {
         setTimeout(() => null, 0);
@@ -2100,7 +2103,7 @@ class ApiService {
       headers: headers(Authentication),
       timeout
     };
-    return fetch(`${url}/selfcareDropdown`, options).then(res => {
+    return fetch(`${getApiUrl()}/selfcareDropdown`, options).then(res => {
       setTimeout(() => null, 0);
       return res.json().then(res => {
         setTimeout(() => null, 0);
@@ -2151,7 +2154,7 @@ class ApiService {
       body: toFormData(data),
       timeout
     };
-    return fetch(`${url}/selfcareAddNewInquiry`, options).then(res => {
+    return fetch(`${getApiUrl()}/selfcareAddNewInquiry`, options).then(res => {
       setTimeout(() => null, 0);
       return res.json().then(res => {
         setTimeout(() => null, 0);
@@ -2195,7 +2198,7 @@ class ApiService {
         // console.log('Merchant Txn Ref:', merTxnId);
         // console.log('Realm:', realm);
         
-        const res = await fetch(`${url}/selfcareGetTransactionDetails`, options);
+        const res = await fetch(`${getApiUrl()}/selfcareGetTransactionDetails`, options);
         const response = await res.json();
         
         //console.log('Payment status API response:', response);
@@ -2240,7 +2243,7 @@ class ApiService {
         console.log('Merchant Txn Ref:', merTxnId);
         console.log('Realm:', realm);
         
-        const res = await fetch(`${url}/selfcareGetTransactionDetails`, options);
+        const res = await fetch(`${getApiUrl()}/selfcareGetTransactionDetails`, options);
         const response = await res.json();
         
         console.log('Verify payment status API response:', response);
@@ -2286,7 +2289,7 @@ class ApiService {
         console.log('Username:', username);
         console.log('Realm:', realm);
         
-        const res = await fetch(`${url}/selfcareGetCPESSIDDetails`, options);
+        const res = await fetch(`${getApiUrl()}/selfcareGetCPESSIDDetails`, options);
         const response = await res.json();
         
         console.log('Get CPE SSID details API response:', response);
@@ -2343,7 +2346,7 @@ class ApiService {
         console.log('SSID Name:', data.ssid);
         console.log('Realm:', realm);
         
-        const res = await fetch(`${url}/selfcareUpdateSSID`, options);
+        const res = await fetch(`${getApiUrl()}/selfcareUpdateSSID`, options);
         const response = await res.json();
         
         console.log('Update SSID API response:', response);
@@ -2388,7 +2391,7 @@ class ApiService {
         console.log('Username:', username);
         console.log('Realm:', realm);
         
-        const res = await fetch(`${url}/selfcareGetCouponCode`, options);
+        const res = await fetch(`${getApiUrl()}/selfcareGetCouponCode`, options);
         const response = await res.json();
         
         console.log('Get coupon code API response:', response);
@@ -2477,12 +2480,12 @@ class ApiService {
           console.log('=== lastTenNotification REQUEST ===', {
             realm,
             username,
-            url: `${url}/selfcareGetLastTenNotification`,
+            url: `${getApiUrl()}/selfcareGetLastTenNotification`,
             requestData,
           });
         }
 
-        const res = await fetch(`${url}/selfcareFetchPushNotification`, options);
+        const res = await fetch(`${getApiUrl()}/selfcareFetchPushNotification`, options);
         const response = await res.json();
 
         if (__DEV__) {
@@ -2559,12 +2562,12 @@ class ApiService {
           console.log('=== updateNotificationStatusToSeen REQUEST ===', {
             realm,
             username,
-            url: `${url}/selfcareUpdatePushNotificationSeen`,
+            url: `${getApiUrl()}/selfcareUpdatePushNotificationSeen`,
             ids: notificationIds,
           });
         }
 
-        const res = await fetch(`${url}/selfcareUpdatePushNotificationSeen`, options);
+        const res = await fetch(`${getApiUrl()}/selfcareUpdatePushNotificationSeen`, options);
         const response = await res.json();
 
         if (__DEV__) {
@@ -2627,7 +2630,7 @@ class ApiService {
       };
 
       try {
-        const res = await fetch(`${url}/selfcareStaticdropdown`, options);
+        const res = await fetch(`${getApiUrl()}/selfcareStaticdropdown`, options);
         console.log('=== STATICDROPDOWN API SERVICE RESPONSE ===');
         console.log('Response Status:', res.status);
         console.log('Response Status Text:', res.statusText);
@@ -2788,7 +2791,7 @@ class ApiService {
         console.log('Request Data:', JSON.stringify(data, null, 2));
         console.log('========================================');
 
-        const res = await fetch(`${url}/selfcareUpdateKycDetails`, options);
+        const res = await fetch(`${getApiUrl()}/selfcareUpdateKycDetails`, options);
         const response = await res.json();
         
         console.log(`=== UPDATE KYC ${docType.toUpperCase()} RESPONSE ===`);
@@ -2842,7 +2845,7 @@ class ApiService {
       };
 
       try {
-        const res = await fetch(`${url}/selfcareAadhaarVerificationOTP`, options);
+        const res = await fetch(`${getApiUrl()}/selfcareAadhaarVerificationOTP`, options);
         const response = await res.json();
         
         if (response.status !== 'ok' && response.code !== 200) {
@@ -2882,7 +2885,7 @@ class ApiService {
       };
 
       try {
-        const res = await fetch(`${url}/selfcareSubmitAadhaarOTP`, options);
+        const res = await fetch(`${getApiUrl()}/selfcareSubmitAadhaarOTP`, options);
         const response = await res.json();
         
         if (response.status !== 'ok' && response.code !== 200) {
@@ -2925,7 +2928,7 @@ class ApiService {
       };
 
       try {
-        const res = await fetch(`${url}/selfcareSubmiteKYCData`, options);
+        const res = await fetch(`${getApiUrl()}/selfcareSubmiteKYCData`, options);
         const response = await res.json();
         
         if (response.status !== 'ok' && response.code !== 200) {
