@@ -44,7 +44,9 @@ export async function initializePushNotifications(realm?: string): Promise<void>
     console.log('[Push] notification permission result', { granted: hasPerm })
     try { /* require('react-native').Alert.alert('PushDebug', `Permission: ${hasPerm}`) */ } catch {}
 
-    // Ensure Firebase app is initialized and ready before using messaging
+    // Ensure Firebase app is initialized before using messaging.
+    // IMPORTANT: Do NOT hard-fail here on iOS – some devices take longer to expose firebase.apps(),
+    // but messaging().getToken() can still succeed once native side finishes auto-init.
     try {
       if (!firebase.apps || firebase.apps.length === 0) {
         console.warn('[Push] Firebase default app not found, attempting initialization...')
@@ -52,12 +54,10 @@ export async function initializePushNotifications(realm?: string): Promise<void>
       }
       const ready = await waitForFirebaseAppReady(7000, 200)
       if (!ready) {
-        console.warn('[Push] Firebase app not ready yet; deferring FCM setup')
-        return
+        console.warn('[Push] Firebase app not fully reported as ready; continuing FCM setup anyway')
       }
     } catch (e) {
-      console.warn('[Push] Firebase initialization check failed; deferring FCM setup', e)
-      return
+      console.warn('[Push] Firebase initialization check threw; continuing FCM setup anyway', e)
     }
 
     // Firebase Messaging: request permission (iOS), get FCM token, and register

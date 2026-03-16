@@ -397,16 +397,25 @@ function AppContent() {
         return;
       }
 
-      console.log('❌ User is not logged in, proceeding to login screen');
+      console.log('❌ User is not logged in, proceeding to login or domain screen');
 
-      // log2space-common: require domain entry if not set
+      // log2space-common: decide if we should show DomainEntry first
       try {
         const currentClientConfig = require('./src/config/current-client.json');
         if (currentClientConfig?.clientId === 'log2space-common') {
           const { loadFromStorage, getCustomApi } = require('./src/config/customApiStorage');
           await loadFromStorage();
-          if (!getCustomApi()) {
+
+          // If no domain is set, always require DomainEntry
+          const custom = getCustomApi();
+          if (!custom) {
             setNeedsDomainEntry(true);
+          } else {
+            // If user previously tapped "Change Domain / IP", force DomainEntry even though a domain exists
+            const forceFlag = await AsyncStorage.getItem('log2space_force_domain_entry');
+            if (forceFlag === 'true') {
+              setNeedsDomainEntry(true);
+            }
           }
         }
       } catch (e) {

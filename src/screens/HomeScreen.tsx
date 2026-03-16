@@ -192,7 +192,26 @@ const HomeScreen = ({navigation}: any) => {
   }, [authData?.next_renewal_date]);
   const { menu, loading: menuLoading, error: menuError, refresh: refreshMenu, forceRefresh: forceRefreshMenu } = useMenuSettings();
   const [refreshing, setRefreshing] = useState(false);
-  const isMicroscan = getClientConfig().clientId === 'microscan';
+  const currentClientId = getClientConfig().clientId;
+  const isMicroscan = currentClientId === 'microscan';
+  // Clients that use a colored header background image – header icons should be white for contrast
+  const headerBgClients = new Set([
+    'spacecom-live',
+    'spacecom-local',
+    'linkway',
+    'inshansa-dnagoa',
+    'successbroadband',
+    'logon-broadband',
+    'dna-goa',
+    'dna-infotel',
+    'netfix',
+    'gatewayftth',
+    'one-sevenstar',
+    'metanet',
+    'graceway',
+    'log2space-common',
+  ]);
+  const isHeaderBgClient = headerBgClients.has(currentClientId);
   const activeStatusColor = isMicroscan ? '#4CAF50' : colors.primary;
   const loginStatusColor = isMicroscan ? '#4CAF50' : colors.primary;
   
@@ -1538,7 +1557,7 @@ const HomeScreen = ({navigation}: any) => {
                 <Feather
                   name="bell"
                   size={22}
-                  color={clientConfig.clientId === 'spacecom-local' ? '#FFFFFF' : (colors.primary || '#FF6B35')}
+                  color={isHeaderBgClient ? '#FFFFFF' : (colors.primary || '#FF6B35')}
                 />
               </TouchableOpacity>
               {homeMenuConfig.profileMenuEnabled ? (

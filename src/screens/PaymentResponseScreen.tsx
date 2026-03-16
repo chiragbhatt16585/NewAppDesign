@@ -415,7 +415,7 @@ const PaymentResponseScreen = ({ route, navigation }: any) => {
     return value;
   };
 
-  // CRITICAL: Check if payment was cancelled by user (Razorpay cancellation)
+  // CRITICAL: Check if payment was cancelled by user (Razorpay cancellation or gateway-specific payloads)
   // This overrides backend status which might incorrectly show 'ok' or 'new'
   const isCancelled = gatewayResponsePayload?.cancelled === true ||
                       gatewayResponsePayload?.error?.code === 'BAD_REQUEST_ERROR' ||
@@ -426,13 +426,13 @@ const PaymentResponseScreen = ({ route, navigation }: any) => {
                         gatewayResponsePayload.error.description.toLowerCase().includes('cancelled'))) ||
                       (gatewayResponsePayload?.description && 
                        (gatewayResponsePayload.description.toLowerCase().includes('cancel') ||
-                        gatewayResponsePayload.description.toLowerCase().includes('cancelled')));
+                       gatewayResponsePayload.description.toLowerCase().includes('cancelled')));
 
   // Also check if backend status is 'new' (unprocessed transaction) - this often means cancellation
   const backendTxnStatus = combinedParams?.data?.[0]?.txn_status || 
                           combinedParams?.data?.txn_status || 
                           status || '';
-  const isBackendNew = backendTxnStatus.toLowerCase() === 'new';
+  const isBackendNew = typeof backendTxnStatus === 'string' && backendTxnStatus.toLowerCase() === 'new';
   
   // Use the status from route params, default to 'success' only if not provided
   let paymentStatus = normalizeStatusValue(status) || 'success';

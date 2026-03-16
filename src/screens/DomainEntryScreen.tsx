@@ -9,7 +9,9 @@ import {
   Platform,
   StatusBar,
   Alert,
+  Image,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../utils/ThemeContext';
 import { getThemeColors } from '../utils/themeStyles';
@@ -33,14 +35,40 @@ const DomainEntryScreen = ({ navigation }: any) => {
   const [domain, setDomain] = useState('');
   const [error, setError] = useState('');
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     const d = normalizeDomain(domain);
     if (!d) {
       setError('Please enter a domain name');
       return;
     }
     setError('');
+
+    // Validate domain using /l2s/api/selfcareL2sUserLogin (same as other API flow)
+    const abortController = new AbortController();
+    const url = `${protocol}${d}/l2s/api/selfcareL2sUserLogin`;
+
+    try {
+      const timeoutId = setTimeout(() => abortController.abort(), 3000);
+      const res = await fetch(url, { method: 'POST', signal: abortController.signal });
+      clearTimeout(timeoutId);
+
+      const json = await res.json();
+      if (json?.program !== 'L2S Login') {
+        setError('Domain is not valid. Please check and try again.');
+        return;
+      }
+    } catch (e: any) {
+      // Show a simple, user-friendly message instead of a technical error
+      setError('Unable to reach the server. Please check the domain name or your internet connection and try again.');
+      return;
+    }
+
+    // Only save and continue when validation succeeds
     setCustomApi(protocol, d);
+    // Clear "force domain entry" flag so next app launch can go directly to Login
+    try {
+      await AsyncStorage.setItem('log2space_force_domain_entry', 'false');
+    } catch (_) {}
     navigation.replace('Login');
   };
 
@@ -54,11 +82,16 @@ const DomainEntryScreen = ({ navigation }: any) => {
       >
         <View style={styles.content}>
           <View style={styles.logoSection}>
-            <LogoImage type="login" />
+            {/* For Server Setup screen, always show static Log2space logo from assets */}
+            <Image
+              source={require('../assets/isp_logo.png')}
+              style={styles.serverLogo}
+              resizeMode="contain"
+            />
           </View>
           <Text style={[styles.title, { color: colors.text }]}>Server setup</Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Enter your API server domain. This will be used to connect to your ISP backend.
+            Please ask your ISP for the Domain name. This will be used to connect to your ISP Server.
           </Text>
 
           <Text style={[styles.label, { color: colors.text }]}>Protocol</Text>
@@ -141,6 +174,10 @@ const styles = StyleSheet.create({
   logoSection: {
     alignItems: 'center',
     marginBottom: 12,
+  },
+  serverLogo: {
+    width: 160,
+    height: 60,
   },
   title: {
     fontSize: 24,

@@ -1,9 +1,9 @@
 {
-  "name": "Log2spaceCommonApp",
+  "name": "MicroscanApp",
   "expo": {
-    "name": "Log2space",
-    "slug": "log2space-common",
-    "version": "1.0.0",
+    "name": "Microscan",
+    "slug": "microscan",
+    "version": "3.0.1",
     "orientation": "portrait",
     "icon": "./app-icons/icon.png",
     "userInterfaceStyle": "light",
@@ -17,19 +17,19 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "in.spacecom.log2space.user",
-      "buildNumber": "1"
+      "bundleIdentifier": "com.l2sClient.microscan",
+      "buildNumber": "37"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./app-icons/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
       },
-      "package": "in.spacecom.log2space.user",
-      "versionCode": 1
+      "package": "in.spacecom.log2space.client.microscan",
+      "versionCode": 39
     },
     "web": {
       "favicon": "./app-icons/favicon.png"
     }
   }
-}
+} 

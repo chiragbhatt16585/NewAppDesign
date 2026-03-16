@@ -44,7 +44,7 @@ import LeftBorderLine from '../components/LeftBorderLine';
 const {width, height} = Dimensions.get('window');
 
 const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
-  const {isDark, setThemeMode, themeMode} = useTheme();
+  const {isDark} = useTheme();
   const colors = getThemeColors(isDark);
   const { currentLanguage, changeLanguage, availableLanguages } = useLanguage();
   const { t } = useTranslation();
@@ -75,8 +75,8 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
   const [allowOtpLogin, setAllowOtpLogin] = useState<boolean>(true);
   // UI settings from isp_details.json
   const [showLanguageSwitcher, setShowLanguageSwitcher] = useState<boolean>(true);
-  const [showThemeToggleOption, setShowThemeToggleOption] = useState<boolean>(true);
   const [ispWebsite, setIspWebsite] = useState<string | null>(null);
+  const [ispCompanyName, setIspCompanyName] = useState<string | null>(null);
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [showDomainMenu, setShowDomainMenu] = useState(false);
   
@@ -117,6 +117,13 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
       trimmed = 'https://' + trimmed;
     }
     return trimmed;
+  })();
+
+  const effectiveCompanyName = (() => {
+    if (ispCompanyName && ispCompanyName.trim().length > 0) {
+      return ispCompanyName.trim();
+    }
+    return clientStrings.companyName;
   })();
 
   // Check for existing session on component mount
@@ -224,8 +231,7 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
         // Server config can only DISABLE methods, not enable them (both are enabled by default)
         let pwdFlag = true;   // default: password allowed for all clients
         let otpFlag = true;   // default: OTP allowed for all clients
-        // Defaults for UI options: show both if settings are missing
-        let colourModeShowFlag = true;
+        // Defaults for UI options: show language selector if settings are missing
         let languageShowFlag = true;
 
         // Helper function to check if a value is truthy (handles boolean, string, number)
@@ -276,15 +282,20 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
           setIspWebsite(clientData.website.trim());
         }
 
-        // Read optional UI settings for colour mode and language from user_app_settings
-        if (userAppSettings?.colour_mode_option) {
-          const rawShow = userAppSettings.colour_mode_option.show;
-          if (typeof rawShow === 'boolean') {
-            colourModeShowFlag = rawShow;
-          } else if (typeof rawShow === 'string') {
-            colourModeShowFlag = rawShow.toLowerCase() === 'true';
-          }
+        // Company name and logo from isp_details.json (used especially for log2space-common)
+        if (typeof clientData?.company_name === 'string' && clientData.company_name.trim().length > 0) {
+          setIspCompanyName(clientData.company_name.trim());
         }
+        if (typeof clientData?.company_logo === 'string' && clientData.company_logo.trim().length > 0) {
+          const logoFile = clientData.company_logo.trim();
+          const logoBase = serverURL.replace(/\/+$/, '');
+          const remoteLogoUrl = `${logoBase}/tmp/upload/${logoFile}`;
+          try {
+            await AsyncStorage.setItem('log2space_dynamic_logo_url', remoteLogoUrl);
+          } catch (_) {}
+        }
+
+        // Read optional UI settings for language from user_app_settings
         if (userAppSettings?.language) {
           const rawLangShow = userAppSettings.language.show;
           if (typeof rawLangShow === 'boolean') {
@@ -296,7 +307,6 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
 
         setAllowPasswordLogin(pwdFlag);
         setAllowOtpLogin(otpFlag);
-        setShowThemeToggleOption(colourModeShowFlag);
         setShowLanguageSwitcher(languageShowFlag);
         
         console.log('=== FINAL LOGIN METHOD FLAGS ===');
@@ -951,11 +961,6 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
     }
   };
 
-  // Theme toggle handler
-  const handleThemeToggle = () => {
-    setThemeMode(isDark ? 'light' : 'dark');
-  };
-
   // Open Spacecom website
   const handleSpacecomWebsite = async () => {
     try {
@@ -1034,7 +1039,7 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
                 <LogoImage type="login" />
               </View>
               {/* Put company name clearly below the logo instead of tight side-by-side */}
-              <Text style={[styles.title, {color: colors.text}]}>{clientStrings.companyName}</Text>
+              <Text style={[styles.title, {color: colors.text}]}>{effectiveCompanyName}</Text>
             </View>
           </Animated.View>
 
@@ -1277,16 +1282,14 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
               <Feather name="activity" size={22} color={colors.primary} style={styles.featureIcon} />
               <Text style={[styles.featureText, {color: colors.text}]}>Speed Test</Text> 
             </TouchableOpacity>
-            {getClientConfig().clientId !== 'log2space-common' && (
-              <TouchableOpacity 
-                style={[styles.featureCard, {backgroundColor: colors.card, borderColor: colors.border}]}
-                onPress={handleSupport}
-                activeOpacity={0.7}
-              > 
-                <Feather name="headphones" size={22} color={colors.primary} style={styles.featureIcon} />
-                <Text style={[styles.featureText, {color: colors.text}]}>Support</Text> 
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity
+              style={[styles.featureCard, {backgroundColor: colors.card, borderColor: colors.border}]}
+              onPress={handleSupport}
+              activeOpacity={0.7}
+            >
+              <Feather name="headphones" size={22} color={colors.primary} style={styles.featureIcon} />
+              <Text style={[styles.featureText, {color: colors.text}]}>Support</Text>
+            </TouchableOpacity>
             {effectiveWebsiteUrl && (
               <TouchableOpacity 
                 style={[styles.featureCard, {backgroundColor: colors.card, borderColor: colors.border}]}
@@ -1300,25 +1303,18 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
           </View>
 
 
-          {/* Language & Theme Row (controlled by isp_details.json settings; hidden for log2space-common) */}
-          {(showLanguageSwitcher || showThemeToggleOption) && getClientConfig().clientId !== 'log2space-common' && (
+          {/* Language Row (controlled by isp_details.json settings; hidden for log2space-common) */}
+          {showLanguageSwitcher && getClientConfig().clientId !== 'log2space-common' && (
             <View style={{ width: '100%', alignItems: 'center', marginBottom: 8 }}>
               <View style={{ flexDirection: 'row', gap: 16 }}>
-                {showLanguageSwitcher && (
-                  <TouchableOpacity 
-                    onPress={handleLanguageIconPress} 
-                    accessibilityLabel="Change Language"
-                    activeOpacity={0.7}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  >
-                    <Feather name="type" size={22} color={colors.primary} />
-                  </TouchableOpacity>
-                )}
-                {showThemeToggleOption && (
-                  <TouchableOpacity onPress={handleThemeToggle} accessibilityLabel="Toggle Theme">
-                    <Feather name={isDark ? "sun" : "moon"} size={22} color={colors.primary} />
-                  </TouchableOpacity>
-                )}
+              <TouchableOpacity 
+                onPress={handleLanguageIconPress} 
+                accessibilityLabel="Change Language"
+                activeOpacity={0.7}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Feather name="type" size={22} color={colors.primary} />
+              </TouchableOpacity>
               </View>
             </View>
           )}
@@ -1356,6 +1352,8 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
               style={[styles.domainMenuItem, { borderBottomColor: colors.border }]}
               onPress={() => {
                 setShowDomainMenu(false);
+                // Mark that user wants to change the domain so app starts on DomainEntry next launch
+                AsyncStorage.setItem('log2space_force_domain_entry', 'true').catch(() => {});
                 navigation.navigate('DomainEntry');
               }}
               activeOpacity={0.7}

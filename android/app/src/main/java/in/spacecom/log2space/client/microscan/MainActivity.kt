@@ -1,4 +1,4 @@
-package com.spacecom.log2space.spacecomlive
+package `in`.spacecom.log2space.client.microscan
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate

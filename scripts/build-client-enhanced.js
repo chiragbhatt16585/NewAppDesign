@@ -148,9 +148,9 @@ const CLIENTS = {
     name: 'Log2space',
     packageName: 'in.spacecom.log2space.user',
     namespace: 'in.spacecom.log2space.user',
-    versionCode: 1,
-    versionName: '1.0.1',
-    keystore: 'Log2spaceCommon.jks',
+    versionCode: 14,
+    versionName: '1.0.14',
+    keystore: 'log2space.jks',
     configDir: 'config/log2space-common',
   },
 };

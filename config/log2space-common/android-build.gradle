@@ -32,7 +32,7 @@ android {
             keyPassword 'android'
         }
         release {
-            storeFile file('Log2spaceCommon.jks')
+                storeFile file('log2space.jks')
             storePassword 'log2space'
             keyAlias 'log2space-common'
             keyPassword 'log2space'

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {Image, StyleSheet, Text, View, Platform} from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getClientConfig } from '../config/client-config';
 
 interface LogoImageProps {
@@ -11,6 +12,25 @@ interface LogoImageProps {
 
 const LogoImage: React.FC<LogoImageProps> = ({style, width, height, type = 'header'}) => {
   const [imageError, setImageError] = useState(false);
+  const [remoteLogoUrl, setRemoteLogoUrl] = useState<string | null>(null);
+
+  // Load dynamic logo URL for log2space-common (from domainname/tmp/upload/logoName)
+  useEffect(() => {
+    const loadRemoteLogo = async () => {
+      try {
+        const clientId = getClientConfig().clientId;
+        if (clientId === 'log2space-common') {
+          const storedUrl = await AsyncStorage.getItem('log2space_dynamic_logo_url');
+          if (storedUrl && storedUrl.trim().length > 0 && storedUrl.trim() !== remoteLogoUrl) {
+            setRemoteLogoUrl(storedUrl.trim());
+          }
+        }
+      } catch {
+        // ignore
+      }
+    };
+    loadRemoteLogo();
+  });
   
   // Load logo config
   const getLogoConfig = () => {
@@ -77,6 +97,11 @@ const LogoImage: React.FC<LogoImageProps> = ({style, width, height, type = 'head
       // Get logo filename and client id from client config (reuse already loaded config)
       const logoFileName = clientConfig.branding.logo || 'isp_logo.png';
       const clientId = clientConfig.clientId;
+
+      // For log2space-common, prefer dynamic remote logo from API (domainname/tmp/upload/logoName)
+      if (clientId === 'log2space-common' && remoteLogoUrl) {
+        return { uri: remoteLogoUrl };
+      }
 
       // Since require() needs static paths, we explicitly map
       // each client + logo combination to its asset file.

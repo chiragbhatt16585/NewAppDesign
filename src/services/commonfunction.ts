@@ -133,7 +133,7 @@ export function handlePayment(params: any, payActionType: string, navigation: an
     if (pgInfo === 'ATOM') {
       source.uri = res.data.url;
       txnInfo.merTxnId = res.data.txn_ref_no;
-      source.headers = { "Content-Type": "application/x-www-form-urlencoded" };
+      // Simple GET load for Atom – no POST/body/headers
       navigation.navigate("PaymentLink", { source: source, pgInfo: pgInfo, amount: params.amount, merTxnId: txnInfo.merTxnId })
     } else if (pgInfo === 'ccAvenue') {
       txnInfo.merTxnId = res.data[0].TransactionRef;
@@ -394,6 +394,12 @@ export function handlePayment(params: any, payActionType: string, navigation: an
             tpGatewayId,
           );
         });
+    } else if (pgInfo === 'HDFC') {
+      // For HDFC Smart Gateway, load the payment page with a simple GET request
+      // (same behavior as opening the URL directly in a browser)
+      txnInfo.merTxnId = res.data.txn_ref_no;
+      source.uri = res.data.url;
+      navigation.navigate("PaymentLink", { source: source, pgInfo: pgInfo, amount: params.amount, merTxnId: txnInfo.merTxnId })
     } else if (pgInfo) {
       txnInfo.merTxnId = res.data.txn_ref_no;
       source.uri = res.data.url;

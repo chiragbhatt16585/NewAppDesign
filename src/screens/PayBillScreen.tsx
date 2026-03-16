@@ -20,6 +20,7 @@ import { getClientConfig } from '../config/client-config';
 import sessionManager from '../services/sessionManager';
 import {apiService} from '../services/api';
 import { credentialStorage } from '../services/credentialStorage';
+import Feather from 'react-native-vector-icons/Feather';
 
 const PayBillScreen = ({navigation}: any) => {
   const {isDark} = useTheme();
@@ -275,26 +276,34 @@ const PayBillScreen = ({navigation}: any) => {
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
           {/* Active Plan Details */}
-          <View style={[styles.sectionCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}> 
+          <View style={[styles.sectionCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
             <Text style={[styles.sectionTitle, {color: colors.text}]}>{t('payBill.activePlan')}</Text>
             <View style={styles.planDetails}>
               <View style={styles.planDetailRow}>
-                <Text style={styles.detailIcon}>🚀</Text>
+                <View style={[styles.detailIconCircle, {backgroundColor: colors.primary + '22'}]}>
+                  <Feather name="zap" size={16} color={colors.primary} />
+                </View>
                 <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>{t('payBill.planName')}</Text>
                 <Text style={[styles.detailValue, {color: colors.text}]}>{planName}</Text>
               </View>
               <View style={styles.planDetailRow}>
-                <Text style={styles.detailIcon}>⚡</Text>
+                <View style={[styles.detailIconCircle, {backgroundColor: colors.primary + '22'}]}>
+                  <Feather name="activity" size={16} color={colors.primary} />
+                </View>
                 <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>{t('payBill.speed')}</Text>
                 <Text style={[styles.detailValue, {color: colors.text}]}>{planSpeed}</Text>
               </View>
               <View style={styles.planDetailRow}>
-                <Text style={styles.detailIcon}>⏰</Text>
+                <View style={[styles.detailIconCircle, {backgroundColor: colors.primary + '22'}]}>
+                  <Feather name="clock" size={16} color={colors.primary} />
+                </View>
                 <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>{t('payBill.renewDate')}</Text>
                 <Text style={[styles.detailValue, {color: colors.text}]}>{renewDate}</Text>
               </View>
               <View style={styles.planDetailRow}>
-                <Text style={styles.detailIcon}>📅</Text>
+                <View style={[styles.detailIconCircle, {backgroundColor: colors.primary + '22'}]}>
+                  <Feather name="calendar" size={16} color={colors.primary} />
+                </View>
                 <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>{t('payBill.expDate')}</Text>
                 <Text style={[styles.detailValue, {color: colors.text}]}>{expDate}</Text>
               </View>
@@ -437,6 +446,14 @@ const styles = StyleSheet.create({
   },
   detailIcon: {
     fontSize: 18,
+    marginRight: 12,
+  },
+  detailIconCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginRight: 12,
   },
   detailLabel: {

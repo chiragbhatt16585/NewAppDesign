@@ -3,6 +3,7 @@ import React
 import React_RCTAppDelegate
 import ReactAppDependencyProvider
 import Foundation
+import FirebaseCore
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -29,6 +30,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
   ) -> Bool {
     // Wrap everything in do-catch to prevent crashes
     do {
+      // Ensure Firebase default app is configured BEFORE React Native starts.
+      // This fixes "No Firebase App '[DEFAULT]'" and allows FCM to work on iOS.
+      if FirebaseApp.app() == nil {
+        FirebaseApp.configure()
+      }
+
       let delegate = ReactNativeDelegate()
       let factory = RCTReactNativeFactory(delegate: delegate)
       delegate.dependencyProvider = RCTAppDependencyProvider()

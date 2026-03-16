@@ -381,7 +381,7 @@ const clientConfigs: Record<string, ClientConfig> = {
   },
   'spacecom-live': {
     clientId: 'spacecom-live',
-    clientName: 'Spacecom Live',
+    clientName: 'Log2space',
     api: {
       // baseURL: 'https://spacecom.l2s.biz/l2s/api',
       // serverURL: 'https://spacecom.l2s.biz',
@@ -393,7 +393,7 @@ const clientConfigs: Record<string, ClientConfig> = {
       logo: 'isp_logo.png',
       primaryColor: '#506eda',
       secondaryColor: '#FF9800',
-      appName: 'Spacecom Live',
+      appName: 'Log2space',
       headerBackgroundImage: 'header_background.png', // Background image for header
       headerBorderColors: {
         left: '', // Empty string to disable left border
@@ -431,9 +431,9 @@ const clientConfigs: Record<string, ClientConfig> = {
       landline: '+91 91375-93187',
     },
     about: {
-      companyName: 'Spacecom Software LLP',
+      companyName: 'Log2space',
       establishedYear: '2002',
-      description: 'A brand Established in the year 2008, in association with M/s Digital Network Associates PVT LTD also known as "DNA". We have our services operating extensively from Vasai to Virar Region includes Highway and coastal region.',
+      description: 'Log2space provides internet and related services powered by the Spacecom platform.',
       specializations: [
         'Hi-Speed Broadband Internet connection',
         'GePON/GPON technology (FTTH - Fibre to the Home)',

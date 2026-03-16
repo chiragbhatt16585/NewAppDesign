@@ -23,7 +23,7 @@ import menuService from '../services/menuService';
 import { useAuthData } from '../utils/AuthDataContext';
 
 const MoreOptionsScreen = ({navigation}: any) => {
-  const {isDark, themeMode, setThemeMode} = useTheme();
+  const {isDark} = useTheme();
   const colors = getThemeColors(isDark);
   const {t} = useTranslation();
   const {logout} = useAuth();

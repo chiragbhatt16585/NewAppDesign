@@ -224,6 +224,15 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
         runPayments();
       }
     }
+    // HDFC Smart Gateway: when it redirects back from smartgateway.hdfc.bank.in to merchant site (success or cancel),
+    // we should stop showing the external website and handle the result inside the app.
+    else if (pgInfo === 'HDFC' && !eventURL.hostname.includes('smartgateway.hdfc.bank.in')) {
+      console.log('HDFC redirect to merchant site detected:', eventURL.href);
+      if (!isPaymentProcessed && !isProcessingPayment) {
+        setIsPaymentProcessed(true);
+        runPayments();
+      }
+    }
     // Atom payment gateway specific handling
     else if (pgInfo === 'ATOM' && (
              eventURL.href.includes('atomtech.in') ||
