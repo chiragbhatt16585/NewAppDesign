@@ -142,8 +142,28 @@ const LogoImage: React.FC<LogoImageProps> = ({style, width, height, type = 'head
         logoMap[logoFileName] ||
         logoMap['default:isp_logo.png'];
 
-      // Fallback: after prepare, assets are copied to src/assets — use that if client is graceway or log2space-common
+      // Skynetwifi: don't require config/skynetwifi assets at build time.
+      // Instead, rely on the prepare script copying `config/<client>/assets/isp_logo.png`
+      // into `src/assets/isp_logo.png`, then load it from there.
+      if (clientId === 'skynetwifi') {
+        try {
+          return require('../assets/isp_logo.png');
+        } catch (_) {
+          // Fall back to computed logoSource
+        }
+      }
+
+      // Fallback: after prepare, assets are copied to src/assets.
+      // - Graceway/log2space-common: keep previous behavior.
+      // - Skynetwifi: also allow it to load from src/assets if required mapping fails.
       if ((clientId === 'graceway' || clientId === 'log2space-common') && (!logoSource || imageError)) {
+        try {
+          const assetsLogo = require('../assets/isp_logo.png');
+          if (assetsLogo) return assetsLogo;
+        } catch (_) {}
+      }
+
+      if (clientId === 'skynetwifi' && (!logoSource || imageError)) {
         try {
           const assetsLogo = require('../assets/isp_logo.png');
           if (assetsLogo) return assetsLogo;

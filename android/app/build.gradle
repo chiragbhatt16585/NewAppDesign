@@ -103,12 +103,12 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "in.spacecom.log2space.client.microscan"
+    namespace "com.spacecom.log2space.skynetwifi"
     defaultConfig {
-        applicationId "in.spacecom.log2space.client.microscan"
+        applicationId "com.spacecom.log2space.gatewayftth"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 39
+        versionCode 1
         versionName "1.0.1"
         buildConfigField "boolean", "IS_NEW_ARCHITECTURE_ENABLED", "false"
     }
@@ -142,7 +142,7 @@ android {
                 keyPassword 'android'
             }
             release {
-                storeFile file('Log2SpaceEndUserMicroscan.jks')
+                storeFile file('GatewayFTTH.jks')
                 storePassword 'log2space'
                 keyAlias 'log2space'
                 keyPassword 'log2space'

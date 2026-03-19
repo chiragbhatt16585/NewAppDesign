@@ -119,6 +119,18 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
     return trimmed;
   })();
 
+  // Normalize any backend-provided branding so we consistently match
+  // the exact client naming requested.
+  const normalizeCompanyName = (rawCompanyName: string) => {
+    const clientId = getClientConfig().clientId;
+    const name = rawCompanyName.trim();
+    if (clientId === 'skynetwifi') {
+      // Covers: "Skynet WiFi", "Skynet Wi-Fi", "Skynet  Wi   Fi", etc.
+      if (/skynet\s*wi\s*-?\s*fi/i.test(name)) return 'Skynetwifi';
+    }
+    return name;
+  };
+
   const effectiveCompanyName = (() => {
     if (ispCompanyName && ispCompanyName.trim().length > 0) {
       return ispCompanyName.trim();
@@ -284,7 +296,7 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
 
         // Company name and logo from isp_details.json (used especially for log2space-common)
         if (typeof clientData?.company_name === 'string' && clientData.company_name.trim().length > 0) {
-          setIspCompanyName(clientData.company_name.trim());
+          setIspCompanyName(normalizeCompanyName(clientData.company_name));
         }
         if (typeof clientData?.company_logo === 'string' && clientData.company_logo.trim().length > 0) {
           const logoFile = clientData.company_logo.trim();

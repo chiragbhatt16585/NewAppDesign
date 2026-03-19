@@ -1,4 +1,4 @@
-package `in`.spacecom.log2space.client.microscan
+package com.spacecom.log2space.skynetwifi
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate

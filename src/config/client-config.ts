@@ -720,6 +720,70 @@ const clientConfigs: Record<string, ClientConfig> = {
       appStoreId: undefined,
     },
   },
+  skynetwifi: {
+    clientId: 'skynetwifi',
+    clientName: 'Skynetwifi',
+    api: {
+      baseURL: 'https://skynetwifi.l2s.biz/l2s/api',
+      serverURL: 'https://skynetwifi.l2s.biz',
+      timeout: 30000,
+    },
+    branding: {
+      logo: 'isp_logo.png',
+      primaryColor: '#1976D2',
+      secondaryColor: '#FF9800',
+      appName: 'Skynetwifi',
+      headerBackgroundImage: 'header_background.png',
+      logoDimensions: {
+        // Slightly smaller header logo for better spacing in the header
+        header: { width: 140, height: 70 },
+        login: { width: 300, height: 200 },
+      },
+    },
+    features: {
+      biometricAuth: true,
+      pushNotifications: true,
+      fileUpload: true,
+      multiLanguage: true,
+    },
+    contact: {
+      headOffice: {
+        title: 'Head Office',
+        address:
+          'E/59, Pioneer Heritage 2, Off S V Road, Santacruz West - 400054',
+      },
+      branchOffices: [],
+      emails: {
+        inquiries: 'helloskynetwifi@gmail.com',
+        sales: 'helloskynetwifi@gmail.com',
+        support: 'helloskynetwifi@gmail.com',
+      },
+      whatsappNumber: '9930142727',
+      landline: '9930142727',
+    },
+    about: {
+      companyName: 'Skynetwifi',
+      establishedYear: '',
+      description:
+        'Skynetwifi provides high-speed internet connectivity and related services.',
+      specializations: [
+        'High-speed broadband internet',
+        'Fiber broadband',
+        'Home and business internet solutions',
+      ],
+      serviceAreas: ['Mumbai'],
+      achievements: [],
+    },
+    reviewUrl: undefined,
+    website: 'https://skynetwifi.l2s.biz/',
+    versionCheck: {
+      enabled: true,
+      checkInterval: 24,
+      forceUpdateEnabled: true,
+      packageName: 'com.spacecom.log2space.skynetwifi',
+      appStoreId: undefined,
+    },
+  },
   netfix: {
     clientId: 'netfix',
     clientName: 'Netfix',

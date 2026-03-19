@@ -153,6 +153,16 @@ const CLIENTS = {
     keystore: 'log2space.jks',
     configDir: 'config/log2space-common',
   },
+  skynetwifi: {
+    name: 'Skynetwifi',
+    packageName: 'com.spacecom.log2space.skynetwifi',
+    namespace: 'com.spacecom.log2space.skynetwifi',
+    versionCode: 1,
+    versionName: '1.0.1',
+    // Reuse existing keystore for now (skynetwifi will have its own Firebase configs)
+    keystore: 'GatewayFTTH.jks',
+    configDir: 'config/skynetwifi',
+  },
 };
 
 // Colors for console output
@@ -194,6 +204,15 @@ function copyClientConfig(clientId) {
     throw new Error(`Unknown client: ${clientId}`);
   }
 
+  // For new clients we often don't have every binary asset/keystore yet.
+  // Reuse GatewayFTTH as a safe fallback for icons/assets/keystore files
+  // so the app can still build.
+  const fallbackClientId = 'gatewayftth';
+  const fallbackClient = CLIENTS[fallbackClientId];
+  const fallbackConfigDir = fallbackClient
+    ? path.join(__dirname, '..', fallbackClient.configDir)
+    : null;
+
   logStep('Copying configuration', client.name);
 
   const configDir = path.join(__dirname, '..', client.configDir);
@@ -212,7 +231,11 @@ function copyClientConfig(clientId) {
   log('ℹ️  Skipping api.ts copy (shared dynamic API in use)', 'blue');
 
   // Copy assets
-  const assetsSrc = path.join(configDir, 'assets');
+  let assetsSrc = path.join(configDir, 'assets');
+  if (!fs.existsSync(assetsSrc) && fallbackConfigDir) {
+    const fallbackAssetsSrc = path.join(fallbackConfigDir, 'assets');
+    if (fs.existsSync(fallbackAssetsSrc)) assetsSrc = fallbackAssetsSrc;
+  }
   const assetsDest = path.join(appDir, 'src', 'assets');
   if (fs.existsSync(assetsSrc)) {
     execSync(`cp -r "${assetsSrc}"/* "${assetsDest}/"`, { stdio: 'inherit' });
@@ -220,7 +243,16 @@ function copyClientConfig(clientId) {
   }
 
   // Copy Android app icons
-  const androidIconsSrc = path.join(configDir, 'app-icons', 'android');
+  let androidIconsSrc = path.join(configDir, 'app-icons', 'android');
+  if (!fs.existsSync(androidIconsSrc) && fallbackConfigDir) {
+    const fallbackAndroidIconsSrc = path.join(
+      fallbackConfigDir,
+      'app-icons',
+      'android'
+    );
+    if (fs.existsSync(fallbackAndroidIconsSrc))
+      androidIconsSrc = fallbackAndroidIconsSrc;
+  }
   const androidIconsDest = path.join(appDir, 'android', 'app', 'src', 'main', 'res');
   if (fs.existsSync(androidIconsSrc)) {
     // Copy all icon files and folders (mipmap-*, drawable, etc.)
@@ -262,7 +294,22 @@ function copyClientConfig(clientId) {
   }
 
   // Copy iOS app icons - copy AppIcon.appiconset directly
-  const iosAppIconSrc = path.join(configDir, 'app-icons', 'ios', 'AppIcon.appiconset');
+  let iosAppIconSrc = path.join(
+    configDir,
+    'app-icons',
+    'ios',
+    'AppIcon.appiconset'
+  );
+  if (!fs.existsSync(iosAppIconSrc) && fallbackConfigDir) {
+    const fallbackIosAppIconSrc = path.join(
+      fallbackConfigDir,
+      'app-icons',
+      'ios',
+      'AppIcon.appiconset'
+    );
+    if (fs.existsSync(fallbackIosAppIconSrc))
+      iosAppIconSrc = fallbackIosAppIconSrc;
+  }
   const iosAppIconDest = path.join(appDir, 'ios', 'ISPApp', 'Images.xcassets', 'AppIcon.appiconset');
   if (fs.existsSync(iosAppIconSrc)) {
     // Remove existing AppIcon.appiconset if it exists
@@ -374,7 +421,18 @@ function copyClientConfig(clientId) {
     fs.copyFileSync(googleServicesSrc, googleServicesDest);
     logSuccess('Copied google-services.json for Android (Firebase)');
   } else {
-    logWarning('google-services.json not found in client config, skipping Firebase Android config copy');
+    // Fallback: if the new client doesn't yet have its own Firebase JSON, reuse gatewayftth config
+    if (fallbackConfigDir) {
+      const fallbackGoogleServicesSrc = path.join(fallbackConfigDir, 'google-services.json');
+      if (fs.existsSync(fallbackGoogleServicesSrc)) {
+        fs.copyFileSync(fallbackGoogleServicesSrc, googleServicesDest);
+        logWarning('google-services.json not found in client config; copied fallback Firebase Android config from gatewayftth');
+      } else {
+        logWarning('google-services.json not found in client config and no fallback found; skipping Firebase Android config copy');
+      }
+    } else {
+      logWarning('google-services.json not found in client config, skipping Firebase Android config copy');
+    }
   }
 
   // Copy Firebase config for iOS (GoogleService-Info.plist)
@@ -384,7 +442,18 @@ function copyClientConfig(clientId) {
     fs.copyFileSync(googleServiceInfoSrc, googleServiceInfoDest);
     logSuccess('Copied GoogleService-Info.plist for iOS (Firebase)');
   } else {
-    logWarning('GoogleService-Info.plist not found in client config, skipping Firebase iOS config copy');
+    // Fallback: if the new client doesn't yet have its own Firebase plist, reuse gatewayftth config
+    if (fallbackConfigDir) {
+      const fallbackGoogleServiceInfoSrc = path.join(fallbackConfigDir, 'GoogleService-Info.plist');
+      if (fs.existsSync(fallbackGoogleServiceInfoSrc)) {
+        fs.copyFileSync(fallbackGoogleServiceInfoSrc, googleServiceInfoDest);
+        logWarning('GoogleService-Info.plist not found in client config; copied fallback Firebase iOS config from gatewayftth');
+      } else {
+        logWarning('GoogleService-Info.plist not found in client config and no fallback found; skipping Firebase iOS config copy');
+      }
+    } else {
+      logWarning('GoogleService-Info.plist not found in client config, skipping Firebase iOS config copy');
+    }
   }
 
   // Copy strings.json
@@ -405,7 +474,11 @@ function copyClientConfig(clientId) {
   logSuccess(`Updated current-client.json to ${clientId}`);
 
   // Copy keystore file
-  const keystoreSrc = path.join(configDir, client.keystore);
+  let keystoreSrc = path.join(configDir, client.keystore);
+  if (!fs.existsSync(keystoreSrc) && fallbackConfigDir) {
+    const fallbackKeystoreSrc = path.join(fallbackConfigDir, client.keystore);
+    if (fs.existsSync(fallbackKeystoreSrc)) keystoreSrc = fallbackKeystoreSrc;
+  }
   const keystoreDest = path.join(appDir, 'android', 'app', client.keystore);
   if (fs.existsSync(keystoreSrc)) {
     fs.copyFileSync(keystoreSrc, keystoreDest);
@@ -413,7 +486,15 @@ function copyClientConfig(clientId) {
   }
 
   // Copy keystore configuration
-  const keystoreConfigSrc = path.join(configDir, 'keystore-config.gradle');
+  let keystoreConfigSrc = path.join(configDir, 'keystore-config.gradle');
+  if (!fs.existsSync(keystoreConfigSrc) && fallbackConfigDir) {
+    const fallbackKeystoreConfigSrc = path.join(
+      fallbackConfigDir,
+      'keystore-config.gradle'
+    );
+    if (fs.existsSync(fallbackKeystoreConfigSrc))
+      keystoreConfigSrc = fallbackKeystoreConfigSrc;
+  }
   const keystoreConfigDest = path.join(appDir, 'android', 'app', 'keystore-config.gradle');
   if (fs.existsSync(keystoreConfigSrc)) {
     fs.copyFileSync(keystoreConfigSrc, keystoreConfigDest);
@@ -510,6 +591,30 @@ function updateAndroidBuildGradle(clientId) {
   const buildGradlePath = path.join(__dirname, '..', 'android', 'app', 'build.gradle');
   let buildGradleContent = fs.readFileSync(buildGradlePath, 'utf8');
 
+  // If the new client doesn't yet have its own Firebase android config, Gradle's
+  // google-services plugin will fail because the app's applicationId won't match.
+  // In that case, temporarily fall back the applicationId to the fallback client's packageName
+  // (we keep namespace as-is so the rest of the code generation still works).
+  const fallbackClientId = 'gatewayftth';
+  const fallbackClient = CLIENTS[fallbackClientId];
+  const clientConfigDir = path.join(__dirname, '..', client.configDir);
+  const clientGoogleServicesPath = path.join(clientConfigDir, 'google-services.json');
+  const hasClientGoogleServices = fs.existsSync(clientGoogleServicesPath);
+
+  let effectiveApplicationId = client.packageName;
+  if (!hasClientGoogleServices && fallbackClient) {
+    const fallbackConfigDir = path.join(__dirname, '..', fallbackClient.configDir);
+    const fallbackGoogleServicesPath = path.join(fallbackConfigDir, 'google-services.json');
+    const hasFallbackGoogleServices = fs.existsSync(fallbackGoogleServicesPath);
+
+    if (hasFallbackGoogleServices) {
+      effectiveApplicationId = fallbackClient.packageName;
+      logWarning(
+        `Firebase google-services.json missing for ${clientId}; using fallback applicationId '${effectiveApplicationId}' so Android build can succeed. Add config/${clientId}/google-services.json later to restore proper applicationId/Firebase.`
+      );
+    }
+  }
+
   // Read keystore config to extract passwords and aliases
   const keystoreConfigPath = path.join(__dirname, '..', client.configDir, 'keystore-config.gradle');
   let releaseStorePassword = 'dnasubscriber'; // fallback
@@ -541,7 +646,7 @@ function updateAndroidBuildGradle(clientId) {
   // Update applicationId
   buildGradleContent = buildGradleContent.replace(
     /applicationId\s+["'][^"']+["']/,
-    `applicationId "${client.packageName}"`
+    `applicationId "${effectiveApplicationId}"`
   );
 
   // Update versionCode
