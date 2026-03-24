@@ -8,6 +8,7 @@ import {
   Platform,
   AppState,
   TouchableOpacity,
+  Linking,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -797,6 +798,11 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
                 request.url.includes('apps.apple.com/app/')) {
               console.log('Third-party payment app detected:', request.url);
               console.log('Allowing external app to open...');
+              // WebView won't automatically open custom schemes.
+              // We must explicitly delegate the deep link to the OS.
+              Linking.openURL(request.url).catch((e) => {
+                console.log('Failed to open external app deep link:', e);
+              });
               return false; // Prevent WebView from loading, allow external app to open
             }
             
@@ -820,6 +826,9 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
                 request.url.includes('paypal')) {
               console.log('Payment app deep link detected:', request.url);
               console.log('Allowing external payment app to open...');
+              Linking.openURL(request.url).catch((e) => {
+                console.log('Failed to open payment deep link:', e);
+              });
               return false; // Prevent WebView from loading, allow external app to open
             }
             

@@ -199,8 +199,8 @@ const clientConfigs: Record<string, ClientConfig> = {
     clientId: 'spacecom-local',
     clientName: 'Spacecom Local',
     api: {
-      baseURL: 'http://103.105.110.250:81/l2s/api',
-      serverURL: 'http://103.105.110.250:81',
+      baseURL: 'http://103.105.110.250:82/l2s/api',
+      serverURL: 'http://103.105.110.250:82',
       timeout: 30000,
     },
     branding: {

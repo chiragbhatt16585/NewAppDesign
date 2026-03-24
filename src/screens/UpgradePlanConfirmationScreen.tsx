@@ -36,6 +36,18 @@ const UpgradePlanConfirmationScreen = ({navigation, route}: any) => {
   const [coupons, setCoupons] = useState<any[]>([]);
   const [selectedCoupon, setSelectedCoupon] = useState<any>(null);
   const [couponDiscount, setCouponDiscount] = useState(0);
+  const [complimentaryDiscountResponse, setComplimentaryDiscountResponse] = useState<any>(null);
+  const [complimentaryDiscountError, setComplimentaryDiscountError] = useState<string>('');
+  const complimentaryDiscountAvailable =
+    String(complimentaryDiscountResponse?.data?.disc_available || '')
+      .trim()
+      .toLowerCase() === 'yes';
+  const complimentaryDiscountAmount = complimentaryDiscountAvailable
+    ? Number(complimentaryDiscountResponse?.data?.disc_value || 0)
+    : 0;
+  const appliedDiscount = complimentaryDiscountAvailable
+    ? complimentaryDiscountAmount
+    : couponDiscount;
 
   const {selectedPlan, totalAmount, payDues, admin_login_id} = route.params;
   const { menu } = useMenuSettings();
@@ -232,11 +244,60 @@ const UpgradePlanConfirmationScreen = ({navigation, route}: any) => {
       try {
         const clientConfig = getClientConfig();
         const realm = clientConfig.clientId;
-        const couponData = await apiService.getCouponCode(realm);
-        // console.log('=== COUPON DATA ===');
-        // console.log('Available Coupons:', JSON.stringify(couponData, null, 2));
-        // console.log('=== END COUPON DATA ===');
-        setCoupons(couponData || []);
+
+        // First call complimentary discount API (as requested before coupon display)
+        try {
+          const adminLoginForDiscount = String(
+            adminLoginIdState || admin_login_id || '',
+          );
+          const username = session?.username || '';
+          const planname = selectedPlan?.name || '';
+
+          if (username && planname && adminLoginForDiscount) {
+            const complimentaryResponse = await apiService.getComplimentaryDiscountValue(
+              {
+                username,
+                planname,
+                admin_login_id: adminLoginForDiscount,
+                request_source: 'app',
+                request_app: 'user_app',
+              },
+              realm,
+            );
+            setComplimentaryDiscountResponse(complimentaryResponse);
+            setComplimentaryDiscountError('');
+            const isDiscountAvailable =
+              String(complimentaryResponse?.data?.disc_available || '')
+                .trim()
+                .toLowerCase() === 'yes';
+            if (isDiscountAvailable) {
+              // If complimentary discount is available, skip coupon flow.
+              setCoupons([]);
+              setSelectedCoupon(null);
+              setCouponDiscount(0);
+            } else {
+              const couponData = await apiService.getCouponCode(realm);
+              setCoupons(couponData || []);
+            }
+          } else {
+            setComplimentaryDiscountError(
+              'Missing required params for selfcareGetComplimentaryDiscountValue',
+            );
+            const couponData = await apiService.getCouponCode(realm);
+            setCoupons(couponData || []);
+          }
+        } catch (complimentaryError: any) {
+          console.error(
+            'Error fetching selfcareGetComplimentaryDiscountValue:',
+            complimentaryError,
+          );
+          setComplimentaryDiscountError(
+            complimentaryError?.message ||
+              'Failed to fetch complimentary discount value',
+          );
+          const couponData = await apiService.getCouponCode(realm);
+          setCoupons(couponData || []);
+        }
       } catch (error) {
         //console.error('Error fetching coupons:', error);
         setCoupons([]);
@@ -354,9 +415,14 @@ const UpgradePlanConfirmationScreen = ({navigation, route}: any) => {
       planname: selectedPlan.name,
       selectedPGType: [{label: gatewayObj.gw_display_name, value: gatewayObj.id}],
       payActionType: 'renewal', // same as PlanConfirmationScreen
-      couponCode: selectedCoupon ? getDiscountCode(selectedCoupon) : null,
-      campaignCode: selectedCoupon?.campaign_code || null,
-      couponDiscount: couponDiscount,
+      couponCode: complimentaryDiscountAvailable
+        ? null
+        : (selectedCoupon ? getDiscountCode(selectedCoupon) : null),
+      campaignCode: complimentaryDiscountAvailable
+        ? null
+        : (selectedCoupon?.campaign_code || null),
+      couponDiscount: appliedDiscount,
+      isp_policy_discount: complimentaryDiscountAvailable ? 'yes' : 'no',
       originalAmount: totalAmount,
       refund_amount: refundAmount,
       old_pin_serial: oldPinSerial,
@@ -533,8 +599,8 @@ const UpgradePlanConfirmationScreen = ({navigation, route}: any) => {
       finalAmount -= salesReturnData.pin_detail[0].user_refund_amount || 0;
     }
     
-    // Subtract coupon discount
-    finalAmount -= couponDiscount;
+    // Subtract complimentary discount (if available), otherwise coupon discount.
+    finalAmount -= appliedDiscount;
     
     return Math.max(0, finalAmount);
   };
@@ -853,8 +919,10 @@ const UpgradePlanConfirmationScreen = ({navigation, route}: any) => {
         <Text style={[styles.salesReturnTitle, {color: colors.text}]}>Refund Details</Text>
         
         <View style={styles.salesReturnRow}>
-          <Text style={[styles.salesReturnLabel, {color: colors.textSecondary}]}>Plan Name</Text>
-          <Text style={[styles.salesReturnValue, {color: colors.text}]}>
+          <Text style={[styles.salesReturnLabel, styles.salesReturnLabelFixed, {color: colors.textSecondary}]}>
+            Plan Name
+          </Text>
+          <Text style={[styles.salesReturnValue, styles.salesReturnValueWrap, {color: colors.text}]}>
             {pinDetail.planname || 'N/A'}
           </Text>
         </View>
@@ -898,13 +966,17 @@ const UpgradePlanConfirmationScreen = ({navigation, route}: any) => {
   };
 
   const renderCouponSelection = () => {
-    if (!showDiscountCoupon || coupons.length === 0) return null;
+    if (!showDiscountCoupon && coupons.length === 0) {
+      return null;
+    }
 
     return (
-      <View style={[styles.couponCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
-        <Text style={[styles.couponTitle, {color: colors.text}]}> Coupons For You</Text>
+      <View>
+        {showDiscountCoupon && coupons.length > 0 && !complimentaryDiscountAvailable && (
+          <View style={[styles.couponCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
+            <Text style={[styles.couponTitle, {color: colors.text}]}> Coupons For You</Text>
         
-        {coupons.map((coupon, index) => {
+            {coupons.map((coupon, index) => {
           let discountInfo = '';
           try {
             const discountJson = JSON.parse(coupon.discount_coupon_json || '{}');
@@ -917,53 +989,55 @@ const UpgradePlanConfirmationScreen = ({navigation, route}: any) => {
 
           const isSelected = selectedCoupon && selectedCoupon.id === coupon.id;
 
-          return (
-            <TouchableOpacity
-              key={coupon.id || index}
-              style={[
-                styles.couponItem,
-                {borderColor: isSelected ? colors.primary : colors.border},
-                isSelected && {backgroundColor: colors.primary + '10'}
-              ]}
-              onPress={() => handleCouponSelect(coupon)}
-            >
-              <View style={styles.couponContent}>
-                <View style={styles.couponLeft}>
-                  <View style={styles.couponCodeRow}>
-                    {getDiscountCode(coupon) && (
-                      <Text style={[styles.couponCode, {color: isSelected ? colors.primary : colors.text}]} numberOfLines={1}>
-                        {getDiscountCode(coupon)}
-                      </Text>
+              return (
+                <TouchableOpacity
+                  key={coupon.id || index}
+                  style={[
+                    styles.couponItem,
+                    {borderColor: isSelected ? colors.primary : colors.border},
+                    isSelected && {backgroundColor: colors.primary + '10'}
+                  ]}
+                  onPress={() => handleCouponSelect(coupon)}
+                >
+                  <View style={styles.couponContent}>
+                    <View style={styles.couponLeft}>
+                      <View style={styles.couponCodeRow}>
+                        {getDiscountCode(coupon) && (
+                          <Text style={[styles.couponCode, {color: isSelected ? colors.primary : colors.text}]} numberOfLines={1}>
+                            {getDiscountCode(coupon)}
+                          </Text>
+                        )}
+                        <Text style={[styles.couponPrice, {color: colors.success}]}>
+                          {discountInfo}
+                        </Text>
+                      </View>
+                      <View style={styles.campaignSection}>
+                        <Text style={[styles.campaignHeading, {color: colors.textSecondary}]}>Campaign : </Text>
+                        <Text style={[styles.couponDescription, {color: colors.textSecondary}]}>
+                          {coupon.campaign_name || 'Coupon Description'}
+                        </Text>
+                      </View>
+                    </View>
+                    
+                    {isSelected && (
+                      <View style={[styles.selectedIndicator, {backgroundColor: colors.primary}]}>
+                        <Text style={styles.selectedIndicatorText}>✓</Text>
+                      </View>
                     )}
-                    <Text style={[styles.couponPrice, {color: colors.success}]}>
-                      {discountInfo}
+                  </View>
+                  
+                  <View style={styles.couponExpiryRow}>
+                    <Text style={[styles.couponExpiry, {color: colors.textSecondary}]} numberOfLines={1}>
+                      Valid till  {coupon.expiry_date || 'N/A'}
                     </Text>
                   </View>
-                  <View style={styles.campaignSection}>
-                    <Text style={[styles.campaignHeading, {color: colors.textSecondary}]}>Campaign : </Text>
-                    <Text style={[styles.couponDescription, {color: colors.textSecondary}]}>
-                      {coupon.campaign_name || 'Coupon Description'}
-                    </Text>
-                  </View>
-                </View>
-                
-                {isSelected && (
-                  <View style={[styles.selectedIndicator, {backgroundColor: colors.primary}]}>
-                    <Text style={styles.selectedIndicatorText}>✓</Text>
-                  </View>
-                )}
-              </View>
-              
-              <View style={styles.couponExpiryRow}>
-                <Text style={[styles.couponExpiry, {color: colors.textSecondary}]} numberOfLines={1}>
-                  Valid till  {coupon.expiry_date || 'N/A'}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          );
-        })}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
       </View>
-    );
+    )
   };
 
   const renderPaymentBreakdown = () => (
@@ -996,11 +1070,15 @@ const UpgradePlanConfirmationScreen = ({navigation, route}: any) => {
         </View>
       )}
       
-      {selectedCoupon && couponDiscount > 0 && (
+      {appliedDiscount > 0 && (
         <View style={styles.paymentRow}>
-          <Text style={[styles.paymentLabel, {color: colors.textSecondary}]}>Coupon Discount</Text>
+          <Text style={[styles.paymentLabel, {color: colors.textSecondary}]}>
+            {complimentaryDiscountAvailable
+              ? 'Complimentary Discount'
+              : 'Coupon Discount'}
+          </Text>
           <Text style={[styles.paymentValue, {color: colors.success}]}>
-            -{formatCurrency(couponDiscount)}
+            -{formatCurrency(appliedDiscount)}
           </Text>
         </View>
       )}
@@ -1552,15 +1630,24 @@ const styles = StyleSheet.create({
   salesReturnRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     paddingVertical: 8,
   },
   salesReturnLabel: {
     fontSize: 14,
   },
+  salesReturnLabelFixed: {
+    width: '42%',
+    paddingRight: 8,
+  },
   salesReturnValue: {
     fontSize: 14,
     fontWeight: '600',
+    textAlign: 'right',
+  },
+  salesReturnValueWrap: {
+    width: '58%',
+    flexShrink: 1,
   },
   refundRow: {
     borderTopWidth: 1,

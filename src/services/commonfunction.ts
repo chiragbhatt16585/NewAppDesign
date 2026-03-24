@@ -103,6 +103,7 @@ export function handlePayment(params: any, payActionType: string, navigation: an
       // Prefer explicit campaignCode from selected coupon; fallback to couponCode
       campaign_code: params.campaignCode || params.couponCode || null,
       coupon_amount: params.couponDiscount || 0,
+      isp_policy_discount: params.isp_policy_discount || 'no',
     };
     
     console.log('=== FINAL API PARAMS ===');
@@ -110,6 +111,7 @@ export function handlePayment(params: any, payActionType: string, navigation: an
     console.log('Amount being sent to payment gateway:', apiParams.amount);
     console.log('Campaign Code:', apiParams.campaign_code);
     console.log('Coupon Amount:', apiParams.coupon_amount);
+    console.log('ISP Policy Discount:', apiParams.isp_policy_discount);
     console.log('Original Amount (before discount):', apiParams.originalAmount);
     console.log('=== BACKEND API CALL DEBUG ===');
     console.log('Calling apiService.paymentRequestDetails with params:', JSON.stringify(apiParams, null, 2));

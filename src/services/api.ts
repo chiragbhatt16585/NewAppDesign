@@ -1717,6 +1717,7 @@ class ApiService {
       old_pin_serial,
       campaign_code,
       coupon_amount,
+      isp_policy_discount,
       originalAmount
     }: {
       amount: number,
@@ -1730,6 +1731,7 @@ class ApiService {
       old_pin_serial?: string,
       campaign_code?: string | null,
       coupon_amount?: number,
+      isp_policy_discount?: 'yes' | 'no',
       originalAmount?: number
     },
     realm: string
@@ -1751,6 +1753,7 @@ class ApiService {
       if (planname !== undefined) data.planname = planname;
       if (campaign_code) data.campaign_code = campaign_code;
       if (coupon_amount !== undefined) data.coupon_amount = coupon_amount;
+      if (isp_policy_discount) data.isp_policy_discount = isp_policy_discount;
       if (originalAmount !== undefined) data.originalAmount = originalAmount;
       
       // Add comprehensive logging
@@ -1764,6 +1767,7 @@ class ApiService {
         payActionType,
         campaign_code,
         coupon_amount,
+        isp_policy_discount,
         originalAmount
       });
       console.log('Final data object being sent to backend:', data);
@@ -2449,6 +2453,56 @@ class ApiService {
         }
       } catch (e: any) {
         console.error('Get coupon code error:', e);
+        const msg = isNetworkError(e) ? networkErrorMsg : e.message;
+        throw new Error(msg);
+      }
+    });
+  }
+
+  async getComplimentaryDiscountValue(
+    data: {
+      username: string;
+      planname: string;
+      admin_login_id: string;
+      request_source?: string;
+      request_app?: string;
+    },
+    realm: string,
+  ) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const requestData = {
+        username: data.username,
+        planname: data.planname,
+        admin_login_id: data.admin_login_id,
+        request_source: data.request_source || 'app',
+        request_app: data.request_app || 'user_app',
+      };
+
+      const options = {
+        method,
+        headers: new Headers({Authentication: token, ...fixedHeaders}),
+        body: toFormData(requestData),
+        timeout,
+      };
+
+      try {
+        console.log('=== GET COMPLIMENTARY DISCOUNT VALUE ===');
+        console.log('Realm:', realm);
+        console.log('Request Data:', requestData);
+
+        const res = await fetch(
+          `${getApiUrl()}/selfcareGetComplimentaryDiscountValue`,
+          options,
+        );
+        const response = await res.json();
+
+        console.log(
+          'selfcareGetComplimentaryDiscountValue API response:',
+          response,
+        );
+        return response;
+      } catch (e: any) {
+        console.error('Get complimentary discount value error:', e);
         const msg = isNetworkError(e) ? networkErrorMsg : e.message;
         throw new Error(msg);
       }

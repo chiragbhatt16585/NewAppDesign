@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>Skynetwifi</string>
+	<string>Microscan</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -57,12 +57,10 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>UIUserInterfaceStyle</key>
+	<string>Light</string>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>remote-notification</string>
-	</array>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -72,7 +70,7 @@
 			<array>
 				<string>paymentresponse</string>
 				<string>isp</string>
-				<string>dna-goa</string>
+				<string>microscan</string>
 			</array>
 		</dict>
 	</array>
@@ -139,20 +137,6 @@
 		<string>syndicatebank</string>
 		<string>vijayabank</string>
 		<string>dhanlaxmibank</string>
-		<string>andhrabank</string>
-		<string>corporationbank</string>
-		<string>syndicatebank</string>
-		<string>vijayabank</string>
-		<string>dhanlaxmibank</string>
-		<string>federalbank</string>
-		<string>karnatakabank</string>
-		<string>southindianbank</string>
-		<string>tmb</string>
-		<string>karurvysyabank</string>
-		<string>lakshmivilasbank</string>
-		<string>dcbbank</string>
-		<string>jammukashmir</string>
-		<string>pandcbank</string>
 		
 		<!-- Android Intent and Market -->
 		<string>intent</string>
@@ -178,5 +162,4 @@
 		<string>Fontisto.ttf</string>
 	</array>
 </dict>
-</plist>
-
+</plist> 

@@ -1,9 +1,9 @@
 {
-  "name": "SkynetwifiApp",
+  "name": "SpacecomLocalApp",
   "expo": {
-    "name": "Skynetwifi",
-    "slug": "skynetwifi",
-    "version": "1.0.1",
+    "name": "Spacecom Local",
+    "slug": "spacecom-local",
+    "version": "4.0.0",
     "orientation": "portrait",
     "icon": "./app-icons/icon.png",
     "userInterfaceStyle": "light",
@@ -17,16 +17,16 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.spacecom.log2space.skynetwifi",
-      "buildNumber": "1"
+      "bundleIdentifier": "com.l2sClient.spacecomlocal",
+      "buildNumber": "4"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./app-icons/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
       },
-      "package": "com.spacecom.log2space.skynetwifi",
-      "versionCode": 1
+      "package": "com.log2space.spacecom.local",
+      "versionCode": 4
     },
     "web": {
       "favicon": "./app-icons/favicon.png"

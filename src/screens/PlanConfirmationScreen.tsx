@@ -80,7 +80,19 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
   const [coupons, setCoupons] = React.useState<any[]>([]);
   const [selectedCoupon, setSelectedCoupon] = React.useState<any>(null);
   const [couponDiscount, setCouponDiscount] = React.useState(0);
+  const [complimentaryDiscountResponse, setComplimentaryDiscountResponse] = React.useState<any>(null);
+  const [complimentaryDiscountError, setComplimentaryDiscountError] = React.useState<string>('');
   const [isAccountActive, setIsAccountActive] = React.useState<boolean>(false);
+  const complimentaryDiscountAvailable =
+    String(complimentaryDiscountResponse?.data?.disc_available || '')
+      .trim()
+      .toLowerCase() === 'yes';
+  const complimentaryDiscountAmount = complimentaryDiscountAvailable
+    ? Number(complimentaryDiscountResponse?.data?.disc_value || 0)
+    : 0;
+  const appliedDiscount = complimentaryDiscountAvailable
+    ? complimentaryDiscountAmount
+    : couponDiscount;
 
   const getUsageSubtitle = (limit: string | undefined): string => {
     if (!limit) return '';
@@ -261,6 +273,53 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
     try {
       const clientConfig = getClientConfig();
       const realm = clientConfig.clientId;
+
+      // First call complimentary discount API (as requested before coupon display)
+      try {
+        const session = await sessionManager.getCurrentSession();
+        const username = session?.username || '';
+        const planname = selectedPlan?.name || '';
+        const admin_login_id = String(adminLoginIdState || adminLoginId || '');
+
+        if (username && planname && admin_login_id) {
+          const complimentaryResponse = await apiService.getComplimentaryDiscountValue(
+            {
+              username,
+              planname,
+              admin_login_id,
+              request_source: 'app',
+              request_app: 'user_app',
+            },
+            realm,
+          );
+          setComplimentaryDiscountResponse(complimentaryResponse);
+          setComplimentaryDiscountError('');
+          const isDiscountAvailable =
+            String(complimentaryResponse?.data?.disc_available || '')
+              .trim()
+              .toLowerCase() === 'yes';
+          if (isDiscountAvailable) {
+            // If complimentary discount is available, skip coupon flow.
+            setCoupons([]);
+            setSelectedCoupon(null);
+            setCouponDiscount(0);
+            return;
+          }
+        } else {
+          setComplimentaryDiscountError(
+            'Missing required params for selfcareGetComplimentaryDiscountValue',
+          );
+        }
+      } catch (complimentaryError: any) {
+        console.error(
+          'Error fetching selfcareGetComplimentaryDiscountValue:',
+          complimentaryError,
+        );
+        setComplimentaryDiscountError(
+          complimentaryError?.message ||
+            'Failed to fetch complimentary discount value',
+        );
+      }
       
       // DEBUG: Print parameters being sent to coupon API
       console.log('=== PLAN CONFIRMATION COUPON API REQUEST PARAMS ===');
@@ -333,8 +392,8 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
     // Add dues
     const totalWithDues = planTotal + (selectedPlan?.dues || 0);
     
-    // Subtract coupon discount
-    const finalAmount = totalWithDues - couponDiscount;
+    // Subtract complimentary discount (if available), otherwise coupon discount.
+    const finalAmount = totalWithDues - appliedDiscount;
     
     // console.log('=== CALCULATE FINAL AMOUNT DEBUG ===');
     // console.log('baseAmount:', selectedPlan?.baseAmount);
@@ -839,9 +898,14 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
       selectedPGType: [{ label: gatewayObj.gw_display_name, value: gatewayObj.id }],
       payActionType: 'renewal',
       // Add coupon information for backend processing
-      couponCode: selectedCoupon ? getDiscountCode(selectedCoupon) : null,
-      campaignCode: selectedCoupon?.campaign_code || null,
-      couponDiscount: couponDiscount,
+      couponCode: complimentaryDiscountAvailable
+        ? null
+        : (selectedCoupon ? getDiscountCode(selectedCoupon) : null),
+      campaignCode: complimentaryDiscountAvailable
+        ? null
+        : (selectedCoupon?.campaign_code || null),
+      couponDiscount: appliedDiscount,
+      isp_policy_discount: complimentaryDiscountAvailable ? 'yes' : 'no',
       originalAmount: totalAmount,
       // Add proforma_invoice, refund_amount, old_pin_serial if needed
     };
@@ -851,7 +915,7 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
     console.log('Selected Plan MRP:', selectedPlan?.mrp);
     console.log('Selected Plan Dues:', selectedPlan?.dues);
     console.log('Calculated Base Amount (mrp + dues):', (selectedPlan?.mrp || 0) + (selectedPlan?.dues || 0));
-    console.log('Coupon Discount Applied:', couponDiscount);
+    console.log('Discount Applied:', appliedDiscount);
     console.log('Final Amount to Pay:', finalAmount);
     console.log('Admin Login ID:', adminLoginId);
     console.log('Username:', session.username);
@@ -1169,7 +1233,7 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
           {!selectedPlan.isCurrentPlan && renderPlanComparison()}
 
           {/* Coupon Selection */}
-          {showDiscountCoupon && coupons.length > 0 && (
+          {showDiscountCoupon && coupons.length > 0 && !complimentaryDiscountAvailable && (
             <View style={[styles.couponCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
               <Text style={[styles.couponTitle, {color: colors.text}]}> Coupons For You</Text>
               
@@ -1269,10 +1333,16 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
 
 
 
-            {selectedCoupon && couponDiscount > 0 && (
+            {appliedDiscount > 0 && (
               <View style={styles.pricingRow}>
-                <Text style={[styles.pricingLabel, {color: colors.textSecondary}]}>Coupon Discount</Text>
-                <Text style={[styles.pricingValue, {color: colors.success}]}>-{formatCurrency(couponDiscount)}</Text>
+                <Text style={[styles.pricingLabel, {color: colors.textSecondary}]}>
+                  {complimentaryDiscountAvailable
+                    ? 'Complimentary Discount'
+                    : 'Coupon Discount'}
+                </Text>
+                <Text style={[styles.pricingValue, {color: colors.success}]}>
+                  -{formatCurrency(appliedDiscount)}
+                </Text>
               </View>
             )}
 
