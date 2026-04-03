@@ -96,6 +96,7 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
   // Effective website URL
   // For Microscan, ALWAYS use the new official site (ignore old values from isp_details.json)
   // For Inshansa (dna-goa), ALWAYS use https://dnagoa.com (ignore old values from isp_details.json)
+  // For Skynetwifi, ALWAYS use client-config website (ignore stale desktop/website from isp_details.json)
   // For other clients, prefer isp_details.json, fallback to static config
   const effectiveWebsiteUrl = (() => {
     const clientId = getClientConfig().clientId;
@@ -104,6 +105,13 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
     }
     if (clientId === 'inshansa-dnagoa') {
       return 'https://dnagoa.com/';
+    }
+    if (clientId === 'skynetwifi') {
+      const w = getWebsite().trim();
+      if (!w) {
+        return null;
+      }
+      return w.startsWith('http://') || w.startsWith('https://') ? w : `https://${w}`;
     }
 
     const url = ispWebsite || getWebsite();

@@ -113,7 +113,11 @@ const RenewPlanScreen = ({navigation}: any) => {
       const jsonVal = renewMenu.display_option_json;
       let parsed: any = {};
       if (typeof jsonVal === 'string') {
-        const trimmed = jsonVal.trim();
+        // Normalize smart quotes from backend/editor copy-paste to avoid JSON.parse failure.
+        const normalizedJson = jsonVal
+          .replace(/[“”]/g, '"')
+          .replace(/[‘’]/g, "'");
+        const trimmed = normalizedJson.trim();
         if (trimmed && (trimmed.startsWith('{') || trimmed.startsWith('['))) {
           try {
             parsed = JSON.parse(trimmed);
@@ -144,6 +148,15 @@ const RenewPlanScreen = ({navigation}: any) => {
 
       if (typeof rawBlendFlag === 'boolean') blendFlag = rawBlendFlag;
       else if (typeof rawBlendFlag === 'string') blendFlag = rawBlendFlag.toLowerCase() === 'true';
+
+      console.log('[RenewPlan] display_option_json raw:', jsonVal);
+      console.log('[RenewPlan] display_option_json parsed:', parsed);
+      console.log('[RenewPlan] resolved settings:', {
+        showL2SPlanName: nameFlag,
+        showPlanParamsBlend: blendFlag,
+        rawNameFlag,
+        rawBlendFlag,
+      });
 
       return {
         showL2SPlanName: nameFlag,
@@ -850,7 +863,7 @@ const RenewPlanScreen = ({navigation}: any) => {
           const limitB = b.limit === 'Unlimited' ? -1 : parseInt(b.limit);
           return limitB - limitA;
         case '':
-        default:
+        default: 
           // Default: Put current plan first, then sort by price low to high
           // console.log('Default sorting - Current plan:', authData?.current_plan);
           // console.log('Comparing plans:', { a: a.name, b: b.name, aIsCurrent, bIsCurrent });
@@ -956,7 +969,7 @@ const RenewPlanScreen = ({navigation}: any) => {
           <View style={styles.planTitleRow}>
             <Text style={styles.planIcon}>🚀</Text>
             <View style={styles.planTitleContainer}>
-              {showL2SPlanName || !showPlanParamsBlend ? (
+              {showL2SPlanName ? (
                 <>
                   <Text style={styles.planName}>{item.name}</Text>
                   {item.description && (

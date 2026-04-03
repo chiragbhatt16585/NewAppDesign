@@ -36,7 +36,7 @@ class VersionCheckService {
     try {
       return await DeviceInfo.getVersion();
     } catch (error) {
-      console.error('Error getting current version:', error);
+      // console.error('Error getting current version:', error);
       return '1.0.0';
     }
   }
@@ -48,7 +48,7 @@ class VersionCheckService {
     try {
       return await DeviceInfo.getBuildNumber();
     } catch (error) {
-      console.error('Error getting build number:', error);
+      // console.error('Error getting build number:', error);
       return '1';
     }
   }
@@ -58,7 +58,7 @@ class VersionCheckService {
    */
   async checkForUpdates(): Promise<VersionInfo | null> {
     if (this.isChecking) {
-      console.log('Version check already in progress');
+      // console.log('Version check already in progress');
       return null;
     }
 
@@ -66,7 +66,8 @@ class VersionCheckService {
       this.isChecking = true;
       
       const isIOS = Platform.OS === 'ios';
-      const currentVersion = isIOS ? await this.getCurrentVersion() : await this.getBuildNumber();
+      const currentAppVersion = await this.getCurrentVersion();
+      const currentBuildNumber = await this.getBuildNumber();
       
       // Get username from session manager
       const username = await this.getCurrentUsername();
@@ -107,9 +108,15 @@ class VersionCheckService {
       }
 
       if (!versionData) {
-        console.log('❌ No version data found. Checked: end_user_app_version3, end_user_app_version');
+        // console.log('❌ No version data found. Checked: end_user_app_version3, end_user_app_version');
         return null;
       }
+
+      // console.log('🔎 VersionCheck source selection:', {
+      //   versionSource,
+      //   hasEndUserAppVersion3: !!authData.end_user_app_version3,
+      //   hasEndUserAppVersion: !!authData.end_user_app_version,
+      // });
       
       // Print all version information
       // console.log('📱 ========== VERSION INFORMATION ==========');
@@ -127,11 +134,19 @@ class VersionCheckService {
       // console.log('🤖 Current Build Number (Android):', !isIOS ? currentVersion : 'N/A');
       // console.log('==========================================');
       
-      // Determine latest server version for the current platform (fallback to beta if needed)
-      const serverVersionRawForCompare = isIOS
-        ? (versionData.iOSAppVersion ?? versionData.iOSBetaAppVersion)
-        : (versionData.androidAppVersion ?? versionData.androidBetaAppVersion);
-      const serverVersionForCompare = serverVersionRawForCompare != null ? String(serverVersionRawForCompare) : '';
+      // Use only stable production keys for update checks.
+      // Beta keys should not affect production apps.
+      const serverVersionForCompare = this.getStableServerVersion(versionData, isIOS);
+      // console.log('🔎 VersionCheck compare input:', {
+      //   platform: Platform.OS,
+      //   currentAppVersion,
+      //   currentBuildNumber,
+      //   serverVersionForCompare,
+      //   androidAppVersion: versionData?.androidAppVersion,
+      //   androidBetaAppVersion: versionData?.androidBetaAppVersion,
+      //   iOSAppVersion: versionData?.iOSAppVersion,
+      //   iOSBetaAppVersion: versionData?.iOSBetaAppVersion,
+      // });
 
       // console.log('Version check details:', {
       //   isIOS,
@@ -146,9 +161,19 @@ class VersionCheckService {
 
       // Decide if update is needed based on platform-specific comparison
       let needsUpdate = false;
+      let currentVersionForResult = isIOS ? currentAppVersion : currentBuildNumber;
       if (isIOS) {
-        const comparisonResult = this.compareVersions(currentVersion.toString(), serverVersionForCompare);
+        const comparisonResult = this.compareVersions(
+          currentAppVersion.toString(),
+          serverVersionForCompare,
+        );
         needsUpdate = serverVersionForCompare !== '' && comparisonResult < 0;
+        // console.log('🔎 VersionCheck iOS decision:', {
+        //   current: currentAppVersion.toString(),
+        //   server: serverVersionForCompare,
+        //   comparisonResult,
+        //   needsUpdate,
+        // });
         
         // console.log('iOS Version comparison:', {
         //   currentVersion: currentVersion.toString(),
@@ -159,9 +184,37 @@ class VersionCheckService {
         //   serverVersionType: typeof serverVersionForCompare
         // });
       } else {
-        const currentBuild = Number(currentVersion);
-        const serverBuild = Number(serverVersionForCompare);
-        needsUpdate = !Number.isNaN(currentBuild) && !Number.isNaN(serverBuild) && currentBuild < serverBuild;
+        // Android backend values may be either build number (e.g. "14")
+        // or semantic version (e.g. "1.0.1"). Compare accordingly.
+        if (this.isSemanticVersion(serverVersionForCompare)) {
+          const comparisonResult = this.compareVersions(
+            currentAppVersion.toString(),
+            serverVersionForCompare,
+          );
+          needsUpdate = serverVersionForCompare !== '' && comparisonResult < 0;
+          currentVersionForResult = currentAppVersion;
+          // console.log('🔎 VersionCheck Android semantic decision:', {
+          //   currentVersion: currentAppVersion.toString(),
+          //   serverVersion: serverVersionForCompare,
+          //   comparisonResult,
+          //   needsUpdate,
+          // });
+        } else {
+          const currentBuild = Number(currentBuildNumber);
+          const serverBuild = Number(serverVersionForCompare);
+          needsUpdate =
+            !Number.isNaN(currentBuild) &&
+            !Number.isNaN(serverBuild) &&
+            currentBuild < serverBuild;
+          currentVersionForResult = currentBuildNumber;
+          // console.log('🔎 VersionCheck Android build decision:', {
+          //   currentBuildNumber,
+          //   serverVersionForCompare,
+          //   currentBuild,
+          //   serverBuild,
+          //   needsUpdate,
+          // });
+        }
         
         // console.log('Android Version comparison:', {
         //   currentVersion: currentVersion.toString(),
@@ -173,23 +226,19 @@ class VersionCheckService {
       }
 
       if (needsUpdate) {
-        // Determine latest server version for the current platform (fallback to beta if needed)
-        const serverVersionRaw = isIOS
-          ? (versionData.iOSAppVersion ?? versionData.iOSBetaAppVersion)
-          : (versionData.androidAppVersion ?? versionData.androidBetaAppVersion);
-        const serverVersion = serverVersionRaw != null ? String(serverVersionRaw) : '';
+        const serverVersion = this.getStableServerVersion(versionData, isIOS);
         const updateUrl = this.getStoreUrl();
         
-        console.log('Update needed, returning version info:', {
-          currentVersion,
-          latestVersion: serverVersion,
-          needsUpdate,
-          updateUrl,
-          forceUpdate: true
-        });
+        // console.log('Update needed, returning version info:', {
+        //   currentVersion: currentVersionForResult,
+        //   latestVersion: serverVersion,
+        //   needsUpdate,
+        //   updateUrl,
+        //   forceUpdate: true
+        // });
         
         return {
-          currentVersion,
+          currentVersion: currentVersionForResult,
           latestVersion: serverVersion,
           needsUpdate,
           updateUrl,
@@ -198,13 +247,36 @@ class VersionCheckService {
         };
       }
 
+      // console.log('✅ VersionCheck no update required:', {
+      //   platform: Platform.OS,
+      //   currentVersion: currentVersionForResult,
+      //   serverVersion: serverVersionForCompare,
+      // });
+
       return null;
     } catch (error) {
-      console.error('Error checking for updates:', error);
+      // console.error('Error checking for updates:', error);
       return null;
     } finally {
       this.isChecking = false;
     }
+  }
+
+  /**
+   * Get stable (production) server version for current platform.
+   */
+  private getStableServerVersion(versionData: any, isIOS: boolean): string {
+    const stableVersionRaw = isIOS
+      ? versionData?.iOSAppVersion
+      : versionData?.androidAppVersion;
+    return stableVersionRaw != null ? String(stableVersionRaw).trim() : '';
+  }
+
+  /**
+   * Returns true when version looks like semantic format (x.y or x.y.z ...)
+   */
+  private isSemanticVersion(version: string): boolean {
+    return /^\d+(\.\d+)+$/.test((version || '').trim());
   }
 
   /**
@@ -235,13 +307,13 @@ class VersionCheckService {
           // console.log('Parsed version data from end_user_app_version:', versionData);
           // console.log('Available version fields:', Object.keys(versionData));
         } catch (parseError) {
-          console.error('Error parsing end_user_app_version:', parseError);
+          // console.error('Error parsing end_user_app_version:', parseError);
           return null;
         }
       }
 
       if (!versionData) {
-        console.log('No version data found in end_user_app_version');
+        // console.log('No version data found in end_user_app_version');
         return null;
       }
 
@@ -262,7 +334,7 @@ class VersionCheckService {
       // });
 
       if (!serverVersion) {
-        console.log('No server version found in version data');
+        // console.log('No server version found in version data');
         return null;
       }
 
@@ -272,7 +344,7 @@ class VersionCheckService {
         showUpdateDialog: needsUpdate
       };
     } catch (error) {
-      console.error('Error fetching version from authUser API:', error);
+      // console.error('Error fetching version from authUser API:', error);
       return null;
     }
   }
@@ -296,7 +368,7 @@ class VersionCheckService {
       const username = await sessionManager.getUsername();
       return username;
     } catch (error) {
-      console.error('Error getting username:', error);
+      // console.error('Error getting username:', error);
       return null;
     }
   }
@@ -360,7 +432,7 @@ class VersionCheckService {
       {
         text: 'Later',
         onPress: () => {
-          console.log('User chose to update later');
+          // console.log('User chose to update later');
           // User can continue with current app version
         },
       },
@@ -378,11 +450,11 @@ class VersionCheckService {
       if (canOpen) {
         await Linking.openURL(url);
       } else {
-        console.error('Cannot open store URL:', url);
+        // console.error('Cannot open store URL:', url);
         Alert.alert('Error', 'Cannot open store. Please update manually from your app store.');
       }
     } catch (error) {
-      console.error('Error opening store:', error);
+      // console.error('Error opening store:', error);
       Alert.alert('Error', 'Cannot open store. Please update manually from your app store.');
     }
   }
@@ -402,7 +474,7 @@ class VersionCheckService {
       
       return false;
     } catch (error) {
-      console.error('Error in checkAndShowUpdateDialog:', error);
+      // console.error('Error in checkAndShowUpdateDialog:', error);
       return false;
     }
   }
@@ -415,7 +487,7 @@ class VersionCheckService {
       const versionInfo = await this.checkForUpdates();
       return versionInfo ? versionInfo.needsUpdate : false;
     } catch (error) {
-      console.error('Error in silent check:', error);
+      // console.error('Error in silent check:', error);
       return false;
     }
   }

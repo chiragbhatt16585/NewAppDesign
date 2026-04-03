@@ -77,13 +77,13 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.dnagoa"
+    namespace "com.spacecom.log2space.dnagoa"
     defaultConfig {
-        applicationId "com.dnagoa"
+        applicationId "com.spacecom.log2space.dnagoa"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 4
-        versionName "4.0.0"
+        versionCode 1
+        versionName "1.0.1"
         buildConfigField "boolean", "IS_NEW_ARCHITECTURE_ENABLED", "false"
     }
     
@@ -95,10 +95,10 @@ android {
             keyPassword 'android'
         }
         release {
-            storeFile file('Log2spaceDNAGoaAppKey.jks')
-            storePassword 'dnasubscriber'
-            keyAlias 'dnasubscriber'
-            keyPassword 'dnasubscriber'
+            storeFile file('Log2spaceDNAGoaKey_V3.jks')
+            storePassword 'log2space'
+            keyAlias 'log2space'
+            keyPassword 'log2space'
         }
     }
     

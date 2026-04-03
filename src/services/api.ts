@@ -1731,7 +1731,8 @@ class ApiService {
       old_pin_serial?: string,
       campaign_code?: string | null,
       coupon_amount?: number,
-      isp_policy_discount?: 'yes' | 'no',
+      /** Rupee amount for ISP policy / complimentary discount, or legacy 'yes' | 'no'. */
+      isp_policy_discount?: number | string,
       originalAmount?: number
     },
     realm: string
@@ -1753,7 +1754,9 @@ class ApiService {
       if (planname !== undefined) data.planname = planname;
       if (campaign_code) data.campaign_code = campaign_code;
       if (coupon_amount !== undefined) data.coupon_amount = coupon_amount;
-      if (isp_policy_discount) data.isp_policy_discount = isp_policy_discount;
+      if (isp_policy_discount !== undefined && isp_policy_discount !== null) {
+        data.isp_policy_discount = isp_policy_discount;
+      }
       if (originalAmount !== undefined) data.originalAmount = originalAmount;
       
       // Add comprehensive logging

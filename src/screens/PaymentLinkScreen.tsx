@@ -595,8 +595,49 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
   };
 
   const handleWebViewError = (error: any) => {
-    console.error('WebView error:', error);
-    setError('Failed to load payment page. Please try again.');
+    const nativeEvent = error?.nativeEvent || {};
+    try {
+      console.error('WebView error full payload:', JSON.stringify(nativeEvent, null, 2));
+    } catch {
+      console.error('WebView error raw:', nativeEvent);
+    }
+
+    const description = String(nativeEvent?.description || '').toLowerCase();
+    const isTopFrame = nativeEvent?.isTopFrame !== false;
+    const isNonFatalSchemeError =
+      description.includes('err_unknown_url_scheme') ||
+      description.includes('unsupported scheme') ||
+      description.includes('intent://');
+    const isNameNotResolved =
+      description.includes('err_name_not_resolved') ||
+      description.includes('name not resolved');
+
+    // If WebView can't resolve the host, fallback to external browser.
+    // This keeps payment working even if the embedded engine has DNS/network issues.
+    if (isNameNotResolved) {
+      const fallbackUrl =
+        nativeEvent?.url || (typeof source?.uri === 'string' ? source.uri : null);
+      if (fallbackUrl) {
+        console.log('WebView DNS failed; opening in external browser:', fallbackUrl);
+        Linking.openURL(fallbackUrl).catch((e) => {
+          console.log('Failed to open fallback URL:', e);
+        });
+      }
+      setLoading(false);
+      return;
+    }
+
+    // Don't kill the screen for non-top-frame or scheme-handoff errors.
+    if (!isTopFrame || isNonFatalSchemeError) {
+      setLoading(false);
+      return;
+    }
+
+    setError(
+      nativeEvent?.description
+        ? `Failed to load payment page: ${nativeEvent.description}`
+        : 'Failed to load payment page. Please try again.',
+    );
     setLoading(false);
   };
 
@@ -695,15 +736,42 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
           ref={webViewRef}
           source={source}
           style={styles.webview}
+          originWhitelist={['*']}
           startInLoadingState={true}
           javaScriptEnabled={true}
           domStorageEnabled={true}
+          // HDFC/other PG pages often rely on cookies + popups.
+          // Keep navigation in the same WebView and allow third-party cookies.
+          setSupportMultipleWindows={false}
+          thirdPartyCookiesEnabled={true}
+          sharedCookiesEnabled={true}
+          javaScriptCanOpenWindowsAutomatically={true}
+          mixedContentMode="always"
+          injectedJavaScriptBeforeContentLoaded={`
+            (function() {
+              try {
+                // HDFC UAT sometimes uses popup flow; force same-tab navigation.
+                window.open = function(url) {
+                  if (url) { window.location.href = url; }
+                  return null;
+                };
+              } catch (e) {}
+            })();
+            true;
+          `}
           onNavigationStateChange={processPayment}
           onError={handleWebViewError}
+          onHttpError={(event) => {
+            console.error('WebView HTTP error:', event.nativeEvent);
+          }}
           onLoadEnd={handleWebViewLoadEnd}
           scalesPageToFit={true}
           allowsBackForwardNavigationGestures={false}
-          userAgent="Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1"
+          userAgent={
+            Platform.OS === 'android'
+              ? 'Mozilla/5.0 (Linux; Android 13; Pixel 8a) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'
+              : 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
+          }
           // Enhanced settings for EASEBUZZ compatibility
           allowsInlineMediaPlayback={true}
           mediaPlaybackRequiresUserAction={false}

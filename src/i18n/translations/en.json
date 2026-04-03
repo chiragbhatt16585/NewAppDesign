@@ -294,7 +294,7 @@
     "corporateLandline": "Corporate Landline",
     "escalationMatrix": "Escalation Matrix",
     "internetSupport": "For Internet support inquiries",
-    "enterpriseEscalationMatrix": "Enterprise Escalation Matrix",
+    "enterpriseEscalationMatrix": "Escalation Matrix",
     "enterpriseSupport": "Enterprise Support",
     "enterpriseEscalationSubtitle": "Multi-level escalation for enterprise customers",
     "whatsappSupport": "WhatsApp Support",
@@ -309,7 +309,9 @@
     "error": "Error",
     "phoneNotSupported": "Phone calls are not supported on this device",
     "mapsNotSupported": "Maps are not supported on this device",
-    "whatsappNotSupported": "WhatsApp is not installed on this device"
+    "whatsappNotSupported": "WhatsApp is not installed on this device",
+    "website": "Website",
+    "websiteNotSupported": "Websites cannot be opened on this device"
   },
   "more": {
     "title": "More Options",

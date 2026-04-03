@@ -11,7 +11,7 @@ const CLIENTS = {
     // Must match OLD app (microscanEndUserApp-master-new) so install overwrites and migration works.
     packageName: 'in.spacecom.log2space.client.microscan',
     namespace: 'in.spacecom.log2space.client.microscan',
-    versionCode: 39,
+    versionCode: 40,
     versionName: '1.0.1',
     // Use original Microscan upload key for Play Store (SHA1: 08:1C:A0:54:CA:45:95:5B:B3:8B:3A:B8:B2:53:93:FA:F5:64:D0:AE)
     keystore: 'Log2SpaceEndUserMicroscan.jks',
@@ -46,11 +46,11 @@ const CLIENTS = {
   },
   'dna-goa': {
     name: 'DNA Goa',
-    packageName: 'com.dnagoa',
-    namespace: 'com.dnagoa',
+    packageName: 'com.spacecom.log2space.dnagoa',
+    namespace: 'com.spacecom.log2space.dnagoa',
     versionCode: 1,
     versionName: '1.0.1',
-    keystore: 'Log2spaceDNAGoaAppKey.jks',
+    keystore: 'Log2spaceDNAGoaKey_V3.jks',
     configDir: 'config/dna-goa',
   },
   gatewayftth: {
@@ -60,7 +60,7 @@ const CLIENTS = {
     versionCode: 1,
     versionName: '1.0.1',
     // For now we use the debug keystore; configure a real release keystore later
-    keystore: 'GatewayFTTH.jks',
+    keystore: 'Log2spceGatewayFTTHKey_V3.jks',
     configDir: 'config/gatewayftth',
   },
   netfix: {
@@ -160,8 +160,18 @@ const CLIENTS = {
     versionCode: 1,
     versionName: '1.0.1',
     // Reuse existing keystore for now (skynetwifi will have its own Firebase configs)
-    keystore: 'GatewayFTTH.jks',
+    keystore: 'Log2spceGatewayFTTHKey_V3.jks',
     configDir: 'config/skynetwifi',
+  },
+  srisamarthinfobahn: {
+    name: 'Srisamarthinfobahn',
+    packageName: 'com.spacecom.log2space.srisamarthinfobahn',
+    namespace: 'com.spacecom.log2space.srisamarthinfobahn',
+    versionCode: 10,
+    versionName: '1.0.10',
+    // Reuse existing keystore for now
+    keystore: 'Log2spceGatewayFTTHKey_V3.jks',
+    configDir: 'config/srisamarthinfobahn',
   },
 };
 
@@ -217,6 +227,14 @@ function copyClientConfig(clientId) {
 
   const configDir = path.join(__dirname, '..', client.configDir);
   const appDir = path.join(__dirname, '..');
+  const hasUsableFiles = (dirPath) => {
+    if (!fs.existsSync(dirPath)) return false;
+    const entries = fs.readdirSync(dirPath);
+    if (!entries || entries.length === 0) return false;
+    // Ignore placeholder docs like README so fallback can still work.
+    const usable = entries.some((name) => !/^readme(\..+)?$/i.test(name));
+    return usable;
+  };
 
   // Copy app.json
   const appJsonSrc = path.join(configDir, 'app.json');
@@ -232,9 +250,9 @@ function copyClientConfig(clientId) {
 
   // Copy assets
   let assetsSrc = path.join(configDir, 'assets');
-  if (!fs.existsSync(assetsSrc) && fallbackConfigDir) {
+  if (!hasUsableFiles(assetsSrc) && fallbackConfigDir) {
     const fallbackAssetsSrc = path.join(fallbackConfigDir, 'assets');
-    if (fs.existsSync(fallbackAssetsSrc)) assetsSrc = fallbackAssetsSrc;
+    if (hasUsableFiles(fallbackAssetsSrc)) assetsSrc = fallbackAssetsSrc;
   }
   const assetsDest = path.join(appDir, 'src', 'assets');
   if (fs.existsSync(assetsSrc)) {
@@ -244,13 +262,13 @@ function copyClientConfig(clientId) {
 
   // Copy Android app icons
   let androidIconsSrc = path.join(configDir, 'app-icons', 'android');
-  if (!fs.existsSync(androidIconsSrc) && fallbackConfigDir) {
+  if (!hasUsableFiles(androidIconsSrc) && fallbackConfigDir) {
     const fallbackAndroidIconsSrc = path.join(
       fallbackConfigDir,
       'app-icons',
       'android'
     );
-    if (fs.existsSync(fallbackAndroidIconsSrc))
+    if (hasUsableFiles(fallbackAndroidIconsSrc))
       androidIconsSrc = fallbackAndroidIconsSrc;
   }
   const androidIconsDest = path.join(appDir, 'android', 'app', 'src', 'main', 'res');
@@ -300,14 +318,14 @@ function copyClientConfig(clientId) {
     'ios',
     'AppIcon.appiconset'
   );
-  if (!fs.existsSync(iosAppIconSrc) && fallbackConfigDir) {
+  if (!hasUsableFiles(iosAppIconSrc) && fallbackConfigDir) {
     const fallbackIosAppIconSrc = path.join(
       fallbackConfigDir,
       'app-icons',
       'ios',
       'AppIcon.appiconset'
     );
-    if (fs.existsSync(fallbackIosAppIconSrc))
+    if (hasUsableFiles(fallbackIosAppIconSrc))
       iosAppIconSrc = fallbackIosAppIconSrc;
   }
   const iosAppIconDest = path.join(appDir, 'ios', 'ISPApp', 'Images.xcassets', 'AppIcon.appiconset');

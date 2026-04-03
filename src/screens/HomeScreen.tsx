@@ -1548,7 +1548,15 @@ const HomeScreen = ({navigation}: any) => {
           rightComponent={(
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <TouchableOpacity
-                style={{ marginRight: 12 }}
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: 12,
+                  backgroundColor: isHeaderBgClient ? 'rgba(0,0,0,0.4)' : colors.background,
+                }}
                 onPress={() => navigation.navigate('Notifications')}
                 activeOpacity={0.8}
                 accessibilityRole="button"
@@ -1556,7 +1564,7 @@ const HomeScreen = ({navigation}: any) => {
               >
                 <Feather
                   name="bell"
-                  size={22}
+                  size={20}
                   color={isHeaderBgClient ? '#FFFFFF' : (colors.primary || '#FF6B35')}
                 />
               </TouchableOpacity>

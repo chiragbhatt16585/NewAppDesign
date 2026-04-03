@@ -1,0 +1,35 @@
+{
+  "name": "SrisamarthinfobahnApp",
+  "expo": {
+    "name": "Srisamarthinfobahn",
+    "slug": "srisamarthinfobahn",
+    "version": "1.0.10",
+    "orientation": "portrait",
+    "icon": "./app-icons/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./app-icons/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.spacecom.log2space.srisamarthinfobahn",
+      "buildNumber": "10"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./app-icons/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "package": "com.spacecom.log2space.srisamarthinfobahn",
+      "versionCode": 10
+    },
+    "web": {
+      "favicon": "./app-icons/favicon.png"
+    }
+  }
+}

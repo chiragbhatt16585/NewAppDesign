@@ -152,6 +152,13 @@ const LogoImage: React.FC<LogoImageProps> = ({style, width, height, type = 'head
           // Fall back to computed logoSource
         }
       }
+      if (clientId === 'srisamarthinfobahn') {
+        try {
+          return require('../assets/isp_logo.png');
+        } catch (_) {
+          // Fall back to computed logoSource
+        }
+      }
 
       // Fallback: after prepare, assets are copied to src/assets.
       // - Graceway/log2space-common: keep previous behavior.
@@ -164,6 +171,12 @@ const LogoImage: React.FC<LogoImageProps> = ({style, width, height, type = 'head
       }
 
       if (clientId === 'skynetwifi' && (!logoSource || imageError)) {
+        try {
+          const assetsLogo = require('../assets/isp_logo.png');
+          if (assetsLogo) return assetsLogo;
+        } catch (_) {}
+      }
+      if (clientId === 'srisamarthinfobahn' && (!logoSource || imageError)) {
         try {
           const assetsLogo = require('../assets/isp_logo.png');
           if (assetsLogo) return assetsLogo;

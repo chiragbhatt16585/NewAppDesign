@@ -108,7 +108,11 @@ const UpgradePlanScreen = ({navigation}: any) => {
       const jsonVal = upgradeMenu.display_option_json;
       let parsed: any = {};
       if (typeof jsonVal === 'string') {
-        const trimmed = jsonVal.trim();
+        // Normalize smart quotes from backend/editor copy-paste to avoid JSON.parse failure.
+        const normalizedJson = jsonVal
+          .replace(/[“”]/g, '"')
+          .replace(/[‘’]/g, "'");
+        const trimmed = normalizedJson.trim();
         if (trimmed && (trimmed.startsWith('{') || trimmed.startsWith('['))) {
           try {
             parsed = JSON.parse(trimmed);
@@ -464,7 +468,7 @@ const UpgradePlanScreen = ({navigation}: any) => {
               label: String(rawLabel),
             };
           })
-          .filter((opt: any) => opt && opt.value.trim && opt.value.trim());
+          .filter((opt): opt is DropdownOption => Boolean(opt && opt.value?.trim && opt.value.trim()));
       };
 
       const extractLabelList = (arr: any): string[] =>
@@ -733,7 +737,7 @@ const UpgradePlanScreen = ({navigation}: any) => {
           <View style={styles.planTitleRow}>
             <Text style={styles.planIcon}>🚀</Text>
             <View style={styles.planTitleContainer}>
-              {showL2SPlanName || !showPlanParamsBlend ? (
+              {showL2SPlanName ? (
                 <>
                   <Text style={[styles.planName, {color: colors.textSecondary}]}>{item.name}</Text>
                   {item.description && (

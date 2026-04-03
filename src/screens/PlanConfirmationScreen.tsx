@@ -46,6 +46,42 @@ interface PlanData {
   fup_flag?: string;
 }
 
+/** selfcareMenuSettings may return a bare array or an object wrapping the list. */
+function normalizeMenuItems(raw: any): any[] {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  if (Array.isArray(raw.data)) return raw.data;
+  if (Array.isArray(raw.menu)) return raw.menu;
+  if (Array.isArray(raw.menu_items)) return raw.menu_items;
+  if (Array.isArray(raw.items)) return raw.items;
+  return [];
+}
+
+/**
+ * Blue info note on Plan Confirmation: text comes from Renew Plan → display_option_json,
+ * not from detecting "high speed" on the plan object. Supports common key aliases.
+ */
+function extractRenewPlanHighSpeedNote(parsed: any): string {
+  if (!parsed || typeof parsed !== 'object') return '';
+  const dps =
+    parsed.display_plan_settings ||
+    parsed.displayPlanSettings ||
+    parsed.display_plan_setting ||
+    {};
+  const candidates = [
+    dps.high_speed_plan_note,
+    dps.high_speed_router_note,
+    dps.router_note,
+    dps.highSpeedPlanNote,
+    parsed.high_speed_plan_note,
+    parsed.high_speed_router_note,
+  ];
+  for (const c of candidates) {
+    if (typeof c === 'string' && c.trim()) return c.trim();
+  }
+  return '';
+}
+
 const PlanConfirmationScreen = ({navigation, route}: any) => {
   const {isDark} = useTheme();
   const colors = getThemeColors(isDark);
@@ -83,12 +119,32 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
   const [complimentaryDiscountResponse, setComplimentaryDiscountResponse] = React.useState<any>(null);
   const [complimentaryDiscountError, setComplimentaryDiscountError] = React.useState<string>('');
   const [isAccountActive, setIsAccountActive] = React.useState<boolean>(false);
-  const complimentaryDiscountAvailable =
-    String(complimentaryDiscountResponse?.data?.disc_available || '')
-      .trim()
-      .toLowerCase() === 'yes';
+
+  const toNumber = (value: any): number => {
+    if (value === null || value === undefined) return 0;
+    if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+    const cleaned = String(value).replace(/[^0-9.-]/g, '');
+    const n = Number(cleaned);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const isTruthyValue = (value: any): boolean => {
+    if (value === true) return true;
+    if (value === false || value === null || value === undefined) return false;
+    if (typeof value === 'number') return value !== 0;
+    if (typeof value === 'string') {
+      const s = value.trim().toLowerCase();
+      if (!s) return false;
+      return s === 'yes' || s === 'y' || s === 'true' || s === '1';
+    }
+    return Boolean(value);
+  };
+
+  const complimentaryDiscountAvailable = isTruthyValue(
+    complimentaryDiscountResponse?.data?.disc_available,
+  );
   const complimentaryDiscountAmount = complimentaryDiscountAvailable
-    ? Number(complimentaryDiscountResponse?.data?.disc_value || 0)
+    ? toNumber(complimentaryDiscountResponse?.data?.disc_value)
     : 0;
   const appliedDiscount = complimentaryDiscountAvailable
     ? complimentaryDiscountAmount
@@ -103,6 +159,7 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
 
   // Read display_option_json settings for "Renew Plan" menu to control plan name visibility
   // and whether to blend plan params (speed/validity/OTTs) into the header row.
+  // The high-speed / router note is static text from menu JSON (not inferred from plan speed).
   const { showL2SPlanName, showPlanParamsBlend, showDiscountCoupon, highSpeedPlanNote } = useMemo(() => {
     let result = {
       showL2SPlanName: true,
@@ -111,16 +168,24 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
       highSpeedPlanNote: '',
     };
     try {
-      if (!Array.isArray(menu)) return result;
-      const renewMenu = menu.find((m: any) =>
-        String(m?.menu_label).trim().toLowerCase() === 'renew plan'
-      );
+      const menuItems = normalizeMenuItems(menu);
+      if (!menuItems.length) return result;
+      const renewMenu = menuItems.find((m: any) => {
+        const label = String(m?.menu_label || '').trim().toLowerCase();
+        if (label === 'renew plan') return true;
+        const key = String(m?.menu_key || m?.menu_slug || '').trim().toLowerCase();
+        return key === 'renew_plan' || key === 'renewplan';
+      });
       if (!renewMenu) return result;
 
       const jsonVal = renewMenu.display_option_json;
       let parsed: any = {};
       if (typeof jsonVal === 'string') {
-        const trimmed = jsonVal.trim();
+        // Normalize smart quotes from backend/editor copy-paste to avoid JSON.parse failure.
+        const normalizedJson = jsonVal
+          .replace(/[“”]/g, '"')
+          .replace(/[‘’]/g, "'");
+        const trimmed = normalizedJson.trim();
         if (trimmed && (trimmed.startsWith('{') || trimmed.startsWith('['))) {
           try {
             parsed = JSON.parse(trimmed);
@@ -143,12 +208,11 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
       const rawNameFlag = parsed?.display_plan_settings?.show_plan?.l2s_planname;
       const rawBlendFlag = parsed?.display_plan_settings?.show_plan?.plan_params_blend;
       const rawDiscountCouponFlag = parsed?.display_plan_settings?.discount_coupen;
-      const rawHighSpeedPlanNote = parsed?.display_plan_settings?.high_speed_plan_note;
 
       let nameFlag = true;
       let blendFlag = false;
       let discountCouponFlag = false;
-      let noteText = '';
+      const noteText = extractRenewPlanHighSpeedNote(parsed);
 
       if (typeof rawNameFlag === 'boolean') nameFlag = rawNameFlag;
       else if (typeof rawNameFlag === 'string') nameFlag = rawNameFlag.toLowerCase() === 'true';
@@ -158,10 +222,6 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
 
       if (typeof rawDiscountCouponFlag === 'boolean') discountCouponFlag = rawDiscountCouponFlag;
       else if (typeof rawDiscountCouponFlag === 'string') discountCouponFlag = rawDiscountCouponFlag.toLowerCase() === 'true';
-
-      if (typeof rawHighSpeedPlanNote === 'string' && rawHighSpeedPlanNote.trim()) {
-        noteText = rawHighSpeedPlanNote.trim();
-      }
 
       return {
         showL2SPlanName: nameFlag,
@@ -294,10 +354,9 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
           );
           setComplimentaryDiscountResponse(complimentaryResponse);
           setComplimentaryDiscountError('');
-          const isDiscountAvailable =
-            String(complimentaryResponse?.data?.disc_available || '')
-              .trim()
-              .toLowerCase() === 'yes';
+          const isDiscountAvailable = isTruthyValue(
+            complimentaryResponse?.data?.disc_available,
+          );
           if (isDiscountAvailable) {
             // If complimentary discount is available, skip coupon flow.
             setCoupons([]);
@@ -905,7 +964,10 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
         ? null
         : (selectedCoupon?.campaign_code || null),
       couponDiscount: appliedDiscount,
-      isp_policy_discount: complimentaryDiscountAvailable ? 'yes' : 'no',
+      // Merchant API expects the policy discount rupee amount (e.g. 49), not only yes/no.
+      isp_policy_discount: complimentaryDiscountAvailable
+        ? complimentaryDiscountAmount
+        : 'no',
       originalAmount: totalAmount,
       // Add proforma_invoice, refund_amount, old_pin_serial if needed
     };

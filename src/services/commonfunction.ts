@@ -103,7 +103,8 @@ export function handlePayment(params: any, payActionType: string, navigation: an
       // Prefer explicit campaignCode from selected coupon; fallback to couponCode
       campaign_code: params.campaignCode || params.couponCode || null,
       coupon_amount: params.couponDiscount || 0,
-      isp_policy_discount: params.isp_policy_discount || 'no',
+      // Preserve numeric 0; only default when undefined/null (not when amount is 0).
+      isp_policy_discount: params.isp_policy_discount ?? 'no',
     };
     
     console.log('=== FINAL API PARAMS ===');

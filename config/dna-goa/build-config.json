@@ -1,7 +1,7 @@
 {
   "android": {
-    "namespace": "com.dnagoa",
-    "applicationId": "com.dnagoa",
+    "namespace": "com.spacecom.log2space.dnagoa",
+    "applicationId": "com.spacecom.log2space.dnagoa",
     "versionCode": 1,
     "versionName": "1.0.1",
     "signing": {
@@ -12,7 +12,7 @@
         "keyPassword": "android"
       },
       "release": {
-        "storeFile": "Log2spaceDNAGoaAppKey.jks",
+        "storeFile": "Log2spaceDNAGoaKey_V3.jks",
         "storePassword": "log2space",
         "keyAlias": "log2space",
         "keyPassword": "log2space"
@@ -20,7 +20,7 @@
     }
   },
   "ios": {
-    "bundleIdentifier": "com.dnagoa",
+    "bundleIdentifier": "com.spacecom.log2space.dnagoa",
     "marketingVersion": "1.0.1",
     "buildNumber": "1",
     "displayName": "DNA Goa"

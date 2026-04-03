@@ -120,7 +120,7 @@ const clientConfigs: Record<string, ClientConfig> = {
       },
     },
     features: {
-      biometricAuth: false,
+      biometricAuth: true,
       pushNotifications: true,
       fileUpload: true,
       multiLanguage: true,
@@ -148,7 +148,7 @@ const clientConfigs: Record<string, ClientConfig> = {
           },
         ],
         enterpriseEscalation: {
-          title: 'Enterprise Escalation Matrix',
+          title: 'Escalation Matrix',
           l1: {
             level: 'L1 - Call Centre - (Call Centre : 24x7)',
             emails: ['customersupport@microscaninternet.com'],
@@ -237,7 +237,7 @@ const clientConfigs: Record<string, ClientConfig> = {
         },
       ],
       enterpriseEscalation: {
-        title: 'Enterprise Escalation Matrix',
+        title: 'Escalation Matrix',
         l1: {
           level: 'L1 - Call Centre',
           emails: ['enterprise.support@microscan.co.in'],
@@ -536,7 +536,7 @@ const clientConfigs: Record<string, ClientConfig> = {
       enabled: true,
       checkInterval: 24, // Check every 24 hours
       forceUpdateEnabled: true,
-      packageName: 'com.dnagoa',
+      packageName: 'com.spacecom.log2space.dnagoa',
       appStoreId: '1559045355',
     },
   },
@@ -751,6 +751,7 @@ const clientConfigs: Record<string, ClientConfig> = {
         title: 'Head Office',
         address:
           'E/59, Pioneer Heritage 2, Off S V Road, Santacruz West - 400054',
+        customerSupport: '9152665454',
       },
       branchOffices: [],
       emails: {
@@ -758,8 +759,8 @@ const clientConfigs: Record<string, ClientConfig> = {
         sales: 'helloskynetwifi@gmail.com',
         support: 'helloskynetwifi@gmail.com',
       },
-      whatsappNumber: '9930142727',
-      landline: '9930142727',
+      whatsappNumber: '9152665454',
+      landline: '9152665454',
     },
     about: {
       companyName: 'Skynetwifi',
@@ -775,12 +776,74 @@ const clientConfigs: Record<string, ClientConfig> = {
       achievements: [],
     },
     reviewUrl: undefined,
-    website: 'https://skynetwifi.l2s.biz/',
+    website: 'https://skynetwifi.l2s.biz/admin/#!/login',
     versionCheck: {
       enabled: true,
       checkInterval: 24,
       forceUpdateEnabled: true,
       packageName: 'com.spacecom.log2space.skynetwifi',
+      appStoreId: undefined,
+    },
+  },
+  srisamarthinfobahn: {
+    clientId: 'srisamarthinfobahn',
+    clientName: 'Srisamarthinfobahn',
+    api: {
+      baseURL: 'https://admin.srisamarthinfobahn.com/l2s/api',
+      serverURL: 'https://admin.srisamarthinfobahn.com',
+      timeout: 30000,
+    },
+    branding: {
+      logo: 'isp_logo.png',
+      primaryColor: '#1976D2',
+      secondaryColor: '#FF9800',
+      appName: 'Srisamarthinfobahn',
+      headerBackgroundImage: 'header_background.png',
+      logoDimensions: {
+        header: { width: 140, height: 70 },
+        login: { width: 300, height: 200 },
+      },
+    },
+    features: {
+      biometricAuth: true,
+      pushNotifications: true,
+      fileUpload: true,
+      multiLanguage: true,
+    },
+    contact: {
+      headOffice: {
+        title: 'Head Office',
+        address: '107, Ghudekaar Griha, S. K. Bole Road, Dadar (W) - 400028',
+      },
+      branchOffices: [],
+      emails: {
+        inquiries: 'support@ssib.co.in',
+        sales: 'support@ssib.co.in',
+        support: 'support@ssib.co.in',
+      },
+      whatsappNumber: '9022138569',
+      landline: '8655023380',
+    },
+    about: {
+      companyName: 'Sri Samarth Infobhan Pvt. Ltd',
+      establishedYear: '',
+      description:
+        'Sri Samarth Infobhan Pvt. Ltd provides internet connectivity and related services.',
+      specializations: [
+        'High-speed broadband internet',
+        'Fiber broadband',
+        'Home and business internet solutions',
+      ],
+      serviceAreas: ['Mumbai'],
+      achievements: [],
+    },
+    reviewUrl: undefined,
+    website: 'https://admin.srisamarthinfobahn.com/',
+    versionCheck: {
+      enabled: true,
+      checkInterval: 24,
+      forceUpdateEnabled: true,
+      packageName: 'com.spacecom.log2space.srisamarthinfobahn',
       appStoreId: undefined,
     },
   },

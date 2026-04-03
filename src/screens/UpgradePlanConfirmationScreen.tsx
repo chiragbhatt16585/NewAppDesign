@@ -78,7 +78,11 @@ const UpgradePlanConfirmationScreen = ({navigation, route}: any) => {
       const jsonVal = upgradeMenu.display_option_json;
       let parsed: any = {};
       if (typeof jsonVal === 'string') {
-        const trimmed = jsonVal.trim();
+        // Normalize smart quotes from backend/editor copy-paste to avoid JSON.parse failure.
+        const normalizedJson = jsonVal
+          .replace(/[“”]/g, '"')
+          .replace(/[‘’]/g, "'");
+        const trimmed = normalizedJson.trim();
         if (trimmed && (trimmed.startsWith('{') || trimmed.startsWith('['))) {
           try {
             parsed = JSON.parse(trimmed);
@@ -422,7 +426,9 @@ const UpgradePlanConfirmationScreen = ({navigation, route}: any) => {
         ? null
         : (selectedCoupon?.campaign_code || null),
       couponDiscount: appliedDiscount,
-      isp_policy_discount: complimentaryDiscountAvailable ? 'yes' : 'no',
+      isp_policy_discount: complimentaryDiscountAvailable
+        ? complimentaryDiscountAmount
+        : 'no',
       originalAmount: totalAmount,
       refund_amount: refundAmount,
       old_pin_serial: oldPinSerial,
@@ -1125,7 +1131,7 @@ const UpgradePlanConfirmationScreen = ({navigation, route}: any) => {
             <View style={styles.planCardContent}>
               <View style={styles.planCardTopRow}>
                 <View style={styles.planCardLeft}>
-                  {showL2SPlanName || !showPlanParamsBlend ? (
+                  {showL2SPlanName ? (
                     <>
                       <Text style={[styles.planNameNew, {color: colors.text}]}>
                         {selectedPlan.name}

@@ -89,7 +89,7 @@ android {
     
     signingConfigs {
         debug {
-            storeFile file('GatewayFTTH.jks')
+            storeFile file('Log2spceGatewayFTTHKey_V3.jks')
             storePassword 'log2space'
             keyAlias 'log2space'
             keyPassword 'log2space'
@@ -97,7 +97,7 @@ android {
         release {
             // For now, reuse debug keystore for release. Configure a real
             // release keystore when you are ready to publish.
-            storeFile file('GatewayFTTH.jks')
+            storeFile file('Log2spceGatewayFTTHKey_V3.jks')
             storePassword 'log2space'
             keyAlias 'log2space'
             keyPassword 'log2space'

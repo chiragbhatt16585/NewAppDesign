@@ -58,7 +58,7 @@ const clientConfigs: Record<string, ClientConfig> = {
     website: 'https://dnagoa.com/',
     poweredBy: 'Spacecom Software LLP',
     poweredByWebsite: 'https://spacecom.in',
-    bundleId: 'com.dnagoa',
+    bundleId: 'com.spacecom.log2space.dnagoa',
   },
   graceway: {
     name: 'Graceway',
@@ -169,6 +169,16 @@ const clientConfigs: Record<string, ClientConfig> = {
     poweredBy: 'Spacecom Software LLP',
     poweredByWebsite: 'https://spacecom.in',
     bundleId: 'com.spacecom.log2space.successbroadband',
+  },
+  skynetwifi: {
+    name: 'Skynetwifi',
+    companyName: 'Skynetwifi',
+    apiUrl: 'https://skynetwifi.l2s.biz',
+    supportEmail: 'helloskynetwifi@gmail.com',
+    website: 'https://skynetwifi.l2s.biz/admin/#!/login',
+    poweredBy: 'Spacecom Software LLP',
+    poweredByWebsite: 'https://spacecom.in',
+    bundleId: 'com.spacecom.log2space.skynetwifi',
   },
 };
 

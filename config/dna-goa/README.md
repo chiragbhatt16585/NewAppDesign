@@ -7,9 +7,9 @@ This folder contains all the configuration files for the DNA Goa client app.
 - `app.json` - Expo/React Native app configuration
 - `api.ts` - API service configuration with base URL: crm.dnagoa.com
 - `strings.json` - App strings and labels
-- `android-build.gradle` - Android build configuration (package: com.dnagoa)
+- `android-build.gradle` - Android build configuration (package: com.spacecom.log2space.dnagoa)
 - `android-strings.xml` - Android string resources
-- `ios-Info.plist` - iOS app configuration (bundle: com.dnagoa)
+- `ios-Info.plist` - iOS app configuration (bundle: com.spacecom.log2space.dnagoa)
 - `keystore-config.gradle` - Android keystore configuration
 - `logo-config.json` - Logo display configuration
 
@@ -36,7 +36,7 @@ Place your app icons in the following directories:
 
 - **Client ID**: dna-goa
 - **Client Name**: DNA Goa
-- **Package Name**: com.dnagoa
+- **Package Name**: com.spacecom.log2space.dnagoa
 - **Base URL**: crm.dnagoa.com
 - **Email**: sales@dnagoa.com
 - **Contact**: 0832-6747575

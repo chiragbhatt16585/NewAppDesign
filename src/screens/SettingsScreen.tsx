@@ -21,6 +21,8 @@ import DeviceInfo from 'react-native-device-info';
 import versionCheckService from '../services/versionCheck';
 import useMenuSettings from '../hooks/useMenuSettings';
 import LeftBorderLine from '../components/LeftBorderLine';
+import { getClientConfig } from '../config/client-config';
+import { Platform } from 'react-native';
 
 const SettingsScreen = ({ navigation }: any) => {
   const { isDark } = useTheme();
@@ -33,6 +35,7 @@ const SettingsScreen = ({ navigation }: any) => {
   const [appVersion, setAppVersion] = useState<string>('1.0.0');
   const [isChecking, setIsChecking] = useState<boolean>(false);
   const { menu, loading: menuLoading } = useMenuSettings();
+  const isMicroscan = getClientConfig().clientId === 'microscan';
   const [settingsConfig, setSettingsConfig] = useState<any>(null);
 
   useEffect(() => {
@@ -99,6 +102,12 @@ const SettingsScreen = ({ navigation }: any) => {
   const loadAppVersion = async () => {
     try {
       const version = await DeviceInfo.getVersion();
+      const buildNumber = await DeviceInfo.getBuildNumber();
+      // Microscan requirement: show Android versionCode (e.g. 40) in Settings version field.
+      if (isMicroscan && Platform.OS === 'android') {
+        setAppVersion(buildNumber || version);
+        return;
+      }
       setAppVersion(version);
     } catch (error) {
       console.error('Error loading app version:', error);
@@ -191,9 +200,10 @@ const SettingsScreen = ({ navigation }: any) => {
     };
     const showLanguage = flag(cfg?.language);
     // Respect show: false for auth_settings - check auth_settings first, then security_settings
-    const showSecurity = cfg?.auth_settings !== undefined 
+    const showSecurityRaw = cfg?.auth_settings !== undefined 
       ? flag(cfg?.auth_settings) 
       : (cfg?.security_settings !== undefined ? flag(cfg?.security_settings) : true);
+    const showSecurity = isMicroscan ? true : showSecurityRaw;
     // Respect show: false for FAQ
     const showFaq = cfg?.faq !== undefined ? flag(cfg?.faq) : true;
     // Check both tnc and terms_and_conditions, but respect show: false
@@ -243,14 +253,6 @@ const SettingsScreen = ({ navigation }: any) => {
         onPress: () => navigation.navigate('FAQScreen'),
       });
     }
-    // Always show dedicated Troubleshooting entry, separate from FAQ
-    supportItems.push({
-      id: 'troubleshooting',
-      title: t('settings.troubleshooting'),
-      subtitle: t('settings.troubleshootingSubtitle'),
-      icon: 'alert-triangle',
-      onPress: () => navigation.navigate('Troubleshooting'),
-    });
     if (showTerms) {
       supportItems.push({
         id: 'terms',

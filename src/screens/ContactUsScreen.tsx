@@ -280,7 +280,7 @@ const ContactUsScreen = ({navigation}: any) => {
         </View>
       </ScrollView>
 
-      {/* Enterprise Escalation Matrix Modal */}
+      {/* Escalation Matrix Modal */}
       {hasEscalationData && (
         <Modal
           visible={showEscalationModal}

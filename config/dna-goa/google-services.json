@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "854038354326",
+    "project_id": "log2space---dna-goa-new-app",
+    "storage_bucket": "log2space---dna-goa-new-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:854038354326:android:de51354acb5795f45be5b7",
+        "android_client_info": {
+          "package_name": "com.spacecom.log2space.dnagoa"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCtuskzl7VcVbkMMI8VTpBKCjtLxYommDs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

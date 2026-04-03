@@ -74,6 +74,7 @@ const CommonHeader = ({
       'netfix:header_background.png': require('../../config/netfix/assets/header_background.png'),
       'gatewayftth:header_background.png': require('../../config/gatewayftth/assets/header_background.png'),
       'skynetwifi:header_background.png': require('../../config/gatewayftth/assets/header_background.png'),
+      'srisamarthinfobahn:header_background.png': require('../../config/gatewayftth/assets/header_background.png'),
       'one-sevenstar:header_background.png': require('../../config/one-sevenstar/assets/header_background.png'),
       'metanet:header_background.png': require('../../config/metanet/assets/header_background.png'),
       'graceway:header_background.png': require('../../config/graceway/assets/header_background.png'),
@@ -101,6 +102,7 @@ const CommonHeader = ({
       clientConfig.clientId === 'netfix' ||
       clientConfig.clientId === 'gatewayftth' ||
       clientConfig.clientId === 'skynetwifi' ||
+      clientConfig.clientId === 'srisamarthinfobahn' ||
       clientConfig.clientId === 'one-sevenstar' ||
       clientConfig.clientId === 'metanet' ||
       clientConfig.clientId === 'graceway' ||
@@ -134,6 +136,7 @@ const CommonHeader = ({
       clientConfig.clientId === 'netfix' ||
       clientConfig.clientId === 'gatewayftth' ||
       clientConfig.clientId === 'spacecom-local' ||
+      clientConfig.clientId === 'srisamarthinfobahn' ||
       clientConfig.clientId === 'one-sevenstar' ||
       clientConfig.clientId === 'metanet' ||
       clientConfig.clientId === 'graceway' ||
