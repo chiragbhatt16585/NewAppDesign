@@ -77,6 +77,7 @@ const CommonHeader = ({
       'srisamarthinfobahn:header_background.png': require('../../config/gatewayftth/assets/header_background.png'),
       'one-sevenstar:header_background.png': require('../../config/one-sevenstar/assets/header_background.png'),
       'metanet:header_background.png': require('../../config/metanet/assets/header_background.png'),
+      'monarknet:header_background.png': require('../../config/monarknet/assets/header_background.png'),
       'graceway:header_background.png': require('../../config/graceway/assets/header_background.png'),
       'log2space-common:header_background.png': require('../../config/log2space-common/assets/header_background.png'),
       // 'netplanet:header_background.png': require('../../config/netplanet/assets/header_background.png'),
@@ -105,6 +106,7 @@ const CommonHeader = ({
       clientConfig.clientId === 'srisamarthinfobahn' ||
       clientConfig.clientId === 'one-sevenstar' ||
       clientConfig.clientId === 'metanet' ||
+      clientConfig.clientId === 'monarknet' ||
       clientConfig.clientId === 'graceway' ||
       clientConfig.clientId === 'log2space-common');
 
@@ -139,6 +141,7 @@ const CommonHeader = ({
       clientConfig.clientId === 'srisamarthinfobahn' ||
       clientConfig.clientId === 'one-sevenstar' ||
       clientConfig.clientId === 'metanet' ||
+      clientConfig.clientId === 'monarknet' ||
       clientConfig.clientId === 'graceway' ||
       clientConfig.clientId === 'log2space-common');
 

@@ -173,6 +173,15 @@ const CLIENTS = {
     keystore: 'Log2spceGatewayFTTHKey_V3.jks',
     configDir: 'config/srisamarthinfobahn',
   },
+  monarknet: {
+    name: 'Monarknet',
+    packageName: 'in.spacecom.log2space.client.monarkuser',
+    namespace: 'in.spacecom.log2space.client.monarkuser',
+    versionCode: 1,
+    versionName: '1.0.1',
+    keystore: 'Log2spceGatewayFTTHKey_V3.jks',
+    configDir: 'config/monarknet',
+  },
 };
 
 // Colors for console output
@@ -721,18 +730,48 @@ function updateAndroidBuildGradle(clientId) {
     `$1${releaseKeyPassword}$2`
   );
 
-  // When using "in" package (microscan, netfix), exclude only the other so the current client's path is included
+  // in.spacecom.log2space.client.* — exclude every sibling app package (microscan, netfix, monarkuser, …)
+  const inClientSuffixes = ['microscan', 'netfix', 'monarkuser'];
+  let inExcludeBlock = '';
   if (client.namespace.startsWith('in.spacecom.log2space.client.')) {
-    const currentInClient = client.namespace.replace('in.spacecom.log2space.client.', '');
-    const otherInClient = currentInClient === 'microscan' ? 'netfix' : 'microscan';
-    buildGradleContent = buildGradleContent.replace(
-      /exclude '\*\*\/in\/spacecom\/log2space\/client\/__IN_CLIENT_OTHER__\/\*\*'/,
-      `exclude '**/in/spacecom/log2space/client/${otherInClient}/**'`
-    );
+    const currentSuffix = client.namespace.replace('in.spacecom.log2space.client.', '');
+    const lines = inClientSuffixes
+      .filter((s) => s !== currentSuffix)
+      .map(
+        (s) =>
+          `                exclude '**/in/spacecom/log2space/client/${s}/**'`,
+      )
+      .join('\n');
+    inExcludeBlock = `                // in.spacecom.log2space.client.${currentSuffix} — exclude other in.* client packages\n${lines}\n`;
   } else {
+    const lines = inClientSuffixes
+      .map(
+        (s) =>
+          `                exclude '**/in/spacecom/log2space/client/${s}/**'`,
+      )
+      .join('\n');
+    inExcludeBlock = `                // Non-in client — exclude all in.* client app packages\n${lines}\n`;
+  }
+  // Match legacy "When building one 'in' client…" or newer "in.spacecom…client.X — exclude…" comment + following excludes
+  const inBlockPattern =
+    /\n[ \t]*\/\/ (?:When building one 'in' client[^\n]*|in\.spacecom\.log2space\.client\.[^\n]+)\n(?:[ \t]*exclude '\*\*\/in\/spacecom\/log2space\/client\/[^']+'[ \t]*\n)+(?:[ \t]*\/\/ Exclude other[^\n]*\n)?/;
+  if (inBlockPattern.test(buildGradleContent)) {
+    buildGradleContent = buildGradleContent.replace(inBlockPattern, '\n' + inExcludeBlock);
+  } else {
+    // Fallback: legacy placeholder used in some templates
+    const suffixesForExclude = client.namespace.startsWith('in.spacecom.log2space.client.')
+      ? inClientSuffixes.filter(
+          (s) => s !== client.namespace.replace('in.spacecom.log2space.client.', ''),
+        )
+      : inClientSuffixes;
     buildGradleContent = buildGradleContent.replace(
       /exclude '\*\*\/in\/spacecom\/log2space\/client\/__IN_CLIENT_OTHER__\/\*\*'/,
-      "exclude '**/in/spacecom/log2space/client/microscan/**'\n                exclude '**/in/spacecom/log2space/client/netfix/**'"
+      suffixesForExclude
+        .map(
+          (s) =>
+            `exclude '**/in/spacecom/log2space/client/${s}/**'`,
+        )
+        .join('\n                '),
     );
   }
 
@@ -800,8 +839,10 @@ function updateAndroidMainActivity(clientId) {
     const oldDirs = [
       path.join(javaDir, 'in', 'spacecom', 'log2space', 'client', 'microscan'),
       path.join(javaDir, 'in', 'spacecom', 'log2space', 'client', 'netfix'),
+      path.join(javaDir, 'in', 'spacecom', 'log2space', 'client', 'monarkuser'),
       path.join(javaDir, 'com', 'microscan', 'app'),
       path.join(javaDir, 'com', 'spacecom', 'log2space', 'microscan'),
+      path.join(javaDir, 'com', 'spacecom', 'log2space', 'monarknet'),
       path.join(javaDir, 'com', 'netfixnetworks'),
     ];
     oldDirs.forEach(oldDir => {

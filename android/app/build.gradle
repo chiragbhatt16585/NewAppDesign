@@ -127,9 +127,9 @@ android {
                 exclude '**/com/log2space/**'
                 exclude '**/com/microscan/**'
                 exclude '**/com/netfixnetworks/**'
-                // When building one 'in' client, exclude the other (script sets this to microscan or netfix)
-                exclude '**/in/spacecom/log2space/client/microscan/**'
-                // Exclude other 'in' packages if needed, but not 'in/spacecom/log2space/client/microscan'
+                // in.spacecom.log2space.client.microscan — exclude other in.* client packages
+                exclude '**/in/spacecom/log2space/client/netfix/**'
+                exclude '**/in/spacecom/log2space/client/monarkuser/**'
             }
         }
     }

@@ -180,6 +180,16 @@ const clientConfigs: Record<string, ClientConfig> = {
     poweredByWebsite: 'https://spacecom.in',
     bundleId: 'com.spacecom.log2space.skynetwifi',
   },
+  monarknet: {
+    name: 'Monark Broadband',
+    companyName: 'Monark Broadband Pvt Ltd',
+    apiUrl: 'https://monarknet.l2s.biz',
+    supportEmail: 'info@monarkbroadband.in',
+    website: 'https://monarknet.l2s.biz',
+    poweredBy: 'Spacecom Software LLP',
+    poweredByWebsite: 'https://spacecom.in',
+    bundleId: 'in.spacecom.log2space.client.monarkuser',
+  },
 };
 
 // Export current client configuration

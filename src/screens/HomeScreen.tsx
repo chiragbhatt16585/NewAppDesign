@@ -208,6 +208,7 @@ const HomeScreen = ({navigation}: any) => {
     'gatewayftth',
     'one-sevenstar',
     'metanet',
+    'monarknet',
     'graceway',
     'log2space-common',
   ]);
@@ -380,7 +381,11 @@ const HomeScreen = ({navigation}: any) => {
       const currentClientId = getClientConfig().clientId;
       if (currentClientId === 'linkway') {
         result.profileMenuEnabled = false;
-      } else if (currentClientId === 'metanet' || currentClientId === 'log2space-common') {
+      } else if (
+        currentClientId === 'metanet' ||
+        currentClientId === 'monarknet' ||
+        currentClientId === 'log2space-common'
+      ) {
         result.profileMenuEnabled = true;
       }
     } catch {

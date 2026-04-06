@@ -1,0 +1,35 @@
+{
+  "name": "MonarknetApp",
+  "expo": {
+    "name": "Monark Broadband",
+    "slug": "monarknet",
+    "version": "1.0.1",
+    "orientation": "portrait",
+    "icon": "./app-icons/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./app-icons/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "in.spacecom.log2space.client.monarkuser",
+      "buildNumber": "1"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./app-icons/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "package": "in.spacecom.log2space.client.monarkuser",
+      "versionCode": 1
+    },
+    "web": {
+      "favicon": "./app-icons/favicon.png"
+    }
+  }
+}

@@ -1442,6 +1442,71 @@ const clientConfigs: Record<string, ClientConfig> = {
       appStoreId: '1234567890',
     },
   },
+  monarknet: {
+    clientId: 'monarknet',
+    clientName: 'Monark Broadband',
+    api: {
+      baseURL: 'https://monarknet.l2s.biz/l2s/api',
+      serverURL: 'https://monarknet.l2s.biz',
+      timeout: 30000,
+    },
+    branding: {
+      logo: 'isp_logo.png',
+      primaryColor: '#1976D2',
+      secondaryColor: '#42A5F5',
+      appName: 'Monark Broadband',
+      headerBackgroundImage: 'header_background.png',
+      logoDimensions: {
+        header: { width: 150, height: 80 },
+        login: { width: 300, height: 200 },
+      },
+    },
+    features: {
+      biometricAuth: true,
+      pushNotifications: true,
+      fileUpload: true,
+      multiLanguage: true,
+    },
+    contact: {
+      whatsappNumber: '9224587510',
+      headOffice: {
+        title: 'Office',
+        address:
+          'Shop No. 15, Nandkrupa Shopping Centre, 4 Bungalow, Main Market, Behind Anjali Book Centre, Andheri West, Mumbai - 400058',
+        customerSupport: '9224587510',
+        customerSupportHours: 'Monday - Sunday | 24×7',
+      },
+      branchOffices: [],
+      emails: {
+        inquiries: 'info@monarkbroadband.in',
+        sales: 'info@monarkbroadband.in',
+        support: 'info@monarkbroadband.in',
+      },
+      landline: '9224587513',
+    },
+    about: {
+      companyName: 'Monark Broadband Pvt Ltd',
+      establishedYear: '',
+      description:
+        'Monark Broadband Pvt Ltd provides high-speed internet connectivity and related services.',
+      specializations: [
+        'High-speed broadband internet',
+        'Fiber broadband',
+        'Home and business internet solutions',
+      ],
+      serviceAreas: ['Mumbai', 'Maharashtra'],
+      achievements: [],
+    },
+    reviewUrl: undefined,
+    website: 'https://monarknet.l2s.biz',
+    versionCheck: {
+      enabled: true,
+      checkInterval: 24,
+      forceUpdateEnabled: true,
+      packageName: 'in.spacecom.log2space.client.monarkuser',
+      appStoreId: undefined,
+    },
+  },
 };
 
 // Get current client configuration
