@@ -537,7 +537,9 @@ const clientConfigs: Record<string, ClientConfig> = {
       checkInterval: 24, // Check every 24 hours
       forceUpdateEnabled: true,
       packageName: 'com.spacecom.log2space.dnagoa',
-      appStoreId: '1559045355',
+      // iOS: DNA Goa Customer Service App
+      // https://apps.apple.com/us/app/dna-goa-customer-service-app/id6761742948
+      appStoreId: '6761742948',
     },
   },
   graceway: {
@@ -776,13 +778,14 @@ const clientConfigs: Record<string, ClientConfig> = {
       achievements: [],
     },
     reviewUrl: undefined,
-    website: 'https://skynetwifi.l2s.biz/admin/#!/login',
+    website: 'https://skynetwifi.in/',
     versionCheck: {
       enabled: true,
       checkInterval: 24,
       forceUpdateEnabled: true,
       packageName: 'com.spacecom.log2space.skynetwifi',
-      appStoreId: undefined,
+      // https://apps.apple.com/us/app/skynet-wi-fi-end-user-app/id6762499378
+      appStoreId: '6762499378',
     },
   },
   srisamarthinfobahn: {
@@ -1504,6 +1507,70 @@ const clientConfigs: Record<string, ClientConfig> = {
       checkInterval: 24,
       forceUpdateEnabled: true,
       packageName: 'in.spacecom.log2space.client.monarkuser',
+      appStoreId: undefined,
+    },
+  },
+  funnet: {
+    clientId: 'funnet',
+    clientName: 'Funnet',
+    api: {
+      baseURL: 'https://funnet.l2s.biz/l2s/api',
+      serverURL: 'https://funnet.l2s.biz',
+      timeout: 30000,
+    },
+    branding: {
+      logo: 'isp_logo.png',
+      primaryColor: '#1976D2',
+      secondaryColor: '#42A5F5',
+      appName: 'Funnet',
+      headerBackgroundImage: 'header_background.png',
+      logoDimensions: {
+        header: { width: 150, height: 80 },
+        login: { width: 300, height: 200 },
+      },
+    },
+    features: {
+      biometricAuth: true,
+      pushNotifications: true,
+      fileUpload: true,
+      multiLanguage: true,
+    },
+    contact: {
+      whatsappNumber: '7028856763',
+      headOffice: {
+        title: 'Head Office',
+        address:
+          'G-2 Bhima Mhatre CHS Ltd, Near Agrawall Hall, Manpada Rd, Dombivli, Dombivli East, Maharashtra 421201',
+        customerSupport: '8976017880',
+      },
+      branchOffices: [],
+      emails: {
+        inquiries: 'accounts@delix.in',
+        sales: 'accounts@delix.in',
+        support: 'accounts@delix.in',
+      },
+      landline: '8976017880',
+    },
+    about: {
+      companyName: 'Delix Net Solutions Pvt Ltd',
+      establishedYear: '',
+      description:
+        'Delix Net Solutions Pvt Ltd provides high-speed internet connectivity and related services.',
+      specializations: [
+        'High-speed broadband internet',
+        'Fiber broadband',
+        'Home and business internet solutions',
+      ],
+      serviceAreas: ['Dombivli', 'Dombivli East', 'Maharashtra'],
+      achievements: [],
+    },
+    reviewUrl: undefined,
+    website: 'https://funnet.l2s.biz',
+    versionCheck: {
+      enabled: true,
+      checkInterval: 24,
+      forceUpdateEnabled: true,
+      packageName: 'com.spacecom.log2space.funnet',
       appStoreId: undefined,
     },
   },

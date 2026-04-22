@@ -20,6 +20,57 @@ import { apiService } from '../services/api';
 import sessionManager from '../services/sessionManager';
 import { getClientConfig } from '../config/client-config';
 
+/**
+ * PayU (and other Indian PGs) open UPI wallets using Android Chrome "intent:" URLs.
+ * React Native Linking uses Intent(ACTION_VIEW, Uri.parse(url)), which does NOT handle
+ * intent:…#Intent;scheme=upi;… — use Intent.parseUri in native apps; here we expand to
+ * the embedded app link (e.g. upi://pay?…) so Linking can start the correct activity.
+ *
+ * @see https://docs.payu.in/docs/webview-for-mobile-apps (handleIntentFlow / intent://)
+ */
+function convertAndroidChromeIntentToAppLink(intentUrl: string): string | null {
+  if (!/^intent:/i.test(intentUrl)) {
+    return null;
+  }
+  const marker = '#Intent';
+  const idx = intentUrl.indexOf(marker);
+  if (idx === -1) {
+    return null;
+  }
+  const uriBody = intentUrl.slice('intent:'.length, idx);
+  if (!uriBody) {
+    return null;
+  }
+  const fragment = intentUrl.slice(idx + marker.length);
+  const schemeMatch = fragment.match(/(?:^|;)\s*scheme\s*=\s*([^;]+)/i);
+  if (!schemeMatch) {
+    return null;
+  }
+  const scheme = schemeMatch[1].trim().toLowerCase();
+  if (!scheme || scheme === 'http' || scheme === 'https') {
+    return null;
+  }
+  return `${scheme}:${uriBody}`;
+}
+
+function openPaymentExternalUrl(rawUrl: string) {
+  let urlToOpen = rawUrl;
+  if (Platform.OS === 'android' && /^intent:/i.test(rawUrl)) {
+    const expanded = convertAndroidChromeIntentToAppLink(rawUrl);
+    if (expanded) {
+      urlToOpen = expanded;
+    } else {
+      console.warn(
+        'Payment WebView: could not expand Android intent: URL; UPI app may not open.',
+        rawUrl.slice(0, 200)
+      );
+    }
+  }
+  Linking.openURL(urlToOpen).catch((e) => {
+    console.log('Failed to open external payment URL:', e);
+  });
+}
+
 const PaymentLinkScreen = ({ navigation, route }: any) => {
   const { isDark } = useTheme();
   const colors = getThemeColors(isDark);
@@ -834,69 +885,75 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
           // Additional headers for better compatibility
           onShouldStartLoadWithRequest={(request) => {
             console.log('WebView should start load:', request.url);
-            
+
+            const lowerUrl = request.url.toLowerCase();
+            const isHttpUrl = /^https?:\/\//i.test(request.url);
+
+            // Android PayU UPI: intent://…#Intent;scheme=upi;… (must expand — Linking cannot parse intent:)
+            if (Platform.OS === 'android' && lowerUrl.startsWith('intent:')) {
+              console.log('Android intent: URL intercepted for payment app handoff');
+              openPaymentExternalUrl(request.url);
+              return false;
+            }
+
             // Allow third-party payment apps to open
-            if (request.url.startsWith('googlepay://') ||
-                request.url.startsWith('tez://') ||
-                request.url.startsWith('gpay://') ||
-                request.url.startsWith('phonepe://') ||
-                request.url.startsWith('phonepepay://') ||
-                request.url.startsWith('cred://') ||
-                request.url.startsWith('credpay://') ||
-                request.url.startsWith('paytm://') ||
-                request.url.startsWith('paytmmoney://') ||
-                request.url.startsWith('paytmmp://') ||
-                request.url.startsWith('paytmwallet://') ||
-                request.url.startsWith('paytmbank://') ||
-                request.url.startsWith('amazonpay://') ||
-                request.url.startsWith('amazonpaylite://') ||
-                request.url.startsWith('bhim://') ||
-                request.url.startsWith('bhimupi://') ||
-                request.url.startsWith('upi://') ||
-                request.url.startsWith('mobikwik://') ||
-                request.url.startsWith('freecharge://') ||
-                request.url.startsWith('airtelpay://') ||
-                request.url.startsWith('airtel://') ||
-                request.url.startsWith('jio://') ||
-                request.url.startsWith('jiopay://') ||
-                request.url.startsWith('jiomoney://') ||
-                request.url.startsWith('intent://') ||
-                request.url.startsWith('market://') ||
+            if (lowerUrl.startsWith('googlepay://') ||
+                lowerUrl.startsWith('tez://') ||
+                lowerUrl.startsWith('gpay://') ||
+                lowerUrl.startsWith('phonepe://') ||
+                lowerUrl.startsWith('phonepepay://') ||
+                lowerUrl.startsWith('cred://') ||
+                lowerUrl.startsWith('credpay://') ||
+                lowerUrl.startsWith('paytm://') ||
+                lowerUrl.startsWith('paytmmoney://') ||
+                lowerUrl.startsWith('paytmmp://') ||
+                lowerUrl.startsWith('paytmwallet://') ||
+                lowerUrl.startsWith('paytmbank://') ||
+                lowerUrl.startsWith('amazonpay://') ||
+                lowerUrl.startsWith('amazonpaylite://') ||
+                lowerUrl.startsWith('bhim://') ||
+                lowerUrl.startsWith('bhimupi://') ||
+                lowerUrl.startsWith('upi://') ||
+                lowerUrl.startsWith('mobikwik://') ||
+                lowerUrl.startsWith('freecharge://') ||
+                lowerUrl.startsWith('airtelpay://') ||
+                lowerUrl.startsWith('airtel://') ||
+                lowerUrl.startsWith('jio://') ||
+                lowerUrl.startsWith('jiopay://') ||
+                lowerUrl.startsWith('jiomoney://') ||
+                lowerUrl.startsWith('market://') ||
                 request.url.includes('play.google.com/store/apps') ||
                 request.url.includes('apps.apple.com/app/')) {
               console.log('Third-party payment app detected:', request.url);
               console.log('Allowing external app to open...');
               // WebView won't automatically open custom schemes.
               // We must explicitly delegate the deep link to the OS.
-              Linking.openURL(request.url).catch((e) => {
-                console.log('Failed to open external app deep link:', e);
-              });
+              openPaymentExternalUrl(request.url);
               return false; // Prevent WebView from loading, allow external app to open
             }
-            
-            // Handle deep links and universal links for payment apps
-            if (request.url.includes('googlepay') ||
-                request.url.includes('tez') ||
-                request.url.includes('gpay') ||
-                request.url.includes('phonepe') ||
-                request.url.includes('cred') ||
-                request.url.includes('paytm') ||
-                request.url.includes('amazonpay') ||
-                request.url.includes('bhim') ||
-                request.url.includes('upi') ||
-                request.url.includes('mobikwik') ||
-                request.url.includes('freecharge') ||
-                request.url.includes('airtel') ||
-                request.url.includes('jio') ||
-                request.url.includes('razorpay') ||
-                request.url.includes('stripe') ||
-                request.url.includes('square') ||
-                request.url.includes('paypal')) {
+
+            // Non-http(s) deep links only — avoid matching https://…/upi/… checkout URLs
+            if (!isHttpUrl &&
+                (lowerUrl.includes('googlepay') ||
+                lowerUrl.includes('tez') ||
+                lowerUrl.includes('gpay') ||
+                lowerUrl.includes('phonepe') ||
+                lowerUrl.includes('cred') ||
+                lowerUrl.includes('paytm') ||
+                lowerUrl.includes('amazonpay') ||
+                lowerUrl.includes('bhim') ||
+                lowerUrl.includes('upi') ||
+                lowerUrl.includes('mobikwik') ||
+                lowerUrl.includes('freecharge') ||
+                lowerUrl.includes('airtel') ||
+                lowerUrl.includes('jio') ||
+                lowerUrl.includes('razorpay') ||
+                lowerUrl.includes('stripe') ||
+                lowerUrl.includes('square') ||
+                lowerUrl.includes('paypal'))) {
               console.log('Payment app deep link detected:', request.url);
               console.log('Allowing external payment app to open...');
-              Linking.openURL(request.url).catch((e) => {
-                console.log('Failed to open payment deep link:', e);
-              });
+              openPaymentExternalUrl(request.url);
               return false; // Prevent WebView from loading, allow external app to open
             }
             

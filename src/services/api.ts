@@ -261,6 +261,178 @@ class ApiService {
     }
   }
 
+  // Keep method name aligned with backend/client usage ("getAdminDetials" typo intentional).
+  async getAdminDetials(franchiseename: string, _realm: string = 'default') {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const username = await sessionManager.getUsername();
+      if (!username) {
+        throw new Error('No username found in session');
+      }
+
+      const data = {
+        username: username.toLowerCase().trim(),
+        admin_login_id: franchiseename,
+        action: 'settings',
+        request_source: 'app',
+        request_app: 'user_app',
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout,
+      };
+
+      try {
+        const res = await fetch(`${getApiUrl()}/selfcareGetAdminDetails`, options);
+        const response = await res.json();
+        if (__DEV__) {
+          try {
+            console.log(
+              '[getAdminDetials] Full API response:',
+              JSON.stringify(response, null, 2)
+            );
+          } catch {
+            console.log('[getAdminDetials] Full API response (raw):', response);
+          }
+        }
+
+        if (response.status !== 'ok' && response.code !== 200) {
+          throw new Error('Admin details not found. Please try again.');
+        }
+
+        const payload = response.data;
+        if (Array.isArray(payload)) {
+          return payload[0] || null;
+        }
+        return payload || null;
+      } catch (e: any) {
+        if (isNetworkError(e)) {
+          throw new Error(networkErrorMsg);
+        } else {
+          throw new Error(e.message || 'Failed to fetch admin details');
+        }
+      }
+    });
+  }
+
+  async sendProfileUpdateOTP(params: {
+    username: string;
+    loginId: string;
+    adminLoginId: string;
+    otpSentOn: string;
+  }) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const data = {
+        username: params.username,
+        login_id: params.loginId,
+        admin_login_id: params.adminLoginId,
+        login_type: 'user',
+        otp_type: 'update_profile_details',
+        otp_sent_option: 'sms',
+        otp_sent_on: params.otpSentOn,
+        user_application: 'end_user',
+        request_source: 'app',
+        request_app: 'user_app',
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout,
+      };
+
+      try {
+        const res = await fetch(`${getApiUrl()}/selfcareSendOTP`, options);
+        const response = await res.json();
+
+        if (__DEV__) {
+          try {
+            console.log(
+              '[sendProfileUpdateOTP] Full API response:',
+              JSON.stringify(response, null, 2)
+            );
+          } catch {
+            console.log('[sendProfileUpdateOTP] Full API response (raw):', response);
+          }
+        }
+
+        if (response.status !== 'ok' && response.code !== 200) {
+          throw new Error(response.message || 'Failed to send OTP');
+        }
+        return response;
+      } catch (e: any) {
+        if (isNetworkError(e)) {
+          throw new Error(networkErrorMsg);
+        }
+        throw new Error(e.message || 'Failed to send OTP');
+      }
+    });
+  }
+
+  async updateUserProfileDetails(params: {
+    username: string;
+    adminLoginId: string;
+    otp?: string;
+    primaryEmail: string;
+    firstName: string;
+    middleName?: string;
+    lastName?: string;
+    primaryMobile: string;
+  }) {
+    return this.makeAuthenticatedRequest(async (token: string) => {
+      const data = {
+        username: params.username,
+        admin_login_id: params.adminLoginId,
+        otp: params.otp || '',
+        otp_type: 'update_profile_details',
+        primary_email: params.primaryEmail,
+        first_name: params.firstName,
+        middle_name: params.middleName || '',
+        last_name: params.lastName || '',
+        primary_mobile: params.primaryMobile,
+        user_application: 'end_user',
+        request_source: 'app',
+        request_app: 'user_app',
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout,
+      };
+
+      try {
+        const res = await fetch(`${getApiUrl()}/selfcareUpdateUserProfileDetails`, options);
+        const response = await res.json();
+
+        if (__DEV__) {
+          try {
+            console.log(
+              '[updateUserProfileDetails] Full API response:',
+              JSON.stringify(response, null, 2)
+            );
+          } catch {
+            console.log('[updateUserProfileDetails] Full API response (raw):', response);
+          }
+        }
+
+        if (response.status !== 'ok' && response.code !== 200) {
+          throw new Error(response.message || 'Failed to update profile details');
+        }
+        return response;
+      } catch (e: any) {
+        if (isNetworkError(e)) {
+          throw new Error(networkErrorMsg);
+        }
+        throw new Error(e.message || 'Failed to update profile details');
+      }
+    });
+  }
+
   async checkAuthTokenValidity() {
     console.log('=== CHECK AUTH TOKEN VALIDITY DEBUG ===');
     try {

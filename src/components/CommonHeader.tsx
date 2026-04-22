@@ -78,6 +78,7 @@ const CommonHeader = ({
       'one-sevenstar:header_background.png': require('../../config/one-sevenstar/assets/header_background.png'),
       'metanet:header_background.png': require('../../config/metanet/assets/header_background.png'),
       'monarknet:header_background.png': require('../../config/monarknet/assets/header_background.png'),
+      'funnet:header_background.png': require('../../config/funnet/assets/header_background.png'),
       'graceway:header_background.png': require('../../config/graceway/assets/header_background.png'),
       'log2space-common:header_background.png': require('../../config/log2space-common/assets/header_background.png'),
       // 'netplanet:header_background.png': require('../../config/netplanet/assets/header_background.png'),
@@ -107,6 +108,7 @@ const CommonHeader = ({
       clientConfig.clientId === 'one-sevenstar' ||
       clientConfig.clientId === 'metanet' ||
       clientConfig.clientId === 'monarknet' ||
+      clientConfig.clientId === 'funnet' ||
       clientConfig.clientId === 'graceway' ||
       clientConfig.clientId === 'log2space-common');
 
@@ -137,11 +139,13 @@ const CommonHeader = ({
       clientConfig.clientId === 'dna-infotel' ||
       clientConfig.clientId === 'netfix' ||
       clientConfig.clientId === 'gatewayftth' ||
+      clientConfig.clientId === 'skynetwifi' ||
       clientConfig.clientId === 'spacecom-local' ||
       clientConfig.clientId === 'srisamarthinfobahn' ||
       clientConfig.clientId === 'one-sevenstar' ||
       clientConfig.clientId === 'metanet' ||
       clientConfig.clientId === 'monarknet' ||
+      clientConfig.clientId === 'funnet' ||
       clientConfig.clientId === 'graceway' ||
       clientConfig.clientId === 'log2space-common');
 

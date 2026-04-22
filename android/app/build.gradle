@@ -103,12 +103,12 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "in.spacecom.log2space.client.microscan"
+    namespace "com.log2space.spacecom.local"
     defaultConfig {
-        applicationId "in.spacecom.log2space.client.microscan"
+        applicationId "com.spacecom.log2space.gatewayftth"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 40
+        versionCode 1
         versionName "1.0.1"
         buildConfigField "boolean", "IS_NEW_ARCHITECTURE_ENABLED", "false"
     }
@@ -127,7 +127,8 @@ android {
                 exclude '**/com/log2space/**'
                 exclude '**/com/microscan/**'
                 exclude '**/com/netfixnetworks/**'
-                // in.spacecom.log2space.client.microscan — exclude other in.* client packages
+                // Non-in client — exclude all in.* client app packages
+                exclude '**/in/spacecom/log2space/client/microscan/**'
                 exclude '**/in/spacecom/log2space/client/netfix/**'
                 exclude '**/in/spacecom/log2space/client/monarkuser/**'
             }
@@ -143,9 +144,9 @@ android {
             }
             release {
                 storeFile file('Log2SpaceEndUserMicroscan.jks')
-                storePassword 'log2space'
-                keyAlias 'log2space'
-                keyPassword 'log2space'
+                storePassword 'dnasubscriber'
+                keyAlias 'dnasubscriber'
+                keyPassword 'dnasubscriber'
             }
         }
 

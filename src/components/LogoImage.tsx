@@ -126,6 +126,7 @@ const LogoImage: React.FC<LogoImageProps> = ({style, width, height, type = 'head
         'gatewayftth:isp_logo.png': require('../../config/gatewayftth/assets/isp_logo.png'),
         'metanet:isp_logo.png': require('../../config/metanet/assets/isp_logo.png'),
         'monarknet:isp_logo.png': require('../../config/monarknet/assets/isp_logo.png'),
+        'funnet:isp_logo.png': require('../../config/funnet/assets/isp_logo.png'),
         'graceway:isp_logo.png': require('../../config/graceway/assets/isp_logo.png'),
         'log2space-common:isp_logo.png': require('../../config/log2space-common/assets/isp_logo.png'),
 

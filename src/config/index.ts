@@ -175,7 +175,7 @@ const clientConfigs: Record<string, ClientConfig> = {
     companyName: 'Skynetwifi',
     apiUrl: 'https://skynetwifi.l2s.biz',
     supportEmail: 'helloskynetwifi@gmail.com',
-    website: 'https://skynetwifi.l2s.biz/admin/#!/login',
+    website: 'https://skynetwifi.in/',
     poweredBy: 'Spacecom Software LLP',
     poweredByWebsite: 'https://spacecom.in',
     bundleId: 'com.spacecom.log2space.skynetwifi',
@@ -189,6 +189,16 @@ const clientConfigs: Record<string, ClientConfig> = {
     poweredBy: 'Spacecom Software LLP',
     poweredByWebsite: 'https://spacecom.in',
     bundleId: 'in.spacecom.log2space.client.monarkuser',
+  },
+  funnet: {
+    name: 'Funnet',
+    companyName: 'Delix Net Solutions Pvt Ltd',
+    apiUrl: 'https://funnet.l2s.biz',
+    supportEmail: 'accounts@delix.in',
+    website: 'https://funnet.l2s.biz',
+    poweredBy: 'Spacecom Software LLP',
+    poweredByWebsite: 'https://spacecom.in',
+    bundleId: 'com.spacecom.log2space.funnet',
   },
 };
 

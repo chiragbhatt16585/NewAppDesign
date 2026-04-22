@@ -837,41 +837,34 @@ const RenewPlanScreen = ({navigation}: any) => {
       // console.log('=== END FUP PLAN FILTER DEBUG ===');
     }
 
-    // Sort plans based on selected sort option
-    filteredPlans.sort((a, b) => {
-      // console.log('Auth data current plan fields:', {
-      //   current_plan: authData?.current_plan,
-      //   current_plan1: authData?.current_plan1,
-      //   plan_name: a.name
-      // });
-      const aIsCurrent = a.name === authData?.current_plan || a.name === authData?.current_plan1;
-      const bIsCurrent = b.name === authData?.current_plan || b.name === authData?.current_plan1;
-      
-      switch (sortOption) {
-        case 'price-low-high':
-          return a.FinalAmount - b.FinalAmount;
-        case 'price-high-low':
-          return b.FinalAmount - a.FinalAmount;
-        case 'speed-high-low':
-          const speedA = parseInt(a.downloadSpeed.split(' ')[0]);
-          const speedB = parseInt(b.downloadSpeed.split(' ')[0]);
-          return speedB - speedA;
-        case 'validity-high-low':
-          return b.days - a.days;
-        case 'gb-high-low':
-          const limitA = a.limit === 'Unlimited' ? -1 : parseInt(a.limit);
-          const limitB = b.limit === 'Unlimited' ? -1 : parseInt(b.limit);
-          return limitB - limitA;
-        case '':
-        default: 
-          // Default: Put current plan first, then sort by price low to high
-          // console.log('Default sorting - Current plan:', authData?.current_plan);
-          // console.log('Comparing plans:', { a: a.name, b: b.name, aIsCurrent, bIsCurrent });
-          if (aIsCurrent && !bIsCurrent) return -1;
-          if (!aIsCurrent && bIsCurrent) return 1;
-          return a.FinalAmount - b.FinalAmount;
-      }
-    });
+    // Sort only when user explicitly selects a sort option.
+    // Default view keeps API order as-is.
+    if (sortOption) {
+      filteredPlans.sort((a, b) => {
+        // Keep sorting aligned with what the UI displays (tax-inclusive total amount).
+        const aDisplayPrice = calculateTotalAmount(a);
+        const bDisplayPrice = calculateTotalAmount(b);
+
+        switch (sortOption) {
+          case 'price-low-high':
+            return aDisplayPrice - bDisplayPrice;
+          case 'price-high-low':
+            return bDisplayPrice - aDisplayPrice;
+          case 'speed-high-low':
+            const speedA = parseInt(a.downloadSpeed.split(' ')[0]);
+            const speedB = parseInt(b.downloadSpeed.split(' ')[0]);
+            return speedB - speedA;
+          case 'validity-high-low':
+            return b.days - a.days;
+          case 'gb-high-low':
+            const limitA = a.limit === 'Unlimited' ? -1 : parseInt(a.limit);
+            const limitB = b.limit === 'Unlimited' ? -1 : parseInt(b.limit);
+            return limitB - limitA;
+          default:
+            return 0;
+        }
+      });
+    }
 
     console.log('Total plans after filtering and sorting:', filteredPlans.length);
     console.log('Filtered plan names:', filteredPlans.map(p => p.name));

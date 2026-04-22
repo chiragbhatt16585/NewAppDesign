@@ -157,10 +157,9 @@ const CLIENTS = {
     name: 'Skynetwifi',
     packageName: 'com.spacecom.log2space.skynetwifi',
     namespace: 'com.spacecom.log2space.skynetwifi',
-    versionCode: 1,
-    versionName: '1.0.1',
-    // Reuse existing keystore for now (skynetwifi will have its own Firebase configs)
-    keystore: 'Log2spceGatewayFTTHKey_V3.jks',
+    versionCode: 2,
+    versionName: '1.0.2',
+    keystore: 'Log2spceSkynetWifiKey_V3.jks',
     configDir: 'config/skynetwifi',
   },
   srisamarthinfobahn: {
@@ -177,10 +176,19 @@ const CLIENTS = {
     name: 'Monarknet',
     packageName: 'in.spacecom.log2space.client.monarkuser',
     namespace: 'in.spacecom.log2space.client.monarkuser',
-    versionCode: 1,
+    versionCode: 3,
     versionName: '1.0.1',
     keystore: 'Log2spceGatewayFTTHKey_V3.jks',
     configDir: 'config/monarknet',
+  },
+  funnet: {
+    name: 'Funnet',
+    packageName: 'com.spacecom.log2space.funnet',
+    namespace: 'com.spacecom.log2space.funnet',
+    versionCode: 1,
+    versionName: '1.0.1',
+    keystore: 'Log2spceGatewayFTTHKey_V3.jks',
+    configDir: 'config/funnet',
   },
 };
 
@@ -629,7 +637,7 @@ function updateAndroidBuildGradle(clientId) {
   const hasClientGoogleServices = fs.existsSync(clientGoogleServicesPath);
 
   let effectiveApplicationId = client.packageName;
-  if (!hasClientGoogleServices && fallbackClient) {
+  if (!hasClientGoogleServices && fallbackClient && clientId !== 'funnet') {
     const fallbackConfigDir = path.join(__dirname, '..', fallbackClient.configDir);
     const fallbackGoogleServicesPath = path.join(fallbackConfigDir, 'google-services.json');
     const hasFallbackGoogleServices = fs.existsSync(fallbackGoogleServicesPath);

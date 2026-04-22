@@ -1,9 +1,9 @@
 {
-  "name": "MicroscanApp",
+  "name": "SpacecomLocalApp",
   "expo": {
-    "name": "Microscan",
-    "slug": "microscan",
-    "version": "3.0.2",
+    "name": "Spacecom Local",
+    "slug": "spacecom-local",
+    "version": "4.0.0",
     "orientation": "portrait",
     "icon": "./app-icons/icon.png",
     "userInterfaceStyle": "light",
@@ -17,19 +17,20 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.l2sClient.microscan",
-      "buildNumber": "37"
+      "bundleIdentifier": "com.l2sClient.spacecomlocal",
+      "buildNumber": "4"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./app-icons/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
       },
-      "package": "in.spacecom.log2space.client.microscan",
-      "versionCode": 40
+      "package": "com.log2space.spacecom.local",
+      "versionCode": 4
     },
     "web": {
       "favicon": "./app-icons/favicon.png"
     }
   }
-} 
+}
+

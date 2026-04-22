@@ -10,6 +10,7 @@ import DomainEntryScreen from '../screens/DomainEntryScreen';
 import HomeScreen from '../screens/HomeScreen';
 import MoreOptionsScreen from '../screens/MoreOptionsScreen';
 import AccountDetailsScreen from '../screens/AccountDetailsScreen';
+import ProfileUpdateScreen from '../screens/ProfileUpdateScreen';
 import LedgerScreen from '../screens/LedgerScreen';
 import TicketsScreen from '../screens/TicketsScreen';
 import SessionsScreen from '../screens/SessionsScreen';
@@ -153,6 +154,7 @@ const AppNavigator: React.FC<AppNavigatorProps> = ({ initialRoute }) => {
         <Stack.Screen name="PartnerApps" component={PartnerAppsScreen} options={{ headerShown: false }} />
         <Stack.Screen name="MoreOptions" component={MoreOptionsScreen} />
         <Stack.Screen name="AccountDetails" component={AccountDetailsScreen} />
+        <Stack.Screen name="ProfileUpdate" component={ProfileUpdateScreen} />
         <Stack.Screen name="Ledger" component={LedgerScreen} />
         <Stack.Screen name="Tickets" component={TicketsScreen} />
         <Stack.Screen name="Sessions" component={SessionsScreen} />

@@ -650,29 +650,30 @@ const UpgradePlanScreen = ({navigation}: any) => {
       );
     }
 
-    // Sort plans based on selected sort option
-    filteredPlans.sort((a, b) => {
-      switch (sortOption) {
-        case 'price-low-high':
-          return a.FinalAmount - b.FinalAmount;
-        case 'price-high-low':
-          return b.FinalAmount - a.FinalAmount;
-        case 'speed-high-low':
-          const speedA = parseInt(a.downloadSpeed.split(' ')[0]);
-          const speedB = parseInt(b.downloadSpeed.split(' ')[0]);
-          return speedB - speedA;
-        case 'validity-high-low':
-          return b.days - a.days;
-        case 'gb-high-low':
-          const limitA = a.limit === 'Unlimited' ? -1 : parseInt(a.limit);
-          const limitB = b.limit === 'Unlimited' ? -1 : parseInt(b.limit);
-          return limitB - limitA;
-        case '':
-        default:
-          // Default: Sort by price low to high for upgrade plans
-          return a.FinalAmount - b.FinalAmount;
-      }
-    });
+    // Sort only when user explicitly selects a sort option.
+    // Default view keeps API order as-is.
+    if (sortOption) {
+      filteredPlans.sort((a, b) => {
+        switch (sortOption) {
+          case 'price-low-high':
+            return a.FinalAmount - b.FinalAmount;
+          case 'price-high-low':
+            return b.FinalAmount - a.FinalAmount;
+          case 'speed-high-low':
+            const speedA = parseInt(a.downloadSpeed.split(' ')[0]);
+            const speedB = parseInt(b.downloadSpeed.split(' ')[0]);
+            return speedB - speedA;
+          case 'validity-high-low':
+            return b.days - a.days;
+          case 'gb-high-low':
+            const limitA = a.limit === 'Unlimited' ? -1 : parseInt(a.limit);
+            const limitB = b.limit === 'Unlimited' ? -1 : parseInt(b.limit);
+            return limitB - limitA;
+          default:
+            return 0;
+        }
+      });
+    }
 
     return filteredPlans;
   };

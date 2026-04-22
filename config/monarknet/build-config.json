@@ -2,7 +2,7 @@
   "android": {
     "namespace": "in.spacecom.log2space.client.monarkuser",
     "applicationId": "in.spacecom.log2space.client.monarkuser",
-    "versionCode": 1,
+    "versionCode": 3,
     "versionName": "1.0.1",
     "signing": {
       "debug": {

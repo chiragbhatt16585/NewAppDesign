@@ -2,8 +2,8 @@
   "android": {
     "namespace": "com.spacecom.log2space.skynetwifi",
     "applicationId": "com.spacecom.log2space.skynetwifi",
-    "versionCode": 1,
-    "versionName": "1.0.1",
+    "versionCode": 2,
+    "versionName": "1.0.2",
     "signing": {
       "debug": {
         "storeFile": "debug.keystore",
@@ -12,7 +12,7 @@
         "keyPassword": "android"
       },
       "release": {
-        "storeFile": "GatewayFTTH.jks",
+        "storeFile": "Log2spceSkynetWifiKey_V3.jks",
         "storePassword": "log2space",
         "keyAlias": "log2space",
         "keyPassword": "log2space"
@@ -21,8 +21,8 @@
   },
   "ios": {
     "bundleIdentifier": "com.spacecom.log2space.skynetwifi",
-    "marketingVersion": "1.0.1",
-    "buildNumber": "1",
+    "marketingVersion": "1.0.2",
+    "buildNumber": "2",
     "displayName": "Skynetwifi"
   }
 }

@@ -54,6 +54,7 @@ const HomeScreen = ({navigation}: any) => {
   const {t} = useTranslation();
   const [currentAdIndex, setCurrentAdIndex] = useState(0);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showProfileUpdateOption, setShowProfileUpdateOption] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const currentAdIndexRef = useRef(0); // Use ref to track current index without re-renders
   const {logout, isAuthenticated} = useAuth();
@@ -441,6 +442,48 @@ const HomeScreen = ({navigation}: any) => {
       setShowProfileMenu(false);
     }
   }, [homeMenuConfig.profileMenuEnabled, showProfileMenu]);
+
+  useEffect(() => {
+    const fetchProfileEditPermission = async () => {
+      try {
+        const franchiseename =
+          authData?.franchiseename ||
+          authData?.franchisee_name ||
+          authData?.franchise_name ||
+          authData?.admin_login_id ||
+          'admin';
+
+        const adminDetails = await apiService.getAdminDetials(franchiseename);
+        const rawPermission =
+          adminDetails?.allow_end_user_change_profile_details ??
+          adminDetails?.settings?.allow_end_user_change_profile_details;
+        const permission = String(rawPermission || '')
+          .trim()
+          .toLowerCase();
+
+        if (__DEV__) {
+          console.log('[ProfileUpdatePermission] Franchise/Admin used:', franchiseename);
+          console.log('[ProfileUpdatePermission] Raw allow_end_user_change_profile_details:', rawPermission);
+          console.log('[ProfileUpdatePermission] Normalized value:', permission);
+          console.log('[ProfileUpdatePermission] API payload snapshot:', adminDetails);
+        }
+
+        setShowProfileUpdateOption(permission === 'allowed');
+      } catch (error) {
+        if (__DEV__) {
+          console.log('[ProfileUpdatePermission] Failed to fetch permission:', error);
+        }
+        setShowProfileUpdateOption(false);
+      }
+    };
+
+    if (!isAuthenticated || !authData) {
+      setShowProfileUpdateOption(false);
+      return;
+    }
+
+    fetchProfileEditPermission();
+  }, [isAuthenticated, authData]);
 
   // Debug menu loading
   useEffect(() => {
@@ -1601,6 +1644,18 @@ const HomeScreen = ({navigation}: any) => {
 
         {homeMenuConfig.profileMenuEnabled && showProfileMenu && (
           <View style={[styles.profileMenu, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
+            {showProfileUpdateOption && (
+              <TouchableOpacity
+                style={[styles.menuItem, {backgroundColor: 'transparent'}]}
+                onPress={() => {
+                  closeProfileMenu();
+                  navigation.navigate('ProfileUpdate');
+                }}
+                activeOpacity={0.7}>
+                <Feather name="user" size={20} color={colors.textSecondary} style={styles.menuIcon} />
+                <Text style={[styles.menuText, {color: colors.text}]}>Profile Update</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity 
               style={[styles.menuItem, {backgroundColor: 'transparent'}]} 
               onPress={handleProfileMoreOptions}
