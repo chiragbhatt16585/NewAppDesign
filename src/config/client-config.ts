@@ -199,8 +199,8 @@ const clientConfigs: Record<string, ClientConfig> = {
     clientId: 'spacecom-local',
     clientName: 'Spacecom Local',
     api: {
-      baseURL: 'http://103.105.110.250:82/l2s/api',
-      serverURL: 'http://103.105.110.250:82',
+      baseURL: 'http://103.105.110.250:81/l2s/api',
+      serverURL: 'http://103.105.110.250:81',
       timeout: 30000,
     },
     branding: {
@@ -287,6 +287,70 @@ const clientConfigs: Record<string, ClientConfig> = {
       appStoreId: '1559045355',
     },
     },
+  'threesa-infoway': {
+    clientId: 'threesa-infoway',
+    clientName: 'Threesa Infoway',
+    api: {
+      baseURL: 'https://login.threesainfoway.net/l2s/api',
+      serverURL: 'https://login.threesainfoway.net',
+      timeout: 30000,
+    },
+    branding: {
+      logo: 'isp_logo.png',
+      primaryColor: '#1976D2',
+      secondaryColor: '#42A5F5',
+      appName: 'Threesa Infoway',
+      headerBackgroundImage: 'header_background.png',
+      logoDimensions: {
+        header: { width: 200, height: 140 },
+        login: { width: 300, height: 200 },
+      },
+    },
+    features: {
+      biometricAuth: true,
+      pushNotifications: true,
+      fileUpload: true,
+      multiLanguage: true,
+    },
+    contact: {
+      headOffice: {
+        title: 'Head Office',
+        address: 'Devcorpora A-503 Cadbury, Junction khopat Thane west - 400601',
+        customerSupport: '022-68383838',
+      },
+      branchOffices: [],
+      emails: {
+        inquiries: 'info@threesainfoway.net',
+        sales: 'info@threesainfoway.net',
+        support: 'info@threesainfoway.net',
+      },
+      landline: '022-68383838',
+      whatsappNumber: '9768634000',
+    },
+    about: {
+      companyName: 'Threesa Private Limited',
+      establishedYear: '',
+      description:
+        'Threesa Infoway provides high-speed internet services for home and office users.',
+      specializations: [
+        'High-speed broadband internet',
+        'Fiber internet services',
+        'Home and business internet plans',
+        '24/7 technical support',
+      ],
+      serviceAreas: ['Thane', 'Navi Mumbai', 'Mumbai Region'],
+      achievements: [],
+    },
+    reviewUrl: undefined,
+    website: 'https://threesainfoway.net/',
+    versionCheck: {
+      enabled: true,
+      checkInterval: 24,
+      forceUpdateEnabled: true,
+      packageName: 'in.spacecom.log2space.client.threesa',
+      appStoreId: undefined,
+    },
+  },
   'dna-infotel': {
     clientId: 'dna-infotel',
     clientName: 'DNA Infotel',
@@ -1443,6 +1507,70 @@ const clientConfigs: Record<string, ClientConfig> = {
       forceUpdateEnabled: true,
       packageName: 'com.spacecom.log2space.metanet',
       appStoreId: '1234567890',
+    },
+  },
+  comcast: {
+    clientId: 'comcast',
+    clientName: 'Comcast',
+    api: {
+      baseURL: 'https://comcast.l2s.biz/l2s/api',
+      serverURL: 'https://comcast.l2s.biz',
+      timeout: 30000,
+    },
+    branding: {
+      logo: 'isp_logo.png',
+      primaryColor: '#1976D2',
+      secondaryColor: '#42A5F5',
+      appName: 'Comcast',
+      headerBackgroundImage: 'header_background.png',
+      logoDimensions: {
+        header: {width: 200, height: 140},
+        login: {width: 300, height: 200},
+      },
+    },
+    features: {
+      biometricAuth: true,
+      pushNotifications: true,
+      fileUpload: true,
+      multiLanguage: true,
+    },
+    contact: {
+      whatsappNumber: '7798886379',
+      headOffice: {
+        title: 'Head Office',
+        address:
+          'Shop No 106, Yash Plaza 1st Floor, MG Road, Pen, Raigad - 402107',
+        customerSupport: '7798886379',
+      },
+      branchOffices: [],
+      emails: {
+        inquiries: 'support@comcastnetworks.in',
+        sales: 'support@comcastnetworks.in',
+        support: 'support@comcastnetworks.in',
+      },
+      landline: '7798886379',
+    },
+    about: {
+      companyName: 'Comcast Broadband Services',
+      establishedYear: '',
+      description:
+        'Comcast Broadband Services provides broadband internet services.',
+      specializations: [
+        'High-speed broadband internet',
+        'Fiber internet services',
+        'Home and business internet plans',
+      ],
+      serviceAreas: ['Pen', 'Raigad', 'Maharashtra'],
+      achievements: [],
+    },
+    reviewUrl: undefined,
+    website: 'https://www.comcastnetworks.in',
+    versionCheck: {
+      enabled: true,
+      checkInterval: 24,
+      forceUpdateEnabled: true,
+      packageName: 'in.spacecom.log2space.client.comcastBroadband',
+      appStoreId: undefined,
     },
   },
   monarknet: {

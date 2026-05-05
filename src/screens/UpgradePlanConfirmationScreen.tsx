@@ -418,7 +418,7 @@ const UpgradePlanConfirmationScreen = ({navigation, route}: any) => {
       username: session.username,
       planname: selectedPlan.name,
       selectedPGType: [{label: gatewayObj.gw_display_name, value: gatewayObj.id}],
-      payActionType: 'renewal', // same as PlanConfirmationScreen
+      payActionType: 'upgrade_plan',
       couponCode: complimentaryDiscountAvailable
         ? null
         : (selectedCoupon ? getDiscountCode(selectedCoupon) : null),
@@ -434,7 +434,7 @@ const UpgradePlanConfirmationScreen = ({navigation, route}: any) => {
       old_pin_serial: oldPinSerial,
     };
 
-    handlePayment(params, 'renewal', navigation, realm);
+    handlePayment(params, 'upgrade_plan', navigation, realm);
   };
 
   // Direct payment handler (when only one gateway is available)

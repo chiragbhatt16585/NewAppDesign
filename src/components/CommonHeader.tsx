@@ -65,6 +65,7 @@ const CommonHeader = ({
     const backgroundImageMap: Record<string, ImageSourcePropType> = {
       'spacecom-live:header_background.png': require('../../config/spacecom-live/assets/header_background.png'),
       'spacecom-local:header_background.png': require('../../config/spacecom-local/assets/header_background.png'),
+      'threesa-infoway:header_background.png': require('../../config/threesa-infoway/assets/header_background.png'),
       'linkway:header_background.png': require('../../config/linkway/assets/header_background.png'),
       'inshansa-dnagoa:header_background.png': require('../../config/inshansa-dnagoa/assets/header_background.png'),
       'successbroadband:header_background.png': require('../../config/successbroadband/assets/header_background.png'),
@@ -73,6 +74,7 @@ const CommonHeader = ({
       'dna-infotel:header_background.png': require('../../config/dna-infotel/assets/header_background.png'),
       'netfix:header_background.png': require('../../config/netfix/assets/header_background.png'),
       'gatewayftth:header_background.png': require('../../config/gatewayftth/assets/header_background.png'),
+      'comcast:header_background.png': require('../../config/comcast/assets/header_background.png'),
       'skynetwifi:header_background.png': require('../../config/gatewayftth/assets/header_background.png'),
       'srisamarthinfobahn:header_background.png': require('../../config/gatewayftth/assets/header_background.png'),
       'one-sevenstar:header_background.png': require('../../config/one-sevenstar/assets/header_background.png'),
@@ -95,6 +97,7 @@ const CommonHeader = ({
     !!headerBackgroundImage &&
     (clientConfig.clientId === 'spacecom-live' ||
       clientConfig.clientId === 'spacecom-local' ||
+      clientConfig.clientId === 'threesa-infoway' ||
       clientConfig.clientId === 'linkway' ||
       clientConfig.clientId === 'inshansa-dnagoa' ||
       clientConfig.clientId === 'successbroadband' ||
@@ -103,6 +106,7 @@ const CommonHeader = ({
       clientConfig.clientId === 'dna-infotel' ||
       clientConfig.clientId === 'netfix' ||
       clientConfig.clientId === 'gatewayftth' ||
+      clientConfig.clientId === 'comcast' ||
       clientConfig.clientId === 'skynetwifi' ||
       clientConfig.clientId === 'srisamarthinfobahn' ||
       clientConfig.clientId === 'one-sevenstar' ||
@@ -131,6 +135,10 @@ const CommonHeader = ({
   // Specific flag for Logon Broadband header background behavior (centered logo, moved upward)
   const isLogonBroadbandHeaderBgClient =
     !!headerBackgroundImage && clientConfig.clientId === 'logon-broadband';
+  
+  // Threesa: keep centered header logo but nudge a bit to the right
+  const isThreesaHeaderBgClient =
+    !!headerBackgroundImage && clientConfig.clientId === 'threesa-infoway';
 
   // dna-goa, dna-infotel, netfix, gatewayftth, graceway, log2space-common: grey header background, centered logo (same style as Inshansa)
   const isDnaGoaOrInfotelHeaderBgClient =
@@ -139,8 +147,10 @@ const CommonHeader = ({
       clientConfig.clientId === 'dna-infotel' ||
       clientConfig.clientId === 'netfix' ||
       clientConfig.clientId === 'gatewayftth' ||
+      clientConfig.clientId === 'comcast' ||
       clientConfig.clientId === 'skynetwifi' ||
       clientConfig.clientId === 'spacecom-local' ||
+      clientConfig.clientId === 'threesa-infoway' ||
       clientConfig.clientId === 'srisamarthinfobahn' ||
       clientConfig.clientId === 'one-sevenstar' ||
       clientConfig.clientId === 'metanet' ||
@@ -243,6 +253,7 @@ const CommonHeader = ({
               styles.headerCenter,
               (isLinkwayHeaderBgClient || isInshansaHeaderBgClient || isSuccessBroadbandHeaderBgClient || isDnaGoaOrInfotelHeaderBgClient) && styles.headerCenterLinkway,
               isLogonBroadbandHeaderBgClient && styles.headerCenterLogonBroadband,
+              isThreesaHeaderBgClient && styles.headerCenterThreesa,
             ]}>
             {!shouldHideLogo && <LogoImage type="header" />}
           </View>
@@ -325,6 +336,10 @@ const styles = StyleSheet.create({
   // Fine-tune vertical logo placement when using header background for Logon Broadband
   headerCenterLogonBroadband: {
     marginTop: -20, // Move logo upward in the header
+  },
+  // Threesa-specific: slight right shift for centered logo
+  headerCenterThreesa: {
+    marginLeft: 18,
   },
   headerTitle: {
     fontSize: 18,

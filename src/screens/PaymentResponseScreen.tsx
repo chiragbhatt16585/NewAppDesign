@@ -404,7 +404,7 @@ const PaymentResponseScreen = ({ route, navigation }: any) => {
     if (!value) return '';
     if (typeof value === 'string') {
       const lower = value.toLowerCase();
-      if (['ok', 'success', 's', 'completed'].includes(lower)) {
+      if (['ok', 'success', 's', 'completed', 'captured', 'paid'].includes(lower)) {
         return 'success';
       }
       if (['failure', 'fail', 'failed'].includes(lower)) {

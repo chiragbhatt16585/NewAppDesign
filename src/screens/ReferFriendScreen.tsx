@@ -63,6 +63,28 @@ const ReferFriendScreen = ({ navigation }: any) => {
   const [showBuildingDropdown, setShowBuildingDropdown] = useState(false);
   // Remove isSelectingBuilding state
 
+  const normalizeOption = (item: any) => {
+    const value =
+      item?.value ??
+      item?.id ??
+      item?.city_id ??
+      item?.building_id ??
+      item?.code ??
+      '';
+    const label =
+      item?.label ??
+      item?.name ??
+      item?.city_name ??
+      item?.building_name ??
+      item?.title ??
+      '';
+    return {
+      ...item,
+      value: String(value),
+      label: String(label),
+    };
+  };
+
   // Fetch initial data
   useEffect(() => {
     const fetchData = async () => {
@@ -81,8 +103,14 @@ const ReferFriendScreen = ({ navigation }: any) => {
         ]);
         console.log('Buildings data:', buildingsData);
         console.log('Cities data:', citiesData);
-        setBuildings(buildingsData);
-        setCities(citiesData);
+        const normalizedBuildings = Array.isArray(buildingsData)
+          ? buildingsData.map(normalizeOption).filter((b: any) => b.value && b.label)
+          : [];
+        const normalizedCities = Array.isArray(citiesData)
+          ? citiesData.map(normalizeOption).filter((c: any) => c.value && c.label)
+          : [];
+        setBuildings(normalizedBuildings);
+        setCities(normalizedCities);
         // Check if sales exec selection is needed
         const authData = await apiService.authUser(session.username);
         if (authData?.display_sales_exec_selection_in_customer_referral === 'yes') {
@@ -189,7 +217,7 @@ const ReferFriendScreen = ({ navigation }: any) => {
     setShowBuildingDropdown(false);
     
     // Find the city name
-    const cityObj = cities.find(c => c.value === building.city_id);
+    const cityObj = cities.find(c => String(c.value) === String(building.city_id));
     const cityName = cityObj ? cityObj.label : '';
     
     // Update form data
@@ -245,7 +273,7 @@ const ReferFriendScreen = ({ navigation }: any) => {
       setShowDropdown(false);
       
       // Find the city name from the cities array
-      const cityObj = cities.find(c => c.value === building.city_id);
+      const cityObj = cities.find(c => String(c.value) === String(building.city_id));
       const cityName = cityObj ? cityObj.label : '';
       
       handleInputChange('building', building.value);

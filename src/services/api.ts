@@ -2,7 +2,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import param from 'jquery-param';
 import sessionManager from '../../src/services/sessionManager';
 import { getClientConfig } from '../config/client-config';
-import { notifySessionExpired } from '../utils/sessionExpiryBridge';
 
 // Dynamic API configuration based on client
 const getApiConfig = () => {
@@ -381,6 +380,7 @@ class ApiService {
     middleName?: string;
     lastName?: string;
     primaryMobile: string;
+    birthDate?: string;
   }) {
     return this.makeAuthenticatedRequest(async (token: string) => {
       const data = {
@@ -393,10 +393,22 @@ class ApiService {
         middle_name: params.middleName || '',
         last_name: params.lastName || '',
         primary_mobile: params.primaryMobile,
+        birth_date: params.birthDate || '',
         user_application: 'end_user',
         request_source: 'app',
         request_app: 'user_app',
       };
+
+      if (__DEV__) {
+        try {
+          console.log(
+            '[updateUserProfileDetails] Request payload:',
+            JSON.stringify(data, null, 2)
+          );
+        } catch {
+          console.log('[updateUserProfileDetails] Request payload (raw):', data);
+        }
+      }
 
       const options = {
         method,
@@ -601,10 +613,8 @@ class ApiService {
             await sessionManager.updateActivityTime();
             return await requestFn(regeneratedToken);
           } else {
-            console.log('[API] Token regeneration failed, clearing session and redirecting to login');
-            await sessionManager.clearSession();
-            notifySessionExpired();
-            throw new Error('Authentication required. Please login again.');
+            console.log('[API] Token regeneration failed, preserving session for manual logout');
+            throw new Error('Authentication failed. Please try again.');
           }
         }
 
@@ -627,10 +637,8 @@ class ApiService {
             console.log('[API] Token regenerated successfully, retrying request...');
             continue; // Retry with new token
           } else {
-            console.log('[API] Token regeneration failed, clearing session and redirecting to login');
-            await sessionManager.clearSession();
-            notifySessionExpired();
-            throw new Error('Session expired. Please login again.');
+            console.log('[API] Token regeneration failed, preserving session for manual logout');
+            throw new Error('Authentication failed. Please try again.');
           }
         } else {
           // Not a token error or max retries reached

@@ -71,6 +71,119 @@ function openPaymentExternalUrl(rawUrl: string) {
   });
 }
 
+/** Avoid throwing in onNavigationStateChange — invalid URLs would break the whole handler. */
+function safeParseUrl(url: string | undefined | null): URL | null {
+  if (!url || typeof url !== 'string') {
+    return null;
+  }
+  try {
+    return new URL(url);
+  } catch {
+    return null;
+  }
+}
+
+function merchantHostnamesForPaymentReturn(): string[] {
+  const hosts = new Set<string>();
+  try {
+    const c = getClientConfig();
+    const add = (s?: string) => {
+      if (!s) return;
+      try {
+        hosts.add(new URL(s).hostname);
+      } catch {
+        /* ignore */
+      }
+    };
+    add(c.api?.serverURL);
+    add(c.api?.baseURL);
+  } catch {
+    /* ignore */
+  }
+  return [...hosts];
+}
+
+function isLikelyMerchantReturnPage(url: URL): boolean {
+  if (url.href.includes('/tp/pg/')) {
+    return true;
+  }
+  const h = url.hostname;
+  return merchantHostnamesForPaymentReturn().some(
+    mh => mh && (h === mh || h.endsWith(`.${mh}`)),
+  );
+}
+
+/**
+ * User actually cancelled / failed — NOT checkout URLs that contain cancel_url,
+ * failure_url, success_url, etc. (naive .includes('cancel') breaks many gateways.)
+ */
+function paymentFlowLooksCancelled(eventURL: URL): boolean {
+  const path = eventURL.pathname;
+
+  const statusVal = (
+    eventURL.searchParams.get('status') ||
+    eventURL.searchParams.get('payment_status') ||
+    eventURL.searchParams.get('txn_status') ||
+    ''
+  ).toLowerCase();
+
+  if (
+    [
+      'cancelled',
+      'canceled',
+      'failed',
+      'failure',
+      'declined',
+      'rejected',
+      'aborted',
+    ].includes(statusVal)
+  ) {
+    return true;
+  }
+
+  // Path segment: /cancel, /failure, … (any host; also covers Atom paths)
+  if (/(^|\/)(cancel|failure|decline|reject|abort)(\/|$|\?)/i.test(path)) {
+    return true;
+  }
+
+  return false;
+}
+
+function paymentFlowLooksCancelledFromHref(href: string): boolean {
+  const u = safeParseUrl(href);
+  if (!u) {
+    return false;
+  }
+  return paymentFlowLooksCancelled(u);
+}
+
+function normalizeGatewayStatus(rawStatus: unknown): string {
+  if (rawStatus == null) {
+    return '';
+  }
+  const status = String(rawStatus).toLowerCase().trim();
+  if (['success', 'succeeded', 's', 'ok', 'completed', 'captured'].includes(status)) {
+    return 'success';
+  }
+  if (['pg_pending', 'pending', 'in_progress', 'processing', 'new', 'authorized'].includes(status)) {
+    return 'pending';
+  }
+  if (['fail', 'failed', 'failure', 'error', 'cancelled', 'canceled', 'declined', 'rejected', 'aborted'].includes(status)) {
+    return 'failed';
+  }
+  return status;
+}
+
+/** L2S /tp/pg/concerto.php expects the same headers as /l2s/api (Authentication + referer). */
+function paymentBridgeNeedsL2sAuthHeaders(src: any, pg: unknown): boolean {
+  const uri = src?.uri;
+  return (
+    typeof uri === 'string' &&
+    uri.includes('/tp/pg/concerto.php') &&
+    /concerto|vegaah/i.test(String(pg ?? ''))
+  );
+}
+
 const PaymentLinkScreen = ({ navigation, route }: any) => {
   const { isDark } = useTheme();
   const colors = getThemeColors(isDark);
@@ -86,6 +199,52 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const { source, pgInfo, amount, merTxnId, tpGatewayId } = route.params || {};
+
+  const [bridgedWebViewSource, setBridgedWebViewSource] = useState<any>(() =>
+    paymentBridgeNeedsL2sAuthHeaders(source, pgInfo) ? null : source,
+  );
+
+  useEffect(() => {
+    const src = route.params?.source;
+    const pg = route.params?.pgInfo;
+    if (!paymentBridgeNeedsL2sAuthHeaders(src, pg)) {
+      setBridgedWebViewSource(src);
+      return;
+    }
+    let cancelled = false;
+    setBridgedWebViewSource(null);
+    (async () => {
+      try {
+        const token = await sessionManager.getToken();
+        if (cancelled) {
+          return;
+        }
+        if (!token) {
+          console.warn(
+            'CONCERTO bridge: no Authentication token; server may return Token Expired',
+          );
+          setBridgedWebViewSource(src);
+          return;
+        }
+        setBridgedWebViewSource({
+          uri: src.uri,
+          headers: {
+            Authentication: token,
+            'cache-control': 'no-cache',
+            referer: 'L2S-System/User-App-Requests',
+          },
+        });
+      } catch (e) {
+        console.warn('CONCERTO bridge: failed to attach auth headers', e);
+        if (!cancelled) {
+          setBridgedWebViewSource(src);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [route.params?.source, route.params?.pgInfo]);
 
   // Debug: Log the amount parameter received
   console.log('=== PAYMENT LINK SCREEN DEBUG ===');
@@ -146,7 +305,11 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
     console.log('Payment navigation event:', event);
     console.log('Payment URL:', event.url);
     console.log('Payment Gateway:', pgInfo);
-    const eventURL = new URL(event.url);
+    const eventURL = safeParseUrl(event?.url);
+    if (!eventURL) {
+      console.warn('Payment navigation: unparseable URL, skipping handler', event?.url);
+      return;
+    }
     
     // Check if payment is completed (response.php endpoint)
     if (eventURL.pathname.includes('/tp/pg/response.php')) {
@@ -219,19 +382,8 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
       // Reset payment form state since we're returning from external app
       setIsOnPaymentForm(false);
       
-      // Check for cancelled transaction first
-      if (eventURL.href.includes('cancel') || 
-          eventURL.href.includes('failure') ||
-          eventURL.href.includes('decline') ||
-          eventURL.href.includes('reject') ||
-          eventURL.href.includes('abort') ||
-          // Atom payment gateway specific cancellation patterns
-          eventURL.href.includes('atomtech.in/cancel') ||
-          eventURL.href.includes('atomtech.in/failure') ||
-          eventURL.href.includes('atomtech.in/decline') ||
-          eventURL.searchParams.get('status') === 'cancelled' ||
-          eventURL.searchParams.get('payment_status') === 'cancelled' ||
-          eventURL.searchParams.get('txn_status') === 'cancelled') {
+      // Check for cancelled transaction first (avoid cancel_url / failure_url false positives)
+      if (paymentFlowLooksCancelled(eventURL)) {
         console.log('Cancelled transaction detected, marking as failed');
         if (!isPaymentProcessed) {
           paymentResponse('fail');
@@ -239,9 +391,14 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
         return;
       }
       
-      // Only check payment status if we're on an actual response page and not cancelled
-      if (eventURL.href.includes('response') || eventURL.href.includes('callback') || eventURL.href.includes('return')) {
-        console.log('Actual payment response detected, checking status...');
+      // Only poll backend when we're back on the ISP / merchant site — not on the PG
+      // checkout page where "callback" / "return" often appear in query params (e.g. Concerto/Vegaah).
+      const looksLikeReturnPath =
+        eventURL.href.includes('response') ||
+        eventURL.href.includes('callback') ||
+        eventURL.href.includes('return');
+      if (looksLikeReturnPath && isLikelyMerchantReturnPage(eventURL)) {
+        console.log('Merchant return URL detected, checking status...');
         setTimeout(() => {
           if (!isPaymentProcessed && !isProcessingPayment) {
             runPayments();
@@ -292,11 +449,11 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
              eventURL.href.includes('atomgateway.in'))) {
       console.log('Atom payment gateway URL detected:', eventURL.href);
       
-      // Check for Atom cancellation patterns
-      if (eventURL.href.includes('cancel') || 
-          eventURL.href.includes('failure') ||
-          eventURL.href.includes('decline') ||
-          eventURL.href.includes('error')) {
+      // Check for Atom cancellation patterns (same strict rules as other gateways)
+      if (
+        paymentFlowLooksCancelled(eventURL) ||
+        /(^|\/)(error)(\/|$|\?)/i.test(eventURL.pathname)
+      ) {
         console.log('Atom cancellation URL pattern detected');
         if (!isPaymentProcessed) {
           paymentResponse('fail');
@@ -451,14 +608,36 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
         
         // Handle full response object from API
         if (typeof paymentStatus === 'object' && paymentStatus.data) {
-          //console.log('Full payment status response received:', paymentStatus);
-          paymentResponse(paymentStatus);
+          const objectStatusRaw = Array.isArray(paymentStatus.data)
+            ? paymentStatus.data[0]?.txn_status || paymentStatus.data[0]?.status
+            : paymentStatus.data?.txn_status || paymentStatus.data?.status || paymentStatus.status;
+          const objectStatus = normalizeGatewayStatus(objectStatusRaw);
+          console.log('Payment status object normalized status:', objectStatus, 'raw:', objectStatusRaw);
+
+          if (objectStatus === 'success') {
+            paymentResponse(paymentStatus);
+            return;
+          }
+
+          if (objectStatus === 'failed') {
+            paymentResponse('fail');
+            return;
+          }
+
+          // Keep polling for pending/new/processing states instead of navigating as pending.
+          if (objectStatus === 'pending') {
+            setTimeout(() => checkStatus(), Platform.OS === 'ios' ? 2000 : 5000);
+            return;
+          }
+
+          // Unknown object status: keep retrying briefly before deciding.
+          setTimeout(() => checkStatus(), Platform.OS === 'ios' ? 2000 : 5000);
           return;
         }
         
         // Handle string status (fallback)
         const statusString = typeof paymentStatus === 'string' ? paymentStatus : '';
-        const normalizedStatus = statusString.toLowerCase().trim();
+        const normalizedStatus = normalizeGatewayStatus(statusString);
         console.log('Normalized Payment Status:', normalizedStatus);
         
         // Platform-specific status handling
@@ -478,30 +657,24 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
             const verifiedStatus = await apiService.verifyPaymentStatus(username, merTxnId, realm);
             console.log('iOS: Verified Payment Status:', verifiedStatus);
             
-            if (verifiedStatus === 'success' || verifiedStatus === 'completed') {
+            const normalizedVerifiedStatus = normalizeGatewayStatus(verifiedStatus);
+            if (normalizedVerifiedStatus === 'success') {
               paymentResponse('success');
+            } else if (normalizedVerifiedStatus === 'failed') {
+              paymentResponse('fail');
             } else {
               // Retry after 2 seconds
               setTimeout(() => checkStatus(), 2000);
             }
-          } else if (normalizedStatus === 'success' || 
-                    normalizedStatus === 'completed' || 
-                    normalizedStatus === 'succeeded') {
+          } else if (normalizedStatus === 'success') {
             console.log('iOS: Setting status to SUCCESS');
             paymentResponse('success');
-          } else if (normalizedStatus === 'in_progress' || 
-                    normalizedStatus === 'pending' || 
-                    normalizedStatus === 'processing' ||
-                    normalizedStatus === 'new') {
+          } else if (normalizedStatus === 'pending') {
             console.log('iOS: Setting status to PENDING, retrying in 2 seconds');
             setTimeout(() => checkStatus(), 2000);
           } else {
             console.log('iOS: Checking for failure status');
-            if (normalizedStatus === 'fail' || 
-                normalizedStatus === 'failed' || 
-                normalizedStatus === 'error' ||
-                normalizedStatus === 'cancelled' ||
-                normalizedStatus === 'canceled') {
+            if (normalizedStatus === 'failed') {
               console.log('iOS: Setting status to FAILED');
               paymentResponse('fail');
             } else {
@@ -511,23 +684,15 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
           }
         } else {
           // Android handling
-          if (normalizedStatus === 'success' || 
-              normalizedStatus === 'completed' || 
-              normalizedStatus === 'succeeded') {
+          if (normalizedStatus === 'success') {
             console.log('Android: Setting status to SUCCESS');
             paymentResponse('success');
-          } else if (normalizedStatus === 'in_progress' || 
-                    normalizedStatus === 'pending' || 
-                    normalizedStatus === 'processing' ||
-                    normalizedStatus === 'new' ||
-                    normalizedStatus === 'pg_pending') {
+          } else if (normalizedStatus === 'pending') {
             console.log('Android: Setting status to PENDING, retrying in 5 seconds');
             setTimeout(() => checkStatus(), 5000);
           } else {
             console.log('Android: Checking for failure status');
-            if (normalizedStatus === 'fail' || 
-                normalizedStatus === 'failed' || 
-                normalizedStatus === 'error') {
+            if (normalizedStatus === 'failed') {
               console.log('Android: Setting status to FAILED');
               paymentResponse('fail');
             } else {
@@ -593,36 +758,51 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
         console.log('EASEBUZZ object response processed:', { status, extractedTxnRef, extractedAmount });
       }
       
-      if (status === 'success') {
+      if (normalizeGatewayStatus(status) === 'success') {
         isSuccess = true;
       }
     }
     // Handle different response formats
     else if (typeof response === 'string') {
       console.log('Processing string response:', response);
-      if (response === 'in_progress') {
-        status = 'cancelled';
-      } else if (response === 'fail' || response === 'new') {
+      const normalized = normalizeGatewayStatus(response);
+      if (normalized === 'failed') {
         status = 'failed';
-      } else if (response === 'pg_pending') {
+      } else if (normalized === 'pending') {
         status = 'pg_pending';
-      } else if (response === 'success') {
+      } else if (normalized === 'success') {
         status = 'success';
         isSuccess = true;
       }
     } else if (typeof response === 'object' && response !== null) {
       console.log('Processing object response:', response);
       // Handle object response (e.g., {status: 'success', message: '...'})
-      if (response.status === 'success' || response.payment_status === 'success') {
+      const normalizedObjectStatus = normalizeGatewayStatus(
+        response.status || response.payment_status || response.txn_status,
+      );
+      if (normalizedObjectStatus === 'success') {
         status = 'success';
         isSuccess = true;
-      } else if (response.status === 'cancelled' || response.payment_status === 'cancelled') {
+      } else if (normalizedObjectStatus === 'failed') {
+        status = 'failed';
+      } else if (normalizedObjectStatus === 'cancelled') {
         status = 'cancelled';
-      } else if (response.status === 'pg_pending' || response.payment_status === 'pg_pending') {
+      } else if (normalizedObjectStatus === 'pending') {
         status = 'pg_pending';
       } else {
         status = 'failed';
       }
+    }
+
+    const normalizedFinalStatus = normalizeGatewayStatus(status);
+    if (normalizedFinalStatus === 'success') {
+      status = 'success';
+      isSuccess = true;
+    } else if (normalizedFinalStatus === 'pending') {
+      status = 'pg_pending';
+    } else if (normalizedFinalStatus === 'failed') {
+      status = 'failed';
+      isSuccess = false;
     }
 
     console.log('Final processed status:', status);
@@ -744,6 +924,12 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
     }
   };
 
+  const needsL2sAuthForConcertoBridge = paymentBridgeNeedsL2sAuthHeaders(source, pgInfo);
+  const resolvedWebSource =
+    bridgedWebViewSource === null && needsL2sAuthForConcertoBridge
+      ? null
+      : bridgedWebViewSource ?? source;
+
   if (error) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -783,9 +969,10 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
           </View>
         )}
         
+        {resolvedWebSource != null ? (
         <WebView
           ref={webViewRef}
-          source={source}
+          source={resolvedWebSource}
           style={styles.webview}
           originWhitelist={['*']}
           startInLoadingState={true}
@@ -798,7 +985,9 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
           sharedCookiesEnabled={true}
           javaScriptCanOpenWindowsAutomatically={true}
           mixedContentMode="always"
-          injectedJavaScriptBeforeContentLoaded={`
+          injectedJavaScriptBeforeContentLoaded={
+            pgInfo === 'HDFC' || pgInfo === 'EASEBUZZ'
+              ? `
             (function() {
               try {
                 // HDFC UAT sometimes uses popup flow; force same-tab navigation.
@@ -809,7 +998,9 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
               } catch (e) {}
             })();
             true;
-          `}
+          `
+              : 'true;'
+          }
           onNavigationStateChange={processPayment}
           onError={handleWebViewError}
           onHttpError={(event) => {
@@ -821,7 +1012,10 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
           userAgent={
             Platform.OS === 'android'
               ? 'Mozilla/5.0 (Linux; Android 13; Pixel 8a) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'
-              : 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
+              : typeof pgInfo === 'string' &&
+                  /concerto|vegaah/i.test(pgInfo)
+                ? 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/120.0.6099.119 Mobile/15E148 Safari/604.1'
+                : 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
           }
           // Enhanced settings for EASEBUZZ compatibility
           allowsInlineMediaPlayback={true}
@@ -957,17 +1151,8 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
               return false; // Prevent WebView from loading, allow external app to open
             }
             
-            // Check for cancelled transactions first
-            if (request.url.includes('cancel') || 
-                request.url.includes('failure') ||
-                request.url.includes('cancelled') ||
-                request.url.includes('abort') ||
-                request.url.includes('decline') ||
-                request.url.includes('reject') ||
-                // Atom payment gateway specific cancellation patterns
-                request.url.includes('atomtech.in/cancel') ||
-                request.url.includes('atomtech.in/failure') ||
-                request.url.includes('atomtech.in/decline')) {
+            // Cancelled result only — NOT cancel_url / failure_url on checkout pages
+            if (paymentFlowLooksCancelledFromHref(request.url)) {
               console.log('Cancelled transaction URL detected:', request.url);
               if (!isPaymentProcessed) {
                 paymentResponse('fail');
@@ -1038,6 +1223,7 @@ const PaymentLinkScreen = ({ navigation, route }: any) => {
             return true;
           }}
         />
+        ) : null}
       </View>
     </SafeAreaView>
   );

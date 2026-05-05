@@ -1,0 +1,35 @@
+{
+  "name": "ThreesaInfowayApp",
+  "expo": {
+    "name": "Threesa Infoway",
+    "slug": "threesa-infoway",
+    "version": "1.0.1",
+    "orientation": "portrait",
+    "icon": "./app-icons/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./app-icons/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.l2sClient.ThreesaBroadband",
+      "buildNumber": "1"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./app-icons/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "package": "in.spacecom.log2space.client.threesa",
+      "versionCode": 6
+    },
+    "web": {
+      "favicon": "./app-icons/favicon.png"
+    }
+  }
+}

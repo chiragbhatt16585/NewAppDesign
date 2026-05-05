@@ -199,6 +199,7 @@ const HomeScreen = ({navigation}: any) => {
   const headerBgClients = new Set([
     'spacecom-live',
     'spacecom-local',
+    'threesa-infoway',
     'linkway',
     'inshansa-dnagoa',
     'successbroadband',
@@ -1653,7 +1654,7 @@ const HomeScreen = ({navigation}: any) => {
                 }}
                 activeOpacity={0.7}>
                 <Feather name="user" size={20} color={colors.textSecondary} style={styles.menuIcon} />
-                <Text style={[styles.menuText, {color: colors.text}]}>Profile Update</Text>
+                <Text style={[styles.menuText, {color: colors.text}]}>Profile Details</Text>
               </TouchableOpacity>
             )}
             <TouchableOpacity 

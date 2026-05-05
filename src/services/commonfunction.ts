@@ -403,6 +403,40 @@ export function handlePayment(params: any, payActionType: string, navigation: an
       txnInfo.merTxnId = res.data.txn_ref_no;
       source.uri = res.data.url;
       navigation.navigate("PaymentLink", { source: source, pgInfo: pgInfo, amount: params.amount, merTxnId: txnInfo.merTxnId })
+    } else if (pgInfo && /concerto|vegaah/i.test(String(pgInfo))) {
+      // L2S returns a short-lived session token in data.url (not an https URL) and txn_ref_no.
+      // Hosted checkout is opened via the merchant bridge on the ISP site.
+      txnInfo.merTxnId = res.data.txn_ref_no;
+      const raw = String(res.data.url ?? '').trim();
+      if (/^https?:\/\//i.test(raw)) {
+        source.uri = raw;
+      } else {
+        const serverURL = (getClientConfig().api?.serverURL || '').replace(/\/$/, '');
+        if (!serverURL) {
+          Alert.alert(
+            'Payment Error',
+            'App configuration is missing serverURL; cannot open CONCERTO checkout.',
+          );
+          return;
+        }
+        if (raw.startsWith('/')) {
+          source.uri = `${serverURL}${raw}`;
+        } else {
+          const q = new URLSearchParams();
+          q.set('id', raw);
+          if (res.data.txn_ref_no) {
+            q.set('txn_ref_no', String(res.data.txn_ref_no));
+          }
+          source.uri = `${serverURL}/tp/pg/concerto.php?${q.toString()}`;
+        }
+      }
+      console.log('CONCERTO checkout launch URI:', source.uri);
+      navigation.navigate('PaymentLink', {
+        source,
+        pgInfo,
+        amount: params.amount,
+        merTxnId: txnInfo.merTxnId,
+      });
     } else if (pgInfo) {
       txnInfo.merTxnId = res.data.txn_ref_no;
       source.uri = res.data.url;

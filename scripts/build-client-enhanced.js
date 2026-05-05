@@ -11,7 +11,7 @@ const CLIENTS = {
     // Must match OLD app (microscanEndUserApp-master-new) so install overwrites and migration works.
     packageName: 'in.spacecom.log2space.client.microscan',
     namespace: 'in.spacecom.log2space.client.microscan',
-    versionCode: 40,
+    versionCode: 41,
     versionName: '1.0.1',
     // Use original Microscan upload key for Play Store (SHA1: 08:1C:A0:54:CA:45:95:5B:B3:8B:3A:B8:B2:53:93:FA:F5:64:D0:AE)
     keystore: 'Log2SpaceEndUserMicroscan.jks',
@@ -90,6 +90,15 @@ const CLIENTS = {
     keystore: 'Log2SpaceEndUserMicroscan.jks',
     configDir: 'config/spacecom-local',
   },
+  'threesa-infoway': {
+    name: 'Threesa Infoway',
+    packageName: 'in.spacecom.log2space.client.threesa',
+    namespace: 'in.spacecom.log2space.client.threesa',
+    versionCode: 6,
+    versionName: '1.0.6',
+    keystore: 'Log2SpaceClientThreesaBroadband.jks',
+    configDir: 'config/threesa-infoway',
+  },
   'spacecom-live': {
     name: 'Spacecom Live',
     packageName: 'com.spacecom.log2space.spacecomlive',
@@ -116,6 +125,15 @@ const CLIENTS = {
     versionName: '1.0.1',
     keystore: 'MetanetAppKey.jks',
     configDir: 'config/metanet',
+  },
+  comcast: {
+    name: 'Comcast',
+    packageName: 'in.spacecom.log2space.client.comcastBroadband',
+    namespace: 'in.spacecom.log2space.client.comcastBroadband',
+    versionCode: 14,
+    versionName: '1.0.14',
+    keystore: 'Log2SpaceComcastBroadband.jks',
+    configDir: 'config/comcast',
   },
   successbroadband: {
     name: 'Success Broadband',

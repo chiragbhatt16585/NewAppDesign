@@ -140,6 +140,16 @@ const clientConfigs: Record<string, ClientConfig> = {
     poweredByWebsite: 'https://spacecom.in',
     bundleId: 'com.log2space.spacecom.local',
   },
+  'threesa-infoway': {
+    name: 'Threesa Infoway',
+    companyName: 'Threesa Private Limited',
+    apiUrl: 'https://login.threesainfoway.net',
+    supportEmail: 'info@threesainfoway.net',
+    website: 'https://threesainfoway.net/',
+    poweredBy: 'Spacecom Software LLP',
+    poweredByWebsite: 'https://spacecom.in',
+    bundleId: 'in.spacecom.log2space.client.threesa',
+  },
   'spacecom-live': {
     name: 'Spacecom Live',
     companyName: 'Spacecom Software LLP',
@@ -179,6 +189,26 @@ const clientConfigs: Record<string, ClientConfig> = {
     poweredBy: 'Spacecom Software LLP',
     poweredByWebsite: 'https://spacecom.in',
     bundleId: 'com.spacecom.log2space.skynetwifi',
+  },
+  metanet: {
+    name: 'Metanet',
+    companyName: 'Metanet Broadband Services',
+    apiUrl: 'https://metanet.l2s.biz',
+    supportEmail: 'metanet.isp@gmail.com',
+    website: '', // Hidden for now
+    poweredBy: 'Spacecom Software LLP',
+    poweredByWebsite: 'https://spacecom.in',
+    bundleId: 'com.spacecom.log2space.metanet',
+  },
+  comcast: {
+    name: 'Comcast',
+    companyName: 'Comcast Broadband Services',
+    apiUrl: 'https://comcast.l2s.biz',
+    supportEmail: 'support@comcastnetworks.in',
+    website: 'https://www.comcastnetworks.in',
+    poweredBy: 'Spacecom Software LLP',
+    poweredByWebsite: 'https://spacecom.in',
+    bundleId: 'in.spacecom.log2space.client.comcastBroadband',
   },
   monarknet: {
     name: 'Monark Broadband',

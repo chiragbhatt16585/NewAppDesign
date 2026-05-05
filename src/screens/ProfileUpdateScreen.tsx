@@ -130,6 +130,67 @@ const ProfileUpdateScreen = ({navigation}: any) => {
     setForm(prev => ({...prev, [key]: value}));
   };
 
+  const normalizeValue = (value: string) => {
+    const trimmed = String(value || '').trim();
+    return trimmed === 'N/A' ? '' : trimmed;
+  };
+
+  const isValidEmail = (value: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+  };
+
+  const isAdultDob = (date: Date) => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const selected = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+    // DOB must be strictly before today
+    if (selected >= today) {
+      return false;
+    }
+
+    // Must be age 18+
+    const minAllowedDob = new Date(
+      today.getFullYear() - 18,
+      today.getMonth(),
+      today.getDate()
+    );
+    return selected <= minAllowedDob;
+  };
+
+  const validateChangedFields = (): string | null => {
+    const mobileChanged = normalizeValue(form.mobile) !== normalizeValue(initialForm.mobile);
+    const emailChanged = normalizeValue(form.email) !== normalizeValue(initialForm.email);
+    const dobChanged = normalizeValue(form.dob) !== normalizeValue(initialForm.dob);
+
+    if (mobileChanged) {
+      const mobileValue = normalizeValue(form.mobile).replace(/\D/g, '');
+      if (mobileValue.length !== 10) {
+        return 'Please enter a valid 10-digit mobile number.';
+      }
+    }
+
+    if (emailChanged) {
+      const emailValue = normalizeValue(form.email);
+      if (!emailValue || !isValidEmail(emailValue)) {
+        return 'Please enter a valid email address.';
+      }
+    }
+
+    if (dobChanged) {
+      const dobValue = normalizeValue(form.dob);
+      const parsedDob = parseDate(dobValue);
+      if (!parsedDob) {
+        return 'Please select a valid DOB.';
+      }
+      if (!isAdultDob(parsedDob)) {
+        return 'DOB must be before today and age should be 18 years or above.';
+      }
+    }
+
+    return null;
+  };
+
   const onEditPress = () => {
     if (isEditing) {
       setForm(initialForm);
@@ -142,6 +203,18 @@ const ProfileUpdateScreen = ({navigation}: any) => {
   const onSavePress = async () => {
     try {
       setIsSaving(true);
+      if (!canSave) {
+        Alert.alert('No Changes', 'No profile changes found.');
+        setIsEditing(false);
+        return;
+      }
+
+      const validationError = validateChangedFields();
+      if (validationError) {
+        Alert.alert('Validation Error', validationError);
+        return;
+      }
+
       const adminDetails = await apiService.getAdminDetials('admin');
       const updateWithoutOtp = String(
         adminDetails?.settings?.update_profile_without_otp ??
@@ -164,13 +237,7 @@ const ProfileUpdateScreen = ({navigation}: any) => {
           otpSentOn: mobileNumber || form.mobile,
         });
         setShowOtpModal(true);
-        Alert.alert('OTP Sent', 'Please enter OTP to continue profile update.');
-        return;
-      }
-
-      if (!canSave) {
-        Alert.alert('No Changes', 'No profile changes found.');
-        setIsEditing(false);
+        Alert.alert('OTP Sent', 'Please enter OTP to continue profile details update.');
         return;
       }
 
@@ -188,17 +255,18 @@ const ProfileUpdateScreen = ({navigation}: any) => {
         middleName,
         lastName,
         primaryMobile: form.mobile,
+        birthDate: form.dob && form.dob !== 'N/A' ? form.dob : '',
       });
 
       setIsEditing(false);
       setShowOtpModal(false);
       setOtp('');
-      Alert.alert('Success', 'Profile updated successfully.');
+      Alert.alert('Success', 'Profile details updated successfully.');
       const refreshedForm = {...form};
       setInitialForm(refreshedForm);
       setForm(refreshedForm);
     } catch (error: any) {
-      Alert.alert('Error', error?.message || 'Failed to process profile update.');
+      Alert.alert('Error', error?.message || 'Failed to process profile details update.');
     } finally {
       setIsSaving(false);
     }
@@ -207,6 +275,17 @@ const ProfileUpdateScreen = ({navigation}: any) => {
   const onVerifyOtpPress = async () => {
     if (!otp || otp.trim().length < 4) {
       Alert.alert('Invalid OTP', 'Please enter a valid OTP.');
+      return;
+    }
+    if (!canSave) {
+      Alert.alert('No Changes', 'No profile changes found.');
+      setShowOtpModal(false);
+      setIsEditing(false);
+      return;
+    }
+    const validationError = validateChangedFields();
+    if (validationError) {
+      Alert.alert('Validation Error', validationError);
       return;
     }
     try {
@@ -226,6 +305,7 @@ const ProfileUpdateScreen = ({navigation}: any) => {
         middleName,
         lastName,
         primaryMobile: form.mobile,
+        birthDate: form.dob && form.dob !== 'N/A' ? form.dob : '',
       });
 
       setShowOtpModal(false);
@@ -234,7 +314,7 @@ const ProfileUpdateScreen = ({navigation}: any) => {
       const refreshedForm = {...form};
       setInitialForm(refreshedForm);
       setForm(refreshedForm);
-      Alert.alert('Success', 'Profile updated successfully.');
+      Alert.alert('Success', 'Profile details updated successfully.');
     } catch (error: any) {
       Alert.alert('Error', error?.message || 'Failed to verify OTP/update profile.');
     } finally {
@@ -279,6 +359,9 @@ const ProfileUpdateScreen = ({navigation}: any) => {
     if (selectedDate) {
       setDobDate(selectedDate);
       setField('dob', formatDate(selectedDate));
+      if (Platform.OS === 'ios') {
+        setShowDobPicker(false);
+      }
     }
   };
 
@@ -302,7 +385,7 @@ const ProfileUpdateScreen = ({navigation}: any) => {
         <CommonHeader navigation={navigation} />
 
         <View style={styles.pageHeader}>
-          <Text style={[styles.pageTitle, {color: colors.text}]}>Profile Update</Text>
+          <Text style={[styles.pageTitle, {color: colors.text}]}>Profile Details</Text>
           <TouchableOpacity
             style={[styles.editButton, {backgroundColor: colors.card}]}
             onPress={onEditPress}
@@ -316,7 +399,7 @@ const ProfileUpdateScreen = ({navigation}: any) => {
           {renderRow('Email', form.email, 'email', 'email-address')}
           {renderRow('Mobile', form.mobile, 'mobile', 'phone-pad')}
           <View style={[styles.row, styles.lastRow, {borderBottomColor: colors.borderLight}]}>
-            <Text style={[styles.label, {color: colors.textSecondary}]}>DOB</Text>
+            <Text style={[styles.label, {color: colors.textSecondary}]}>Birthday</Text>
             {isEditing ? (
               <TouchableOpacity
                 style={[
