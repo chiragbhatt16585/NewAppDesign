@@ -71,6 +71,13 @@ const RenewPlanScreen = ({navigation}: any) => {
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [authData, setAuthData] = useState<any>(null);
   const [payDues, setPayDues] = useState(0);
+  const parseDuesAmount = (value: any): number => {
+    if (value === null || value === undefined) return 0;
+    const cleaned = String(value).replace(/,/g, '').replace(/[^0-9.-]/g, '');
+    const num = Number(cleaned);
+    return Number.isFinite(num) ? Math.round(num) : 0;
+  };
+
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [showSortModal, setShowSortModal] = useState(false);
   const [sortOption, setSortOption] = useState('');
@@ -215,9 +222,10 @@ const RenewPlanScreen = ({navigation}: any) => {
       // Get admin tax info
       const taxInfo = await apiService.getAdminTaxInfo(authResponse.admin_login_id, 'default');
       
-      // Get payment dues
-      const duesResponse = await apiService.userPaymentDues(username, 'default');
-      const payDuesAmount = duesResponse ? Math.round(parseFloat(duesResponse)) : 0;
+      // Keep dues source aligned with HomeScreen (authUser -> payment_dues).
+      const payDuesAmount = parseDuesAmount(
+        authResponse?.payment_dues ?? authResponse?.user_payment_dues,
+      );
       setPayDues(payDuesAmount);
 
       // Get plan list
@@ -544,7 +552,10 @@ const RenewPlanScreen = ({navigation}: any) => {
     }
 
     const basePrice = calculateTotalAmount(plan);
-    const totalAmount = payDues > 0 ? basePrice + payDues : basePrice;
+    const latestDues = parseDuesAmount(
+      authData?.payment_dues ?? authData?.user_payment_dues ?? payDues,
+    );
+    const totalAmount = latestDues > 0 ? basePrice + latestDues : basePrice;
 
     const planForConfirmation = {
       id: plan.id,
@@ -559,7 +570,7 @@ const RenewPlanScreen = ({navigation}: any) => {
       cgst: plan.CGSTAmount,
       sgst: plan.SGSTAmount,
       mrp: basePrice,
-      dues: !payDues || isNaN(payDues) ? 0 : payDues,
+      dues: latestDues > 0 ? latestDues : 0,
       gbLimit: plan.limit === 'Unlimited' ? -1 : plan.limit,
       isCurrentPlan: plan.name === authData?.current_plan || plan.name === authData?.current_plan1,
       ottServices: plan.content_providers ? plan.content_providers : [],
@@ -572,7 +583,7 @@ const RenewPlanScreen = ({navigation}: any) => {
     navigation.navigate('PlanConfirmation', {
       selectedPlan: planForConfirmation,
       totalAmount: totalAmount,
-      payDues: payDues,
+      payDues: latestDues,
       admin_login_id: authData?.admin_login_id,
     });
   };
@@ -1217,19 +1228,6 @@ const RenewPlanScreen = ({navigation}: any) => {
             {t('renewPlan.subtitle')}
           </Text>
         </View>
-
-        {/* Pay Dues Button */}
-        {payDues > 0 && (
-          <View style={styles.payDuesContainer}>
-            <TouchableOpacity
-              style={[styles.payDuesButton, {backgroundColor: colors.primary}]}
-              onPress={handlePayNow}>
-              <Text style={styles.payDuesButtonText}>
-                Pay Dues - {formatCurrency(payDues)}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        )}
 
         {/* Current Plan Card */}
         {currentPlan && (

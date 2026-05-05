@@ -113,6 +113,9 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
   const [loadingGateways, setLoadingGateways] = React.useState(false);
   const [gatewayError, setGatewayError] = React.useState('');
   const [adminLoginIdState, setAdminLoginIdState] = React.useState(adminLoginId);
+  const [liveDues, setLiveDues] = React.useState(0);
+  const [includeDuesForOnlineRenewal, setIncludeDuesForOnlineRenewal] =
+    React.useState(false);
   const [coupons, setCoupons] = React.useState<any[]>([]);
   const [selectedCoupon, setSelectedCoupon] = React.useState<any>(null);
   const [couponDiscount, setCouponDiscount] = React.useState(0);
@@ -127,6 +130,34 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
     const n = Number(cleaned);
     return Number.isFinite(n) ? n : 0;
   };
+
+  const parseDuesAmount = (value: any): number => {
+    if (value === null || value === undefined) return 0;
+    const cleaned = String(value).replace(/,/g, '').replace(/[^0-9.-]/g, '');
+    const n = Number(cleaned);
+    return Number.isFinite(n) ? Math.round(n) : 0;
+  };
+
+  const resolveIncludeDuesSetting = (taxInfo: any): boolean => {
+    const candidates = [
+      taxInfo?.user_online_payment_option_renewal_includes_dues,
+      taxInfo?.settings?.user_online_payment_option_renewal_includes_dues,
+      taxInfo?.tax_info?.user_online_payment_option_renewal_includes_dues,
+      taxInfo?.display_plan_settings?.user_online_payment_option_renewal_includes_dues,
+      taxInfo?.renewal_includes_dues,
+      taxInfo?.include_dues_in_renewal,
+    ];
+    for (const candidate of candidates) {
+      if (isTruthyValue(candidate)) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const effectiveDues = includeDuesForOnlineRenewal
+    ? Math.max(0, parseDuesAmount(liveDues || selectedPlan?.dues))
+    : 0;
 
   const isTruthyValue = (value: any): boolean => {
     if (value === true) return true;
@@ -294,6 +325,42 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
     loadCurrentPlanForComparison();
   }, [selectedPlan]);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const session = await sessionManager.getCurrentSession();
+        const username = session?.username;
+        if (!username) return;
+        const authResponse = await apiService.authUser(username);
+        if (cancelled) return;
+
+        const realm = getClientConfig().clientId;
+        const taxInfo = await apiService.getAdminTaxInfo(
+          authResponse?.admin_login_id,
+          realm,
+        );
+        if (cancelled) return;
+        const includeDues = resolveIncludeDuesSetting(taxInfo);
+        setIncludeDuesForOnlineRenewal(includeDues);
+
+        const duesFromAuth = parseDuesAmount(
+          authResponse?.payment_dues ?? authResponse?.user_payment_dues,
+        );
+        setLiveDues(duesFromAuth);
+      } catch (e) {
+        if (!cancelled) {
+          // Fallback: if dues already came via route, don't hide them on tax-info fetch failure.
+          setIncludeDuesForOnlineRenewal(parseDuesAmount(selectedPlan?.dues) > 0);
+          setLiveDues(parseDuesAmount(selectedPlan?.dues));
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedPlan?.dues]);
+
   // Fetch user's account status (Active/Inactive/etc.)
   useEffect(() => {
     (async () => {
@@ -449,7 +516,7 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
     const planTotal = calculateTotalAmount(selectedPlan);
     
     // Add dues
-    const totalWithDues = planTotal + (selectedPlan?.dues || 0);
+    const totalWithDues = planTotal + effectiveDues;
     
     // Subtract complimentary discount (if available), otherwise coupon discount.
     const finalAmount = totalWithDues - appliedDiscount;
@@ -968,7 +1035,7 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
       isp_policy_discount: complimentaryDiscountAvailable
         ? complimentaryDiscountAmount
         : 'no',
-      originalAmount: totalAmount,
+      originalAmount: calculateTotalAmount(selectedPlan) + effectiveDues,
       // Add proforma_invoice, refund_amount, old_pin_serial if needed
     };
     
@@ -976,7 +1043,13 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
     console.log('Route totalAmount:', totalAmount);
     console.log('Selected Plan MRP:', selectedPlan?.mrp);
     console.log('Selected Plan Dues:', selectedPlan?.dues);
-    console.log('Calculated Base Amount (mrp + dues):', (selectedPlan?.mrp || 0) + (selectedPlan?.dues || 0));
+    console.log('Live Dues (authUser):', liveDues);
+    console.log(
+      'Franchise Setting user_online_payment_option_renewal_includes_dues:',
+      includeDuesForOnlineRenewal,
+    );
+    console.log('Effective Dues:', effectiveDues);
+    console.log('Calculated Base Amount (mrp + dues):', (selectedPlan?.mrp || 0) + effectiveDues);
     console.log('Discount Applied:', appliedDiscount);
     console.log('Final Amount to Pay:', finalAmount);
     console.log('Admin Login ID:', adminLoginId);
@@ -1386,10 +1459,10 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
               <Text style={[styles.pricingValue, styles.totalValue, {color: colors.primary}]}>{formatCurrency(calculateTotalAmount(selectedPlan))}</Text>
             </View>
 
-            {(selectedPlan.dues || 0) > 0 && (
+            {effectiveDues > 0 && (
               <View style={styles.pricingRow}>
                 <Text style={[styles.pricingLabel, {color: colors.textSecondary}]}>{t('planConfirmation.previousDues')}</Text>
-                <Text style={[styles.pricingValue, {color: colors.text}]}>{formatCurrency(selectedPlan.dues || 0)}</Text>
+                <Text style={[styles.pricingValue, {color: colors.text}]}>{formatCurrency(effectiveDues)}</Text>
               </View>
             )}
 

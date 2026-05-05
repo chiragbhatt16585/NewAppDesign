@@ -66,6 +66,13 @@ const UpgradePlanScreen = ({navigation}: any) => {
   const [plansData, setPlansData] = useState<Plan[]>([]);
   const [authData, setAuthData] = useState<any>(null);
   const [payDues, setPayDues] = useState(0);
+  const parseDuesAmount = (value: any): number => {
+    if (value === null || value === undefined) return 0;
+    const cleaned = String(value).replace(/,/g, '').replace(/[^0-9.-]/g, '');
+    const num = Number(cleaned);
+    return Number.isFinite(num) ? Math.round(num) : 0;
+  };
+
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [showSortModal, setShowSortModal] = useState(false);
   const [sortOption, setSortOption] = useState('');
@@ -210,12 +217,13 @@ const UpgradePlanScreen = ({navigation}: any) => {
       console.log('Show All Plans:', taxInfo?.isShowAllPlan);
       console.log('=== END TAX INFO ===');
       
-      // Get payment dues
-      const duesResponse = await apiService.userPaymentDues(username, 'default');
-      const payDuesAmount = duesResponse ? Math.round(parseFloat(duesResponse)) : 0;
+      // Keep dues source aligned with HomeScreen (authUser -> payment_dues).
+      const payDuesAmount = parseDuesAmount(
+        authResponse?.payment_dues ?? authResponse?.user_payment_dues,
+      );
       setPayDues(payDuesAmount);
       console.log('=== PAYMENT DUES ===');
-      console.log('Dues Response:', duesResponse);
+      console.log('Dues Source (authUser.payment_dues):', authResponse?.payment_dues);
       console.log('Dues Amount:', payDuesAmount);
       console.log('=== END PAYMENT DUES ===');
 
@@ -388,7 +396,10 @@ const UpgradePlanScreen = ({navigation}: any) => {
 
   const handlePlanSelect = (plan: Plan) => {
     const basePrice = calculateTotalAmount(plan);
-    const totalAmount = payDues > 0 ? basePrice + payDues : basePrice;
+    const latestDues = parseDuesAmount(
+      authData?.payment_dues ?? authData?.user_payment_dues ?? payDues,
+    );
+    const totalAmount = latestDues > 0 ? basePrice + latestDues : basePrice;
 
     // Map the selected plan to the expected structure for confirmation screen
     const planForConfirmation = {
@@ -404,7 +415,7 @@ const UpgradePlanScreen = ({navigation}: any) => {
       cgst: plan.CGSTAmount,
       sgst: plan.SGSTAmount,
       mrp: calculateTotalAmount(plan),
-      dues: !payDues || isNaN(payDues) ? 0 : payDues,
+      dues: latestDues > 0 ? latestDues : 0,
       gbLimit: plan.limit === 'Unlimited' ? -1 : plan.limit,
       isCurrentPlan: false, // Always false for upgrade plans
       ottServices: plan.content_providers ? plan.content_providers : [],
@@ -417,7 +428,7 @@ const UpgradePlanScreen = ({navigation}: any) => {
     navigation.navigate('UpgradePlanConfirmation', {
       selectedPlan: planForConfirmation,
       totalAmount: totalAmount,
-      payDues: payDues,
+      payDues: latestDues,
       admin_login_id: authData?.admin_login_id,
     });
   };
@@ -934,21 +945,6 @@ const UpgradePlanScreen = ({navigation}: any) => {
             {t('upgradePlan.subtitle')}
           </Text>
         </View>
-
-        {/* Pay Dues Button - TODO: Implement separate payment handler */}
-        {payDues > 0 && (
-          <View style={styles.payDuesContainer}>
-            <TouchableOpacity
-              style={[styles.payDuesButton, {backgroundColor: colors.primary}]}
-              onPress={() => {
-                Alert.alert('Pay Dues', 'Please select a plan to proceed with payment');
-              }}>
-              <Text style={styles.payDuesButtonText}>
-                Pay Dues - {formatCurrency(payDues)}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        )}
 
         {/* Separator line (same as RenewPlanScreen) */}
         <View style={styles.separatorLine}>

@@ -59,6 +59,40 @@ const UpgradePlanConfirmationScreen = ({navigation, route}: any) => {
   const [loadingGateways, setLoadingGateways] = useState(false);
   const [gatewayError, setGatewayError] = useState('');
   const [adminLoginIdState, setAdminLoginIdState] = useState(admin_login_id);
+  const [liveDues, setLiveDues] = useState(0);
+  const [includeDuesForOnlineRenewal, setIncludeDuesForOnlineRenewal] =
+    useState(false);
+
+  const parseDuesAmount = (value: any): number => {
+    if (value === null || value === undefined) return 0;
+    const cleaned = String(value).replace(/,/g, '').replace(/[^0-9.-]/g, '');
+    const n = Number(cleaned);
+    return Number.isFinite(n) ? Math.round(n) : 0;
+  };
+
+  const resolveIncludeDuesSetting = (taxInfo: any): boolean => {
+    const candidates = [
+      taxInfo?.user_online_payment_option_renewal_includes_dues,
+      taxInfo?.settings?.user_online_payment_option_renewal_includes_dues,
+      taxInfo?.tax_info?.user_online_payment_option_renewal_includes_dues,
+      taxInfo?.display_plan_settings?.user_online_payment_option_renewal_includes_dues,
+      taxInfo?.renewal_includes_dues,
+      taxInfo?.include_dues_in_renewal,
+    ];
+    for (const candidate of candidates) {
+      if (String(candidate ?? '').trim().toLowerCase() === 'yes') {
+        return true;
+      }
+      if (candidate === true || String(candidate ?? '').trim() === '1') {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const effectiveDues = includeDuesForOnlineRenewal
+    ? Math.max(0, parseDuesAmount(liveDues || payDues || selectedPlan?.dues))
+    : 0;
 
   // Read display_option_json settings for "Upgrade Plan" menu
   const { showL2SPlanName, showPlanParamsBlend, highSpeedPlanNote, showDiscountCoupon } = useMemo(() => {
@@ -161,6 +195,10 @@ const UpgradePlanConfirmationScreen = ({navigation, route}: any) => {
       });
       
       setCurrentPlanData(authResponse);
+      const duesFromAuth = parseDuesAmount(
+        authResponse?.payment_dues ?? authResponse?.user_payment_dues,
+      );
+      setLiveDues(duesFromAuth);
 
       // Extract refund data from authUser response
       // console.log('=== AUTH USER RESPONSE FOR REFUND ===');
@@ -209,8 +247,10 @@ const UpgradePlanConfirmationScreen = ({navigation, route}: any) => {
         // console.log('Username:', username);
         
         if (currentPlanName && authResponse?.admin_login_id) {
-          // Get admin tax info for plan API
-          const taxInfo = await apiService.getAdminTaxInfo(authResponse.admin_login_id, 'default');
+          // Get admin tax info for plan API and dues inclusion flag
+          const realm = getClientConfig().clientId;
+          const taxInfo = await apiService.getAdminTaxInfo(authResponse.admin_login_id, realm);
+          setIncludeDuesForOnlineRenewal(resolveIncludeDuesSetting(taxInfo));
           const isShowAllPlan = taxInfo?.isShowAllPlan || false;
           
           // Get full plan list
@@ -242,6 +282,7 @@ const UpgradePlanConfirmationScreen = ({navigation, route}: any) => {
         }
       } catch (error) {
         console.error('Error fetching current plan details:', error);
+        setIncludeDuesForOnlineRenewal(parseDuesAmount(selectedPlan?.dues) > 0);
       }
 
       // Get available coupons
@@ -429,7 +470,7 @@ const UpgradePlanConfirmationScreen = ({navigation, route}: any) => {
       isp_policy_discount: complimentaryDiscountAvailable
         ? complimentaryDiscountAmount
         : 'no',
-      originalAmount: totalAmount,
+      originalAmount: (selectedPlan?.price || 0) + effectiveDues,
       refund_amount: refundAmount,
       old_pin_serial: oldPinSerial,
     };
@@ -598,7 +639,7 @@ const UpgradePlanConfirmationScreen = ({navigation, route}: any) => {
   };
 
   const calculateFinalAmount = () => {
-    let finalAmount = totalAmount;
+    let finalAmount = (selectedPlan?.price || 0) + effectiveDues;
     
     // Subtract refund amount if available
     if (salesReturnData && salesReturnData.pin_detail && salesReturnData.pin_detail.length > 0) {
@@ -1057,11 +1098,11 @@ const UpgradePlanConfirmationScreen = ({navigation, route}: any) => {
         </Text>
       </View>
       
-      {payDues > 0 && (
+      {effectiveDues > 0 && (
         <View style={styles.paymentRow}>
           <Text style={[styles.paymentLabel, {color: colors.textSecondary}]}>Outstanding Dues</Text>
           <Text style={[styles.paymentValue, {color: colors.error}]}>
-            {formatCurrency(payDues)}
+            {formatCurrency(effectiveDues)}
           </Text>
         </View>
       )}

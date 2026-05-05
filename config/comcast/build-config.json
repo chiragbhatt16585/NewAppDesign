@@ -21,7 +21,7 @@
   },
   "ios": {
     "bundleIdentifier": "com.l2sClient.comcastbroadband",
-    "marketingVersion": "1.0.8",
+    "marketingVersion": "1.0.9",
     "buildNumber": "1",
     "displayName": "Comcast"
   }
