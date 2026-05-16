@@ -131,6 +131,10 @@ const LogoImage: React.FC<LogoImageProps> = ({style, width, height, type = 'head
         'funnet:isp_logo.png': require('../../config/funnet/assets/isp_logo.png'),
         'graceway:isp_logo.png': require('../../config/graceway/assets/isp_logo.png'),
         'log2space-common:isp_logo.png': require('../../config/log2space-common/assets/isp_logo.png'),
+        // Skynet Wi‑Fi: client assets use `header_logo.png` for the main mark (login + header).
+        // Map branding `logo` (isp_logo.png) to that file so updates in config/ show without relying on prepare → src/assets.
+        'skynetwifi:isp_logo.png': require('../../config/skynetwifi/assets/header_logo.png'),
+        'srisamarthinfobahn:isp_logo.png': require('../../config/srisamarthinfobahn/assets/isp_logo.png'),
 
         // Legacy / older standalone logo files (if any)
         'microscan_logo.png': require('../assets/microscan_logo.png'),
@@ -146,27 +150,7 @@ const LogoImage: React.FC<LogoImageProps> = ({style, width, height, type = 'head
         logoMap[logoFileName] ||
         logoMap['default:isp_logo.png'];
 
-      // Skynetwifi: don't require config/skynetwifi assets at build time.
-      // Instead, rely on the prepare script copying `config/<client>/assets/isp_logo.png`
-      // into `src/assets/isp_logo.png`, then load it from there.
-      if (clientId === 'skynetwifi') {
-        try {
-          return require('../assets/isp_logo.png');
-        } catch (_) {
-          // Fall back to computed logoSource
-        }
-      }
-      if (clientId === 'srisamarthinfobahn') {
-        try {
-          return require('../assets/isp_logo.png');
-        } catch (_) {
-          // Fall back to computed logoSource
-        }
-      }
-
       // Fallback: after prepare, assets are copied to src/assets.
-      // - Graceway/log2space-common: keep previous behavior.
-      // - Skynetwifi: also allow it to load from src/assets if required mapping fails.
       if ((clientId === 'graceway' || clientId === 'log2space-common') && (!logoSource || imageError)) {
         try {
           const assetsLogo = require('../assets/isp_logo.png');
@@ -174,13 +158,7 @@ const LogoImage: React.FC<LogoImageProps> = ({style, width, height, type = 'head
         } catch (_) {}
       }
 
-      if (clientId === 'skynetwifi' && (!logoSource || imageError)) {
-        try {
-          const assetsLogo = require('../assets/isp_logo.png');
-          if (assetsLogo) return assetsLogo;
-        } catch (_) {}
-      }
-      if (clientId === 'srisamarthinfobahn' && (!logoSource || imageError)) {
+      if ((clientId === 'skynetwifi' || clientId === 'srisamarthinfobahn') && (!logoSource || imageError)) {
         try {
           const assetsLogo = require('../assets/isp_logo.png');
           if (assetsLogo) return assetsLogo;

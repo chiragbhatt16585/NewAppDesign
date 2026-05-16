@@ -224,7 +224,7 @@ const clientConfigs: Record<string, ClientConfig> = {
     name: 'Funnet',
     companyName: 'Delix Net Solutions Pvt Ltd',
     apiUrl: 'https://funnet.l2s.biz',
-    supportEmail: 'accounts@delix.in',
+    supportEmail: 'support@delix.in',
     website: 'https://funnet.l2s.biz',
     poweredBy: 'Spacecom Software LLP',
     poweredByWebsite: 'https://spacecom.in',

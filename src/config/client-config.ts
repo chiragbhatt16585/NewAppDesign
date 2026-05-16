@@ -1668,16 +1668,16 @@ const clientConfigs: Record<string, ClientConfig> = {
       headOffice: {
         title: 'Head Office',
         address:
-          'G-2 Bhima Mhatre CHS Ltd, Near Agrawall Hall, Manpada Rd, Dombivli, Dombivli East, Maharashtra 421201',
-        customerSupport: '8976017880',
+          'Shop no 5 Bhima Mhatre Chs, Manpada Road, Opp K.D. Agarwall Hall, Dombivli East',
+        customerSupport: '8976017880, 8425895774',
       },
       branchOffices: [],
       emails: {
-        inquiries: 'accounts@delix.in',
-        sales: 'accounts@delix.in',
-        support: 'accounts@delix.in',
+        inquiries: 'support@delix.in',
+        sales: 'L2support@delix.in',
+        support: 'support@delix.in, L2support@delix.in',
       },
-      landline: '8976017880',
+      landline: '8976017880, 8425895774',
     },
     about: {
       companyName: 'Delix Net Solutions Pvt Ltd',

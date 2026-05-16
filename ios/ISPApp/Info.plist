@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>Comcast</string>
+	<string>Skynet Wi-Fi</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -59,6 +59,10 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -68,15 +72,18 @@
 			<array>
 				<string>paymentresponse</string>
 				<string>isp</string>
-				<string>comcast</string>
+				<string>dna-goa</string>
 			</array>
 		</dict>
 	</array>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
+		<!-- Google Pay / Tez -->
 		<string>googlepay</string>
 		<string>tez</string>
 		<string>gpay</string>
+		
+		<!-- Popular UPI Apps -->
 		<string>phonepe</string>
 		<string>phonepepay</string>
 		<string>cred</string>
@@ -98,10 +105,14 @@
 		<string>jio</string>
 		<string>jiopay</string>
 		<string>jiomoney</string>
+		
+		<!-- International Payment Apps -->
 		<string>razorpay</string>
 		<string>stripe</string>
 		<string>square</string>
 		<string>paypal</string>
+		
+		<!-- Bank Apps -->
 		<string>yono</string>
 		<string>icicibank</string>
 		<string>hdfcbank</string>
@@ -128,6 +139,22 @@
 		<string>syndicatebank</string>
 		<string>vijayabank</string>
 		<string>dhanlaxmibank</string>
+		<string>andhrabank</string>
+		<string>corporationbank</string>
+		<string>syndicatebank</string>
+		<string>vijayabank</string>
+		<string>dhanlaxmibank</string>
+		<string>federalbank</string>
+		<string>karnatakabank</string>
+		<string>southindianbank</string>
+		<string>tmb</string>
+		<string>karurvysyabank</string>
+		<string>lakshmivilasbank</string>
+		<string>dcbbank</string>
+		<string>jammukashmir</string>
+		<string>pandcbank</string>
+		
+		<!-- Android Intent and Market -->
 		<string>intent</string>
 		<string>market</string>
 	</array>
@@ -152,3 +179,4 @@
 	</array>
 </dict>
 </plist>
+

@@ -1,9 +1,9 @@
 {
-  "name": "ComcastApp",
+  "name": "SkynetwifiApp",
   "expo": {
-    "name": "Comcast",
-    "slug": "comcast",
-    "version": "1.0.8",
+    "name": "Skynet Wi-Fi",
+    "slug": "skynetwifi",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./app-icons/icon.png",
     "userInterfaceStyle": "light",
@@ -17,19 +17,20 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.l2sClient.comcastbroadband",
-      "buildNumber": "1"
+      "bundleIdentifier": "com.spacecom.log2space.skynetwifi",
+      "buildNumber": "3"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./app-icons/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
       },
-      "package": "in.spacecom.log2space.client.comcastBroadband",
-      "versionCode": 14
+      "package": "com.spacecom.log2space.skynetwifi",
+      "versionCode": 3
     },
     "web": {
       "favicon": "./app-icons/favicon.png"
     }
   }
 }
+

@@ -3,7 +3,7 @@
   "expo": {
     "name": "Skynet Wi-Fi",
     "slug": "skynetwifi",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./app-icons/icon.png",
     "userInterfaceStyle": "light",
@@ -18,7 +18,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.spacecom.log2space.skynetwifi",
-      "buildNumber": "2"
+      "buildNumber": "3"
     },
     "android": {
       "adaptiveIcon": {
@@ -26,7 +26,7 @@
         "backgroundColor": "#FFFFFF"
       },
       "package": "com.spacecom.log2space.skynetwifi",
-      "versionCode": 2
+      "versionCode": 3
     },
     "web": {
       "favicon": "./app-icons/favicon.png"

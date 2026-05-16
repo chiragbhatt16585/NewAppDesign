@@ -2,8 +2,8 @@
   "android": {
     "namespace": "com.spacecom.log2space.skynetwifi",
     "applicationId": "com.spacecom.log2space.skynetwifi",
-    "versionCode": 2,
-    "versionName": "1.0.2",
+    "versionCode": 3,
+    "versionName": "1.0.3",
     "signing": {
       "debug": {
         "storeFile": "debug.keystore",
@@ -21,8 +21,8 @@
   },
   "ios": {
     "bundleIdentifier": "com.spacecom.log2space.skynetwifi",
-    "marketingVersion": "1.0.2",
-    "buildNumber": "2",
+    "marketingVersion": "1.0.3",
+    "buildNumber": "3",
     "displayName": "Skynetwifi"
   }
 }

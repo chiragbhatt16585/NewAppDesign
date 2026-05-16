@@ -103,13 +103,13 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "in.spacecom.log2space.client.comcastBroadband"
+    namespace "com.spacecom.log2space.skynetwifi"
     defaultConfig {
-        applicationId "in.spacecom.log2space.client.comcastBroadband"
+        applicationId "com.spacecom.log2space.skynetwifi"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 14
-        versionName "1.0.14"
+        versionCode 3
+        versionName "1.0.3"
         buildConfigField "boolean", "IS_NEW_ARCHITECTURE_ENABLED", "false"
     }
     
@@ -143,7 +143,7 @@ android {
                 keyPassword 'android'
             }
             release {
-                storeFile file('Log2SpaceComcastBroadband.jks')
+                storeFile file('Log2spceSkynetWifiKey_V3.jks')
                 storePassword 'log2space'
                 keyAlias 'log2space'
                 keyPassword 'log2space'
@@ -177,5 +177,4 @@ dependencies {
     }
 }
 
-// Enable Google Services plugin for Firebase auto-initialization
 apply plugin: "com.google.gms.google-services"

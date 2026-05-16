@@ -175,8 +175,8 @@ const CLIENTS = {
     name: 'Skynetwifi',
     packageName: 'com.spacecom.log2space.skynetwifi',
     namespace: 'com.spacecom.log2space.skynetwifi',
-    versionCode: 2,
-    versionName: '1.0.2',
+    versionCode: 3,
+    versionName: '1.0.3',
     keystore: 'Log2spceSkynetWifiKey_V3.jks',
     configDir: 'config/skynetwifi',
   },
@@ -474,18 +474,8 @@ function copyClientConfig(clientId) {
     fs.copyFileSync(googleServicesSrc, googleServicesDest);
     logSuccess('Copied google-services.json for Android (Firebase)');
   } else {
-    // Fallback: if the new client doesn't yet have its own Firebase JSON, reuse gatewayftth config
-    if (fallbackConfigDir) {
-      const fallbackGoogleServicesSrc = path.join(fallbackConfigDir, 'google-services.json');
-      if (fs.existsSync(fallbackGoogleServicesSrc)) {
-        fs.copyFileSync(fallbackGoogleServicesSrc, googleServicesDest);
-        logWarning('google-services.json not found in client config; copied fallback Firebase Android config from gatewayftth');
-      } else {
-        logWarning('google-services.json not found in client config and no fallback found; skipping Firebase Android config copy');
-      }
-    } else {
-      logWarning('google-services.json not found in client config, skipping Firebase Android config copy');
-    }
+    // Do not copy fallback Firebase config from another client.
+    logWarning(`google-services.json not found in config/${clientId}; keeping existing android/app/google-services.json unchanged`);
   }
 
   // Copy Firebase config for iOS (GoogleService-Info.plist)
@@ -495,18 +485,8 @@ function copyClientConfig(clientId) {
     fs.copyFileSync(googleServiceInfoSrc, googleServiceInfoDest);
     logSuccess('Copied GoogleService-Info.plist for iOS (Firebase)');
   } else {
-    // Fallback: if the new client doesn't yet have its own Firebase plist, reuse gatewayftth config
-    if (fallbackConfigDir) {
-      const fallbackGoogleServiceInfoSrc = path.join(fallbackConfigDir, 'GoogleService-Info.plist');
-      if (fs.existsSync(fallbackGoogleServiceInfoSrc)) {
-        fs.copyFileSync(fallbackGoogleServiceInfoSrc, googleServiceInfoDest);
-        logWarning('GoogleService-Info.plist not found in client config; copied fallback Firebase iOS config from gatewayftth');
-      } else {
-        logWarning('GoogleService-Info.plist not found in client config and no fallback found; skipping Firebase iOS config copy');
-      }
-    } else {
-      logWarning('GoogleService-Info.plist not found in client config, skipping Firebase iOS config copy');
-    }
+    // Do not copy fallback Firebase config from another client.
+    logWarning(`GoogleService-Info.plist not found in config/${clientId}; keeping existing ios/ISPApp/GoogleService-Info.plist unchanged`);
   }
 
   // Copy strings.json
@@ -643,30 +623,11 @@ function updateAndroidBuildGradle(clientId) {
 
   const buildGradlePath = path.join(__dirname, '..', 'android', 'app', 'build.gradle');
   let buildGradleContent = fs.readFileSync(buildGradlePath, 'utf8');
-
-  // If the new client doesn't yet have its own Firebase android config, Gradle's
-  // google-services plugin will fail because the app's applicationId won't match.
-  // In that case, temporarily fall back the applicationId to the fallback client's packageName
-  // (we keep namespace as-is so the rest of the code generation still works).
-  const fallbackClientId = 'gatewayftth';
-  const fallbackClient = CLIENTS[fallbackClientId];
   const clientConfigDir = path.join(__dirname, '..', client.configDir);
-  const clientGoogleServicesPath = path.join(clientConfigDir, 'google-services.json');
-  const hasClientGoogleServices = fs.existsSync(clientGoogleServicesPath);
+  const hasClientGoogleServices = fs.existsSync(path.join(clientConfigDir, 'google-services.json'));
 
-  let effectiveApplicationId = client.packageName;
-  if (!hasClientGoogleServices && fallbackClient && clientId !== 'funnet') {
-    const fallbackConfigDir = path.join(__dirname, '..', fallbackClient.configDir);
-    const fallbackGoogleServicesPath = path.join(fallbackConfigDir, 'google-services.json');
-    const hasFallbackGoogleServices = fs.existsSync(fallbackGoogleServicesPath);
-
-    if (hasFallbackGoogleServices) {
-      effectiveApplicationId = fallbackClient.packageName;
-      logWarning(
-        `Firebase google-services.json missing for ${clientId}; using fallback applicationId '${effectiveApplicationId}' so Android build can succeed. Add config/${clientId}/google-services.json later to restore proper applicationId/Firebase.`
-      );
-    }
-  }
+  // Always use the selected client's package as applicationId.
+  const effectiveApplicationId = client.packageName;
 
   // Read keystore config to extract passwords and aliases
   const keystoreConfigPath = path.join(__dirname, '..', client.configDir, 'keystore-config.gradle');
@@ -799,6 +760,24 @@ function updateAndroidBuildGradle(clientId) {
         )
         .join('\n                '),
     );
+  }
+
+  // Enable Google Services only when the selected client has its own firebase json.
+  // This avoids package-name mismatch failures for clients without firebase setup.
+  if (hasClientGoogleServices) {
+    if (!/apply plugin:\s*"com\.google\.gms\.google-services"/.test(buildGradleContent)) {
+      buildGradleContent = `${buildGradleContent.trimEnd()}\n\napply plugin: "com.google.gms.google-services"\n`;
+    }
+  } else {
+    buildGradleContent = buildGradleContent.replace(
+      /\n\/\/ Enable Google Services plugin for Firebase auto-initialization\s*\napply plugin:\s*"com\.google\.gms\.google-services"\s*\n?/,
+      '\n'
+    );
+    buildGradleContent = buildGradleContent.replace(
+      /\napply plugin:\s*"com\.google\.gms\.google-services"\s*\n?/,
+      '\n'
+    );
+    logWarning(`Firebase not configured for ${clientId}; disabled Google Services plugin in android/app/build.gradle`);
   }
 
   fs.writeFileSync(buildGradlePath, buildGradleContent);

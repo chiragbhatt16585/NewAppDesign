@@ -195,6 +195,7 @@ const HomeScreen = ({navigation}: any) => {
   const [refreshing, setRefreshing] = useState(false);
   const currentClientId = getClientConfig().clientId;
   const isMicroscan = currentClientId === 'microscan';
+  const isThreesaInfoway = currentClientId === 'threesa-infoway';
   // Clients that use a colored header background image – header icons should be white for contrast
   const headerBgClients = new Set([
     'spacecom-live',
@@ -1915,42 +1916,58 @@ const HomeScreen = ({navigation}: any) => {
           ) : (
             <View style={styles.quickMenuRow}>            
               {mainMenuItems.map(item => (
-                <TouchableOpacity 
-                  key={item.label}
+                <React.Fragment key={item.label}>
+                  <TouchableOpacity
+                    style={styles.quickMenuRowItem}
+                    onPress={item.onPress}
+                    disabled={!item.onPress}
+                  >
+                    {isMicroscan ? (
+                      // For microscan: just the icon with primary color, no background container
+                      <>
+                        {item.iconType === 'feather' ? (
+                          <Feather name={item.icon} size={24} color={colors.primary} />
+                        ) : item.iconType === 'material' ? (
+                          <MaterialIcons name={item.icon} size={24} color={colors.primary} />
+                        ) : item.iconType === 'material-community' ? (
+                          <MaterialCommunityIcons name={item.icon} size={24} color={colors.primary} />
+                        ) : (
+                          <Text style={[styles.quickMenuRowIcon, { color: colors.primary, fontWeight: 'bold' }]}>{item.icon}</Text>
+                        )}
+                      </>
+                    ) : (
+                      // For other clients: icon with filled background container
+                      <View style={[styles.quickMenuIconContainer, { backgroundColor: item.backgroundColor || colors.primary }]}>
+                        {item.iconType === 'feather' ? (
+                          <Feather name={item.icon} size={26} color={item.iconColor || '#FFFFFF'} strokeWidth={2.5} />
+                        ) : item.iconType === 'material' ? (
+                          <MaterialIcons name={item.icon} size={26} color={item.iconColor || '#FFFFFF'} />
+                        ) : item.iconType === 'material-community' ? (
+                          <MaterialCommunityIcons name={item.icon} size={26} color={item.iconColor || '#FFFFFF'} />
+                        ) : (
+                          <Text style={[styles.quickMenuRowIcon, { color: item.iconColor || '#FFFFFF', fontWeight: 'bold' }]}>{item.icon}</Text>
+                        )}
+                      </View>
+                    )}
+                    <Text style={[styles.quickMenuRowTitle, {color: isMicroscan ? colors.text : (item.textColor || colors.text)}]}>{item.displayLabel || item.label}</Text>
+                  </TouchableOpacity>
+                </React.Fragment>
+              ))}
+              {isThreesaInfoway && (
+                <TouchableOpacity
                   style={styles.quickMenuRowItem}
-                  onPress={item.onPress}
-                  disabled={!item.onPress}
+                  onPress={() => navigation.navigate('ReferFriend')}
                 >
                   {isMicroscan ? (
-                    // For microscan: just the icon with primary color, no background container
-                    <>
-                      {item.iconType === 'feather' ? (
-                        <Feather name={item.icon} size={24} color={colors.primary} />
-                      ) : item.iconType === 'material' ? (
-                        <MaterialIcons name={item.icon} size={24} color={colors.primary} />
-                      ) : item.iconType === 'material-community' ? (
-                        <MaterialCommunityIcons name={item.icon} size={24} color={colors.primary} />
-                      ) : (
-                        <Text style={[styles.quickMenuRowIcon, { color: colors.primary, fontWeight: 'bold' }]}>{item.icon}</Text>
-                      )}
-                    </>
+                    <MaterialCommunityIcons name="account-multiple-plus-outline" size={24} color={colors.primary} />
                   ) : (
-                    // For other clients: icon with filled background container
-                    <View style={[styles.quickMenuIconContainer, { backgroundColor: item.backgroundColor || colors.primary }]}>
-                      {item.iconType === 'feather' ? (
-                        <Feather name={item.icon} size={26} color={item.iconColor || '#FFFFFF'} strokeWidth={2.5} />
-                      ) : item.iconType === 'material' ? (
-                        <MaterialIcons name={item.icon} size={26} color={item.iconColor || '#FFFFFF'} />
-                      ) : item.iconType === 'material-community' ? (
-                        <MaterialCommunityIcons name={item.icon} size={26} color={item.iconColor || '#FFFFFF'} />
-                      ) : (
-                        <Text style={[styles.quickMenuRowIcon, { color: item.iconColor || '#FFFFFF', fontWeight: 'bold' }]}>{item.icon}</Text>
-                      )}
+                    <View style={[styles.quickMenuIconContainer, { backgroundColor: colors.primary }]}>
+                      <MaterialCommunityIcons name="account-multiple-plus-outline" size={26} color="#FFFFFF" />
                     </View>
                   )}
-                  <Text style={[styles.quickMenuRowTitle, {color: isMicroscan ? colors.text : (item.textColor || colors.text)}]}>{item.displayLabel || item.label}</Text>
+                  <Text style={[styles.quickMenuRowTitle, {color: colors.text}]}>Refer Friend</Text>
                 </TouchableOpacity>
-              ))}
+              )}
             </View>
           )}
         </View>

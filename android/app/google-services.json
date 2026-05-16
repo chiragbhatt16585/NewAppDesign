@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "267827216129",
-    "project_id": "log2space-one-seven-star",
-    "storage_bucket": "log2space-one-seven-star.firebasestorage.app"
+    "project_number": "119607438886",
+    "project_id": "log2space-skynet-wi-fi",
+    "storage_bucket": "log2space-skynet-wi-fi.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:267827216129:android:80c401881f2aac76fde500",
+        "mobilesdk_app_id": "1:119607438886:android:21b0d5392fefaf483080e7",
         "android_client_info": {
-          "package_name": "in.spacecom.log2space.client.comcastBroadband"
+          "package_name": "com.spacecom.log2space.skynetwifi"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyDSHx2ySY-y9UETyYeWD8CEpsOrqsa76Xc"
+          "current_key": "AIzaSyCjtBb-jZb6AD0v3W2Zd_c7Hnks90WV040"
         }
       ],
       "services": {

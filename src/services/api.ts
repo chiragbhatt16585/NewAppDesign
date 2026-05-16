@@ -1975,11 +1975,22 @@ class ApiService {
       try {
         const res = await fetch(`${getApiUrl()}/selfcareMerchantPaymentRequest`, options);
         const response = await res.json();
+        console.log('=== PAYMENT REQUEST API RAW RESPONSE ===');
+        console.log(response);
+        console.log('=== END PAYMENT REQUEST API RAW RESPONSE ===');
         if (response.status !== 'ok' && response.code !== 200) {
+          console.log('=== PAYMENT REQUEST API ERROR RESPONSE ===');
+          console.log('status:', response.status);
+          console.log('code:', response.code);
+          console.log('message:', response.message);
+          console.log('=== END PAYMENT REQUEST API ERROR RESPONSE ===');
           throw new Error(response.message);
         }
         return response;
       } catch (e: any) {
+        console.log('=== PAYMENT REQUEST API EXCEPTION ===');
+        console.log(e);
+        console.log('=== END PAYMENT REQUEST API EXCEPTION ===');
         const msg = isNetworkError(e) ? networkErrorMsg : e.message;
         throw new Error(msg);
       }

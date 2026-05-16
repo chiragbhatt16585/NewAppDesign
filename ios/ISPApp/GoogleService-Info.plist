@@ -3,17 +3,17 @@
 <plist version="1.0">
 <dict>
 	<key>API_KEY</key>
-	<string>AIzaSyBtKM81_dAX7kUdstutuIZGlJA_PqzIgyE</string>
+	<string>AIzaSyAMsx5TCM4fKvNsie0z0P3mWe2ufgC5QB0</string>
 	<key>GCM_SENDER_ID</key>
-	<string>738642151340</string>
+	<string>119607438886</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.spacecom.log2space.gatewayftth</string>
+	<string>com.spacecom.log2space.skynetwifi</string>
 	<key>PROJECT_ID</key>
-	<string>log2space-gatewayftth</string>
+	<string>log2space-skynet-wi-fi</string>
 	<key>STORAGE_BUCKET</key>
-	<string>log2space-gatewayftth.firebasestorage.app</string>
+	<string>log2space-skynet-wi-fi.firebasestorage.app</string>
 	<key>IS_ADS_ENABLED</key>
 	<false></false>
 	<key>IS_ANALYTICS_ENABLED</key>
@@ -25,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:738642151340:ios:160654830b5b739dc99c09</string>
+	<string>1:119607438886:ios:91506a73c362fb6f3080e7</string>
 </dict>
 </plist>
