@@ -137,6 +137,14 @@ const MoreOptionsScreen = ({navigation}: any) => {
     navigation.navigate('PartnerApps');
   };
 
+  const handleCustomerConsent = () => {
+    navigation.navigate('CustomerConsent');
+  };
+
+  const handleChangePassword = () => {
+    navigation.navigate('ChangePassword');
+  };
+
   const handleReviewRatings = async () => {
     try {
       const clientConfig = getClientConfig();
@@ -309,6 +317,25 @@ const MoreOptionsScreen = ({navigation}: any) => {
       // ignore logging errors
     }
 
+    if (isMicroscan) {
+      built.push({
+        id: 'customer-consent',
+        title: t('more.customerConsent'),
+        subtitle: t('more.customerConsentSubtitle'),
+        icon: 'file-text',
+        iconType: 'feather',
+        onPress: handleCustomerConsent,
+      });
+      built.push({
+        id: 'change-password',
+        title: t('more.changePassword'),
+        subtitle: t('more.changePasswordSubtitle'),
+        icon: 'lock',
+        iconType: 'feather',
+        onPress: handleChangePassword,
+      });
+    }
+
     // Append Logout at the end
     built.push({
       id: 'logout',
@@ -321,7 +348,7 @@ const MoreOptionsScreen = ({navigation}: any) => {
     });
 
     return built;
-  }, [menu, t, shouldHideRenewAndUpgrade]);
+  }, [menu, t, shouldHideRenewAndUpgrade, isMicroscan]);
 
   return (
     <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}>

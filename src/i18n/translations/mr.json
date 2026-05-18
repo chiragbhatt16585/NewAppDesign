@@ -189,7 +189,11 @@
     "securitySettingsSubtitle": "PIN आणि बायोमेट्रिक प्रमाणीकरण",
     "partnerApps": "पार्टनर अॅप्स",
     "reviewRatings": "समीक्षा आणि रेटिंग",
-    "updateSSID": "SSID अपडेट करा"
+    "updateSSID": "SSID अपडेट करा",
+    "customerConsent": "ग्राहक संमती",
+    "changePassword": "पासवर्ड बदला",
+    "customerConsentSubtitle": "तपशील आणि संमती तपासा",
+    "changePasswordSubtitle": "तुमचा पासवर्ड अपडेट करा"
   },
   "settings": {
     "title": "सेटिंग्ज",
@@ -442,5 +446,94 @@
     "mockMode": "मॉक मोड",
     "mockSuccess": "हे मॉक डेटा आहे. SSID अपडेट सिम्युलेशन यशस्वी!",
     "failedToUpdate": "SSID अपडेट करण्यात अयशस्वी"
+  },
+  "customerConsent": {
+    "title": "ग्राहक पडताळणी",
+    "subtitle": "कृपया खालील तुमचे सर्व तपशील तपासा.",
+    "customerInformation": "ग्राहकाची माहिती",
+    "name": "नाव",
+    "phoneNumber": "मोबाईल नंबर",
+    "emailAddress": "ईमेल पत्ता",
+    "installationAddress": "इन्स्टॉलेशनचा पत्ता",
+    "selectedInternetPlan": "निवडलेला इंटरनेट प्लॅन",
+    "planName": "प्लॅनचे नाव",
+    "validity": "वैधता",
+    "monthlyPlanAmount": "मासिक प्लॅनची रक्कम",
+    "routerInformation": "राऊटरची माहिती",
+    "oneTimeCharges": "एकवेळचे शुल्क",
+    "installationCharges": "इन्स्टॉलेशन शुल्क",
+    "routerCharges": "राऊटर शुल्क",
+    "kycDetails": "KYC तपशील",
+    "idProof": "ओळख पुरावा",
+    "documentNumber": "दस्तऐवज क्रमांक",
+    "addressProof": "पत्त्याचा पुरावा",
+    "consent1": "मी पुष्टी करतो/करते की, मला प्लॅनचे तपशील, शुल्क आणि इन्स्टॉलेशनची माहिती स्पष्टपणे समजावून सांगण्यात आली आहे.",
+    "consent2": "मी मायक्रोस्कॅन इंटरनेट प्रायव्हेट लिमिटेड द्वारे प्रदान केलेली इंटरनेट सेवा घेण्यास सहमत आहे.",
+    "consent3": "मी मायक्रोस्कॅनला बिलिंग आणि सेवेची संबंधित संवादासाठी माझ्या मोबाईल नंबर आणि ईमेलद्वारे संपर्क साधण्याचे अधिकार देतो/देते.",
+    "proceedButton": "स्लॉट बुक करा",
+    "acceptAllConsents": "कृपया पुढे जाण्यासाठी सर्व संमती पर्याय स्वीकारा.",
+    "loading": "तुमचे तपशील लोड होत आहेत...",
+    "loadError": "ग्राहक तपशील लोड करता आले नाहीत. कृपया पुन्हा प्रयत्न करा.",
+    "retry": "पुन्हा प्रयत्न करा",
+    "data": {
+      "name": "तेजस शरद चव्हाण",
+      "phone": "+९१ ८८२९७८६२४२",
+      "email": "khushboo@gmail.com",
+      "address": "ए/३०१-३०३, एव्हरेस्ट ग्रँड, महाकाली केव्हस रोड, शांतिन नगर,\nअंधेरी पूर्व, मुंबई, महाराष्ट्र ४०००९३",
+      "planName": "अनलिमिटेड फायबर १०० Mbps",
+      "validity": "३० दिवस",
+      "monthlyAmount": "₹७९९",
+      "routerInfo": "मायक्रोस्कॅनचा राऊटर",
+      "installationCharges": "₹५००",
+      "routerCharges": "₹१५००",
+      "idProof": "आधार कार्ड",
+      "idDocumentNumber": "XXXX XXXX 1234",
+      "addressProof": "पॅन कार्ड",
+      "addressDocumentNumber": "******A34T"
+    }
+  },
+  "changePasswordPage": {
+    "title": "पासवर्ड बदला",
+    "subtitle": "सुरक्षिततेसाठी, कृपया पुढे जाण्यापूर्वी तुमचा पासवर्ड बदला",
+    "currentPassword": "सध्याचा पासवर्ड*",
+    "newPassword": "नवीन पासवर्ड*",
+    "confirmPassword": "नवीन पासवर्ड पुष्टी करा*",
+    "requirementsTitle": "तुमच्या पासवर्डमध्ये असणे आवश्यक:",
+    "ruleMinLength": "किमान 6 अक्षरे",
+    "ruleNumber": "किमान एक अंक",
+    "ruleUppercase": "एक मोठे अक्षर (A-Z)",
+    "ruleSpecial": "एक विशेष चिन्ह (उदा. @, #, $, %, &)",
+    "updateButton": "पासवर्ड अपडेट करा",
+    "footerNote": "*आम्ही तुमच्या नोंदणीकृत मोबाईल नंबरवर SMS द्वारे तुमचे वापरकर्तानाव आणि पासवर्ड पाठवला आहे. कृपया त्यांना सध्याच्या लॉगिन क्रेडेन्शियल म्हणून वापरा.",
+    "passwordMismatch": "नवीन पासवर्ड आणि पुष्टी पासवर्ड जुळत नाहीत.",
+    "requirementsNotMet": "कृपया सर्व पासवर्ड आवश्यकता पूर्ण करा.",
+    "updateSuccess": "तुमचा पासवर्ड यशस्वीरित्या अपडेट झाला आहे.",
+    "updateFailed": "पासवर्ड अपडेट करण्यात अयशस्वी. कृपया पुन्हा प्रयत्न करा."
+  },
+  "slotBooking": {
+    "title": "इन्स्टॉलेशनसाठी स्लॉट बुक करा",
+    "subtitle": "कृपया पसंतीचा स्लॉट निवडा",
+    "selectPreferredSlot": "पसंतीचा स्लॉट निवडा",
+    "note": "*टीप: स्लॉट बुकिंगनंतर आमची टीम अचूक इन्स्टॉलेशन तारीख निश्चित करेल.",
+    "cancel": "रद्द करा",
+    "confirmSlot": "स्लॉट निश्चित करा",
+    "selectSlotError": "कृपया पसंतीचा इन्स्टॉलेशन स्लॉट निवडा.",
+    "successTitle": "इन्स्टॉलेशन विनंती सबमिट झाली",
+    "successMessage": "इन्स्टॉलेशन वेळापत्रक निश्चित करण्यासाठी आमची टीम तुमच्याशी संपर्क साधेल.",
+    "done": "पूर्ण",
+    "slots": {
+      "morning": {
+        "title": "सकाळ",
+        "time": "(10.00 AM ते 12.00 PM)"
+      },
+      "afternoon": {
+        "title": "दुपार",
+        "time": "(12.00 PM ते 16.00 PM)"
+      },
+      "evening": {
+        "title": "संध्याकाळ",
+        "time": "(16.00 PM ते 18.00 PM)"
+      }
+    }
   }
 } 

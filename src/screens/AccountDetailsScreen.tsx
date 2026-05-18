@@ -298,7 +298,7 @@ const AccountDetailsScreen = ({navigation}: any) => {
   };
 
   const handleChangePassword = () => {
-    Alert.alert('Change Password', 'Opening password change form...');
+    navigation.navigate('ChangePassword');
   };
 
   const handleResetSession = async () => {

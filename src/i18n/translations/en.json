@@ -338,7 +338,11 @@
     "securitySettingsSubtitle": "PIN & Biometric authentication",
     "partnerApps": "Partner Apps",
     "reviewRatings": "Review & Ratings",
-    "updateSSID": "Update SSID"
+    "updateSSID": "Update SSID",
+    "customerConsent": "Customer Consent",
+    "changePassword": "Change Password",
+    "customerConsentSubtitle": "Verify details & consent",
+    "changePasswordSubtitle": "Update your password"
   },
   "settings": {
     "title": "Settings",
@@ -597,5 +601,95 @@
     "mockMode": "Mock Mode",
     "mockSuccess": "This is mock data. SSID update simulation successful!",
     "failedToUpdate": "Failed to update SSID"
+  },
+  "customerConsent": {
+    "title": "Customer Verification",
+    "subtitle": "Please check all of your details below",
+    "customerInformation": "Customer Information",
+    "name": "Name",
+    "phoneNumber": "Phone Number",
+    "emailAddress": "Email Address",
+    "installationAddress": "Installation Address",
+    "selectedInternetPlan": "Selected Internet Plan",
+    "planName": "Plan Name",
+    "validity": "Validity",
+    "monthlyPlanAmount": "Monthly Plan Amount",
+    "routerInformation": "Router's Information",
+    "oneTimeCharges": "One-Time Charges",
+    "installationCharges": "Installation Charges",
+    "routerCharges": "Router Charges",
+    "kycDetails": "KYC Details",
+    "idProof": "ID Proof",
+    "documentNumber": "Document Number",
+    "addressProof": "Address Proof",
+    "consent1": "I confirm that the plan details, charges, and installation information have been explained to me.",
+    "consent2Prefix": "I agree to subscribe to the internet service provided by ",
+    "companyName": "Microscan Internet Private Limited.",
+    "consent3": "I authorize Microscan to contact me via mobile number and email for billing and service-related communication.",
+    "proceedButton": "Proceed to Slot Booking",
+    "acceptAllConsents": "Please accept all consent checkboxes to continue.",
+    "loading": "Loading your details...",
+    "loadError": "Unable to load customer details. Please try again.",
+    "retry": "Retry",
+    "data": {
+      "name": "Tejas Sharad Chavan",
+      "phone": "+91 8829786242",
+      "email": "khushboo@gmail.com",
+      "address": "A/301-303, Everest Grande, Mahakali Caves Road,\nShanti Nagar, Andheri East, Mumbai, Maharashtra 400093",
+      "planName": "Unlimited Fiber 100 Mbps",
+      "validity": "30 Days",
+      "monthlyAmount": "₹799",
+      "routerInfo": "Microscan's Router",
+      "installationCharges": "₹500",
+      "routerCharges": "₹1500",
+      "idProof": "Aadhaar Card",
+      "idDocumentNumber": "XXXX XXXX 1234",
+      "addressProof": "Pancard",
+      "addressDocumentNumber": "******A34T"
+    }
+  },
+  "changePasswordPage": {
+    "title": "Change Password",
+    "subtitle": "For security reasons, please change your password before continuing",
+    "currentPassword": "Current Password*",
+    "newPassword": "New Password*",
+    "confirmPassword": "Confirm New Password*",
+    "requirementsTitle": "Your password must contains:",
+    "ruleMinLength": "A minimum of 6 characters",
+    "ruleNumber": "At least one number",
+    "ruleUppercase": "One uppercase letter (A-Z)",
+    "ruleSpecial": "One special character (e.g., @, #, $, %, &)",
+    "updateButton": "Update Password",
+    "footerNote": "*We have sent your username and password to your registered mobile number via SMS. Please use them as your current login credentials.",
+    "passwordMismatch": "New password and confirm password do not match.",
+    "requirementsNotMet": "Please meet all password requirements.",
+    "updateSuccess": "Your password has been updated successfully.",
+    "updateFailed": "Failed to update password. Please try again."
+  },
+  "slotBooking": {
+    "title": "Book a Slot for Installation",
+    "subtitle": "Please select the preferred slot",
+    "selectPreferredSlot": "Select Preferred Slot",
+    "note": "*Note: Our team will confirm the exact installation date after slot booking.",
+    "cancel": "Cancel",
+    "confirmSlot": "Confirm Slot",
+    "selectSlotError": "Please select a preferred installation slot.",
+    "successTitle": "Installation Request Submitted",
+    "successMessage": "Our team will contact you to confirm the installation schedule.",
+    "done": "Done",
+    "slots": {
+      "morning": {
+        "title": "Morning",
+        "time": "(10.00 AM to 12.00 PM)"
+      },
+      "afternoon": {
+        "title": "Afternoon",
+        "time": "(12.00 PM to 16.00 PM)"
+      },
+      "evening": {
+        "title": "Evening",
+        "time": "(16.00 PM to 18.00 PM)"
+      }
+    }
   }
 } 

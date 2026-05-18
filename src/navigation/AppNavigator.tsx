@@ -43,6 +43,9 @@ import PartnerAppsScreen from '../screens/PartnerAppsScreen';
 import IntroScreen from '../screens/IntroScreen';
 import NotificationTestScreen from '../screens/NotificationTestScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
+import CustomerConsentScreen from '../screens/CustomerConsentScreen';
+import SlotBookingScreen from '../screens/SlotBookingScreen';
+import ChangePasswordScreen from '../screens/ChangePasswordScreen';
 
 const Stack = createStackNavigator();
 
@@ -174,6 +177,9 @@ const AppNavigator: React.FC<AppNavigatorProps> = ({ initialRoute }) => {
         <Stack.Screen name="PaymentResponse" component={PaymentResponseScreen} options={{ headerShown: false }} />
         <Stack.Screen name="NotificationTest" component={NotificationTestScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="CustomerConsent" component={CustomerConsentScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="SlotBooking" component={SlotBookingScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );
