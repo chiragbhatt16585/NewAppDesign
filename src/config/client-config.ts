@@ -1702,6 +1702,70 @@ const clientConfigs: Record<string, ClientConfig> = {
       appStoreId: undefined,
     },
   },
+  indophone: {
+    clientId: 'indophone',
+    clientName: 'Indophone',
+    api: {
+      baseURL: 'https://indophonenetworks.l2s.biz/l2s/api',
+      serverURL: 'https://indophonenetworks.l2s.biz',
+      timeout: 30000,
+    },
+    branding: {
+      logo: 'isp_logo.png',
+      primaryColor: '#1976D2',
+      secondaryColor: '#42A5F5',
+      appName: 'Indophone',
+      headerBackgroundImage: 'header_background.png',
+      logoDimensions: {
+        header: { width: 150, height: 47 },
+        login: { width: 300, height: 94 },
+      },
+    },
+    features: {
+      biometricAuth: true,
+      pushNotifications: true,
+      fileUpload: true,
+      multiLanguage: true,
+    },
+    contact: {
+      whatsappNumber: '9999862747',
+      headOffice: {
+        title: 'Head Office',
+        address:
+          '2nd Floor, Plot No. 06, Kh. No. 18/2s/f, Extn 3 Nangloi - 110041',
+        customerSupport: '9999862747',
+      },
+      branchOffices: [],
+      emails: {
+        inquiries: 'indophonenetworks@gmail.com',
+        sales: 'indophonenetworks@gmail.com',
+        support: 'indophonenetworks@gmail.com',
+      },
+      landline: '9999862747',
+    },
+    about: {
+      companyName: 'Indophone Networks OPC Private Limited',
+      establishedYear: '',
+      description:
+        'Indophone Networks OPC Private Limited provides high-speed internet connectivity and related services.',
+      specializations: [
+        'High-speed broadband internet',
+        'Fiber broadband',
+        'Home and business internet solutions',
+      ],
+      serviceAreas: ['Nangloi', 'Delhi', 'NCR'],
+      achievements: [],
+    },
+    reviewUrl: undefined,
+    website: 'https://indophonenetworks.l2s.biz',
+    versionCheck: {
+      enabled: true,
+      checkInterval: 24,
+      forceUpdateEnabled: true,
+      packageName: 'com.spacecom.log2space.indophonenetworks',
+      appStoreId: undefined,
+    },
+  },
 };
 
 // Get current client configuration

@@ -208,6 +208,15 @@ const CLIENTS = {
     keystore: 'Log2spceGatewayFTTHKey_V3.jks',
     configDir: 'config/funnet',
   },
+  indophone: {
+    name: 'Indophone',
+    packageName: 'com.spacecom.log2space.indophonenetworks',
+    namespace: 'com.spacecom.log2space.indophonenetworks',
+    versionCode: 5,
+    versionName: '1.0.0',
+    keystore: 'IndophoneNetwork.jks',
+    configDir: 'config/indophone',
+  },
 };
 
 // Colors for console output
@@ -240,6 +249,59 @@ function logError(message) {
 
 function logWarning(message) {
   log(`⚠️  ${message}`, 'yellow');
+}
+
+/** Apply Android adaptive launcher background color from build-config.json */
+function applyLauncherIconBackgroundColor(client) {
+  const buildConfigPath = path.join(__dirname, '..', client.configDir, 'build-config.json');
+  if (!fs.existsSync(buildConfigPath)) {
+    return;
+  }
+
+  let color;
+  try {
+    const buildConfig = JSON.parse(fs.readFileSync(buildConfigPath, 'utf8'));
+    color = buildConfig?.android?.launcherIconBackgroundColor;
+  } catch {
+    return;
+  }
+
+  if (!color || typeof color !== 'string' || !/^#[0-9A-Fa-f]{6,8}$/.test(color.trim())) {
+    return;
+  }
+
+  const normalized = color.trim();
+  const xml = `<?xml version="1.0" encoding="utf-8"?>\n<resources>\n  <color name="ic_launcher_background">${normalized}</color>\n</resources>\n`;
+
+  const androidValuesDir = path.join(
+    __dirname,
+    '..',
+    'android',
+    'app',
+    'src',
+    'main',
+    'res',
+    'values',
+  );
+  const configValuesDir = path.join(
+    __dirname,
+    '..',
+    client.configDir,
+    'app-icons',
+    'android',
+    'values',
+  );
+
+  if (!fs.existsSync(androidValuesDir)) {
+    fs.mkdirSync(androidValuesDir, { recursive: true });
+  }
+  fs.writeFileSync(path.join(androidValuesDir, 'ic_launcher_background.xml'), xml);
+
+  if (fs.existsSync(configValuesDir)) {
+    fs.writeFileSync(path.join(configValuesDir, 'ic_launcher_background.xml'), xml);
+  }
+
+  logSuccess(`Set launcher icon background color to ${normalized}`);
 }
 
 // Copy files from client config to app
@@ -344,6 +406,7 @@ function copyClientConfig(clientId) {
     }
     
     logSuccess('Copied Android app icons');
+    applyLauncherIconBackgroundColor(client);
   }
 
   // Copy iOS app icons - copy AppIcon.appiconset directly

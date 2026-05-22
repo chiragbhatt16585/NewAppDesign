@@ -11,7 +11,7 @@ interface LogoImageProps {
 }
 
 const LogoImage: React.FC<LogoImageProps> = ({style, width, height, type = 'header'}) => {
-  const [imageError, setImageError] = useState(false);
+  const [sourceIndex, setSourceIndex] = useState(0);
   const [remoteLogoUrl, setRemoteLogoUrl] = useState<string | null>(null);
 
   // Load dynamic logo URL for log2space-common (from domainname/tmp/upload/logoName)
@@ -86,26 +86,17 @@ const LogoImage: React.FC<LogoImageProps> = ({style, width, height, type = 'head
     logoHeight = logoHeight || 200;
   }
 
-  // Get image source - dynamically load based on client config
-  const getImageSource = () => {
-    if (imageError) {
-      // If image failed to load, return null to show fallback
-      return null;
-    }
-    
+  // Build ordered logo sources (client config → prepared src/assets → default)
+  const getLogoSources = (): any[] => {
+    const sources: any[] = [];
     try {
-      // Get logo filename and client id from client config (reuse already loaded config)
       const logoFileName = clientConfig.branding.logo || 'isp_logo.png';
       const clientId = clientConfig.clientId;
 
-      // For log2space-common, prefer dynamic remote logo from API (domainname/tmp/upload/logoName)
       if (clientId === 'log2space-common' && remoteLogoUrl) {
-        return { uri: remoteLogoUrl };
+        sources.push({ uri: remoteLogoUrl });
       }
 
-      // Since require() needs static paths, we explicitly map
-      // each client + logo combination to its asset file.
-      // NOTE: If you add a new client's custom logo, add an entry here.
       const logoMap: Record<string, any> = {
         // Default / fallback generic logo (Spacecom-style)
         'default:isp_logo.png': require('../../config/spacecom-live/assets/isp_logo.png'),
@@ -129,6 +120,7 @@ const LogoImage: React.FC<LogoImageProps> = ({style, width, height, type = 'head
         'comcast:isp_logo.png': require('../../config/comcast/assets/isp_logo.png'),
         'monarknet:isp_logo.png': require('../../config/monarknet/assets/isp_logo.png'),
         'funnet:isp_logo.png': require('../../config/funnet/assets/isp_logo.png'),
+        'indophone:isp_logo.png': require('../../config/indophone/assets/isp_logo.png'),
         'graceway:isp_logo.png': require('../../config/graceway/assets/isp_logo.png'),
         'log2space-common:isp_logo.png': require('../../config/log2space-common/assets/isp_logo.png'),
         // Skynet Wi‑Fi: client assets use `header_logo.png` for the main mark (login + header).
@@ -143,47 +135,44 @@ const LogoImage: React.FC<LogoImageProps> = ({style, width, height, type = 'head
       };
 
       const key = `${clientId}:${logoFileName}`;
+      const orderedKeys = [key, logoFileName, 'default:isp_logo.png'];
+      orderedKeys.forEach(mapKey => {
+        if (logoMap[mapKey] && !sources.includes(logoMap[mapKey])) {
+          sources.push(logoMap[mapKey]);
+        }
+      });
 
-      // Prefer exact client-specific match, then plain filename, then default
-      let logoSource =
-        logoMap[key] ||
-        logoMap[logoFileName] ||
-        logoMap['default:isp_logo.png'];
-
-      // Fallback: after prepare, assets are copied to src/assets.
-      if ((clientId === 'graceway' || clientId === 'log2space-common') && (!logoSource || imageError)) {
-        try {
-          const assetsLogo = require('../assets/isp_logo.png');
-          if (assetsLogo) return assetsLogo;
-        } catch (_) {}
-      }
-
-      if ((clientId === 'skynetwifi' || clientId === 'srisamarthinfobahn') && (!logoSource || imageError)) {
-        try {
-          const assetsLogo = require('../assets/isp_logo.png');
-          if (assetsLogo) return assetsLogo;
-        } catch (_) {}
-      }
-      return logoSource;
-    } catch (error) {
-      //console.warn('[LogoImage] Failed to require logo:', error);
-      // Graceway / log2space-common: prepare script copies config assets to src/assets
+      // prepare:<client> copies isp_logo.png into src/assets — reliable fallback for new clients
       try {
-        if (clientConfig.clientId === 'graceway' || clientConfig.clientId === 'log2space-common') {
-          return require('../assets/isp_logo.png');
+        const preparedLogo = require('../assets/isp_logo.png');
+        if (preparedLogo && !sources.includes(preparedLogo)) {
+          sources.push(preparedLogo);
         }
       } catch (_) {}
-      // Try alternative paths for iOS
+
       if (Platform.OS === 'ios') {
         try {
-          return require('../../ios/ISPApp/isp_logo.png');
-        } catch (iosError) {}
+          const iosLogo = require('../../ios/ISPApp/isp_logo.png');
+          if (iosLogo && !sources.includes(iosLogo)) {
+            sources.push(iosLogo);
+          }
+        } catch (_) {}
       }
-      return null;
+    } catch (_) {
+      try {
+        sources.push(require('../assets/isp_logo.png'));
+      } catch (_) {}
     }
+    return sources;
   };
 
-  const imageSource = getImageSource();
+  const logoSources = getLogoSources();
+  const imageSource = logoSources[sourceIndex] ?? null;
+
+  // Reset source index when client or remote logo changes
+  useEffect(() => {
+    setSourceIndex(0);
+  }, [clientConfig.clientId, remoteLogoUrl]);
 
   // console.log('=== LOGO CONFIG ===', { type, configForType: logoConfig[type], fallbackHeader: logoConfig.header });
   // console.log('=== LOGO DIMENSIONS ===', { width: logoWidth, height: logoHeight });
@@ -204,13 +193,10 @@ const LogoImage: React.FC<LogoImageProps> = ({style, width, height, type = 'head
             height: '100%',
             resizeMode: 'contain',
           }}
-          onError={(error) => {
-            //console.error('[LogoImage] Failed to load logo image:', error);
-            setImageError(true);
-          }}
-          onLoad={() => {
-            //console.log('[LogoImage] Logo image loaded successfully');
-            setImageError(false);
+          onError={() => {
+            if (sourceIndex < logoSources.length - 1) {
+              setSourceIndex(prev => prev + 1);
+            }
           }}
         />
       ) : (

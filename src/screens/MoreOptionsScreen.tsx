@@ -31,10 +31,6 @@ const MoreOptionsScreen = ({navigation}: any) => {
   const [refreshing, setRefreshing] = useState(false);
   const { authData } = useAuthData();
   
-  // Check if current client is microscan
-  const clientConfig = getClientConfig();
-  const isMicroscan = clientConfig.clientId === 'microscan';
-
   // Check if AppSideNavigationMenu contains "First Payment" or proforma_invoices_dues exists
   const shouldHideRenewAndUpgrade = useMemo(() => {
     // Check for "First Payment" in menu
@@ -135,14 +131,6 @@ const MoreOptionsScreen = ({navigation}: any) => {
 
   const handlePartnerApps = () => {
     navigation.navigate('PartnerApps');
-  };
-
-  const handleCustomerConsent = () => {
-    navigation.navigate('CustomerConsent');
-  };
-
-  const handleChangePassword = () => {
-    navigation.navigate('ChangePassword');
   };
 
   const handleReviewRatings = async () => {
@@ -317,25 +305,6 @@ const MoreOptionsScreen = ({navigation}: any) => {
       // ignore logging errors
     }
 
-    if (isMicroscan) {
-      built.push({
-        id: 'customer-consent',
-        title: t('more.customerConsent'),
-        subtitle: t('more.customerConsentSubtitle'),
-        icon: 'file-text',
-        iconType: 'feather',
-        onPress: handleCustomerConsent,
-      });
-      built.push({
-        id: 'change-password',
-        title: t('more.changePassword'),
-        subtitle: t('more.changePasswordSubtitle'),
-        icon: 'lock',
-        iconType: 'feather',
-        onPress: handleChangePassword,
-      });
-    }
-
     // Append Logout at the end
     built.push({
       id: 'logout',
@@ -348,7 +317,7 @@ const MoreOptionsScreen = ({navigation}: any) => {
     });
 
     return built;
-  }, [menu, t, shouldHideRenewAndUpgrade, isMicroscan]);
+  }, [menu, t, shouldHideRenewAndUpgrade]);
 
   return (
     <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}>

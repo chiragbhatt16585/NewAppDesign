@@ -230,6 +230,16 @@ const clientConfigs: Record<string, ClientConfig> = {
     poweredByWebsite: 'https://spacecom.in',
     bundleId: 'com.spacecom.log2space.funnet',
   },
+  indophone: {
+    name: 'Indophone',
+    companyName: 'Indophone Networks OPC Private Limited',
+    apiUrl: 'https://indophonenetworks.l2s.biz',
+    supportEmail: 'indophonenetworks@gmail.com',
+    website: 'https://indophonenetworks.l2s.biz',
+    poweredBy: 'Spacecom Software LLP',
+    poweredByWebsite: 'https://spacecom.in',
+    bundleId: 'com.spacecom.log2space.indophonenetworks',
+  },
 };
 
 // Export current client configuration
