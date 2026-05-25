@@ -1,9 +1,9 @@
 {
-  "name": "IndophoneApp",
+  "name": "MicroscanApp",
   "expo": {
-    "name": "Indophone",
-    "slug": "indophone",
-    "version": "1.0.0",
+    "name": "Microscan",
+    "slug": "microscan",
+    "version": "3.0.3",
     "orientation": "portrait",
     "icon": "./app-icons/icon.png",
     "userInterfaceStyle": "light",
@@ -17,19 +17,19 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.spacecom.log2space.indophonenetworks",
-      "buildNumber": "1"
+      "bundleIdentifier": "com.l2sClient.microscan",
+      "buildNumber": "37"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./app-icons/adaptive-icon.png",
-        "backgroundColor": "#1976D2"
+        "backgroundColor": "#FFFFFF"
       },
-      "package": "com.spacecom.log2space.indophonenetworks",
-      "versionCode": 5
+      "package": "in.spacecom.log2space.client.microscan",
+      "versionCode": 41
     },
     "web": {
       "favicon": "./app-icons/favicon.png"
     }
   }
-}
+} 
