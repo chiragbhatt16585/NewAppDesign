@@ -53,6 +53,7 @@ export interface ClientConfig {
     branchOffices: Array<{
       title: string;
       address: string;
+      customerSupport?: string;
       corporateLandline?: string;
       corporateHours?: string;
     }>;
@@ -156,7 +157,7 @@ const clientConfigs: Record<string, ClientConfig> = {
           },
           l2: {
             level: 'L2 - Call Centre Operational TL',
-            emails: ['aniket.rane@microscaninternet.com'],
+            emails: ['devika.nikharange@microscaninternet.com'],
           },
           l3: {
             level: 'L3 - Customer Support HOD',
@@ -1599,19 +1600,26 @@ const clientConfigs: Record<string, ClientConfig> = {
       multiLanguage: true,
     },
     contact: {
-      whatsappNumber: '9224587510',
+      // whatsappNumber: '9224587510',
       headOffice: {
-        title: 'Office',
+        title: 'Monark Broadband Pvt Ltd - 4 Bunglow',
         address:
           'Shop No. 15, Nandkrupa Shopping Centre, 4 Bungalow, Main Market, Behind Anjali Book Centre, Andheri West, Mumbai - 400058',
-        customerSupport: '9224587510',
-        customerSupportHours: 'Monday - Sunday | 24×7',
+        customerSupport: '9224587510, 9224587513',
+        customerSupportHours: 'Monday - Saturday | 10:00 AM to 8:30 PM, Sunday | 10:00 AM to 2:00 PM',
       },
-      branchOffices: [],
+      branchOffices: [
+        {
+          title: 'Monark Broadband Pvt Ltd - Navrang',
+          address:
+            'Mona Shopping Centre, Shop No. 23, Ground Floor, Near Navrang Cinema, Andheri West, Mumbai - 400058',
+          customerSupport: '9819555262, 9819944114',
+        },
+      ],
       emails: {
-        inquiries: 'info@monarkbroadband.in',
-        sales: 'info@monarkbroadband.in',
-        support: 'info@monarkbroadband.in',
+        inquiries: 'monarkbroadband@gmail.com',
+        sales: 'monarkbroadband@gmail.com',
+        support: 'monarkbroadband@gmail.com',
       },
       landline: '9224587513',
     },
@@ -1666,7 +1674,7 @@ const clientConfigs: Record<string, ClientConfig> = {
     contact: {
       whatsappNumber: '7028856763',
       headOffice: {
-        title: 'Head Office',
+        title: 'DNSPL',
         address:
           'Shop no 5 Bhima Mhatre Chs, Manpada Road, Opp K.D. Agarwall Hall, Dombivli East',
         customerSupport: '8976017880, 8425895774',
@@ -1680,10 +1688,10 @@ const clientConfigs: Record<string, ClientConfig> = {
       landline: '8976017880, 8425895774',
     },
     about: {
-      companyName: 'Delix Net Solutions Pvt Ltd',
+      companyName: 'DNSPL',
       establishedYear: '',
       description:
-        'Delix Net Solutions Pvt Ltd provides high-speed internet connectivity and related services.',
+        'DNSPL provides high-speed internet connectivity and related services.',
       specializations: [
         'High-speed broadband internet',
         'Fiber broadband',
@@ -1699,6 +1707,67 @@ const clientConfigs: Record<string, ClientConfig> = {
       checkInterval: 24,
       forceUpdateEnabled: true,
       packageName: 'com.spacecom.log2space.funnet',
+      appStoreId: undefined,
+    },
+  },
+  wnet: {
+    clientId: 'wnet',
+    clientName: 'Wnet',
+    api: {
+      baseURL: 'https://wnet.l2s.biz/l2s/api',
+      serverURL: 'https://wnet.l2s.biz',
+      timeout: 30000,
+    },
+    branding: {
+      logo: 'isp_logo.png',
+      primaryColor: '#1976D2',
+      secondaryColor: '#42A5F5',
+      appName: 'Wnet',
+      headerBackgroundImage: 'header_background.png',
+      logoDimensions: {
+        header: { width: 150, height: 80 },
+        login: { width: 300, height: 200 },
+      },
+    },
+    features: {
+      biometricAuth: true,
+      pushNotifications: true,
+      fileUpload: true,
+      multiLanguage: true,
+    },
+    contact: {
+      headOffice: {
+        title: 'Wnet',
+        address:
+          'C-13, Satyam Shopping Center, M.G Road, Ghatkopar (East)',
+      },
+      branchOffices: [],
+      emails: {
+        inquiries: 'info@wnet.net.in',
+        sales: 'info@wnet.net.in',
+        support: 'info@wnet.net.in',
+      },
+    },
+    about: {
+      companyName: 'Wnet',
+      establishedYear: '',
+      description:
+        'Wnet provides high-speed internet connectivity and related services.',
+      specializations: [
+        'High-speed broadband internet',
+        'Fiber broadband',
+        'Home and business internet solutions',
+      ],
+      serviceAreas: ['Ghatkopar', 'Mumbai', 'Maharashtra'],
+      achievements: [],
+    },
+    reviewUrl: undefined,
+    website: 'https://wnet.net.in',
+    versionCheck: {
+      enabled: true,
+      checkInterval: 24,
+      forceUpdateEnabled: true,
+      packageName: 'in.spacecom.log2space.client.wnet',
       appStoreId: undefined,
     },
   },

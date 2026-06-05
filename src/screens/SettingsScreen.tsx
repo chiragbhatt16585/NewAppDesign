@@ -22,7 +22,12 @@ import versionCheckService from '../services/versionCheck';
 import useMenuSettings from '../hooks/useMenuSettings';
 import LeftBorderLine from '../components/LeftBorderLine';
 import { getClientConfig } from '../config/client-config';
+import { getApiUrl } from '../services/api';
 import { Platform } from 'react-native';
+import {
+  getAppSettingsFromMenu,
+  isFixYourInternetEnabled,
+} from '../utils/appSettingsFromMenu';
 
 const SettingsScreen = ({ navigation }: any) => {
   const { isDark } = useTheme();
@@ -44,38 +49,11 @@ const SettingsScreen = ({ navigation }: any) => {
   }, []);
 
   useEffect(() => {
-    // Build dynamic settings from menu settings
-    try {
-      if (!Array.isArray(menu)) return;
-      // Find entry that contains settings object in display_option_json, or label resembles Settings
-      const entry = menu.find((m: any) => (
-        String(m?.menu_label).trim().toLowerCase() === 'settings'
-      )) || menu.find((m: any) => {
-        try {
-          const jsonVal = m?.display_option_json;
-          const parsed = typeof jsonVal === 'string' ? JSON.parse(jsonVal) : (jsonVal || {});
-          return !!parsed?.settings || !!parsed?.app_settings;
-        } catch { return false; }
-      });
-      if (!entry) {
-        setSettingsConfig(null);
-        return;
-      }
-      const jsonVal = entry.display_option_json;
-      let parsed: any = {};
-      if (typeof jsonVal === 'string') {
-        const trimmed = jsonVal.trim();
-        if (trimmed && (trimmed.startsWith('{') || trimmed.startsWith('['))) {
-          parsed = JSON.parse(trimmed);
-        }
-      } else if (jsonVal && typeof jsonVal === 'object') {
-        parsed = jsonVal;
-      }
-      // Support both legacy `settings` and new `app_settings`
-      setSettingsConfig(parsed?.app_settings || parsed?.settings || null);
-    } catch {
-      setSettingsConfig(null);
-    }
+    console.log('[SettingsScreen] menu settings API:', `${getApiUrl()}/selfcareMenuSettings`);
+    console.log('[SettingsScreen] menuLoading:', menuLoading, '| menu:', menu);
+    const cfg = getAppSettingsFromMenu(menu);
+    console.log('[SettingsScreen] settingsConfig (app_settings):', JSON.stringify(cfg, null, 2));
+    setSettingsConfig(cfg);
   }, [menuLoading, menu]);
 
   const loadSecurityStatus = async () => {
@@ -213,6 +191,7 @@ const SettingsScreen = ({ navigation }: any) => {
       : (cfg?.terms_and_conditions !== undefined ? flag(cfg?.terms_and_conditions) : true);
     // Respect show: false for about_company
     const showAbout = cfg?.about_company !== undefined ? flag(cfg?.about_company) : true;
+    const showFixYourInternet = isFixYourInternetEnabled(cfg);
 
     const appearanceItems: any[] = [];
     if (showLanguage) {
@@ -244,6 +223,18 @@ const SettingsScreen = ({ navigation }: any) => {
     }
 
     const supportItems: any[] = [];
+    if (showFixYourInternet) {
+      supportItems.push({
+        id: 'fixYourInternet',
+        title: t('settings.fixYourInternet', 'Fix Your Internet'),
+        subtitle: t(
+          'settings.fixYourInternetSubtitle',
+          'Step-by-step self diagnosis for connection issues',
+        ),
+        icon: 'wifi',
+        onPress: () => navigation.navigate('FixYourInternet'),
+      });
+    }
     if (showFaq) {
       supportItems.push({
         id: 'faq',

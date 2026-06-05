@@ -88,9 +88,29 @@ const fixedHeaders = {
 
 const headers = (Authentication: string) => (new Headers({ Authentication, ...fixedHeaders }));
 
-const timeout = 6000;
+const timeout = 15000;
 const networkErrorMsg = 'Please check your internet connection and try again.';
 const Loggable = true;
+
+/** Fetch with AbortController timeout (RN fetch ignores a `timeout` option on its own). */
+const fetchWithTimeout = async (
+  url: string,
+  options: RequestInit & { timeout?: number } = {},
+): Promise<Response> => {
+  const { timeout: timeoutMs = timeout, ...fetchOptions } = options;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...fetchOptions, signal: controller.signal });
+  } catch (e: any) {
+    if (e?.name === 'AbortError') {
+      throw new TypeError('Network request failed');
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+};
 
 // Response Types
 export interface ApiResponse<T = any> {
@@ -115,7 +135,9 @@ export interface LoginRequest {
 
 export interface LoginResponse {
   token: string;
-  user: {
+  username?: string;
+  consent_required?: boolean;
+  user?: {
     id: string;
     username: string;
     name: string;
@@ -208,19 +230,32 @@ const toFormData = (data: any): FormData => {
 
 // Network error detection
 const isNetworkError = (error: any): boolean => {
-  return error.name === 'TypeError' || error.message.includes('Network request failed');
+  const message = (error?.message || '').toLowerCase();
+  return (
+    error?.name === 'TypeError' ||
+    error?.name === 'AbortError' ||
+    message.includes('network request failed') ||
+    message.includes('please check your internet connection')
+  );
 };
 
-// Token expiration detection
+const isTokenExpiredMessage = (message?: string): boolean => {
+  const m = (message || '').toLowerCase();
+  return (
+    m.includes('token expired') ||
+    m.includes('invalid token') ||
+    m === 'unauthorized' ||
+    m.includes('session expired')
+  );
+};
+
+// Only true auth/token failures — not network or generic login errors
 const isTokenExpiredError = (error: any): boolean => {
-  const errorMessage = error.message?.toLowerCase() || '';
-  return errorMessage.includes('token expired') || 
-         errorMessage.includes('unauthorized') || 
-         errorMessage.includes('invalid token') ||
-         errorMessage.includes('authentication failed') ||
-         errorMessage.includes('invalid username or password') ||
-         errorMessage.includes('please check your internet connection') ||
-         errorMessage.includes('network request failed');
+  if (isNetworkError(error)) {
+    return false;
+  }
+  const errorMessage = (error?.message || '').toLowerCase();
+  return isTokenExpiredMessage(errorMessage);
 };
 
 // API Service Class
@@ -473,6 +508,13 @@ class ApiService {
       console.log('Making token validation request...');
       const res = await fetch(`${getApiUrl()}/selfcareCheckTokenValidity`, options);
       const response = await res.json();
+      console.log('=== AFTER LOGIN API RESPONSE (RAW) ===');
+      try {
+        console.log(JSON.stringify(response, null, 2));
+      } catch {
+        console.log(response);
+      }
+      console.log('=== END AFTER LOGIN API RESPONSE (RAW) ===');
       console.log('Token validation response:', response);
       
       if (response.status === 'ok' && response.code === 200) {
@@ -530,41 +572,8 @@ class ApiService {
   }
 
   private async performTokenRegeneration() {
-    const session = await sessionManager.getCurrentSession();
-    if (!session) return false;
-
-    const { username } = session;
-    if (!username) return false;
-
-    const data = {
-      username: username.toLowerCase().trim(),
-      password: '', // We don't store password in session manager for security
-      login_from: 'app',
-      request_source: 'app',
-      request_app: 'user_app'
-    };
-
-    const options = {
-      method,
-      body: toFormData(data),
-      headers: new Headers({ ...fixedHeaders }),
-      timeout
-    };
-
-    try {
-      const res = await fetch(`${getApiUrl()}/selfcareL2sUserLogin`, options);
-      const response = await res.json();
-      
-      if (response.status === 'ok') {
-        return response.data.token;
-      } else if (response.status === 'error') {
-        return false;
-      }
-      return false;
-    } catch (error) {
-      console.error('Token regeneration error:', error);
-      return false;
-    }
+    // Use stored credentials via sessionManager (empty-password login does not work)
+    return sessionManager.regenerateToken();
   }
 
   async handleTokenUpdate() {
@@ -626,6 +635,10 @@ class ApiService {
       } catch (error: any) {
         lastError = error;
         console.log(`[API] Attempt ${attempt + 1} failed:`, error.message || error);
+
+        if (isNetworkError(error)) {
+          throw new Error(networkErrorMsg);
+        }
         
         // Check if it's a token expiration error
         if (isTokenExpiredError(error) && attempt < maxRetries) {
@@ -743,8 +756,10 @@ class ApiService {
         timeout
       } as any;
 
-      ///console.log('[API] POST /selfcareMenuSettings start', { hasToken: !!token, username });
-      const res = await fetch(`${getApiUrl()}/selfcareMenuSettings`, options);
+      const menuSettingsUrl = `${getApiUrl()}/selfcareMenuSettings`;
+      console.log('[API] Menu settings endpoint:', menuSettingsUrl);
+      console.log('[API] Menu settings request:', { method, username, request_source: data.request_source, request_app: data.request_app });
+      const res = await fetchWithTimeout(menuSettingsUrl, options);
       const response = await res.json();
       // console.log('[API] POST /selfcareMenuSettings response', {
       //   status: response?.status,
@@ -755,8 +770,134 @@ class ApiService {
 
       // Throw on error so makeAuthenticatedRequest can retry (e.g. token expired)
       if (response?.status !== 'ok' && response?.code !== 200) {
-        throw new Error(response?.message || 'Failed to fetch menu settings');
+        const apiMessage = response?.message || '';
+        if (isTokenExpiredMessage(apiMessage)) {
+          throw new Error('Token Expired');
+        }
+        throw new Error(apiMessage || 'Failed to fetch menu settings');
       }
+      return response?.data ?? response;
+    });
+  }
+
+  /** Fetch CRM runtime config (e.g. user_self_diagnosis for Fix Your Internet flows). */
+  async fetchCrmRuntimeConfigs(configName: string): Promise<any> {
+    return this.makeAuthenticatedRequest(async (token) => {
+      const username = await sessionManager.getUsername();
+      if (!username) {
+        throw new Error('No username found in session');
+      }
+
+      const data = {
+        config_name: configName,
+        username: username.toLowerCase().trim(),
+        request_source: 'app',
+        request_app: 'user_app',
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout,
+      } as any;
+
+      const url = `${getApiUrl()}/selfcareFetchCrmRuntimeConfigs`;
+      const res = await fetchWithTimeout(url, options);
+      const response = await res.json();
+
+      if (response?.status !== 'ok' && response?.code !== 200) {
+        const apiMessage = response?.message || '';
+        if (isTokenExpiredMessage(apiMessage)) {
+          throw new Error('Token Expired');
+        }
+        throw new Error(apiMessage || 'Failed to fetch CRM runtime config');
+      }
+
+      return response?.data ?? response;
+    });
+  }
+
+  /** Check customer onboarding flow after login (debug / routing). */
+  async checkCustomerOnboardingFlow(username?: string): Promise<any> {
+    return this.makeAuthenticatedRequest(async (token) => {
+      let resolvedUsername = username?.trim() || '';
+      if (!resolvedUsername) {
+        resolvedUsername = (await sessionManager.getUsername()) || '';
+      }
+      if (!resolvedUsername) {
+        const session = await sessionManager.getCurrentSession();
+        resolvedUsername = session?.username || '';
+      }
+      if (!resolvedUsername) {
+        throw new Error('No username available for onboarding flow check');
+      }
+
+      const normalizedUsername = resolvedUsername.toLowerCase().trim();
+      const data = {
+        username: normalizedUsername,
+        request_source: 'app',
+        request_app: 'user_app',
+        action: 'check'
+      };
+
+      const options = {
+        method,
+        headers: new Headers({ Authentication: token || '', ...fixedHeaders }),
+        body: toFormData(data),
+        timeout,
+      } as any;
+
+      console.log('[API] POST /selfcareCheckCustomerOnboardingFlow start', {
+        username: normalizedUsername,
+        hasToken: !!token,
+      });
+
+      const res = await fetchWithTimeout(
+        `${getApiUrl()}/selfcareCheckCustomerOnboardingFlow`,
+        options,
+      );
+      const rawResponseText = await res.text();
+      const contentType =
+        (res.headers && (res.headers as any).get && (res.headers as any).get('content-type')) ||
+        'unknown';
+      let response: any;
+      try {
+        response = rawResponseText ? JSON.parse(rawResponseText) : {};
+      } catch (parseError) {
+        console.log('=== selfcareCheckCustomerOnboardingFlow PARSE ERROR ===');
+        console.log('[OnboardingFlow] HTTP status:', res.status);
+        console.log('[OnboardingFlow] Content-Type:', contentType);
+        console.log(
+          '[OnboardingFlow] Raw body (first 500 chars):',
+          rawResponseText ? rawResponseText.slice(0, 500) : '<empty response body>',
+        );
+        console.log('=== END selfcareCheckCustomerOnboardingFlow PARSE ERROR ===');
+        // Keep login flow resilient: this endpoint is informational/non-blocking.
+        return null;
+      }
+
+      console.log('=== selfcareCheckCustomerOnboardingFlow RESPONSE ===');
+      try {
+        console.log(JSON.stringify(response, null, 2));
+      } catch {
+        console.log(response);
+      }
+      console.log('[OnboardingFlow] HTTP status:', res.status);
+      console.log('[OnboardingFlow] Content-Type:', contentType);
+      console.log('=== END selfcareCheckCustomerOnboardingFlow RESPONSE ===');
+
+      if (response?.status !== 'ok' && response?.code !== 200) {
+        console.log('[OnboardingFlow] Non-success response, skipping routing update:', {
+          status: response?.status,
+          code: response?.code,
+          message: response?.message,
+          httpStatus: res.status,
+        });
+        // Keep login flow resilient: this endpoint is informational/non-blocking.
+        return null;
+      }
+
       return response?.data ?? response;
     });
   }
@@ -843,7 +984,7 @@ class ApiService {
       // console.log('Full URL:', `${currentApiUrl}/selfcareL2sUserLogin`);
       // console.log('Request Data:', JSON.stringify(data, null, 2));
       
-      const res = await fetch(`${currentApiUrl}/selfcareL2sUserLogin`, options);
+      const res = await fetchWithTimeout(`${currentApiUrl}/selfcareL2sUserLogin`, options);
       // console.log('Response status:', res.status);
       // console.log('Response statusText:', res.statusText);
       // console.log('Response headers:', JSON.stringify(Object.fromEntries(res.headers.entries()), null, 2));
@@ -865,7 +1006,13 @@ class ApiService {
         console.error('API Error:', response.message);
         throw new Error(response.message || 'Login failed');
       } else {
-        console.log('API Success - Returning data:', response.data);
+        console.log('=== AFTER LOGIN API RESPONSE (DATA RETURNED) ===');
+        try {
+          console.log(JSON.stringify(response.data, null, 2));
+        } catch {
+          console.log(response.data);
+        }
+        console.log('=== END AFTER LOGIN API RESPONSE (DATA RETURNED) ===');
         return response.data;
       }
     } catch (e: any) {
@@ -909,6 +1056,13 @@ class ApiService {
     try {
       const res = await fetch(`${getApiUrl()}/selfcareL2sUserLogin`, options);
       const response = await res.json();
+      console.log('=== AFTER OTP LOGIN API RESPONSE (RAW) ===');
+      try {
+        console.log(JSON.stringify(response, null, 2));
+      } catch {
+        console.log(response);
+      }
+      console.log('=== END AFTER OTP LOGIN API RESPONSE (RAW) ===');
 
       if (response.status !== 'ok' && response.code !== 200) {
         throw new Error(response.message || 'OTP verification failed');
@@ -963,10 +1117,14 @@ class ApiService {
 
       try {
         //console.log('[API] Fetching fresh data for user:', normalizedUsername);
-        const res = await fetch(`${getApiUrl()}/selfcareHelpdesk`, options);
+        const res = await fetchWithTimeout(`${getApiUrl()}/selfcareHelpdesk`, options);
         const response = await res.json();
         if (response.status !== 'ok' && response.code !== 200) {
-          throw new Error('Invalid username or password');
+          const apiMessage = response?.message || '';
+          if (isTokenExpiredMessage(apiMessage)) {
+            throw new Error('Token Expired');
+          }
+          throw new Error(apiMessage || 'Failed to load account data');
         } else {
           // CRITICAL: Store username with cached data to verify on next request
           this.authUserCache = { 
@@ -2323,29 +2481,32 @@ class ApiService {
     const session = await sessionManager.getCurrentSession();
     if (!session?.token) throw new Error('No user session found');
     const Authentication = session.token;
-    const data = {
+    const data: Record<string, string> = {
       username: username,
       user_login_id: username,
-      first_name: formData.firstName,
-      middle_name: formData.middleName,
-      last_name: formData.lastName,
-      mobile: formData.mobileNumber,
-      email: formData.email,
-      address_line1: formData.address1,
-      address_line2: formData.address2,
-      building_id: formData.building_id,
-      building_name: formData.building_name,
-      area_name: formData.area,
-      location_name: formData.location,
-      pin_code: formData.pincode,
-      city_id: formData.city,
-      remarks: formData.remarks,
+      first_name: formData.firstName ?? '',
+      middle_name: formData.middleName ?? '',
+      last_name: formData.lastName ?? '',
+      mobile: formData.mobileNumber ?? '',
+      email: formData.email ?? '',
+      address_line1: formData.address1 ?? '',
+      address_line2: formData.address2 ?? '',
+      building_id: formData.building_id ?? '',
+      building_name: formData.building_name ?? '',
+      area_name: formData.area ?? '',
+      location_name: formData.location ?? '',
+      pin_code: formData.pincode ?? '',
+      city_id: formData.city ?? '',
+      remarks: formData.remarks ?? '',
       customer_type: 'broadband',
       nationality: 'indian',
       lead_source: 'customer_referral/friends',
       request_source: 'app',
       request_app: 'user_app',
     };
+    if (formData.salesPerson) {
+      data.sales_executive = String(formData.salesPerson);
+    }
     const options = {
       method,
       headers: headers(Authentication),
@@ -2360,7 +2521,7 @@ class ApiService {
           if (res.message == 'Lead Created Successfully...') {
             throw new Error('Inquiry Created Successfully.');
           }
-          throw new Error('OTP not generated.');
+          //throw new Error('OTP not generated.');
         } else {
           return res;
         }

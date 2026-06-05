@@ -20,20 +20,53 @@ import {useTranslation} from 'react-i18next';
 import {apiService} from '../services/api';
 import sessionManager from '../services/sessionManager';
 import useMenuSettings from '../hooks/useMenuSettings';
+import {
+  getAppSettingsFromMenu,
+  isFixYourInternetEnabled,
+} from '../utils/appSettingsFromMenu';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 
 interface AddTicketScreenProps {
   visible: boolean;
   onClose: () => void;
   onTicketCreated?: () => void;
+  navigation?: any;
+  /** Pre-fill remarks when user completed self-diagnosis */
+  initialDescription?: string;
+  /** Skip redirect to Fix Your Internet (user already came from there) */
+  fromTroubleshooting?: boolean;
 }
 
-const AddTicketScreen = ({visible, onClose, onTicketCreated}: AddTicketScreenProps) => {
+const AddTicketScreen = ({
+  visible,
+  onClose,
+  onTicketCreated,
+  navigation,
+  initialDescription,
+  fromTroubleshooting = false,
+}: AddTicketScreenProps) => {
   const {isDark} = useTheme();
   const colors = getThemeColors(isDark);
   const {t} = useTranslation();
   const { menu } = useMenuSettings();
-  
+
+  const showFixYourInternet = useMemo(
+    () => isFixYourInternetEnabled(getAppSettingsFromMenu(menu)),
+    [menu],
+  );
+
+  useEffect(() => {
+    if (!visible || fromTroubleshooting || !showFixYourInternet || !navigation) return;
+    onClose();
+    navigation.navigate('FixYourInternet');
+  }, [visible, fromTroubleshooting, showFixYourInternet, navigation, onClose]);
+
+  useEffect(() => {
+    if (visible && initialDescription?.trim()) {
+      setProblemDescription(initialDescription.trim());
+    }
+  }, [visible, initialDescription]);
+
   const [problemTitle, setProblemTitle] = useState('');
   const [problemDescription, setProblemDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -364,6 +397,10 @@ const AddTicketScreen = ({visible, onClose, onTicketCreated}: AddTicketScreenPro
       onClose();
     }
   };
+
+  if (!visible || (showFixYourInternet && !fromTroubleshooting)) {
+    return null;
+  }
 
   return (
     <Modal

@@ -1,0 +1,35 @@
+{
+  "name": "WnetApp",
+  "expo": {
+    "name": "Wnet",
+    "slug": "wnet",
+    "version": "1.0.4",
+    "orientation": "portrait",
+    "icon": "./app-icons/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./app-icons/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.l2sClient.WNETPvtLtd",
+      "buildNumber": "7"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./app-icons/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "package": "in.spacecom.log2space.client.wnet",
+      "versionCode": 7
+    },
+    "web": {
+      "favicon": "./app-icons/favicon.png"
+    }
+  }
+}

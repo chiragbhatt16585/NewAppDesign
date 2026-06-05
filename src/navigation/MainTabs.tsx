@@ -27,6 +27,7 @@ import UpdateSSIDScreen from '../screens/UpdateSSIDScreen';
 import OffersScreen from '../screens/OffersScreen';
 import PartnerAppsScreen from '../screens/PartnerAppsScreen';
 import WebViewScreen from '../screens/WebViewScreen';
+import TroubleshootingScreen from '../screens/TroubleshootingScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -38,12 +39,14 @@ const HomeStack = () => (
     <Stack.Screen name="PayBill" component={PayBillScreen} />
     <Stack.Screen name="ContactUs" component={ContactUsScreen} />
     <Stack.Screen name="UsageDetails" component={UsageDetailsScreen} />
+    <Stack.Screen name="FixYourInternet" component={TroubleshootingScreen} />
   </Stack.Navigator>
 );
 
 const SupportStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="ContactUs" component={ContactUsScreen} />
+    <Stack.Screen name="FixYourInternet" component={TroubleshootingScreen} />
   </Stack.Navigator>
 );
 
@@ -57,6 +60,7 @@ const MenuStack = () => (
     <Stack.Screen name="UpdateSSID" component={UpdateSSIDScreen} />
     <Stack.Screen name="Offers" component={OffersScreen} />
     <Stack.Screen name="PartnerApps" component={PartnerAppsScreen} />
+    <Stack.Screen name="FixYourInternet" component={TroubleshootingScreen} />
   </Stack.Navigator>
 );
 

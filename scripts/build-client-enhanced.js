@@ -11,7 +11,7 @@ const CLIENTS = {
     // Must match OLD app (microscanEndUserApp-master-new) so install overwrites and migration works.
     packageName: 'in.spacecom.log2space.client.microscan',
     namespace: 'in.spacecom.log2space.client.microscan',
-    versionCode: 41,
+    versionCode: 42,
     versionName: '1.0.1',
     // Use original Microscan upload key for Play Store (SHA1: 08:1C:A0:54:CA:45:95:5B:B3:8B:3A:B8:B2:53:93:FA:F5:64:D0:AE)
     keystore: 'Log2SpaceEndUserMicroscan.jks',
@@ -205,8 +205,17 @@ const CLIENTS = {
     namespace: 'com.spacecom.log2space.funnet',
     versionCode: 1,
     versionName: '1.0.1',
-    keystore: 'Log2spceGatewayFTTHKey_V3.jks',
+    keystore: 'Log2spaceFunnetAppKey.jks',
     configDir: 'config/funnet',
+  },
+  wnet: {
+    name: 'Wnet',
+    packageName: 'in.spacecom.log2space.client.wnet',
+    namespace: 'in.spacecom.log2space.client.wnet',
+    versionCode: 7,
+    versionName: '7',
+    keystore: 'Log2spaceWnetUserAppKey.jks',
+    configDir: 'config/wnet',
   },
   indophone: {
     name: 'Indophone',

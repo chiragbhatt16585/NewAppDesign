@@ -200,6 +200,7 @@ const ReferFriendScreen = ({ navigation }: any) => {
       const realm = clientConfig.clientId;
       const payload = {
         firstName: formData.firstName.trim(),
+        middleName: '',
         lastName: formData.lastName.trim(),
         mobileNumber: formData.mobileNumber.trim(),
         email: formData.email.trim(),

@@ -81,6 +81,7 @@ const CommonHeader = ({
       'metanet:header_background.png': require('../../config/metanet/assets/header_background.png'),
       'monarknet:header_background.png': require('../../config/monarknet/assets/header_background.png'),
       'funnet:header_background.png': require('../../config/funnet/assets/header_background.png'),
+      'wnet:header_background.png': require('../../config/wnet/assets/header_background.png'),
       'indophone:header_background.png': require('../../config/indophone/assets/header_background.png'),
       'graceway:header_background.png': require('../../config/graceway/assets/header_background.png'),
       'log2space-common:header_background.png': require('../../config/log2space-common/assets/header_background.png'),
@@ -114,6 +115,7 @@ const CommonHeader = ({
       clientConfig.clientId === 'metanet' ||
       clientConfig.clientId === 'monarknet' ||
       clientConfig.clientId === 'funnet' ||
+      clientConfig.clientId === 'wnet' ||
       clientConfig.clientId === 'indophone' ||
       clientConfig.clientId === 'graceway' ||
       clientConfig.clientId === 'log2space-common');
@@ -158,6 +160,7 @@ const CommonHeader = ({
       clientConfig.clientId === 'metanet' ||
       clientConfig.clientId === 'monarknet' ||
       clientConfig.clientId === 'funnet' ||
+      clientConfig.clientId === 'wnet' ||
       clientConfig.clientId === 'indophone' ||
       clientConfig.clientId === 'graceway' ||
       clientConfig.clientId === 'log2space-common');

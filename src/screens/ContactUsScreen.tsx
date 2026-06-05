@@ -39,10 +39,19 @@ const ContactUsScreen = ({navigation}: any) => {
     )
   );
 
+  const parsePhoneNumbers = (raw?: string): string[] => {
+    if (!raw) return [];
+    return raw
+      .split(/[,/|]|——|--|\s+and\s+/i)
+      .map(part => part.replace(/[^\d+]/g, '').trim())
+      .filter(Boolean);
+  };
+
   const handlePhoneCall = (number: string) => {
-    Linking.canOpenURL(`tel:${number}`).then(supported => {
+    const dialNumber = parsePhoneNumbers(number)[0] || number.replace(/[^\d+]/g, '');
+    Linking.canOpenURL(`tel:${dialNumber}`).then(supported => {
       if (supported) {
-        Linking.openURL(`tel:${number}`);
+        Linking.openURL(`tel:${dialNumber}`);
       } else {
         Alert.alert(t('contactUs.error'), t('contactUs.phoneNotSupported'));
       }
@@ -127,35 +136,47 @@ const ContactUsScreen = ({navigation}: any) => {
     contactInfo.emails?.inquiries ||
     contactInfo.emails?.sales;
 
+  const isMonarknet = clientConfig.clientId === 'monarknet';
+
   const primaryPhone =
     contactInfo.headOffice.customerSupport ||
     contactInfo.tollFree ||
     contactInfo.landline;
 
   const contactRows = [
+    ...(!isMonarknet
+      ? [
+          {
+            icon: 'phone' as const,
+            label: tr('contactUs.callSupport', 'Call Support'),
+            value: primaryPhone,
+            onPress: primaryPhone ? () => handlePhoneCall(primaryPhone) : undefined,
+          },
+        ]
+      : []),
     {
-      icon: 'phone', // Feather icon
-      label: tr('contactUs.callSupport', 'Call Support'),
-      value: primaryPhone,
-      onPress: primaryPhone ? () => handlePhoneCall(primaryPhone) : undefined,
-    },
-    {
-      icon: 'mail', // Feather icon
+      icon: 'mail' as const, // Feather icon
       label: tr('contactUs.email', 'Email'),
       value: bestEmail,
       onPress: bestEmail ? () => openEmail(bestEmail) : undefined,
     },
     {
-      icon: 'globe', // Feather icon
+      icon: 'globe' as const, // Feather icon
       label: tr('contactUs.website', 'Website'),
       value: defaultWebsite,
       onPress: () => openWebsite(defaultWebsite),
     },
-    {
-      icon: 'clock', // Feather icon
-      label: tr('contactUs.supportHours', 'Support Hours'),
-      value: contactInfo.headOffice.customerSupportHours || 'Monday - Sunday | 24×7',
-    },
+    ...(!isMonarknet
+      ? [
+          {
+            icon: 'clock' as const,
+            label: tr('contactUs.supportHours', 'Support Hours'),
+            value:
+              contactInfo.headOffice.customerSupportHours ||
+              'Monday - Sunday | 24×7',
+          },
+        ]
+      : []),
     ...(hasEscalationData ? [{
       icon: 'alert-circle', // Feather icon
       label: tr('contactUs.escalationMatrix', 'Escalation Matrix'),
@@ -185,28 +206,48 @@ const ContactUsScreen = ({navigation}: any) => {
   };
 
   const LocationCard = ({location}: any) => {
-    return (
-    <View style={[styles.locationCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
-      <View style={styles.locationContentRow}>
-        <View style={styles.locationInfoBlock}>
-          <Text style={[styles.locationTitle, {color: colors.text}]}>
-            {location.title}
-          </Text>
-          <Text style={[styles.locationAddress, {color: colors.textSecondary}]}>
-            {location.address}
-          </Text>
-        </View>
+    const phones = parsePhoneNumbers(
+      location.customerSupport || location.corporateLandline,
+    );
 
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={[styles.locationMapThumb, {backgroundColor: colors.primaryLight || '#f0f5ff'}]}
-          onPress={() => openMapsForAddress(location.address)}>
-          <Feather name="map-pin" size={24} color={colors.primary} style={styles.mapPinIcon} />
-          <Text style={styles.mapThumbText}>{tr('contactUs.viewMap', 'View map')}</Text>
-        </TouchableOpacity>
+    return (
+      <View style={[styles.locationCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
+        <View style={styles.locationContentRow}>
+          <View style={styles.locationInfoBlock}>
+            <Text style={[styles.locationTitle, {color: colors.text}]}>
+              {location.title}
+            </Text>
+            <Text style={[styles.locationAddress, {color: colors.textSecondary}]}>
+              {location.address}
+            </Text>
+            {phones.length > 0 ? (
+              <View style={styles.locationPhonesBlock}>
+                {phones.map((phone, phoneIndex) => (
+                  <TouchableOpacity
+                    key={`${phone}-${phoneIndex}`}
+                    style={styles.locationPhoneRow}
+                    activeOpacity={0.7}
+                    onPress={() => handlePhoneCall(phone)}>
+                    <Feather name="phone" size={14} color={colors.primary} />
+                    <Text style={[styles.locationPhoneText, {color: colors.primary}]}>
+                      {phone}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : null}
+          </View>
+
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={[styles.locationMapThumb, {backgroundColor: colors.primaryLight || '#f0f5ff'}]}
+            onPress={() => openMapsForAddress(location.address)}>
+            <Feather name="map-pin" size={24} color={colors.primary} style={styles.mapPinIcon} />
+            <Text style={styles.mapThumbText}>{tr('contactUs.viewMap', 'View map')}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
-  );
+    );
   };
 
   return (
@@ -517,6 +558,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     marginTop: 4,
+  },
+  locationPhonesBlock: {
+    marginTop: 10,
+    gap: 6,
+  },
+  locationPhoneRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  locationPhoneText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   locationContactRow: {
     flexDirection: 'row',

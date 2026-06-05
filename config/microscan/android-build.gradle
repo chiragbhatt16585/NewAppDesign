@@ -82,7 +82,7 @@ android {
         applicationId "in.spacecom.log2space.client.microscan"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 40
+        versionCode 42
         versionName "1.0.1"
     }
     

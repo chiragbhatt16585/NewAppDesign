@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {
   View,
   Text,
@@ -11,6 +13,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../utils/ThemeContext';
 import { getThemeColors } from '../utils/themeStyles';
 import CommonHeader from '../components/CommonHeader';
+import useMenuSettings from '../hooks/useMenuSettings';
+import {
+  getAppSettingsFromMenu,
+  isFixYourInternetEnabled,
+} from '../utils/appSettingsFromMenu';
 
 interface FAQItem {
   id: string;
@@ -22,6 +29,12 @@ interface FAQItem {
 const FAQScreen = ({ navigation }: any) => {
   const { isDark } = useTheme();
   const colors = getThemeColors(isDark);
+  const { t } = useTranslation();
+  const { menu } = useMenuSettings();
+  const showFixYourInternet = useMemo(
+    () => isFixYourInternetEnabled(getAppSettingsFromMenu(menu)),
+    [menu],
+  );
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
@@ -210,6 +223,27 @@ const FAQScreen = ({ navigation }: any) => {
           </Text>
         </View>
 
+        {showFixYourInternet ? (
+          <TouchableOpacity
+            style={[styles.troubleshootingCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate('FixYourInternet')}
+          >
+            <View style={[styles.troubleshootingIconWrapper, { backgroundColor: `${colors.primary}18` }]}>
+              <MaterialIcons name="wifi-tethering" size={22} color={colors.primary} />
+            </View>
+            <View style={styles.troubleshootingTextWrapper}>
+              <Text style={[styles.troubleshootingTitle, { color: colors.text }]}>
+                {t('settings.fixYourInternet', 'Fix Your Internet')}
+              </Text>
+              <Text style={[styles.troubleshootingSubtitle, { color: colors.textSecondary }]}>
+                {t('settings.fixYourInternetSubtitle', 'Step-by-step self diagnosis for connection issues')}
+              </Text>
+            </View>
+            <MaterialIcons name="chevron-right" size={24} color={colors.textTertiary} />
+          </TouchableOpacity>
+        ) : null}
+
         {/* Category Filter */}
         <ScrollView 
           horizontal 
@@ -294,10 +328,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginHorizontal: 20,
-    marginBottom: 12,
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
+    marginBottom: 16,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   troubleshootingIconWrapper: {
     width: 40,
@@ -309,6 +343,9 @@ const styles = StyleSheet.create({
   },
   troubleshootingIcon: {
     fontSize: 22,
+  },
+  troubleshootingChevron: {
+    marginLeft: 8,
   },
   troubleshootingTextWrapper: {
     flex: 1,

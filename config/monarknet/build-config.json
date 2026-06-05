@@ -2,6 +2,7 @@
   "android": {
     "namespace": "in.spacecom.log2space.client.monarkuser",
     "applicationId": "in.spacecom.log2space.client.monarkuser",
+    "launcherIconBackgroundColor": "#ffffff",
     "versionCode": 3,
     "versionName": "1.0.1",
     "signing": {

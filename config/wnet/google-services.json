@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "738642151340",
+    "project_id": "log2space-gatewayftth",
+    "storage_bucket": "log2space-gatewayftth.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:738642151340:android:587f225dcb4bea7bc99c09",
+        "android_client_info": {
+          "package_name": "in.spacecom.log2space.client.wnet"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAbcv_Y2wr7EFiBDsFM9OMalikyiqQ06ys"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

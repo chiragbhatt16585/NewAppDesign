@@ -18,10 +18,14 @@ import {apiService, Ticket} from '../services/api';
 import sessionManager from '../services/sessionManager';
 import AddTicketScreen from './AddTicketScreen';
 import useMenuSettings from '../hooks/useMenuSettings';
+import {
+  getAppSettingsFromMenu,
+  isFixYourInternetEnabled,
+} from '../utils/appSettingsFromMenu';
 import Feather from 'react-native-vector-icons/Feather';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 
-const TicketsScreen = ({navigation}: any) => {
+const TicketsScreen = ({navigation, route}: any) => {
   const {isDark} = useTheme();
   const colors = getThemeColors(isDark);
   const {t} = useTranslation();
@@ -29,7 +33,20 @@ const TicketsScreen = ({navigation}: any) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAddTicket, setShowAddTicket] = useState(false);
+  const [troubleshootingPrefill, setTroubleshootingPrefill] = useState('');
   const { menu } = useMenuSettings();
+
+  useEffect(() => {
+    const params = route?.params;
+    if (params?.fromTroubleshooting && params?.troubleshootingSummary) {
+      setTroubleshootingPrefill(String(params.troubleshootingSummary));
+      setShowAddTicket(true);
+      navigation?.setParams?.({
+        fromTroubleshooting: undefined,
+        troubleshootingSummary: undefined,
+      });
+    }
+  }, [route?.params, navigation]);
 
   const tryParseJson = (val: any): any => {
     if (val && typeof val === 'object') return val;
@@ -70,6 +87,11 @@ const TicketsScreen = ({navigation}: any) => {
       return 0;
     }
   }, [menu]);
+
+  const showFixYourInternet = useMemo(
+    () => isFixYourInternetEnabled(getAppSettingsFromMenu(menu)),
+    [menu],
+  );
 
   useEffect(() => {
     loadTickets();
@@ -276,6 +298,10 @@ const TicketsScreen = ({navigation}: any) => {
   };
 
   const handleCreateTicket = () => {
+    if (showFixYourInternet) {
+      navigation.navigate('FixYourInternet');
+      return;
+    }
     setShowAddTicket(true);
   };
 
@@ -353,8 +379,14 @@ const TicketsScreen = ({navigation}: any) => {
       {showAddTicket && (
         <AddTicketScreen
           visible={showAddTicket}
-          onClose={() => setShowAddTicket(false)}
+          onClose={() => {
+            setShowAddTicket(false);
+            setTroubleshootingPrefill('');
+          }}
           onTicketCreated={handleTicketCreated}
+          navigation={navigation}
+          initialDescription={troubleshootingPrefill}
+          fromTroubleshooting={!!troubleshootingPrefill}
         />
       )}
     </SafeAreaView>

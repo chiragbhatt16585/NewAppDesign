@@ -1,8 +1,7 @@
-# Indophone assets
+Place your client logo and assets here.
 
-Replace placeholder files with client branding:
+Expected filenames used by the app:
+- `isp_logo.png` (used by `src/components/LogoImage.tsx`)
+- `header_background.png` (optional header background)
 
-- `isp_logo.png` — login and header logo
-- `header_background.png` — optional header background (same layout as Funnet)
-
-App icons: update files under `../app-icons/android` and `../app-icons/ios`.
+Replace the placeholder files copied from Funnet with Wnet branding when ready.

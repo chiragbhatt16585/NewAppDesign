@@ -68,7 +68,10 @@ const HomeScreen = ({navigation}: any) => {
   const { setAuthData: setGlobalAuthData } = useAuthData();
   const hasAuthDataRef = useRef(false);
   const isFetchingRef = useRef(false);
+  const pendingFetchRef = useRef(false);
   const lastFetchTsRef = useRef<number>(0);
+  const FETCH_DEBOUNCE_MS = 2000;
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [planDetails, setPlanDetails] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [banners, setBanners] = useState<any[]>([]);
@@ -805,22 +808,6 @@ const HomeScreen = ({navigation}: any) => {
   //   }, [reloadOnFocus])
   // );
 
-  const onRefresh = React.useCallback(async () => {
-    try {
-      setRefreshing(true);
-      await refreshMenu();
-      await fetchAccountData();
-      // Optionally refresh banners as well
-      try {
-        const realm = getClientConfig().clientId;
-        const bannerData = await apiService.bannerDisplay(realm);
-        setBanners(bannerData);
-      } catch {}
-    } finally {
-      setRefreshing(false);
-    }
-  }, [refreshMenu]);
-
   // Handle back button press - exit app instead of going back to login
   useFocusEffect(
     React.useCallback(() => {
@@ -849,13 +836,24 @@ const HomeScreen = ({navigation}: any) => {
     }, [])
   );
 
-  const fetchAccountData = React.useCallback(async () => {
+  const fetchAccountData = React.useCallback(async (options?: { force?: boolean }) => {
+    const force = options?.force === true;
     try {
-      if (isFetchingRef.current) return;
+      if (isFetchingRef.current) {
+        if (!force) {
+          pendingFetchRef.current = true;
+        }
+        return;
+      }
       const now = Date.now();
-      if (now - lastFetchTsRef.current < 15000) return; // debounce within 15s
+      if (!force && now - lastFetchTsRef.current < FETCH_DEBOUNCE_MS) {
+        pendingFetchRef.current = true;
+        return;
+      }
       isFetchingRef.current = true;
       lastFetchTsRef.current = now;
+      pendingFetchRef.current = false;
+      setLoadError(null);
       // console.log('🏠 [HomeScreen] fetchAccountData started');
       setIsLoading(true);
       
@@ -889,8 +887,7 @@ const HomeScreen = ({navigation}: any) => {
       // });
       
       if (!session) {
-        // console.log('🏠 [HomeScreen] No session found, stopping');
-        setIsLoading(false);
+        setLoadError('No active session. Please log in again.');
         return;
       }
 
@@ -943,23 +940,21 @@ const HomeScreen = ({navigation}: any) => {
         const currentUsername = currentSession?.username;
         
         if (!currentUsername || currentUsername !== username) {
-          console.log('[HomeScreen] 🚨🚨🚨 USERNAME MISMATCH - NOT SETTING DATA 🚨🚨🚨');
-          console.log('[HomeScreen] Expected:', username, 'Got:', currentUsername);
-          setIsLoading(false);
-          isFetchingRef.current = false;
+          if (__DEV__) {
+            console.warn('[HomeScreen] Session username changed during fetch');
+          }
+          setLoadError('Session changed. Pull down to refresh.');
           return;
         }
         
-        // CRITICAL: Verify username ref matches too
         if (lastUsernameRef.current !== null && lastUsernameRef.current !== username) {
-          console.log('[HomeScreen] 🚨🚨🚨 USERNAME REF MISMATCH - NOT SETTING DATA 🚨🚨🚨');
-          console.log('[HomeScreen] Ref:', lastUsernameRef.current, 'Current:', username);
-          setIsLoading(false);
-          isFetchingRef.current = false;
+          if (__DEV__) {
+            console.warn('[HomeScreen] Username ref mismatch during fetch');
+          }
+          setLoadError('Session changed. Pull down to refresh.');
           return;
         }
         
-        // Update username ref and state FIRST
         lastUsernameRef.current = username;
         setCurrentUsername(username);
         
@@ -979,7 +974,7 @@ const HomeScreen = ({navigation}: any) => {
           });
         }
       } else {
-        //console.warn('[HomeScreen] No auth response received');
+        setLoadError('Unable to load account data. Pull down to refresh.');
       }
       // Menu settings load via hook; refresh only if stale to avoid repeated heavy calls
       try {
@@ -988,14 +983,37 @@ const HomeScreen = ({navigation}: any) => {
         // console.warn('[HomeScreen] Menu refresh failed:', e?.message || e);
       }
     } catch (error: any) {
-      //console.error('🏠 [HomeScreen] Error fetching account data:', error.message || error);
-      //Alert.alert('Error', `Failed to load account data: ${error.message}`);
+      const message = error?.message || 'Failed to load account data';
+      if (__DEV__) {
+        console.warn('[HomeScreen] Error fetching account data:', message);
+      }
+      setLoadError(message);
     } finally {
       // console.log('🏠 [HomeScreen] fetchAccountData completed, setting loading to false');
       setIsLoading(false);
       isFetchingRef.current = false;
+      if (pendingFetchRef.current) {
+        pendingFetchRef.current = false;
+        fetchAccountData({ force: true });
+      }
     }
   }, [checkSessionAndHandle, navigation, refreshMenu]);
+
+  const onRefresh = React.useCallback(async () => {
+    try {
+      setRefreshing(true);
+      setLoadError(null);
+      await refreshMenu();
+      await fetchAccountData({ force: true });
+      try {
+        const realm = getClientConfig().clientId;
+        const bannerData = await apiService.bannerDisplay(realm);
+        setBanners(bannerData);
+      } catch {}
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshMenu, fetchAccountData]);
 
   // Initial data fetch and push notification setup - only when authenticated
   useEffect(() => {
@@ -1023,8 +1041,7 @@ const HomeScreen = ({navigation}: any) => {
         menuService.clearCache();
       }
       
-      // Fetch data normally
-      fetchAccountData();
+      fetchAccountData({ force: true });
     };
     
     verifyAndFetch();
@@ -1069,44 +1086,38 @@ const HomeScreen = ({navigation}: any) => {
         const session = await sessionManager.getCurrentSession();
         const currentUsername = session?.username || null;
         
-        // ALWAYS clear if username changed, or if we have old data but username doesn't match
-        const shouldClear = 
-          !currentUsername || // No username
-          lastUsernameRef.current === null || // First time
-          lastUsernameRef.current !== currentUsername || // Username changed
-          (hasAuthDataRef.current && lastUsernameRef.current !== currentUsername); // We have data but username doesn't match
-        
-        if (shouldClear && currentUsername) {
-          // console.log('[HomeScreen] 🚨 FOCUS: Clearing state - Username check');
-          // console.log('[HomeScreen] Previous:', lastUsernameRef.current, 'Current:', currentUsername);
-          // console.log('[HomeScreen] Has authData:', !!authData);
-          
-          // Clear state immediately
+        // Only clear when switching to a different user (not on first load)
+        const usernameChanged =
+          !!currentUsername &&
+          lastUsernameRef.current !== null &&
+          lastUsernameRef.current !== currentUsername;
+
+        if (usernameChanged) {
           setAuthData(null);
           setGlobalAuthData(null);
           setPlanDetails(null);
           setBanners([]);
           setIsLoading(true);
-          
-          // Clear caches
+          setLoadError(null);
+
           await dataCache.clearAllCache();
           menuService.clearCache();
-          
-          // Update username ref and state
+
           lastUsernameRef.current = currentUsername;
           setCurrentUsername(currentUsername);
-          
-          // Fetch fresh data
-          //console.log('[HomeScreen] Fetching fresh data after focus...');
-          await fetchAccountData();
-        } else if (currentUsername && !hasAuthDataRef.current && lastUsernameRef.current === currentUsername) {
-          // Username matches but no data - fetch it
-          //console.log('[HomeScreen] Username matches but no data, fetching...');
+
+          await fetchAccountData({ force: true });
+        } else if (currentUsername && !hasAuthDataRef.current) {
+          if (lastUsernameRef.current === null) {
+            lastUsernameRef.current = currentUsername;
+          }
           setCurrentUsername(currentUsername);
-          await fetchAccountData();
+          await fetchAccountData({ force: true });
         } else if (currentUsername) {
-          // Update current username state even if not clearing
           setCurrentUsername(currentUsername);
+          if (lastUsernameRef.current === null) {
+            lastUsernameRef.current = currentUsername;
+          }
         }
       };
       
@@ -1717,8 +1728,25 @@ const HomeScreen = ({navigation}: any) => {
             <LoadingSpinner />
           ) : !shouldShowData ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color={colors.primary} />
-              <Text style={[styles.loadingText, {color: colors.textSecondary}]}>Loading account data...</Text>
+              {loadError ? (
+                <>
+                  <Text style={[styles.loadingText, {color: colors.textSecondary, marginBottom: 12}]}>
+                    {loadError}
+                  </Text>
+                  <TouchableOpacity
+                    style={[styles.viewDetailsButton, {backgroundColor: colors.primary}]}
+                    onPress={() => fetchAccountData({ force: true })}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.viewDetailsText}>Retry</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <ActivityIndicator size="small" color={colors.primary} />
+                  <Text style={[styles.loadingText, {color: colors.textSecondary}]}>Loading account data...</Text>
+                </>
+              )}
             </View>
           ) : (
             <>

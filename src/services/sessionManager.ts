@@ -17,6 +17,7 @@ export interface UserSession {
 export class SessionManager {
   private static instance: SessionManager;
   private currentSession: UserSession | null = null;
+  private tokenRegenPromise: Promise<string | false> | null = null;
   private readonly SESSION_KEY = 'user_session';
   private readonly SESSION_EXPIRY_HOURS = 24 * 7; // 7 days
   private readonly SESSION_WARNING_HOURS = 24 * 6; // 6 days - warn before expiry
@@ -273,45 +274,62 @@ export class SessionManager {
 
   // New method to regenerate token using stored password
   async regenerateToken(): Promise<string | false> {
+    if (this.tokenRegenPromise) {
+      return this.tokenRegenPromise;
+    }
+
+    this.tokenRegenPromise = this.performRegenerateToken();
     try {
-      // console.log('[SessionManager] Attempting to regenerate token...');
-      
-      // Check if we have a current session
+      return await this.tokenRegenPromise;
+    } finally {
+      this.tokenRegenPromise = null;
+    }
+  }
+
+  private async performRegenerateToken(): Promise<string | false> {
+    try {
       if (!this.currentSession) {
         console.error('[SessionManager] No current session for token regeneration');
         return false;
       }
-      
-      // Get stored credentials
+
       const creds = await credentialStorage.getCredentials();
       if (!creds) {
         console.error('[SessionManager] No stored credentials for token regeneration');
         return false;
       }
-      
+
       const { username, password } = creds;
-      // console.log('[SessionManager] Found stored credentials for user:', username);
-      
-      // Perform login to get new token
-      // console.log('[SessionManager] Attempting authentication...');
-      const loginResponse = await apiService.authenticate(username, password, '', 'none', undefined, 'password');
-      
-      if (loginResponse && loginResponse.token) {
-        // console.log('[SessionManager] Authentication successful, updating session...');
-        
+      const loginResponse = await apiService.authenticate(
+        username,
+        password,
+        '',
+        'none',
+        undefined,
+        'password',
+      );
+
+      if (loginResponse?.token) {
         if (this.currentSession) {
           this.currentSession.token = loginResponse.token;
           this.currentSession.lastActivityTime = Date.now();
           await AsyncStorage.setItem(this.SESSION_KEY, JSON.stringify(this.currentSession));
-          // console.log('[SessionManager] Token regenerated and session updated successfully');
         }
         return loginResponse.token;
-      } else {
-        console.error('[SessionManager] Authentication failed - no token received');
-        return false;
       }
+
+      console.error('[SessionManager] Authentication failed - no token received');
+      return false;
     } catch (error: any) {
-      console.error('[SessionManager] Failed to regenerate token:', error.message || error);
+      const message = error?.message || String(error);
+      if (
+        message.toLowerCase().includes('network') ||
+        message.toLowerCase().includes('internet connection')
+      ) {
+        console.warn('[SessionManager] Token regeneration skipped (network):', message);
+      } else {
+        console.error('[SessionManager] Failed to regenerate token:', message);
+      }
       return false;
     }
   }

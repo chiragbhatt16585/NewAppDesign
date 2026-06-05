@@ -149,6 +149,7 @@ const AppNavigator: React.FC<AppNavigatorProps> = ({ initialRoute }) => {
         <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: false }} />
         <Stack.Screen name="TermsScreen" component={TermsScreen} options={{ headerShown: false }} />
         <Stack.Screen name="FAQScreen" component={FAQScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="FixYourInternet" component={TroubleshootingScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Troubleshooting" component={TroubleshootingScreen} options={{ headerShown: false }} />
         <Stack.Screen name="AboutScreen" component={AboutScreen} options={{ headerShown: false }} />
         <Stack.Screen name="AIDemo" component={AIDemoScreen} options={{ headerShown: false }} />

@@ -35,6 +35,7 @@ import { pinStorage } from '../services/pinStorage';
 import biometricAuthService from '../services/biometricAuth';
 import { ensureDeviceRegistrationAfterLogin } from '../services/notificationService';
 import { getClientConfig } from '../config/client-config';
+import { shouldShowOtpLoginLink } from '../config/login-ui-config';
 import { getCustomApi } from '../config/customApiStorage';
 import { getWebsite } from '../config';
 import menuService from '../services/menuService';
@@ -50,7 +51,9 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
   const { t } = useTranslation();
   const { login, loginWithOtp } = useAuth();
   const clientStrings = getClientStrings();
-  
+  const clientId = getClientConfig().clientId;
+  const showOtpLoginLink = shouldShowOtpLoginLink(clientId);
+
   // Animation refs
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(-50)).current;
@@ -150,6 +153,12 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
   useEffect(() => {
     checkExistingSession();
   }, []);
+
+  useEffect(() => {
+    if (!showOtpLoginLink) {
+      setLoginMode('password');
+    }
+  }, [showOtpLoginLink]);
 
   // Fetch isp_details.json from serverURL/tmp/isp_details.json for the current client
   useEffect(() => {
@@ -325,25 +334,28 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
           }
         }
 
+        const otpAllowedForUi = otpFlag && showOtpLoginLink;
+
         setAllowPasswordLogin(pwdFlag);
-        setAllowOtpLogin(otpFlag);
+        setAllowOtpLogin(otpAllowedForUi);
         setShowLanguageSwitcher(languageShowFlag);
         
         console.log('=== FINAL LOGIN METHOD FLAGS ===');
         console.log('allowPasswordLogin:', pwdFlag);
-        console.log('allowOtpLogin:', otpFlag);
+        console.log('allowOtpLogin:', otpAllowedForUi);
+        console.log('showOtpLoginLink:', showOtpLoginLink);
         console.log('loginMode:', loginMode);
         console.log('=== END FINAL FLAGS ===');
 
         // Ensure current loginMode is valid based on allowed methods
         setLoginMode(prevMode => {
-          if (pwdFlag && otpFlag) {
-            return prevMode;
+          if (pwdFlag && otpAllowedForUi) {
+            return showOtpLoginLink ? prevMode : 'password';
           }
-          if (pwdFlag && !otpFlag) {
+          if (pwdFlag && !otpAllowedForUi) {
             return 'password';
           }
-          if (!pwdFlag && otpFlag) {
+          if (!pwdFlag && otpAllowedForUi) {
             return 'otp';
           }
           return 'password';
@@ -796,6 +808,17 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
         
         if (result.success) {
           try {
+            if (result.consentRequired) {
+              navigation.replace('CustomerConsent');
+              setTimeout(() => {
+                try {
+                  Alert.alert('Success', 'Login successful!');
+                } catch {
+                  // ignore
+                }
+              }, 100);
+              return;
+            }
             // Save or clear credentials for session regeneration (non-blocking) based on rememberMe
             if (rememberMe) {
               credentialStorage.saveCredentials(username, password).catch(err => {
@@ -882,6 +905,17 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
         
         if (result.success) {
           try {
+            if (result.consentRequired) {
+              navigation.replace('CustomerConsent');
+              setTimeout(() => {
+                try {
+                  Alert.alert('Success', 'Login successful!');
+                } catch {
+                  // ignore
+                }
+              }, 100);
+              return;
+            }
             // Device registration is already handled in AuthContext.loginWithOtp()
             // No need to call it again here - it would be duplicate and slow
             
@@ -1240,8 +1274,8 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
                 </TouchableOpacity>
               )}
 
-              {/* Toggle between Password and OTP (only if both methods are allowed) */}
-              {allowPasswordLogin && allowOtpLogin && (
+              {/* Toggle between Password and OTP (only if both methods are allowed and client permits link) */}
+              {allowPasswordLogin && allowOtpLogin && showOtpLoginLink && (
                 <TouchableOpacity
                   onPress={async () => {
                     if (loginMode === 'password') {

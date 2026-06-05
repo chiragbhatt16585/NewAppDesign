@@ -15,8 +15,14 @@ import { getClientConfig } from '../config/client-config';
 interface AuthContextType {
   isAuthenticated: boolean;
   userData: any | null;
-  login: (username: string, password: string) => Promise<{success: boolean; error?: string}>;
-  loginWithOtp: (phoneNumber: string, otp: string) => Promise<{success: boolean; error?: string}>;
+  login: (
+    username: string,
+    password: string,
+  ) => Promise<{success: boolean; error?: string; consentRequired?: boolean}>;
+  loginWithOtp: (
+    phoneNumber: string,
+    otp: string,
+  ) => Promise<{success: boolean; error?: string; consentRequired?: boolean}>;
   logout: () => Promise<void>;
   loading: boolean;
 }
@@ -132,7 +138,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const login = async (username: string, password: string): Promise<{success: boolean; error?: string}> => {
+  const login = async (
+    username: string,
+    password: string,
+  ): Promise<{success: boolean; error?: string; consentRequired?: boolean}> => {
     try {
       setLoading(true);
       
@@ -275,10 +284,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           .catch(registrationError => {
             console.warn('[AuthContext] Device registration failed after password login:', registrationError);
           });
+
+        apiService
+          .checkCustomerOnboardingFlow(username)
+          .then(onboardingData => {
+            console.log(
+              '[AuthContext] selfcareCheckCustomerOnboardingFlow data:',
+              onboardingData,
+            );
+          })
+          .catch(onboardingError => {
+            console.warn(
+              '[AuthContext] selfcareCheckCustomerOnboardingFlow failed:',
+              onboardingError,
+            );
+          });
         
         // Session monitoring disabled for persistent login
         // sessionMonitor.startMonitoring();
-        return {success: true};
+        return {success: true, consentRequired: response.consent_required === true};
       }
       return {success: false, error: 'Invalid response from server. Please try again.'};
     } catch (error: any) {
@@ -290,7 +314,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const loginWithOtp = async (phoneNumber: string, otp: string): Promise<{success: boolean; error?: string}> => {
+  const loginWithOtp = async (
+    phoneNumber: string,
+    otp: string,
+  ): Promise<{success: boolean; error?: string; consentRequired?: boolean}> => {
     try {
       setLoading(true);
       
@@ -365,10 +392,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           .catch(registrationError => {
             console.warn('[AuthContext] Device registration failed after OTP login:', registrationError);
           });
+
+        apiService
+          .checkCustomerOnboardingFlow(phoneNumber)
+          .then(onboardingData => {
+            console.log(
+              '[AuthContext] selfcareCheckCustomerOnboardingFlow data:',
+              onboardingData,
+            );
+          })
+          .catch(onboardingError => {
+            console.warn(
+              '[AuthContext] selfcareCheckCustomerOnboardingFlow failed:',
+              onboardingError,
+            );
+          });
         
         // Session monitoring disabled for persistent login
         // sessionMonitor.startMonitoring();
-        return {success: true};
+        return {success: true, consentRequired: response.consent_required === true};
       }
       return {success: false, error: 'Invalid response from server. Please try again.'};
     } catch (error: any) {

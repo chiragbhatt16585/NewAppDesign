@@ -12,7 +12,7 @@
         "keyPassword": "android"
       },
       "release": {
-        "storeFile": "Log2spceGatewayFTTHKey_V3.jks",
+        "storeFile": "Log2spaceFunnetAppKey.jks",
         "storePassword": "log2space",
         "keyAlias": "log2space",
         "keyPassword": "log2space"
