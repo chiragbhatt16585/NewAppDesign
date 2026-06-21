@@ -19,6 +19,7 @@ import { useTheme } from '../utils/ThemeContext';
 import { getThemeColors } from '../utils/themeStyles';
 import CommonHeader from '../components/CommonHeader';
 import { getClientConfig } from '../config/client-config';
+import { isReferFriendFieldVisible, isReferFriendFieldRequired } from '../config/refer-friend-config';
 import Toast from 'react-native-toast-message';
 import { Picker } from '@react-native-picker/picker';
 import { apiService } from '../services/api';
@@ -49,6 +50,12 @@ const ReferFriendScreen = ({ navigation }: any) => {
   const colors = getThemeColors(isDark);
   const { t } = useTranslation();
   const isMicroscan = getClientConfig().clientId === 'microscan';
+  const showBuildingField = isReferFriendFieldVisible('building');
+  const showAreaField = isReferFriendFieldVisible('area');
+  const showLocationField = isReferFriendFieldVisible('location');
+  const pincodeRequired = isReferFriendFieldRequired('pincode');
+  const addressFieldWidthStyle =
+    showAreaField && showLocationField ? styles.halfField : undefined;
 
   const [isPageLoading, setIsPageLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -95,7 +102,7 @@ const ReferFriendScreen = ({ navigation }: any) => {
         const clientConfig = getClientConfig();
         const realm = clientConfig.clientId;
         const [buildingsData, citiesData] = await Promise.all([
-          apiService.getAllBuildings(realm),
+          showBuildingField ? apiService.getAllBuildings(realm) : Promise.resolve([]),
           apiService.getAllCities(realm),
         ]);
         const normalizedBuildings = Array.isArray(buildingsData)
@@ -121,7 +128,7 @@ const ReferFriendScreen = ({ navigation }: any) => {
       }
     };
     fetchData();
-  }, []);
+  }, [showBuildingField]);
 
   const handleInputChange = (field: keyof FormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -158,22 +165,22 @@ const ReferFriendScreen = ({ navigation }: any) => {
       newErrors.address1 = t('referFriend.address1Required');
       isValid = false;
     }
-    if (!formData.building_id) {
+    if (showBuildingField && !formData.building_id) {
       newErrors.building = t('referFriend.buildingRequired');
       isValid = false;
     }
-    if (!formData.area.trim()) {
+    if (showAreaField && !formData.area.trim()) {
       newErrors.area = t('referFriend.areaRequired');
       isValid = false;
     }
-    if (!formData.location.trim()) {
+    if (showLocationField && !formData.location.trim()) {
       newErrors.location = t('referFriend.locationRequired');
       isValid = false;
     }
-    if (!formData.pincode.trim()) {
+    if (pincodeRequired && !formData.pincode.trim()) {
       newErrors.pincode = t('referFriend.pincodeRequired');
       isValid = false;
-    } else if (!/^\d{6}$/.test(formData.pincode.trim())) {
+    } else if (formData.pincode.trim() && !/^\d{6}$/.test(formData.pincode.trim())) {
       newErrors.pincode = t('referFriend.pincodeRequired');
       isValid = false;
     }
@@ -536,37 +543,43 @@ const ReferFriendScreen = ({ navigation }: any) => {
                   {errors.address1 ? <Text style={styles.errorText}>{errors.address1}</Text> : null}
                 </View>
 
-                <BuildingSelector />
+                {showBuildingField ? <BuildingSelector /> : null}
 
-                <View style={styles.row}>
-                  <View style={[styles.fieldBlock, styles.halfField]}>
-                    <FieldLabel label={t('referFriend.area')} required />
-                    <TextInput
-                      style={inputStyle(!!errors.area)}
-                      placeholder={t('referFriend.area')}
-                      value={formData.area}
-                      onChangeText={v => handleInputChange('area', v)}
-                      placeholderTextColor={colors.textSecondary}
-                    />
-                    {errors.area ? <Text style={styles.errorText}>{errors.area}</Text> : null}
+                {showAreaField || showLocationField ? (
+                  <View style={styles.row}>
+                    {showAreaField ? (
+                      <View style={[styles.fieldBlock, addressFieldWidthStyle]}>
+                        <FieldLabel label={t('referFriend.area')} required />
+                        <TextInput
+                          style={inputStyle(!!errors.area)}
+                          placeholder={t('referFriend.area')}
+                          value={formData.area}
+                          onChangeText={v => handleInputChange('area', v)}
+                          placeholderTextColor={colors.textSecondary}
+                        />
+                        {errors.area ? <Text style={styles.errorText}>{errors.area}</Text> : null}
+                      </View>
+                    ) : null}
+                    {showLocationField ? (
+                      <View style={[styles.fieldBlock, addressFieldWidthStyle]}>
+                        <FieldLabel label={t('referFriend.landmark')} required />
+                        <TextInput
+                          style={inputStyle(!!errors.location)}
+                          placeholder={t('referFriend.landmark')}
+                          value={formData.location}
+                          onChangeText={v => handleInputChange('location', v)}
+                          placeholderTextColor={colors.textSecondary}
+                        />
+                        {errors.location ? <Text style={styles.errorText}>{errors.location}</Text> : null}
+                      </View>
+                    ) : null}
                   </View>
-                  <View style={[styles.fieldBlock, styles.halfField]}>
-                    <FieldLabel label={t('referFriend.landmark')} required />
-                    <TextInput
-                      style={inputStyle(!!errors.location)}
-                      placeholder={t('referFriend.landmark')}
-                      value={formData.location}
-                      onChangeText={v => handleInputChange('location', v)}
-                      placeholderTextColor={colors.textSecondary}
-                    />
-                    {errors.location ? <Text style={styles.errorText}>{errors.location}</Text> : null}
-                  </View>
-                </View>
+                ) : null}
 
                 <View style={styles.row}>
                   <CitySelector />
                   <View style={[styles.fieldBlock, styles.halfField]}>
-                    <FieldLabel label={t('referFriend.pincode')} required />
+                    <FieldLabel label={t('referFriend.pincode')} required={pincodeRequired} />
                     <TextInput
                       style={inputStyle(!!errors.pincode)}
                       placeholder={t('referFriend.pincode')}

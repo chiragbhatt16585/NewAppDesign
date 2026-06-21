@@ -796,7 +796,7 @@ const clientConfigs: Record<string, ClientConfig> = {
       timeout: 30000,
     },
     branding: {
-      logo: 'isp_logo.png',
+      logo: 'header_logo.png',
       primaryColor: '#1976D2',
       secondaryColor: '#FF9800',
       appName: 'Skynetwifi',
@@ -851,6 +851,69 @@ const clientConfigs: Record<string, ClientConfig> = {
       packageName: 'com.spacecom.log2space.skynetwifi',
       // https://apps.apple.com/us/app/skynet-wi-fi-end-user-app/id6762499378
       appStoreId: '6762499378',
+    },
+  },
+  hdmbroadband: {
+    clientId: 'hdmbroadband',
+    clientName: 'HDM Broadband',
+    api: {
+      baseURL: 'https://login.hdmbroadband.com/l2s/api',
+      serverURL: 'https://login.hdmbroadband.com',
+      timeout: 30000,
+    },
+    branding: {
+      logo: 'header_logo.png',
+      primaryColor: '#1976D2',
+      secondaryColor: '#FF9800',
+      appName: 'HDM Broadband',
+      headerBackgroundImage: 'header_background.png',
+      logoDimensions: {
+        header: { width: 140, height: 70 },
+        login: { width: 300, height: 200 },
+      },
+    },
+    features: {
+      biometricAuth: true,
+      pushNotifications: true,
+      fileUpload: true,
+      multiLanguage: true,
+    },
+    contact: {
+      headOffice: {
+        title: 'Head Office',
+        address:
+          'Shop no 10 Gurukrupa chs, Badlapur Gaon, Badlapur, Thane, Maharashtra 421503',
+        customerSupport: '7588200006',
+      },
+      branchOffices: [],
+      emails: {
+        inquiries: 'info@hdmbroadband.com',
+        sales: 'info@hdmbroadband.com',
+        support: 'info@hdmbroadband.com',
+      },
+      landline: '7588200006',
+    },
+    about: {
+      companyName: 'HDM BROADBAND PVT LTD',
+      establishedYear: '',
+      description:
+        'HDM Broadband provides high-speed internet connectivity and related services in Badlapur and surrounding areas.',
+      specializations: [
+        'Experience amazing internet with us at amazing price',
+        'No ISP in Badlapur can match our price and quality',
+        'High-speed broadband for home and business',
+      ],
+      serviceAreas: ['Badlapur', 'Thane', 'Maharashtra'],
+      achievements: [],
+    },
+    reviewUrl: undefined,
+    website: 'https://www.hdmbroadband.com/',
+    versionCheck: {
+      enabled: true,
+      checkInterval: 24,
+      forceUpdateEnabled: true,
+      packageName: 'in.spacecom.log2space.client.hdmBroadband',
+      appStoreId: undefined,
     },
   },
   srisamarthinfobahn: {

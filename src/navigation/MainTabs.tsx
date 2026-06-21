@@ -50,9 +50,18 @@ const SupportStack = () => (
   </Stack.Navigator>
 );
 
+const HelpStack = () => (
+  <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Screen name="FixYourInternet" component={TroubleshootingScreen} />
+    <Stack.Screen name="ContactUs" component={ContactUsScreen} />
+    <Stack.Screen name="Tickets" component={TicketsScreen} />
+  </Stack.Navigator>
+);
+
 const MenuStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="MoreOptions" component={MoreOptionsScreen} />
+    <Stack.Screen name="ContactUs" component={ContactUsScreen} />
     <Stack.Screen name="Settings" component={SettingsScreen} />
     <Stack.Screen name="Language" component={LanguageScreen} />
     <Stack.Screen name="KYC" component={KYCScreen} />
@@ -70,6 +79,7 @@ const MainTabs = React.memo(() => {
   const colors = getThemeColors(isDark);
   const { authData } = useAuthData();
   const { menu, refresh: refreshMenu } = useMenuSettings();
+  const isMicroscan = getClientConfig().clientId === 'microscan';
   const [tabBarKey, setTabBarKey] = useState(0);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
 
@@ -198,6 +208,7 @@ const MainTabs = React.memo(() => {
       Home: 'home',
       Pay: 'refresh-cw',
       UpgradePlan: 'arrow-up-circle',
+      Help: 'help-circle',
       Support: 'headphones',
       Menu: 'menu',
     };
@@ -228,11 +239,18 @@ const MainTabs = React.memo(() => {
         options={{ title: 'Upgrade Plan', tabBarIcon: getTabBarIcon('UpgradePlan') }} 
       />
       )}
-      {getClientConfig().clientId !== 'log2space-common' && (
-        <Tab.Screen 
-          name="Support" 
-          component={SupportStack} 
-          options={{ title: 'Support', tabBarIcon: getTabBarIcon('Support') }} 
+      {getClientConfig().clientId !== 'log2space-common' && isMicroscan && (
+        <Tab.Screen
+          name="Help"
+          component={HelpStack}
+          options={{ title: 'Help', tabBarIcon: getTabBarIcon('Help') }}
+        />
+      )}
+      {getClientConfig().clientId !== 'log2space-common' && !isMicroscan && (
+        <Tab.Screen
+          name="Support"
+          component={SupportStack}
+          options={{ title: 'Support', tabBarIcon: getTabBarIcon('Support') }}
         />
       )}
       <Tab.Screen 

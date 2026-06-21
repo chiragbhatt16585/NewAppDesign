@@ -431,6 +431,12 @@ const TroubleshootingScreen = ({ navigation }: any) => {
     return (
       <View style={[styles.card, styles.progressCard, { backgroundColor: colors.card }]}>
         <Text style={[styles.flowHeading, { color: colors.text }]}>{selectedFlow.title}</Text>
+        <View
+          style={[
+            styles.flowHeadingDivider,
+            { backgroundColor: isDark ? '#8E8E93' : '#D1D1D6' },
+          ]}
+        />
         {currentNode.stepLabel && currentNode.stepIndex != null ? (
           <View
             style={[
@@ -702,14 +708,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 4,
     paddingBottom: 8,
+    alignItems: 'center',
   },
   screenTitle: {
     fontSize: 20,
     fontWeight: '700',
+    textAlign: 'center',
   },
   helpSubtitle: {
     fontSize: 14,
     marginTop: 4,
+    textAlign: 'center',
   },
   hubSection: {
     marginTop: 8,
@@ -718,6 +727,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
     marginBottom: 10,
+    textAlign: 'center',
   },
   hubListCard: {
     borderRadius: 14,
@@ -761,14 +771,20 @@ const styles = StyleSheet.create({
   flowHeading: {
     fontSize: 18,
     fontWeight: '700',
-    marginBottom: 10,
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  flowHeadingDivider: {
+    height: 1,
+    width: '100%',
+    marginBottom: 8,
   },
   stepPill: {
     alignSelf: 'flex-start',
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 8,
-    marginBottom: 14,
+    marginBottom: 10,
     minHeight: 36,
     justifyContent: 'center',
   },
@@ -804,11 +820,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 22,
     marginBottom: 8,
+    textAlign: 'center',
   },
   contentDescription: {
     fontSize: 14,
     lineHeight: 20,
     marginBottom: 12,
+    textAlign: 'center',
   },
   recheckQuestion: {
     fontSize: 16,
@@ -816,6 +834,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: 16,
     marginTop: 4,
+    textAlign: 'center',
   },
   stepImageSingle: {
     width: '100%',
@@ -923,6 +942,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     marginBottom: 10,
+    textAlign: 'center',
   },
   completedRow: {
     flexDirection: 'row',

@@ -328,7 +328,7 @@
     "upgradePlan": "Upgrade Plan",
     "usageDetails": "Usage Details",
     "kyc": "KYC",
-    "referFriend": "Refer Friend",
+    "referFriend": "Refer a Friend",
     "speedTest": "Speed Test",
     "theme": "Theme",
     "lightTheme": "Light Theme",
@@ -458,7 +458,7 @@
     "hours": "Hours"
   },
   "referFriend": {
-    "title": "Refer a friend",
+    "title": "Refer a Friend",
     "subtitle": "Refer your friends and enjoy exciting rewards",
     "personalDetails": "Personal Details",
     "installationAddress": "Installation Address",

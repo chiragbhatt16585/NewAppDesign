@@ -76,6 +76,7 @@ const CommonHeader = ({
       'gatewayftth:header_background.png': require('../../config/gatewayftth/assets/header_background.png'),
       'comcast:header_background.png': require('../../config/comcast/assets/header_background.png'),
       'skynetwifi:header_background.png': require('../../config/skynetwifi/assets/header_background.png'),
+      'hdmbroadband:header_background.png': require('../../config/hdmbroadband/assets/header_background.png'),
       'srisamarthinfobahn:header_background.png': require('../../config/srisamarthinfobahn/assets/header_background.png'),
       'one-sevenstar:header_background.png': require('../../config/one-sevenstar/assets/header_background.png'),
       'metanet:header_background.png': require('../../config/metanet/assets/header_background.png'),
@@ -110,6 +111,7 @@ const CommonHeader = ({
       clientConfig.clientId === 'gatewayftth' ||
       clientConfig.clientId === 'comcast' ||
       clientConfig.clientId === 'skynetwifi' ||
+      clientConfig.clientId === 'hdmbroadband' ||
       clientConfig.clientId === 'srisamarthinfobahn' ||
       clientConfig.clientId === 'one-sevenstar' ||
       clientConfig.clientId === 'metanet' ||
@@ -153,6 +155,7 @@ const CommonHeader = ({
       clientConfig.clientId === 'gatewayftth' ||
       clientConfig.clientId === 'comcast' ||
       clientConfig.clientId === 'skynetwifi' ||
+      clientConfig.clientId === 'hdmbroadband' ||
       clientConfig.clientId === 'spacecom-local' ||
       clientConfig.clientId === 'threesa-infoway' ||
       clientConfig.clientId === 'srisamarthinfobahn' ||

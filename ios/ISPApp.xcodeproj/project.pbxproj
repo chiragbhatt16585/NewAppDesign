@@ -429,22 +429,22 @@
 				DEVELOPMENT_TEAM = NADT67WN3N;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = ISPApp/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Spacecom Local";
+				INFOPLIST_KEY_CFBundleDisplayName = "HDM Broadband";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.1;
+				MARKETING_VERSION = 1.0.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
 					"-lc++",
 					"-Wl,-rpath,@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.l2sClient.spacecomlocal;
-				PRODUCT_NAME = SpacecomLocalApp;
+				PRODUCT_BUNDLE_IDENTIFIER = in.spacecom.log2space.client.hdmBroadband;
+				PRODUCT_NAME = HDMBroadbandApp;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
@@ -462,22 +462,22 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = NADT67WN3N;
 				INFOPLIST_FILE = ISPApp/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Spacecom Local";
+				INFOPLIST_KEY_CFBundleDisplayName = "HDM Broadband";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.1;
+				MARKETING_VERSION = 1.0.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
 					"-lc++",
 					"-Wl,-rpath,@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.l2sClient.spacecomlocal;
-				PRODUCT_NAME = SpacecomLocalApp;
+				PRODUCT_BUNDLE_IDENTIFIER = in.spacecom.log2space.client.hdmBroadband;
+				PRODUCT_NAME = HDMBroadbandApp;
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
 			};

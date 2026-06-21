@@ -190,6 +190,16 @@ const clientConfigs: Record<string, ClientConfig> = {
     poweredByWebsite: 'https://spacecom.in',
     bundleId: 'com.spacecom.log2space.skynetwifi',
   },
+  hdmbroadband: {
+    name: 'HDM Broadband',
+    companyName: 'HDM BROADBAND PVT LTD',
+    apiUrl: 'https://login.hdmbroadband.com',
+    supportEmail: 'info@hdmbroadband.com',
+    website: 'https://www.hdmbroadband.com/',
+    poweredBy: 'Spacecom Software LLP',
+    poweredByWebsite: 'https://spacecom.in',
+    bundleId: 'in.spacecom.log2space.client.hdmBroadband',
+  },
   metanet: {
     name: 'Metanet',
     companyName: 'Metanet Broadband Services',

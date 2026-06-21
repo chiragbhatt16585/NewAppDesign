@@ -20,6 +20,7 @@ import {useTheme} from '../utils/ThemeContext';
 import {getThemeColors} from '../utils/themeStyles';
 import sessionManager from '../services/sessionManager';
 import {apiService} from '../services/api';
+import {extractOtpFromText} from '../utils/otpUtils';
 
 type ProfileForm = {
   name: string;
@@ -447,7 +448,9 @@ const ProfileUpdateScreen = ({navigation}: any) => {
             </Text>
             <TextInput
               value={otp}
-              onChangeText={setOtp}
+              onChangeText={(text) => {
+                setOtp(extractOtpFromText(text, [mobileNumber, form.mobile]));
+              }}
               style={[
                 styles.input,
                 styles.otpInput,
@@ -462,7 +465,7 @@ const ProfileUpdateScreen = ({navigation}: any) => {
               autoComplete="sms-otp"
               placeholder="Enter OTP"
               placeholderTextColor={colors.textSecondary}
-              maxLength={6}
+              maxLength={8}
             />
             <Text style={[styles.otpNote, {color: colors.textSecondary}]}>
               OTP auto-fill is enabled when SMS format supports it.

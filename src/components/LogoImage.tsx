@@ -124,9 +124,11 @@ const LogoImage: React.FC<LogoImageProps> = ({style, width, height, type = 'head
         'indophone:isp_logo.png': require('../../config/indophone/assets/isp_logo.png'),
         'graceway:isp_logo.png': require('../../config/graceway/assets/isp_logo.png'),
         'log2space-common:isp_logo.png': require('../../config/log2space-common/assets/isp_logo.png'),
-        // Skynet Wi‑Fi: client assets use `header_logo.png` for the main mark (login + header).
-        // Map branding `logo` (isp_logo.png) to that file so updates in config/ show without relying on prepare → src/assets.
+        // Skynet Wi‑Fi: primary brand mark lives in header_logo.png (no isp_logo.png in config).
+        'skynetwifi:header_logo.png': require('../../config/skynetwifi/assets/header_logo.png'),
         'skynetwifi:isp_logo.png': require('../../config/skynetwifi/assets/header_logo.png'),
+        'hdmbroadband:header_logo.png': require('../../config/hdmbroadband/assets/header_logo.png'),
+        'hdmbroadband:isp_logo.png': require('../../config/hdmbroadband/assets/header_logo.png'),
         'srisamarthinfobahn:isp_logo.png': require('../../config/srisamarthinfobahn/assets/isp_logo.png'),
 
         // Legacy / older standalone logo files (if any)
@@ -143,7 +145,13 @@ const LogoImage: React.FC<LogoImageProps> = ({style, width, height, type = 'head
         }
       });
 
-      // prepare:<client> copies isp_logo.png into src/assets — reliable fallback for new clients
+      // prepare:<client> copies assets into src/assets — reliable fallback for new clients
+      try {
+        const preparedHeaderLogo = require('../assets/header_logo.png');
+        if (preparedHeaderLogo && !sources.includes(preparedHeaderLogo)) {
+          sources.push(preparedHeaderLogo);
+        }
+      } catch (_) {}
       try {
         const preparedLogo = require('../assets/isp_logo.png');
         if (preparedLogo && !sources.includes(preparedLogo)) {

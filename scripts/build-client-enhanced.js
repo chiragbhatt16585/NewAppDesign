@@ -175,10 +175,19 @@ const CLIENTS = {
     name: 'Skynetwifi',
     packageName: 'com.spacecom.log2space.skynetwifi',
     namespace: 'com.spacecom.log2space.skynetwifi',
-    versionCode: 3,
-    versionName: '1.0.3',
+    versionCode: 4,
+    versionName: '1.0.4',
     keystore: 'Log2spceSkynetWifiKey_V3.jks',
     configDir: 'config/skynetwifi',
+  },
+  hdmbroadband: {
+    name: 'HDM Broadband',
+    packageName: 'in.spacecom.log2space.client.hdmBroadband',
+    namespace: 'in.spacecom.log2space.client.hdmBroadband',
+    versionCode: 12,
+    versionName: '1.0.12',
+    keystore: 'Log2SpaceHDMBroadband.jks',
+    configDir: 'config/hdmbroadband',
   },
   srisamarthinfobahn: {
     name: 'Srisamarthinfobahn',
@@ -364,6 +373,16 @@ function copyClientConfig(clientId) {
   if (fs.existsSync(assetsSrc)) {
     execSync(`cp -r "${assetsSrc}"/* "${assetsDest}/"`, { stdio: 'inherit' });
     logSuccess('Copied assets');
+
+    // Clients like skynetwifi use header_logo.png as the primary mark without isp_logo.png.
+    // Copy it over isp_logo.png so stale logos from a previous client are not left behind.
+    const headerLogoSrc = path.join(assetsSrc, 'header_logo.png');
+    const ispLogoInConfig = path.join(assetsSrc, 'isp_logo.png');
+    const ispLogoDest = path.join(assetsDest, 'isp_logo.png');
+    if (fs.existsSync(headerLogoSrc) && !fs.existsSync(ispLogoInConfig)) {
+      fs.copyFileSync(headerLogoSrc, ispLogoDest);
+      logSuccess('Copied header_logo.png as isp_logo.png');
+    }
   }
 
   // Copy Android app icons
@@ -612,6 +631,20 @@ function copyClientConfig(clientId) {
   if (fs.existsSync(logoConfigSrc)) {
     fs.copyFileSync(logoConfigSrc, logoConfigDest);
     logSuccess('Copied logo config');
+  }
+
+  // Copy refer-a-friend field visibility config
+  const referFriendConfigSrc = path.join(configDir, 'refer-friend-config.json');
+  const referFriendConfigDest = path.join(appDir, 'src', 'config', 'refer-friend-fields.json');
+  if (fs.existsSync(referFriendConfigSrc)) {
+    fs.copyFileSync(referFriendConfigSrc, referFriendConfigDest);
+    logSuccess('Copied refer friend config');
+  } else {
+    fs.writeFileSync(
+      referFriendConfigDest,
+      `${JSON.stringify({ hiddenFields: [], optionalFields: [] }, null, 2)}\n`,
+    );
+    logSuccess('Applied default refer friend config');
   }
 
   // Update iOS project bundle identifier and display name

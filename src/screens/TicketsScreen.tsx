@@ -22,6 +22,7 @@ import {
   getAppSettingsFromMenu,
   isFixYourInternetEnabled,
 } from '../utils/appSettingsFromMenu';
+import {getClientConfig} from '../config/client-config';
 import Feather from 'react-native-vector-icons/Feather';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 
@@ -29,6 +30,8 @@ const TicketsScreen = ({navigation, route}: any) => {
   const {isDark} = useTheme();
   const colors = getThemeColors(isDark);
   const {t} = useTranslation();
+  const isMicroscan = getClientConfig().clientId === 'microscan';
+  const showCreateTicketButton = !isMicroscan;
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -323,12 +326,14 @@ const TicketsScreen = ({navigation, route}: any) => {
       <View style={styles.headingContainer}>
         <View style={styles.headingRow}>
           <Text style={[styles.pageHeading, {color: colors.text}]}>{t('tickets.title')}</Text>
-          <TouchableOpacity
-            style={[styles.createButton, {backgroundColor: colors.primary}]}
-            onPress={handleCreateTicket}>
-            <MaterialIcons name="confirmation-number" size={18} color="#fff" style={styles.createButtonIcon} />
-            <Text style={styles.createButtonText}>New</Text>
-          </TouchableOpacity>
+          {showCreateTicketButton ? (
+            <TouchableOpacity
+              style={[styles.createButton, {backgroundColor: colors.primary}]}
+              onPress={handleCreateTicket}>
+              <MaterialIcons name="confirmation-number" size={18} color="#fff" style={styles.createButtonIcon} />
+              <Text style={styles.createButtonText}>New</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
         <Text style={[styles.pageSubheading, {color: colors.textSecondary}]}> 
           {t('tickets.subtitle')}

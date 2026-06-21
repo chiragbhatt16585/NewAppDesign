@@ -103,13 +103,13 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.log2space.spacecom.local"
+    namespace "in.spacecom.log2space.client.hdmBroadband"
     defaultConfig {
-        applicationId "com.log2space.spacecom.local"
+        applicationId "in.spacecom.log2space.client.hdmBroadband"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0.1"
+        versionCode 12
+        versionName "1.0.12"
         buildConfigField "boolean", "IS_NEW_ARCHITECTURE_ENABLED", "false"
     }
     
@@ -142,7 +142,7 @@ android {
                 keyPassword 'android'
             }
             release {
-                storeFile file('Log2SpaceEndUserMicroscan.jks')
+                storeFile file('Log2SpaceHDMBroadband.jks')
                 storePassword 'log2space'
                 keyAlias 'log2space'
                 keyPassword 'log2space'

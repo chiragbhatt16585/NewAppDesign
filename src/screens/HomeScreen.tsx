@@ -1993,7 +1993,7 @@ const HomeScreen = ({navigation}: any) => {
                       <MaterialCommunityIcons name="account-multiple-plus-outline" size={26} color="#FFFFFF" />
                     </View>
                   )}
-                  <Text style={[styles.quickMenuRowTitle, {color: colors.text}]}>Refer Friend</Text>
+                  <Text style={[styles.quickMenuRowTitle, {color: colors.text}]}>{t('more.referFriend')}</Text>
                 </TouchableOpacity>
               )}
             </View>

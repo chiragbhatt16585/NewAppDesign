@@ -41,6 +41,7 @@ import { getWebsite } from '../config';
 import menuService from '../services/menuService';
 import Feather from 'react-native-vector-icons/Feather';
 import LeftBorderLine from '../components/LeftBorderLine';
+import {extractOtpFromText} from '../utils/otpUtils';
 
 const {width, height} = Dimensions.get('window');
 
@@ -667,50 +668,57 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
     }
   };
 
-  // Fetch and print menu settings after successful login
+  const safeJsonLog = (label: string, data: unknown) => {
+    try {
+      console.log(label, JSON.stringify(data, null, 2));
+    } catch {
+      console.log(label, data);
+    }
+  };
+
+  /** Dev-only: dump session, menu, and authUser after successful login */
+  const logPostLoginData = async (loggedInUsername: string) => {
+    if (!__DEV__) return;
+
+    const clientConfig = getClientConfig();
+    console.log('\n========== POST LOGIN DATA ==========');
+    console.log('Client:', clientConfig.clientId);
+    console.log('Username:', loggedInUsername);
+    console.log('API baseURL:', clientConfig.api.baseURL);
+
+    try {
+      const session = await sessionManager.getCurrentSession();
+      safeJsonLog(
+        '[PostLogin] Session (token redacted):',
+        session
+          ? {...session, token: session.token ? `${session.token.slice(0, 12)}...` : null}
+          : null,
+      );
+    } catch (e: any) {
+      console.warn('[PostLogin] Session read failed:', e?.message);
+    }
+
+    try {
+      const menuData = await menuService.refresh();
+      safeJsonLog('[PostLogin] Menu settings:', menuData);
+    } catch (e: any) {
+      console.warn('[PostLogin] Menu fetch failed:', e?.message);
+    }
+
+    try {
+      const authUser = await apiService.authUser(loggedInUsername);
+      safeJsonLog('[PostLogin] authUser:', authUser);
+    } catch (e: any) {
+      console.warn('[PostLogin] authUser failed:', e?.message);
+    }
+
+    console.log('========== END POST LOGIN DATA ==========\n');
+  };
+
+  // Fetch menu settings after successful login
   const fetchMenuSettings = async () => {
     try {
-      //console.log('[LoginScreen] === FETCHING MENU SETTINGS AFTER LOGIN ===');
       const menuData = await menuService.refresh();
-      
-      // console.log('[LoginScreen] === MENU SETTINGS DATA ===');
-      // console.log('[LoginScreen] Menu Settings Type:', typeof menuData);
-      // console.log('[LoginScreen] Is Array:', Array.isArray(menuData));
-      
-      // Safe JSON stringify with error handling
-      try {
-        const jsonString = JSON.stringify(menuData, null, 2);
-        //console.log('[LoginScreen] Full Menu Data:', jsonString);
-      } catch (stringifyError) {
-        //console.log('[LoginScreen] Could not stringify menu data (may contain circular refs), logging object directly');
-        //console.log('[LoginScreen] Menu Data:', menuData);
-      }
-      
-      if (Array.isArray(menuData)) {
-        // console.log('[LoginScreen] Menu Items Count:', menuData.length);
-        menuData.forEach((item: any, index: number) => {
-          try {
-            // console.log(`[LoginScreen] Menu Item ${index}:`, {
-            //   menu_label: item?.menu_label,
-            //   menu_api_type: item?.menu_api_type,
-            //   status: item?.status,
-            //   display_option_json: item?.display_option_json,
-            // });
-          } catch (itemError) {
-            // console.log(`[LoginScreen] Menu Item ${index}: Error logging item`);
-          }
-        });
-      } else if (menuData && typeof menuData === 'object') {
-        try {
-          // console.log('[LoginScreen] Menu Data Keys:', Object.keys(menuData));
-          // console.log('[LoginScreen] Menu Data:', menuData);
-        } catch (objError) {
-          // console.log('[LoginScreen] Error logging menu data object');
-        }
-      }
-      
-      // console.log('[LoginScreen] === END MENU SETTINGS DATA ===');
-      
       return menuData;
     } catch (error: any) {
       // console.error('[LoginScreen] Error fetching menu settings:', error);
@@ -807,6 +815,7 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
         const result = await login(username, password);
         
         if (result.success) {
+          void logPostLoginData(username);
           try {
             if (result.consentRequired) {
               navigation.replace('CustomerConsent');
@@ -904,6 +913,7 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
         const result = await loginWithOtp(usernameForVerify, otp);
         
         if (result.success) {
+          void logPostLoginData(usernameForVerify);
           try {
             if (result.consentRequired) {
               navigation.replace('CustomerConsent');
@@ -1209,10 +1219,17 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
                           placeholder={t('login.enterOtp')}
                           placeholderTextColor={colors.textTertiary}
                           keyboardType="number-pad"
+                          textContentType="oneTimeCode"
+                          autoComplete="sms-otp"
+                          maxLength={8}
                           value={otp}
                           onChangeText={(text) => {
-                            setOtp(text);
-                            if (text.trim()) setOtpError(false);
+                            const parsed = extractOtpFromText(text, [
+                              username,
+                              otpResponseUsername,
+                            ]);
+                            setOtp(parsed);
+                            if (parsed.trim()) setOtpError(false);
                           }}
                         />
                       </View>

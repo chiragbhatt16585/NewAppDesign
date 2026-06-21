@@ -113,6 +113,10 @@ const MoreOptionsScreen = ({navigation}: any) => {
     navigation.navigate('ReferFriend');
   };
 
+  const handleContactUs = () => {
+    navigation.navigate('ContactUs');
+  };
+
   const handleSettings = () => {
     navigation.navigate('Settings');
   };
@@ -191,6 +195,7 @@ const MoreOptionsScreen = ({navigation}: any) => {
 
 
   type DynItem = { id: string; title: string; subtitle: string; icon: string; iconType?: 'feather'; onPress: () => void; isLogout?: boolean };
+  const isMicroscan = getClientConfig().clientId === 'microscan';
   const dynamicMenuItems: DynItem[] = useMemo(() => {
     const desiredOrder = [
       'Renew Plan',
@@ -285,13 +290,26 @@ const MoreOptionsScreen = ({navigation}: any) => {
     }
 
     const byLabel = new Map<string, any>();
-    items.forEach((m: any) => { if (m?.menu_label) byLabel.set(m.menu_label, m); });
+    items.forEach((m: any) => {
+      if (!m?.menu_label) return;
+      byLabel.set(m.menu_label, m);
+      // API may use either label for the same menu item
+      if (m.menu_label === 'Refer Friend' || m.menu_label === 'Refer a Friend') {
+        byLabel.set('Refer Friend', m);
+        byLabel.set('Refer a Friend', m);
+      }
+    });
 
     const built: DynItem[] = desiredOrder
       .filter(label => byLabel.has(label))
       .map(label => ({
         id: label.toLowerCase().replace(/\s+/g, '-'),
-        title: label === 'Ledger' ? t('navigation.billingHistory') : label,
+        title:
+          label === 'Ledger'
+            ? t('navigation.billingHistory')
+            : label === 'Refer Friend' || label === 'Refer a Friend'
+              ? t('more.referFriend')
+              : label,
         subtitle: subtitleMap[label] || '',
         icon: iconMap[label]?.icon || '•',
         iconType: iconMap[label]?.iconType,
@@ -305,7 +323,24 @@ const MoreOptionsScreen = ({navigation}: any) => {
       // ignore logging errors
     }
 
-    // Append Logout at the end
+    // Microscan: Support (Contact Us) before Settings
+    if (isMicroscan) {
+      const supportItem: DynItem = {
+        id: 'support',
+        title: t('home.support'),
+        subtitle: 'Phone, email and office details',
+        icon: 'headphones',
+        iconType: 'feather',
+        onPress: handleContactUs,
+      };
+      const settingsIndex = built.findIndex(item => item.id === 'settings');
+      if (settingsIndex >= 0) {
+        built.splice(settingsIndex, 0, supportItem);
+      } else {
+        built.push(supportItem);
+      }
+    }
+
     built.push({
       id: 'logout',
       title: t('common.logout'),
@@ -317,7 +352,7 @@ const MoreOptionsScreen = ({navigation}: any) => {
     });
 
     return built;
-  }, [menu, t, shouldHideRenewAndUpgrade]);
+  }, [menu, t, shouldHideRenewAndUpgrade, isMicroscan]);
 
   return (
     <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}>
