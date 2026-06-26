@@ -148,7 +148,7 @@ const clientConfigs: Record<string, ClientConfig> = {
     website: 'https://threesainfoway.net/',
     poweredBy: 'Spacecom Software LLP',
     poweredByWebsite: 'https://spacecom.in',
-    bundleId: 'in.spacecom.log2space.client.threesa',
+    bundleId: 'com.spacecom.log2space.threesa',
   },
   'spacecom-live': {
     name: 'Spacecom Live',

@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -20,7 +21,7 @@ import { getThemeColors } from '../utils/themeStyles';
 import CommonHeader from '../components/CommonHeader';
 import { resolveTroubleshootingImages } from '../config/troubleshooting-image-map';
 import { getClientConfig } from '../config/client-config';
-import { apiService } from '../services/api';
+import { apiService, getAppUrl } from '../services/api';
 import sessionManager from '../services/sessionManager';
 import { parseTroubleshootingRuntimeConfig } from '../utils/troubleshootingConfig';
 import {
@@ -33,6 +34,16 @@ import {
 
 /** Flows/titles/steps load from selfcareFetchCrmRuntimeConfigs (not a bundled JSON file). */
 const USER_SELF_DIAGNOSIS_CONFIG = 'user_self_diagnosis';
+const isTicketResolvedStatus = (status: string): boolean => {
+  const normalized = String(status || '')
+    .toLowerCase()
+    .replace(/[\s_]/g, '');
+  return (
+    normalized === 'resolved' ||
+    normalized === 'closed' ||
+    normalized === 'closedonline'
+  );
+};
 
 /** One row per unique step label (avoids duplicate "Check Router Power & Lights"). */
 function formatAnswersForSummary(answers: TroubleshootingAnswer[]): string[] {
@@ -62,47 +73,67 @@ const TroubleshootingScreen = ({ navigation }: any) => {
   const [answers, setAnswers] = useState<TroubleshootingAnswer[]>([]);
   const [ticketDescription, setTicketDescription] = useState('');
   const [isSubmittingTicket, setIsSubmittingTicket] = useState(false);
+  const selectedFlowIdRef = useRef<string | null>(null);
+
+  const loadRuntimeConfig = useCallback(async (showHubLoading = true) => {
+    if (showHubLoading) {
+      setConfigLoading(true);
+    }
+    setConfigError(null);
+
+    try {
+      const runtimeConfigUrl = `${getAppUrl()}/selfcareFetchCrmRuntimeConfigs`;
+      console.log('[Troubleshooting] Loading menu config API:', {
+        endpoint: runtimeConfigUrl,
+        config_name: USER_SELF_DIAGNOSIS_CONFIG,
+        realm: getClientConfig().clientId,
+      });
+      const apiData = await apiService.fetchCrmRuntimeConfigs(USER_SELF_DIAGNOSIS_CONFIG);
+      console.log('[Troubleshooting] Menu config API success:', {
+        endpoint: runtimeConfigUrl,
+        hasData: !!apiData,
+        keys: apiData ? Object.keys(apiData) : [],
+      });
+      const runtimeConfig = parseTroubleshootingRuntimeConfig(
+        apiData,
+        USER_SELF_DIAGNOSIS_CONFIG,
+      );
+
+      if (!runtimeConfig) {
+        setConfig(null);
+        setConfigError('Self-diagnosis configuration is not available.');
+        return;
+      }
+
+      setConfig(runtimeConfig);
+    } catch (error: any) {
+      setConfig(null);
+      setConfigError(error?.message || 'Failed to load self-diagnosis configuration.');
+      console.log('[Troubleshooting] Menu config API failed:', {
+        endpoint: `${getAppUrl()}/selfcareFetchCrmRuntimeConfigs`,
+        config_name: USER_SELF_DIAGNOSIS_CONFIG,
+        message: error?.message || 'unknown error',
+      });
+      console.warn('[Troubleshooting] selfcareFetchCrmRuntimeConfigs failed:', error);
+    } finally {
+      if (showHubLoading) {
+        setConfigLoading(false);
+      }
+    }
+  }, []);
 
   useEffect(() => {
-    let cancelled = false;
+    selectedFlowIdRef.current = selectedFlowId;
+  }, [selectedFlowId]);
 
-    const loadRuntimeConfig = async () => {
-      setConfigLoading(true);
-      setConfigError(null);
-
-      try {
-        const apiData = await apiService.fetchCrmRuntimeConfigs(USER_SELF_DIAGNOSIS_CONFIG);
-        const runtimeConfig = parseTroubleshootingRuntimeConfig(
-          apiData,
-          USER_SELF_DIAGNOSIS_CONFIG,
-        );
-
-        if (cancelled) return;
-
-        if (!runtimeConfig) {
-          setConfig(null);
-          setConfigError('Self-diagnosis configuration is not available.');
-          return;
-        }
-
-        setConfig(runtimeConfig);
-      } catch (error: any) {
-        if (cancelled) return;
-        setConfig(null);
-        setConfigError(error?.message || 'Failed to load self-diagnosis configuration.');
-        console.warn('[Troubleshooting] selfcareFetchCrmRuntimeConfigs failed:', error);
-      } finally {
-        if (!cancelled) {
-          setConfigLoading(false);
-        }
+  useFocusEffect(
+    useCallback(() => {
+      // Refresh hub config only when not mid-flow (avoids interrupting step navigation).
+      if (!selectedFlowIdRef.current) {
+        loadRuntimeConfig(true);
       }
-    };
-
-    loadRuntimeConfig();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    }, [loadRuntimeConfig]),
+  );
 
   const selectedFlow: TroubleshootingFlow | null = useMemo(
     () => config?.flows.find(f => f.id === selectedFlowId) || null,
@@ -175,6 +206,14 @@ const TroubleshootingScreen = ({ navigation }: any) => {
 
   const handleOptionPress = (option: TroubleshootingOption) => {
     if (!currentNode || !selectedFlow) return;
+    const nextNode = selectedFlow.nodes[option.next];
+    if (!nextNode) {
+      Alert.alert(
+        'Step unavailable',
+        `The next step "${option.next}" is missing in the troubleshooting configuration. Please refresh and try again.`,
+      );
+      return;
+    }
     pushHistory(currentNode.id);
     setAnswers(prev => [
       ...prev,
@@ -212,6 +251,19 @@ const TroubleshootingScreen = ({ navigation }: any) => {
 
       const formattedUsername = username.toLowerCase().trim();
       const realm = getClientConfig().clientId;
+      if (realm === 'microscan') {
+        const existingTickets = await apiService.lastTenComplaints(realm);
+        const hasActiveTicket = existingTickets.some(
+          (ticket: { status?: string }) => !isTicketResolvedStatus(ticket?.status || ''),
+        );
+        if (hasActiveTicket) {
+          Alert.alert(
+            'Ticket already open',
+            'Please wait until your existing ticket is resolved before raising a new one.',
+          );
+          return;
+        }
+      }
       const problem = {
         value: selectedFlow.id,
         label: selectedFlow.title,
@@ -467,7 +519,13 @@ const TroubleshootingScreen = ({ navigation }: any) => {
 
       {node.showCompletedSteps && completedSteps.length > 0 ? (
         <View style={styles.completedSection}>
-          <Text style={[styles.completedHeading, { color: colors.text }]}>Steps completed</Text>
+          <View
+            style={[
+              styles.completedSectionDivider,
+              { backgroundColor: isDark ? '#8E8E93' : '#D1D1D6' },
+            ]}
+          />
+          <Text style={[styles.completedHeading, { color: colors.primary }]}>Steps Completed</Text>
           {completedSteps.map(item => (
             <View key={`done-${item.label}`} style={styles.completedRow}>
               <Text style={[styles.completedLabel, { color: colors.textSecondary }]}>
@@ -523,12 +581,19 @@ const TroubleshootingScreen = ({ navigation }: any) => {
       currentNode.type === 'question' &&
       !!currentNode.description &&
       !(isRecheckAfterImages && !currentNode.postImageQuestion);
+    const showInstructionDescription =
+      currentNode.type === 'instruction' && !!currentNode.description?.trim();
 
     return (
       <View style={[styles.card, { backgroundColor: colors.card }]}>
         <Text style={[styles.contentTitle, { color: colors.text }]}>{currentNode.title}</Text>
         {showDescriptionBeforeImages ? (
           <Text style={[styles.contentDescription, { color: colors.textSecondary }]}>
+            {currentNode.description}
+          </Text>
+        ) : null}
+        {showInstructionDescription ? (
+          <Text style={[styles.contentDescription, styles.instructionDescription, { color: colors.textSecondary }]}>
             {currentNode.description}
           </Text>
         ) : null}
@@ -545,11 +610,11 @@ const TroubleshootingScreen = ({ navigation }: any) => {
 
         {currentNode.type === 'instruction' ? (
           <TouchableOpacity
-            style={[styles.primaryButton, { backgroundColor: colors.primary }]}
+            style={[styles.instructionDoneButton, { borderColor: colors.primary }]}
             activeOpacity={0.9}
             onPress={handleInstructionContinue}
           >
-            <Text style={styles.primaryButtonText}>
+            <Text style={[styles.instructionDoneButtonText, { color: colors.primary }]}>
               {currentNode.confirmLabel || 'Continue'}
             </Text>
           </TouchableOpacity>
@@ -565,6 +630,11 @@ const TroubleshootingScreen = ({ navigation }: any) => {
   const renderResolvedModal = () => {
     if (!isSuccessResult || !currentNode) return null;
 
+    const resolvedMessage =
+      currentNode.title?.trim() ||
+      currentNode.description?.trim() ||
+      'Your issue has been resolved.';
+
     return (
       <Modal
         visible
@@ -577,14 +647,9 @@ const TroubleshootingScreen = ({ navigation }: any) => {
             <View style={styles.resolvedIconCircle}>
               <MaterialIcons name="check" size={40} color="#fff" />
             </View>
-            <Text style={[styles.resolvedTitle, { color: colors.success || '#28a745' }]}>
-              {currentNode.title}
+            <Text style={[styles.resolvedMessage, { color: colors.text }]}>
+              {resolvedMessage}
             </Text>
-            {currentNode.description ? (
-              <Text style={[styles.resolvedMessage, { color: colors.textSecondary }]}>
-                {currentNode.description}
-              </Text>
-            ) : null}
             <TouchableOpacity
               style={[styles.resolvedOkButton, { backgroundColor: colors.primary }]}
               activeOpacity={0.9}
@@ -708,17 +773,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 4,
     paddingBottom: 8,
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   screenTitle: {
     fontSize: 20,
     fontWeight: '700',
-    textAlign: 'center',
+    textAlign: 'left',
   },
   helpSubtitle: {
     fontSize: 14,
     marginTop: 4,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   hubSection: {
     marginTop: 8,
@@ -727,7 +792,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
     marginBottom: 10,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   hubListCard: {
     borderRadius: 14,
@@ -820,13 +885,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 22,
     marginBottom: 8,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   contentDescription: {
     fontSize: 14,
     lineHeight: 20,
     marginBottom: 12,
-    textAlign: 'center',
+    textAlign: 'left',
+  },
+  instructionDescription: {
+    fontStyle: 'italic',
+    marginTop: 4,
   },
   recheckQuestion: {
     fontSize: 16,
@@ -834,7 +903,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: 16,
     marginTop: 4,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   stepImageSingle: {
     width: '100%',
@@ -921,6 +990,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
+  instructionDoneButton: {
+    borderRadius: 12,
+    borderWidth: 1.5,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    marginTop: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  instructionDoneButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
   secondaryButton: {
     borderRadius: 12,
     borderWidth: 1.5,
@@ -938,11 +1020,16 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 12,
   },
+  completedSectionDivider: {
+    height: 1,
+    width: '100%',
+    marginBottom: 12,
+  },
   completedHeading: {
     fontSize: 15,
     fontWeight: '700',
     marginBottom: 10,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   completedRow: {
     flexDirection: 'row',
@@ -994,15 +1081,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 20,
   },
-  resolvedTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    textAlign: 'center',
-    marginBottom: 12,
-  },
   resolvedMessage: {
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 18,
+    fontWeight: '600',
+    lineHeight: 26,
     textAlign: 'center',
     marginBottom: 24,
     paddingHorizontal: 4,

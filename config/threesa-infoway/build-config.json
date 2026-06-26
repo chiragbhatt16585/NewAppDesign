@@ -1,9 +1,9 @@
 {
   "android": {
-    "namespace": "in.spacecom.log2space.client.threesa",
-    "applicationId": "in.spacecom.log2space.client.threesa",
-    "versionCode": 6,
-    "versionName": "1.0.6",
+    "namespace": "com.spacecom.log2space.threesa",
+    "applicationId": "com.spacecom.log2space.threesa",
+    "versionCode": 1,
+    "versionName": "1.0.1",
     "signing": {
       "debug": {
         "storeFile": "debug.keystore",
@@ -12,7 +12,7 @@
         "keyPassword": "android"
       },
       "release": {
-        "storeFile": "Log2SpaceClientThreesaBroadband.jks",
+        "storeFile": "Log2SpaceThreesa.jks",
         "storePassword": "log2space",
         "keyAlias": "log2space",
         "keyPassword": "log2space"
@@ -20,7 +20,7 @@
     }
   },
   "ios": {
-    "bundleIdentifier": "com.l2sClient.ThreesaBroadband",
+    "bundleIdentifier": "com.spacecom.log2space.threesa",
     "marketingVersion": "1.0.1",
     "buildNumber": "1",
     "displayName": "Threesa Infoway"

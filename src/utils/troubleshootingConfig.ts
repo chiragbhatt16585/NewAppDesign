@@ -1,4 +1,8 @@
-import { TroubleshootingConfig } from '../types/troubleshooting';
+import {
+  TroubleshootingConfig,
+  TroubleshootingFlow,
+  TroubleshootingNode,
+} from '../types/troubleshooting';
 
 const CONFIG_JSON_KEYS = [
   'config_value',
@@ -48,10 +52,41 @@ function extractConfigCandidate(raw: unknown): unknown {
   return obj;
 }
 
+function normalizeFlowNodes(nodes: unknown): Record<string, TroubleshootingNode> {
+  const record: Record<string, TroubleshootingNode> = {};
+  if (!nodes) return record;
+
+  const entries = Array.isArray(nodes)
+    ? nodes
+    : typeof nodes === 'object'
+      ? Object.values(nodes as Record<string, unknown>)
+      : [];
+
+  entries.forEach(entry => {
+    if (!entry || typeof entry !== 'object') return;
+    const node = entry as TroubleshootingNode;
+    const nodeId = String(node.id || '').trim();
+    if (!nodeId) return;
+    record[nodeId] = { ...node, id: nodeId };
+  });
+
+  return record;
+}
+
+function normalizeFlows(flows: TroubleshootingFlow[]): TroubleshootingFlow[] {
+  return flows.map(flow => ({
+    ...flow,
+    nodes: normalizeFlowNodes(flow.nodes),
+  }));
+}
+
 function normalizeTroubleshootingConfig(value: unknown): TroubleshootingConfig | null {
   const candidate = extractConfigCandidate(value);
   if (isValidTroubleshootingConfig(candidate)) {
-    return candidate;
+    return {
+      ...candidate,
+      flows: normalizeFlows(candidate.flows),
+    };
   }
   if (candidate && typeof candidate === 'object' && !Array.isArray(candidate)) {
     const record = candidate as Record<string, unknown>;

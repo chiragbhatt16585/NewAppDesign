@@ -348,7 +348,7 @@ const clientConfigs: Record<string, ClientConfig> = {
       enabled: true,
       checkInterval: 24,
       forceUpdateEnabled: true,
-      packageName: 'in.spacecom.log2space.client.threesa',
+      packageName: 'com.spacecom.log2space.threesa',
       appStoreId: undefined,
     },
   },

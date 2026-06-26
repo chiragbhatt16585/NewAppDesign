@@ -1,0 +1,453 @@
+{
+  "hubTitle": "Fix Your Internet",
+  "screenTitle": "Help",
+  "flows": [
+    {
+      "id": "internet-not-working",
+      "title": "Internet not working",
+      "startId": "step-1",
+      "nodes": {
+        "step-1": {
+          "id": "step-1",
+          "type": "question",
+          "stepLabel": "Check Router Power & Lights",
+          "stepIndex": 1,
+          "totalSteps": 4,
+          "title": "Is your Wi-Fi router or modem switched on? Are the lights glowing?",
+          "images": ["router-lights"],
+          "options": [
+            { "id": "yes", "label": "Yes", "next": "step-2" },
+            { "id": "no", "label": "No", "next": "step-1-recheck" }
+          ]
+        },
+        "step-1-recheck": {
+          "id": "step-1-recheck",
+          "type": "question",
+          "stepLabel": "Check Router Power & Lights",
+          "stepIndex": 1,
+          "totalSteps": 4,
+          "title": "Ensure the power cable is connected and the router is switched on.",
+          "description": "Is the internet working now?",
+          "images": ["power-setup"],
+          "options": [
+            { "id": "fixed", "label": "Yes", "next": "resolved" },
+            { "id": "not-fixed", "label": "Still not working", "next": "step-2", "showChevron": true }
+          ]
+        },
+        "step-2": {
+          "id": "step-2",
+          "type": "question",
+          "stepLabel": "Check Internet / WAN Light",
+          "stepIndex": 2,
+          "totalSteps": 4,
+          "title": "Check whether the Internet/WAN light is green or red.",
+          "images": ["wan-lights"],
+          "options": [
+            { "id": "green", "label": "Green light", "next": "step-3-cables" },
+            { "id": "red", "label": "Red light", "next": "terminal-ticket" }
+          ]
+        },
+        "step-3-cables": {
+          "id": "step-3-cables",
+          "type": "question",
+          "stepLabel": "Check Cables",
+          "stepIndex": 3,
+          "totalSteps": 4,
+          "title": "Check that all power, WAN, and LAN cables are connected properly.",
+          "description": "Is the internet working now?",
+          "images": ["check-cables"],
+          "options": [
+            { "id": "fixed", "label": "Yes", "next": "resolved" },
+            { "id": "not-fixed", "label": "Still not working", "next": "step-3-recheck", "showChevron": true }
+          ]
+        },
+        "step-3-recheck": {
+          "id": "step-3-recheck",
+          "type": "question",
+          "stepLabel": "Restart Router",
+          "stepIndex": 4,
+          "totalSteps": 4,
+          "title": "Reboot your router and wait ~30 seconds.",
+          "description": "Is the internet working now?",
+          "images": ["restart-router-30secs"],
+          "options": [
+            { "id": "fixed", "label": "Yes", "next": "resolved" },
+            { "id": "not-fixed", "label": "Still not working", "next": "terminal-ticket-final", "showChevron": true }
+          ]
+        },
+        "resolved": {
+          "id": "resolved",
+          "type": "result",
+          "title": "Your issue has been resolved.",
+          "action": "done"
+        },
+        "terminal-ticket": {
+          "id": "terminal-ticket",
+          "type": "terminal",
+          "stepLabel": "Final Step",
+          "stepIndex": 2,
+          "totalSteps": 4,
+          "title": "Your connection may require further assistance.",
+          "showCompletedSteps": true,
+          "allowDescription": true,
+          "action": "raise_ticket"
+        },
+        "terminal-ticket-final": {
+          "id": "terminal-ticket-final",
+          "type": "terminal",
+          "stepLabel": "Final Step",
+          "stepIndex": 4,
+          "totalSteps": 4,
+          "title": "Your connection may require further assistance.",
+          "showCompletedSteps": true,
+          "allowDescription": true,
+          "action": "raise_ticket"
+        }
+      }
+    },
+    {
+      "id": "slow-speed",
+      "title": "Slow internet",
+      "startId": "slow-step-1",
+      "nodes": {
+        "slow-step-1": {
+          "id": "slow-step-1",
+          "type": "question",
+          "stepLabel": "Restart Router",
+          "stepIndex": 1,
+          "totalSteps": 3,
+          "title": "Restart your router and wait 2–3 minutes.",
+          "images": ["restart-router-2mins"],
+          "options": [
+            { "id": "improved-1", "label": "Speed Improved", "next": "slow-resolved" },
+            { "id": "still-slow-1", "label": "Still Slow", "next": "slow-step-2", "showChevron": true }
+          ]
+        },
+        "slow-step-2": {
+          "id": "slow-step-2",
+          "type": "question",
+          "stepLabel": "Check Connected Devices",
+          "stepIndex": 2,
+          "totalSteps": 3,
+          "title": "Pause downloads, streaming, or updates on other devices",
+          "description": "Check the internet on one device and disconnect all other connected devices.",
+          "postImageQuestion": "Is the speed better now?",
+          "images": ["slow-connected-devices"],
+          "options": [
+            { "id": "improved-2", "label": "Speed Improved", "next": "slow-resolved" },
+            { "id": "still-slow-2", "label": "Still Slow", "next": "terminal-slow", "showChevron": true }
+          ]
+        },
+        "slow-resolved": {
+          "id": "slow-resolved",
+          "type": "result",
+          "title": "Your issue has been resolved.",
+          "action": "done"
+        },
+        "terminal-slow": {
+          "id": "terminal-slow",
+          "type": "terminal",
+          "stepLabel": "Final Step",
+          "stepIndex": 3,
+          "totalSteps": 3,
+          "title": "Your connection may require further assistance.",
+          "showCompletedSteps": true,
+          "allowDescription": true,
+          "action": "raise_ticket"
+        }
+      }
+    },
+    {
+      "id": "frequent-disconnections",
+      "title": "Frequent disconnections",
+      "startId": "disc-step-1",
+      "nodes": {
+        "disc-step-1": {
+          "id": "disc-step-1",
+          "type": "question",
+          "stepLabel": "Check Router Power & Lights",
+          "stepIndex": 1,
+          "totalSteps": 5,
+          "title": "Is your Wi-Fi router or modem switched on? Are the lights glowing?",
+          "images": ["router-lights"],
+          "options": [
+            { "id": "router-yes", "label": "Yes", "next": "disc-step-2" },
+            { "id": "router-no", "label": "No", "next": "disc-step-1-recheck" }
+          ]
+        },
+        "disc-step-1-recheck": {
+          "id": "disc-step-1-recheck",
+          "type": "question",
+          "stepLabel": "Check Router Power & Lights",
+          "stepIndex": 1,
+          "totalSteps": 5,
+          "title": "Ensure the power cable is connected and the router is switched on.",
+          "description": "Is the internet working now?",
+          "images": ["power-setup"],
+          "options": [
+            { "id": "fixed", "label": "Yes", "next": "disc-resolved" },
+            { "id": "not-fixed", "label": "Still not working", "next": "disc-step-2", "showChevron": true }
+          ]
+        },
+        "disc-step-2": {
+          "id": "disc-step-2",
+          "type": "question",
+          "stepLabel": "Check Internet / WAN Light",
+          "stepIndex": 2,
+          "totalSteps": 5,
+          "title": "Check whether the Internet/WAN light is green or red.",
+          "images": ["wan-lights"],
+          "options": [
+            { "id": "wan-green", "label": "Green light", "next": "disc-step-3" },
+            { "id": "wan-red", "label": "Red light", "next": "terminal-disconnect" }
+          ]
+        },
+        "disc-step-3": {
+          "id": "disc-step-3",
+          "type": "question",
+          "stepLabel": "Check Cables",
+          "stepIndex": 3,
+          "totalSteps": 5,
+          "title": "Ensure all router cables are connected properly.",
+          "images": ["check-cables"],
+          "options": [
+            { "id": "stable", "label": "Connection stable", "next": "disc-resolved" },
+            { "id": "unstable", "label": "Still disconnecting", "next": "disc-step-4", "showChevron": true }
+          ]
+        },
+        "disc-step-4": {
+          "id": "disc-step-4",
+          "type": "question",
+          "stepLabel": "Restart Router",
+          "stepIndex": 4,
+          "totalSteps": 5,
+          "title": "Restart the router and wait 2–3 minutes.",
+          "description": "Check the connection again after the router restarts.",
+          "postImageQuestion": "Is the internet working now?",
+          "images": ["restart-router-2mins"],
+          "options": [
+            { "id": "fixed", "label": "Yes", "next": "disc-resolved" },
+            { "id": "not-fixed", "label": "Still disconnecting", "next": "terminal-disconnect", "showChevron": true }
+          ]
+        },
+        "disc-resolved": {
+          "id": "disc-resolved",
+          "type": "result",
+          "title": "Your issue has been resolved.",
+          "action": "done"
+        },
+        "terminal-disconnect": {
+          "id": "terminal-disconnect",
+          "type": "terminal",
+          "stepLabel": "Final Step",
+          "stepIndex": 5,
+          "totalSteps": 5,
+          "title": "Your connection may require further assistance.",
+          "showCompletedSteps": true,
+          "allowDescription": true,
+          "action": "raise_ticket"
+        }
+      }
+    },
+    {
+      "id": "wifi-connected-no-internet",
+      "title": "Wi-Fi connected, but no internet",
+      "startId": "wifi-step-1",
+      "nodes": {
+        "wifi-step-1": {
+          "id": "wifi-step-1",
+          "type": "question",
+          "stepLabel": "Restart Router",
+          "stepIndex": 1,
+          "totalSteps": 4,
+          "title": "Restart the router and wait 2–3 minutes.",
+          "images": ["restart-router-2mins"],
+          "options": [
+            { "id": "wifi-fixed-1", "label": "Internet working now", "next": "wifi-resolved" },
+            { "id": "wifi-still-1", "label": "Still not working", "next": "wifi-step-2", "showChevron": true }
+          ]
+        },
+        "wifi-step-2": {
+          "id": "wifi-step-2",
+          "type": "question",
+          "stepLabel": "Check Router Light",
+          "stepIndex": 2,
+          "totalSteps": 4,
+          "title": "Check whether the Internet/WAN Light is green or red.",
+          "images": ["wan-lights"],
+          "options": [
+            { "id": "wifi-wan-green", "label": "Green light", "next": "wifi-step-3" },
+            { "id": "wifi-wan-red", "label": "Red light", "next": "terminal-wifi-early" }
+          ]
+        },
+        "wifi-step-3": {
+          "id": "wifi-step-3",
+          "type": "question",
+          "stepLabel": "Reconnect Wi-Fi",
+          "stepIndex": 3,
+          "totalSteps": 4,
+          "title": "Disconnect and reconnect to the Wi-Fi network.",
+          "images": ["disconnect-connect"],
+          "options": [
+            { "id": "wifi-fixed-3", "label": "Internet working now", "next": "wifi-resolved" },
+            { "id": "wifi-still-3", "label": "Still not working", "next": "terminal-wifi-final", "showChevron": true }
+          ]
+        },
+        "wifi-resolved": {
+          "id": "wifi-resolved",
+          "type": "result",
+          "title": "Your issue has been resolved.",
+          "action": "done"
+        },
+        "terminal-wifi-early": {
+          "id": "terminal-wifi-early",
+          "type": "terminal",
+          "stepLabel": "Final Step",
+          "stepIndex": 2,
+          "totalSteps": 4,
+          "title": "Network signal may not be reaching your router.",
+          "showCompletedSteps": true,
+          "allowDescription": true,
+          "action": "raise_ticket"
+        },
+        "terminal-wifi-final": {
+          "id": "terminal-wifi-final",
+          "type": "terminal",
+          "stepLabel": "Final Step",
+          "stepIndex": 4,
+          "totalSteps": 4,
+          "title": "Your connection may require further assistance.",
+          "showCompletedSteps": true,
+          "allowDescription": true,
+          "action": "raise_ticket"
+        }
+      }
+    },
+    {
+      "id": "some-websites-not-opening",
+      "title": "Websites not opening",
+      "startId": "q-browser",
+      "nodes": {
+        "q-browser": {
+          "id": "q-browser",
+          "type": "question",
+          "stepIndex": 1,
+          "totalSteps": 5,
+          "stepLabel": "Try Another Browser",
+          "title": "Open the website using another browser",
+          "description": "(such as Chrome, Edge, or Firefox)",
+          "postImageQuestion": "Did the website open?",
+          "images": ["website-try-browser"],
+          "options": [
+            { "id": "browser-yes", "label": "Yes", "next": "q-browser-opened" },
+            { "id": "browser-no", "label": "Still not opening", "next": "q-clear-data", "showChevron": true }
+          ]
+        },
+        "q-browser-opened": {
+          "id": "q-browser-opened",
+          "type": "instruction",
+          "stepIndex": 2,
+          "totalSteps": 5,
+          "stepLabel": "Website Opened",
+          "title": "The website opened successfully in another browser.",
+          "description": "The issue may be related to your previous browser settings.",
+          "confirmLabel": "Done",
+          "next": "r-browser-issue"
+        },
+        "r-browser-issue": {
+          "id": "r-browser-issue",
+          "type": "result",
+          "title": "Your issue has been resolved.",
+          "action": "done"
+        },
+        "q-clear-data": {
+          "id": "q-clear-data",
+          "type": "question",
+          "stepIndex": 2,
+          "totalSteps": 5,
+          "stepLabel": "Clear Browsing Data",
+          "title": "Clear your browser history and cache.",
+          "description": "Try opening the website again.",
+          "postImageQuestion": "Is the website working now?",
+          "images": ["website-clear-data"],
+          "options": [
+            { "id": "clear-yes", "label": "Yes", "next": "website-resolved" },
+            { "id": "clear-no", "label": "Still not opening", "next": "q-incognito", "showChevron": true }
+          ]
+        },
+        "q-incognito": {
+          "id": "q-incognito",
+          "type": "question",
+          "stepIndex": 3,
+          "totalSteps": 5,
+          "stepLabel": "Use Incognito / Private Mode",
+          "title": "Open the website in an Incognito or Private browsing window.",
+          "description": "Enter the website URL again and check.",
+          "postImageQuestion": "Does the website open in Incognito mode?",
+          "images": ["website-incognito"],
+          "options": [
+            { "id": "incognito-yes", "label": "Yes", "next": "r-browser-settings" },
+            { "id": "incognito-no", "label": "Still not opening", "next": "q-hotspot", "showChevron": true }
+          ]
+        },
+        "r-browser-settings": {
+          "id": "r-browser-settings",
+          "type": "result",
+          "title": "Your issue has been resolved.",
+          "action": "done"
+        },
+        "q-hotspot": {
+          "id": "q-hotspot",
+          "type": "question",
+          "stepIndex": 4,
+          "totalSteps": 5,
+          "stepLabel": "Try Mobile Internet",
+          "title": "Try opening the website using mobile internet instead of Wi-Fi.",
+          "description": "Use a mobile hotspot on laptop or switch to mobile data on phone.",
+          "postImageQuestion": "Does the website open using mobile internet?",
+          "images": ["website-mobile-internet"],
+          "options": [
+            { "id": "hotspot-yes", "label": "Website opened", "next": "terminal-website-hotspot" },
+            { "id": "hotspot-no", "label": "Still not opening", "next": "website-step-5", "showChevron": true }
+          ]
+        },
+        "terminal-website-hotspot": {
+          "id": "terminal-website-hotspot",
+          "type": "terminal",
+          "stepLabel": "Final Step",
+          "stepIndex": 4,
+          "totalSteps": 5,
+          "title": "The website opened using mobile internet. Your Wi-Fi connection may require further assistance.",
+          "showCompletedSteps": true,
+          "allowDescription": true,
+          "action": "raise_ticket"
+        },
+        "website-step-5": {
+          "id": "website-step-5",
+          "type": "question",
+          "stepIndex": 5,
+          "totalSteps": 5,
+          "stepLabel": "Final Step",
+          "title": "The website may be temporarily unavailable or down. Please try accessing the website again after some time.",
+          "postImageQuestion": "Please try accessing the website again after some time.",
+          "images": ["website-final-step"],
+          "options": [
+            { "id": "okay", "label": "Okay", "next": "website-final-done" }
+          ]
+        },
+        "website-resolved": {
+          "id": "website-resolved",
+          "type": "result",
+          "title": "Your issue has been resolved.",
+          "action": "done"
+        },
+        "website-final-done": {
+          "id": "website-final-done",
+          "type": "result",
+          "title": "Your issue has been resolved.",
+          "action": "done"
+        }
+      }
+    }
+  ]
+}

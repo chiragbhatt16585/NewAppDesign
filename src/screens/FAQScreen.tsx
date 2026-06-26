@@ -234,10 +234,10 @@ const FAQScreen = ({ navigation }: any) => {
             </View>
             <View style={styles.troubleshootingTextWrapper}>
               <Text style={[styles.troubleshootingTitle, { color: colors.text }]}>
-                {t('settings.fixYourInternet', 'Fix Your Internet')}
+                {t('settings.fixYourInternet', '24x7 Support')}
               </Text>
               <Text style={[styles.troubleshootingSubtitle, { color: colors.textSecondary }]}>
-                {t('settings.fixYourInternetSubtitle', 'Step-by-step self diagnosis for connection issues')}
+                {t('settings.fixYourInternetSubtitle', 'Get immediate help for your connection issues')}
               </Text>
             </View>
             <MaterialIcons name="chevron-right" size={24} color={colors.textTertiary} />

@@ -26,12 +26,23 @@ import {getClientConfig} from '../config/client-config';
 import Feather from 'react-native-vector-icons/Feather';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 
+const isTicketResolvedStatus = (status: string): boolean => {
+  const normalized = String(status || '')
+    .toLowerCase()
+    .replace(/[\s_]/g, '');
+  return (
+    normalized === 'resolved' ||
+    normalized === 'closed' ||
+    normalized === 'closedonline'
+  );
+};
+
 const TicketsScreen = ({navigation, route}: any) => {
   const {isDark} = useTheme();
   const colors = getThemeColors(isDark);
   const {t} = useTranslation();
   const isMicroscan = getClientConfig().clientId === 'microscan';
-  const showCreateTicketButton = !isMicroscan;
+  const showCreateTicketButton = true;
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -301,6 +312,13 @@ const TicketsScreen = ({navigation, route}: any) => {
   };
 
   const handleCreateTicket = () => {
+    if (isMicroscan && hasActiveMicroscanTicket) {
+      Alert.alert(
+        'Ticket already open',
+        'Please wait until your existing ticket is resolved before raising a new one.',
+      );
+      return;
+    }
     if (showFixYourInternet) {
       navigation.navigate('FixYourInternet');
       return;
@@ -317,6 +335,11 @@ const TicketsScreen = ({navigation, route}: any) => {
     return tickets.slice(0, showTicketCount);
   }, [tickets, showTicketCount]);
 
+  const hasActiveMicroscanTicket = useMemo(() => {
+    if (!isMicroscan) return false;
+    return tickets.some(ticket => !isTicketResolvedStatus(ticket.status));
+  }, [isMicroscan, tickets]);
+
   return (
     <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}> 
       <CommonHeader
@@ -328,10 +351,15 @@ const TicketsScreen = ({navigation, route}: any) => {
           <Text style={[styles.pageHeading, {color: colors.text}]}>{t('tickets.title')}</Text>
           {showCreateTicketButton ? (
             <TouchableOpacity
-              style={[styles.createButton, {backgroundColor: colors.primary}]}
+              style={[
+                styles.createButton,
+                {backgroundColor: colors.primary},
+                hasActiveMicroscanTicket && styles.createButtonDisabled,
+              ]}
+              disabled={hasActiveMicroscanTicket}
               onPress={handleCreateTicket}>
               <MaterialIcons name="confirmation-number" size={18} color="#fff" style={styles.createButtonIcon} />
-              <Text style={styles.createButtonText}>New</Text>
+              <Text style={styles.createButtonText}>Raise New Ticket</Text>
             </TouchableOpacity>
           ) : null}
         </View>
@@ -417,6 +445,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#fff',
     fontWeight: '600',
+  },
+  createButtonDisabled: {
+    opacity: 0.5,
   },
   headingContainer: {
     paddingHorizontal: 20,

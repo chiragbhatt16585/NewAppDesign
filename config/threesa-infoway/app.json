@@ -17,7 +17,7 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.l2sClient.ThreesaBroadband",
+      "bundleIdentifier": "com.spacecom.log2space.threesa",
       "buildNumber": "1"
     },
     "android": {
@@ -25,8 +25,8 @@
         "foregroundImage": "./app-icons/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
       },
-      "package": "in.spacecom.log2space.client.threesa",
-      "versionCode": 6
+      "package": "com.spacecom.log2space.threesa",
+      "versionCode": 1
     },
     "web": {
       "favicon": "./app-icons/favicon.png"

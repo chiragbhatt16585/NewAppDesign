@@ -49,10 +49,7 @@ const SettingsScreen = ({ navigation }: any) => {
   }, []);
 
   useEffect(() => {
-    console.log('[SettingsScreen] menu settings API:', `${getApiUrl()}/selfcareMenuSettings`);
-    console.log('[SettingsScreen] menuLoading:', menuLoading, '| menu:', menu);
     const cfg = getAppSettingsFromMenu(menu);
-    console.log('[SettingsScreen] settingsConfig (app_settings):', JSON.stringify(cfg, null, 2));
     setSettingsConfig(cfg);
   }, [menuLoading, menu]);
 
@@ -226,13 +223,16 @@ const SettingsScreen = ({ navigation }: any) => {
     if (showFixYourInternet) {
       supportItems.push({
         id: 'fixYourInternet',
-        title: t('settings.fixYourInternet', 'Fix Your Internet'),
+        title: t('settings.fixYourInternet', '24x7 Support'),
         subtitle: t(
           'settings.fixYourInternetSubtitle',
-          'Step-by-step self diagnosis for connection issues',
+          'Get immediate help for your connection issues',
         ),
         icon: 'wifi',
-        onPress: () => navigation.navigate('FixYourInternet'),
+        onPress: () => {
+          console.log('[24x7 Support] tapped from Settings -> navigating to FixYourInternet');
+          navigation.navigate('FixYourInternet');
+        },
       });
     }
     if (showFaq) {

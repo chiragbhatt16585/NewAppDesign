@@ -73,6 +73,7 @@ const HomeScreen = ({navigation}: any) => {
   const FETCH_DEBOUNCE_MS = 2000;
   const [loadError, setLoadError] = useState<string | null>(null);
   const [planDetails, setPlanDetails] = useState<any>(null);
+  const [advanceRenewalRecords, setAdvanceRenewalRecords] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [banners, setBanners] = useState<any[]>([]);
   const [loadingBanners, setLoadingBanners] = useState(true);
@@ -101,6 +102,7 @@ const HomeScreen = ({navigation}: any) => {
           setAuthData(null);
           setGlobalAuthData(null);
           setPlanDetails(null);
+          setAdvanceRenewalRecords([]);
           setBanners([]);
           lastUsernameRef.current = null;
         }
@@ -120,6 +122,7 @@ const HomeScreen = ({navigation}: any) => {
         setAuthData(null);
         setGlobalAuthData(null);
         setPlanDetails(null);
+        setAdvanceRenewalRecords([]);
         setBanners([]);
         setIsLoading(true);
         isFetchingRef.current = false;
@@ -145,6 +148,7 @@ const HomeScreen = ({navigation}: any) => {
         setAuthData(null);
         setGlobalAuthData(null);
         setPlanDetails(null);
+        setAdvanceRenewalRecords([]);
         setBanners([]);
         lastUsernameRef.current = sessionUsername;
         setCurrentUsername(sessionUsername);
@@ -188,12 +192,45 @@ const HomeScreen = ({navigation}: any) => {
     }
   }, [authData]);
 
-  // Normalize next renewal value and filter placeholders like 'N/A', 'NA', '-', 'null'
-  const nextRenewalValue = useMemo(() => {
-    const raw = (authData?.next_renewal_date ?? '').toString().trim();
-    const invalids = ['N/A', 'NA', '-', 'NULL', 'UNDEFINED', ''];
-    return invalids.includes(raw.toUpperCase()) ? '' : raw;
-  }, [authData?.next_renewal_date]);
+  const primaryAdvanceRenewal = advanceRenewalRecords[0] ?? null;
+
+  const renderAdvanceRenewalDetailRow = (label: string, value: string) => (
+    <View style={styles.billRow} key={label}>
+      <Text style={[styles.billLabel, {color: colors.textSecondary}]}>{label}</Text>
+      <Text style={[styles.billDate, {color: colors.text, flex: 1, textAlign: 'right', marginLeft: 12}]}>
+        {value}
+      </Text>
+    </View>
+  );
+
+  const renderAdvanceRenewalDetailsBox = (
+    record: {
+      entry_date?: string;
+      next_renewal_date?: string;
+      next_renewal_expiry_date?: string;
+      exp_date?: string;
+    },
+    titleSuffix = '',
+  ) => (
+    <View style={[styles.billCard, {backgroundColor: colors.card, shadowColor: colors.shadow}]}>
+      <Text style={[styles.billTitle, {color: colors.text}]}>
+        Advance Renewal Details{titleSuffix}
+      </Text>
+      <View style={[styles.advanceRenewalNoteBox, {backgroundColor: isDark ? '#2c2c2e' : '#f2f2f5'}]}>
+        <Text style={[styles.advanceRenewalNoteText, {color: colors.textSecondary}]}>
+          {t('planConfirmation.advanceRenewalNote')}
+        </Text>
+      </View>
+      <View style={styles.billDetails}>
+        {renderAdvanceRenewalDetailRow('Entry Date', record.entry_date || 'N/A')}
+        {renderAdvanceRenewalDetailRow('Renewal Date', record.next_renewal_date || 'N/A')}
+        {renderAdvanceRenewalDetailRow(
+          'Expiry Date',
+          record.next_renewal_expiry_date || record.exp_date || 'N/A',
+        )}
+      </View>
+    </View>
+  );
   const { menu, loading: menuLoading, error: menuError, refresh: refreshMenu, forceRefresh: forceRefreshMenu } = useMenuSettings();
   const [refreshing, setRefreshing] = useState(false);
   const currentClientId = getClientConfig().clientId;
@@ -642,6 +679,7 @@ const HomeScreen = ({navigation}: any) => {
         setAuthData(null);
         setGlobalAuthData(null); // CRITICAL: Clear global context too
         setPlanDetails(null);
+        setAdvanceRenewalRecords([]);
         setBanners([]);
         setIsLoading(true);
         setLoadingBanners(true);
@@ -681,6 +719,7 @@ const HomeScreen = ({navigation}: any) => {
         setAuthData(null);
         setGlobalAuthData(null);
         setPlanDetails(null);
+        setAdvanceRenewalRecords([]);
         setBanners([]);
         setIsLoading(true);
         setLoadingBanners(true);
@@ -867,6 +906,7 @@ const HomeScreen = ({navigation}: any) => {
         setAuthData(null);
         setGlobalAuthData(null);
         setPlanDetails(null);
+        setAdvanceRenewalRecords([]);
         setBanners([]);
       }
       
@@ -904,6 +944,7 @@ const HomeScreen = ({navigation}: any) => {
           setAuthData(null);
           setGlobalAuthData(null);
           setPlanDetails(null);
+          setAdvanceRenewalRecords([]);
           setBanners([]);
           
           // Clear all caches again
@@ -973,6 +1014,34 @@ const HomeScreen = ({navigation}: any) => {
             dataLimit: authResponse.dataAllotted || '100 GB',
           });
         }
+
+        try {
+          const advanceRenewalRequest = {
+            username,
+            plan_type: 'adv_renewal',
+            sort: '',
+            order: 'ASC',
+            search_params: '',
+          };
+          console.log('[HomeScreen] userWiseAddOnPlanPinRecords => passing:', advanceRenewalRequest);
+
+          const advanceRenewals = await apiService.userWiseAddOnPlanPinRecords(username);
+          console.log('[HomeScreen] userWiseAddOnPlanPinRecords => received:', {
+            count: advanceRenewals?.length ?? 0,
+            records: advanceRenewals,
+          });
+
+          const latestSession = await sessionManager.getCurrentSession();
+          if (latestSession?.username === username) {
+            setAdvanceRenewalRecords(advanceRenewals);
+          }
+        } catch (advanceRenewalError: any) {
+          setAdvanceRenewalRecords([]);
+          console.warn('[HomeScreen] userWiseAddOnPlanPinRecords => error:', {
+            message: advanceRenewalError?.message || 'unknown error',
+            error: advanceRenewalError,
+          });
+        }
       } else {
         setLoadError('Unable to load account data. Pull down to refresh.');
       }
@@ -1034,6 +1103,7 @@ const HomeScreen = ({navigation}: any) => {
         setAuthData(null);
         setGlobalAuthData(null);
         setPlanDetails(null);
+        setAdvanceRenewalRecords([]);
         setBanners([]);
         lastUsernameRef.current = sessionUsername;
         setCurrentUsername(sessionUsername);
@@ -1079,6 +1149,7 @@ const HomeScreen = ({navigation}: any) => {
           setAuthData(null);
           setGlobalAuthData(null);
           setPlanDetails(null);
+          setAdvanceRenewalRecords([]);
           setBanners([]);
           return;
         }
@@ -1096,6 +1167,7 @@ const HomeScreen = ({navigation}: any) => {
           setAuthData(null);
           setGlobalAuthData(null);
           setPlanDetails(null);
+          setAdvanceRenewalRecords([]);
           setBanners([]);
           setIsLoading(true);
           setLoadError(null);
@@ -2079,17 +2151,13 @@ const HomeScreen = ({navigation}: any) => {
                   <Text style={[styles.billLabel, {color: colors.textSecondary}]}>Expiry Date</Text>
                   <Text style={[styles.billDate, {color: colors.text}]}>{authData?.exp_date || 'N/A'}</Text>
                 </View>
-                {nextRenewalValue ? (
-                  <View style={styles.billRow}>
-                    <Text style={[styles.billLabel, {color: colors.textSecondary}]}>Next Renewal</Text>
-                    <Text style={[styles.billDate, {color: colors.text}]}>{nextRenewalValue}</Text>
-                  </View>
-                ) : null}
               </View>
             </>
           )}
         </View>
         )}
+
+        {primaryAdvanceRenewal ? renderAdvanceRenewalDetailsBox(primaryAdvanceRenewal) : null}
 
         {/* More Options*/}
         {/* <View style={styles.section}>
@@ -2593,6 +2661,16 @@ const styles = StyleSheet.create({
   billDate: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  advanceRenewalNoteBox: {
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 12,
+  },
+  advanceRenewalNoteText: {
+    fontSize: 13,
+    lineHeight: 18,
   },
   payNowButton: {
     borderRadius: 12,

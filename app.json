@@ -1,9 +1,9 @@
 {
-  "name": "HDMBroadbandApp",
+  "name": "MicroscanApp",
   "expo": {
-    "name": "HDM Broadband",
-    "slug": "hdmbroadband",
-    "version": "1.0.12",
+    "name": "Microscan",
+    "slug": "microscan",
+    "version": "3.0.4",
     "orientation": "portrait",
     "icon": "./app-icons/icon.png",
     "userInterfaceStyle": "light",
@@ -17,19 +17,19 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "in.spacecom.log2space.client.hdmBroadband",
-      "buildNumber": "1"
+      "bundleIdentifier": "com.l2sClient.microscan",
+      "buildNumber": "42"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./app-icons/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
       },
-      "package": "in.spacecom.log2space.client.hdmBroadband",
-      "versionCode": 12
+      "package": "in.spacecom.log2space.client.microscan",
+      "versionCode": 42
     },
     "web": {
       "favicon": "./app-icons/favicon.png"
     }
   }
-}
+} 

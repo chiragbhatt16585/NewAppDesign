@@ -64,6 +64,10 @@ export const getApiUrl = () => {
   cachedApiConfig = getApiConfigDynamic();
   return `${cachedApiConfig.protocol}${cachedApiConfig.domainUrl}/l2s/api`;
 };
+export const getAppUrl = () => {
+  cachedApiConfig = getApiConfigDynamic();
+  return `${cachedApiConfig.protocol}${cachedApiConfig.domainUrl}/l2s/app`;
+};
 export const getIspName = () => {
   cachedApiConfig = getApiConfigDynamic();
   return cachedApiConfig.ispName;
@@ -802,7 +806,7 @@ class ApiService {
         timeout,
       } as any;
 
-      const url = `${getApiUrl()}/selfcareFetchCrmRuntimeConfigs`;
+      const url = `${getAppUrl()}/selfcareFetchCrmRuntimeConfigs`;
       const res = await fetchWithTimeout(url, options);
       const response = await res.json();
 
@@ -815,6 +819,79 @@ class ApiService {
       }
 
       return response?.data ?? response;
+    });
+  }
+
+  /** Advance renewal pin records for the logged-in user (plan_type=adv_renewal). */
+  async userWiseAddOnPlanPinRecords(
+    username?: string,
+    options?: {
+      planType?: string;
+      sort?: string;
+      order?: string;
+      searchParams?: string;
+    },
+  ): Promise<any[]> {
+    return this.makeAuthenticatedRequest(async (token) => {
+      let resolvedUsername = username?.trim() || '';
+      if (!resolvedUsername) {
+        resolvedUsername = (await sessionManager.getUsername()) || '';
+      }
+      if (!resolvedUsername) {
+        throw new Error('No username found in session');
+      }
+
+      const data = {
+        plan_type: options?.planType ?? 'adv_renewal',
+        sort: options?.sort ?? '',
+        order: options?.order ?? 'ASC',
+        search_params: options?.searchParams ?? '',
+        username: resolvedUsername.toLowerCase().trim(),
+        request_source: 'app',
+        request_app: 'user_app',
+      };
+
+      const requestOptions = {
+        method,
+        headers: new Headers({ Authentication: token, ...fixedHeaders }),
+        body: toFormData(data),
+        timeout,
+      } as any;
+
+      try {
+        const url = `${getApiUrl()}/userWiseAddOnPlanPinRecords`;
+        console.log('[API] userWiseAddOnPlanPinRecords => request:', {
+          url,
+          method,
+          payload: data,
+        });
+        const res = await fetchWithTimeout(url, requestOptions);
+        const response = await res.json();
+        console.log('[API] userWiseAddOnPlanPinRecords => response:', {
+          httpStatus: res.status,
+          status: response?.status,
+          code: response?.code,
+          message: response?.message,
+          rec_count: response?.rec_count,
+          data: response?.data,
+          raw: response,
+        });
+
+        if (response?.status !== 'ok' && response?.code !== 200) {
+          const apiMessage = response?.message || '';
+          if (isTokenExpiredMessage(apiMessage)) {
+            throw new Error('Token Expired');
+          }
+          throw new Error(apiMessage || 'Failed to fetch advance renewal records');
+        }
+
+        return Array.isArray(response?.data) ? response.data : [];
+      } catch (e: any) {
+        if (isNetworkError(e)) {
+          throw new Error(networkErrorMsg);
+        }
+        throw new Error(e.message || 'Failed to fetch advance renewal records');
+      }
     });
   }
 

@@ -1,9 +1,8 @@
-# HDM Broadband assets
+Place your client logo and assets here.
 
-Replace placeholder files copied from Skynetwifi with HDM Broadband branding:
+Expected filenames used by the app:
+- `isp_logo.png` (used by `src/components/LogoImage.tsx`)
 
-- `header_logo.png` — login / header logo
-- `header_background.png` — optional header background
-- `isp_logo.png` — fallback logo (optional if using header_logo only)
+Optional:
+- any other images referenced by your UI (header backgrounds, etc.)
 
-App icons: update files under `../app-icons/`.

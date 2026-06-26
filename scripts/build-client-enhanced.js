@@ -92,11 +92,11 @@ const CLIENTS = {
   },
   'threesa-infoway': {
     name: 'Threesa Infoway',
-    packageName: 'in.spacecom.log2space.client.threesa',
-    namespace: 'in.spacecom.log2space.client.threesa',
-    versionCode: 6,
-    versionName: '1.0.6',
-    keystore: 'Log2SpaceClientThreesaBroadband.jks',
+    packageName: 'com.spacecom.log2space.threesa',
+    namespace: 'com.spacecom.log2space.threesa',
+    versionCode: 1,
+    versionName: '1.0.1',
+    keystore: 'Log2SpaceThreesa.jks',
     configDir: 'config/threesa-infoway',
   },
   'spacecom-live': {
