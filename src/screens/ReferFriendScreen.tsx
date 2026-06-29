@@ -53,7 +53,14 @@ const ReferFriendScreen = ({ navigation }: any) => {
   const showBuildingField = isReferFriendFieldVisible('building');
   const showAreaField = isReferFriendFieldVisible('area');
   const showLocationField = isReferFriendFieldVisible('location');
+  const buildingRequired = isReferFriendFieldRequired('building');
   const pincodeRequired = isReferFriendFieldRequired('pincode');
+  const address1Required = isReferFriendFieldRequired('address1');
+  const cityRequired = isReferFriendFieldRequired('city');
+  const firstNameRequired = isReferFriendFieldRequired('firstName');
+  const lastNameRequired = isReferFriendFieldRequired('lastName');
+  const mobileNumberRequired = isReferFriendFieldRequired('mobileNumber');
+  const emailRequired = isReferFriendFieldRequired('email');
   const addressFieldWidthStyle =
     showAreaField && showLocationField ? styles.halfField : undefined;
 
@@ -139,33 +146,51 @@ const ReferFriendScreen = ({ navigation }: any) => {
     const newErrors: Record<string, string> = {};
     let isValid = true;
 
-    if (!formData.firstName.trim()) {
+    if (firstNameRequired && !formData.firstName.trim()) {
       newErrors.firstName = t('referFriend.firstNameRequired');
       isValid = false;
     }
-    if (!formData.lastName.trim()) {
+    if (lastNameRequired && !formData.lastName.trim()) {
       newErrors.lastName = t('referFriend.lastNameRequired');
       isValid = false;
     }
-    if (!formData.mobileNumber.trim()) {
+    if (mobileNumberRequired && !formData.mobileNumber.trim()) {
       newErrors.mobileNumber = t('referFriend.mobileNumberRequired');
       isValid = false;
-    } else if (!/^\d{10}$/.test(formData.mobileNumber.trim())) {
+    } else if (
+      mobileNumberRequired &&
+      formData.mobileNumber.trim() &&
+      !/^\d{10}$/.test(formData.mobileNumber.trim())
+    ) {
+      newErrors.mobileNumber = t('referFriend.mobileNumberRequired');
+      isValid = false;
+    } else if (
+      !mobileNumberRequired &&
+      formData.mobileNumber.trim() &&
+      !/^\d{10}$/.test(formData.mobileNumber.trim())
+    ) {
       newErrors.mobileNumber = t('referFriend.mobileNumberRequired');
       isValid = false;
     }
-    if (!formData.email.trim()) {
+    if (emailRequired && !formData.email.trim()) {
       newErrors.email = t('referFriend.emailRequired');
       isValid = false;
-    } else if (!/\S+@\S+\.\S+/.test(formData.email.trim())) {
+    } else if (emailRequired && formData.email.trim() && !/\S+@\S+\.\S+/.test(formData.email.trim())) {
+      newErrors.email = t('referFriend.emailRequired');
+      isValid = false;
+    } else if (
+      !emailRequired &&
+      formData.email.trim() &&
+      !/\S+@\S+\.\S+/.test(formData.email.trim())
+    ) {
       newErrors.email = t('referFriend.emailRequired');
       isValid = false;
     }
-    if (!formData.address1.trim()) {
+    if (address1Required && !formData.address1.trim()) {
       newErrors.address1 = t('referFriend.address1Required');
       isValid = false;
     }
-    if (showBuildingField && !formData.building_id) {
+    if (showBuildingField && buildingRequired && !formData.building_id) {
       newErrors.building = t('referFriend.buildingRequired');
       isValid = false;
     }
@@ -184,7 +209,7 @@ const ReferFriendScreen = ({ navigation }: any) => {
       newErrors.pincode = t('referFriend.pincodeRequired');
       isValid = false;
     }
-    if (!formData.city) {
+    if (cityRequired && !formData.city) {
       newErrors.city = t('referFriend.cityRequired');
       isValid = false;
     }
@@ -335,7 +360,7 @@ const ReferFriendScreen = ({ navigation }: any) => {
 
     return (
       <View style={styles.fieldBlock}>
-        <FieldLabel label={t('referFriend.building')} required />
+        <FieldLabel label={t('referFriend.building')} required={buildingRequired} />
         <View style={[styles.autocompleteContainer, errors.building ? styles.inputErrorWrap : null]}>
           <TextInput
             ref={inputRef}
@@ -392,7 +417,7 @@ const ReferFriendScreen = ({ navigation }: any) => {
 
   const CitySelector = () => (
     <View style={[styles.fieldBlock, styles.halfField]}>
-      <FieldLabel label={t('referFriend.city')} required />
+      <FieldLabel label={t('referFriend.city')} required={cityRequired} />
       <View style={[styles.selectWrap, errors.city ? styles.inputErrorWrap : null]}>
         <TouchableOpacity
           style={[inputStyle(!!errors.city), styles.selectButton]}
@@ -463,7 +488,7 @@ const ReferFriendScreen = ({ navigation }: any) => {
 
                 <View style={styles.row}>
                   <View style={[styles.fieldBlock, styles.halfField]}>
-                    <FieldLabel label={t('referFriend.firstName')} required />
+                    <FieldLabel label={t('referFriend.firstName')} required={firstNameRequired} />
                     <TextInput
                       style={inputStyle(!!errors.firstName)}
                       placeholder={t('referFriend.firstName')}
@@ -474,7 +499,7 @@ const ReferFriendScreen = ({ navigation }: any) => {
                     {errors.firstName ? <Text style={styles.errorText}>{errors.firstName}</Text> : null}
                   </View>
                   <View style={[styles.fieldBlock, styles.halfField]}>
-                    <FieldLabel label={t('referFriend.lastName')} required />
+                    <FieldLabel label={t('referFriend.lastName')} required={lastNameRequired} />
                     <TextInput
                       style={inputStyle(!!errors.lastName)}
                       placeholder={t('referFriend.lastName')}
@@ -488,7 +513,7 @@ const ReferFriendScreen = ({ navigation }: any) => {
 
                 <View style={styles.row}>
                   <View style={[styles.fieldBlock, styles.halfField]}>
-                    <FieldLabel label={t('referFriend.mobileNumber')} required />
+                    <FieldLabel label={t('referFriend.mobileNumber')} required={mobileNumberRequired} />
                     <TextInput
                       style={inputStyle(!!errors.mobileNumber)}
                       placeholder={t('referFriend.mobileNumber')}
@@ -515,7 +540,7 @@ const ReferFriendScreen = ({ navigation }: any) => {
                 </View>
 
                 <View style={styles.fieldBlock}>
-                  <FieldLabel label={t('referFriend.email')} required />
+                  <FieldLabel label={t('referFriend.email')} required={emailRequired} />
                   <TextInput
                     style={inputStyle(!!errors.email)}
                     placeholder={t('referFriend.email')}
@@ -532,7 +557,7 @@ const ReferFriendScreen = ({ navigation }: any) => {
                 <View style={[styles.sectionDivider, { backgroundColor: colors.border }]} />
 
                 <View style={styles.fieldBlock}>
-                  <FieldLabel label={t('referFriend.address1')} required />
+                  <FieldLabel label={t('referFriend.address1')} required={address1Required} />
                   <TextInput
                     style={inputStyle(!!errors.address1)}
                     placeholder={t('referFriend.address1')}

@@ -260,6 +260,26 @@ const clientConfigs: Record<string, ClientConfig> = {
     poweredByWebsite: 'https://spacecom.in',
     bundleId: 'com.spacecom.log2space.indophonenetworks',
   },
+  'sprioc-web': {
+    name: 'Sprioc',
+    companyName: 'SPRIOC WEB PVT LTD',
+    apiUrl: 'https://sprioc.l2s.biz',
+    supportEmail: 'spriocweb@gmail.com',
+    website: 'https://sprioc.l2s.biz',
+    poweredBy: 'Spacecom Software LLP',
+    poweredByWebsite: 'https://spacecom.in',
+    bundleId: 'com.spacecom.log2space.sprioc',
+  },
+  'asw-service': {
+    name: 'ASW Service',
+    companyName: 'ASW Service',
+    apiUrl: 'https://asws.l2s.biz',
+    supportEmail: 'asw@gmail.com',
+    website: 'https://asws.l2s.biz',
+    poweredBy: 'Spacecom Software LLP',
+    poweredByWebsite: 'https://spacecom.in',
+    bundleId: 'com.spacecom.log2space.aswservice',
+  },
 };
 
 // Export current client configuration

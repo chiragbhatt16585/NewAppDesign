@@ -235,6 +235,24 @@ const CLIENTS = {
     keystore: 'IndophoneNetwork.jks',
     configDir: 'config/indophone',
   },
+  'sprioc-web': {
+    name: 'Sprioc',
+    packageName: 'com.spacecom.log2space.sprioc',
+    namespace: 'com.spacecom.log2space.sprioc',
+    versionCode: 1,
+    versionName: '1.0.1',
+    keystore: 'Log2SpaceSprioc.jks',
+    configDir: 'config/sprioc-web',
+  },
+  'asw-service': {
+    name: 'ASW Service',
+    packageName: 'com.spacecom.log2space.aswservice',
+    namespace: 'com.spacecom.log2space.aswservice',
+    versionCode: 1,
+    versionName: '1.0.1',
+    keystore: 'Log2SpaceAswService.jks',
+    configDir: 'config/asw-service',
+  },
 };
 
 // Colors for console output

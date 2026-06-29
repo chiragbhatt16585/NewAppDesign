@@ -29,7 +29,9 @@
     "quickActions": "Quick Actions",
     "quickMenu": "Quick Menu",
     "recentActivity": "Recent Activity",
-    "viewAll": "View All"
+    "viewAll": "View All",
+    "lastPaidDate": "Last Paid Date",
+    "noPaymentRecorded": "No payment recorded"
   },
   "login": {
     "title": "Welcome to ISP App",

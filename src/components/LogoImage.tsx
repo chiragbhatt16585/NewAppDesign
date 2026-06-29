@@ -130,6 +130,8 @@ const LogoImage: React.FC<LogoImageProps> = ({style, width, height, type = 'head
         'hdmbroadband:header_logo.png': require('../../config/hdmbroadband/assets/header_logo.png'),
         'hdmbroadband:isp_logo.png': require('../../config/hdmbroadband/assets/header_logo.png'),
         'srisamarthinfobahn:isp_logo.png': require('../../config/srisamarthinfobahn/assets/isp_logo.png'),
+        'sprioc-web:isp_logo.png': require('../../config/sprioc-web/assets/isp_logo.png'),
+        'asw-service:isp_logo.png': require('../../config/asw-service/assets/isp_logo.png'),
 
         // Legacy / older standalone logo files (if any)
         'microscan_logo.png': require('../assets/microscan_logo.png'),

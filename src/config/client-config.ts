@@ -1898,6 +1898,135 @@ const clientConfigs: Record<string, ClientConfig> = {
       appStoreId: undefined,
     },
   },
+  'sprioc-web': {
+    clientId: 'sprioc-web',
+    clientName: 'Sprioc',
+    api: {
+      baseURL: 'https://sprioc.l2s.biz/l2s/api',
+      serverURL: 'https://sprioc.l2s.biz',
+      timeout: 30000,
+    },
+    branding: {
+      logo: 'isp_logo.png',
+      primaryColor: '#1976D2',
+      secondaryColor: '#42A5F5',
+      appName: 'Sprioc',
+      headerBackgroundImage: 'header_background.png',
+      logoDimensions: {
+        header: { width: 200, height: 140 },
+        login: { width: 300, height: 200 },
+      },
+    },
+    features: {
+      biometricAuth: true,
+      pushNotifications: true,
+      fileUpload: true,
+      multiLanguage: true,
+    },
+    contact: {
+      whatsappNumber: '8806828882',
+      headOffice: {
+        title: 'Head Office',
+        address:
+          'Ground Floor, Shop No. 02, Omkar Darshan, Masoli, Dahanu - 401602',
+        customerSupport: '8806828882',
+      },
+      branchOffices: [],
+      emails: {
+        inquiries: 'spriocweb@gmail.com',
+        sales: 'spriocweb@gmail.com',
+        support: 'spriocweb@gmail.com',
+      },
+      landline: '8806828882',
+    },
+    about: {
+      companyName: 'SPRIOC WEB PVT LTD',
+      establishedYear: '',
+      description:
+        'SPRIOC WEB PVT LTD provides high-speed internet connectivity and related services.',
+      specializations: [
+        'High-speed broadband internet',
+        'Fiber broadband',
+        'Home and business internet solutions',
+        '24/7 technical support',
+      ],
+      serviceAreas: ['Dahanu', 'Masoli', 'Maharashtra'],
+      achievements: [],
+    },
+    reviewUrl: undefined,
+    website: 'https://sprioc.l2s.biz',
+    versionCheck: {
+      enabled: true,
+      checkInterval: 24,
+      forceUpdateEnabled: true,
+      packageName: 'com.spacecom.log2space.sprioc',
+      appStoreId: undefined,
+    },
+  },
+  'asw-service': {
+    clientId: 'asw-service',
+    clientName: 'ASW Service',
+    api: {
+      baseURL: 'https://asws.l2s.biz/l2s/api',
+      serverURL: 'https://asws.l2s.biz',
+      timeout: 30000,
+    },
+    branding: {
+      logo: 'isp_logo.png',
+      primaryColor: '#1976D2',
+      secondaryColor: '#42A5F5',
+      appName: 'ASW Service',
+      headerBackgroundImage: 'header_background.png',
+      logoDimensions: {
+        header: { width: 200, height: 140 },
+        login: { width: 300, height: 200 },
+      },
+    },
+    features: {
+      biometricAuth: true,
+      pushNotifications: true,
+      fileUpload: true,
+      multiLanguage: true,
+    },
+    contact: {
+      whatsappNumber: '9096385751',
+      headOffice: {
+        title: 'Head Office',
+        address: 'Shop no.2 omkar darshan, masoli, Dahanu - 401601',
+        customerSupport: '9096385751',
+      },
+      branchOffices: [],
+      emails: {
+        inquiries: 'asw@gmail.com',
+        sales: 'asw@gmail.com',
+        support: 'asw@gmail.com',
+      },
+      landline: '9096385751',
+    },
+    about: {
+      companyName: 'ASW Service',
+      establishedYear: '',
+      description:
+        'ASW Service provides high-speed internet connectivity and related services.',
+      specializations: [
+        'High-speed broadband internet',
+        'Fiber broadband',
+        'Home and business internet solutions',
+        '24/7 technical support',
+      ],
+      serviceAreas: ['Dahanu', 'Masoli', 'Maharashtra'],
+      achievements: [],
+    },
+    reviewUrl: undefined,
+    website: 'https://asws.l2s.biz',
+    versionCheck: {
+      enabled: true,
+      checkInterval: 24,
+      forceUpdateEnabled: true,
+      packageName: 'com.spacecom.log2space.aswservice',
+      appStoreId: undefined,
+    },
+  },
 };
 
 // Get current client configuration

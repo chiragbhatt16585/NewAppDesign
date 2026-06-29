@@ -1,7 +1,16 @@
-export type ReferFriendField = 'building' | 'area' | 'location' | 'pincode';
+export type ReferFriendAddressField = 'building' | 'area' | 'location' | 'pincode';
+
+export type ReferFriendField =
+  | ReferFriendAddressField
+  | 'firstName'
+  | 'lastName'
+  | 'mobileNumber'
+  | 'email'
+  | 'address1'
+  | 'city';
 
 export interface ReferFriendConfig {
-  hiddenFields: ReferFriendField[];
+  hiddenFields: ReferFriendAddressField[];
   optionalFields?: ReferFriendField[];
 }
 
@@ -9,6 +18,13 @@ const DEFAULT_REFER_FRIEND_CONFIG: ReferFriendConfig = {
   hiddenFields: [],
   optionalFields: [],
 };
+
+const ADDRESS_FIELDS: ReferFriendAddressField[] = [
+  'building',
+  'area',
+  'location',
+  'pincode',
+];
 
 export const getReferFriendConfig = (): ReferFriendConfig => {
   try {
@@ -22,13 +38,15 @@ export const getReferFriendConfig = (): ReferFriendConfig => {
   }
 };
 
-export const isReferFriendFieldVisible = (field: ReferFriendField): boolean => {
+export const isReferFriendFieldVisible = (field: ReferFriendAddressField): boolean => {
   return !getReferFriendConfig().hiddenFields.includes(field);
 };
 
 export const isReferFriendFieldRequired = (field: ReferFriendField): boolean => {
-  if (!isReferFriendFieldVisible(field)) {
-    return false;
+  if (ADDRESS_FIELDS.includes(field as ReferFriendAddressField)) {
+    if (!isReferFriendFieldVisible(field as ReferFriendAddressField)) {
+      return false;
+    }
   }
   return !(getReferFriendConfig().optionalFields ?? []).includes(field);
 };

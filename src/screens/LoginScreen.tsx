@@ -35,7 +35,7 @@ import { pinStorage } from '../services/pinStorage';
 import biometricAuthService from '../services/biometricAuth';
 import { ensureDeviceRegistrationAfterLogin } from '../services/notificationService';
 import { getClientConfig } from '../config/client-config';
-import { shouldShowOtpLoginLink } from '../config/login-ui-config';
+import { getDefaultLoginMode, shouldShowOtpLoginLink } from '../config/login-ui-config';
 import { getCustomApi } from '../config/customApiStorage';
 import { getWebsite } from '../config';
 import menuService from '../services/menuService';
@@ -54,6 +54,7 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
   const clientStrings = getClientStrings();
   const clientId = getClientConfig().clientId;
   const showOtpLoginLink = shouldShowOtpLoginLink(clientId);
+  const defaultLoginMode = getDefaultLoginMode(clientId);
 
   // Animation refs
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -70,7 +71,7 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [resendCountdown, setResendCountdown] = useState(0);
-  const [loginMode, setLoginMode] = useState<'password' | 'otp'>('password');
+  const [loginMode, setLoginMode] = useState<'password' | 'otp'>(defaultLoginMode);
   const [otpTargetPhone, setOtpTargetPhone] = useState<string | null>(null);
   const [otpSent, setOtpSent] = useState(false); // Track if OTP has been sent
   const [otpResponseUsername, setOtpResponseUsername] = useState<string | null>(null); // Username from send OTP response, used when submitting OTP
@@ -349,9 +350,9 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
         console.log('=== END FINAL FLAGS ===');
 
         // Ensure current loginMode is valid based on allowed methods
-        setLoginMode(prevMode => {
+        setLoginMode(() => {
           if (pwdFlag && otpAllowedForUi) {
-            return showOtpLoginLink ? prevMode : 'password';
+            return showOtpLoginLink ? defaultLoginMode : 'password';
           }
           if (pwdFlag && !otpAllowedForUi) {
             return 'password';

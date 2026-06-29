@@ -37,6 +37,7 @@ import useMenuSettings from '../hooks/useMenuSettings';
 import menuService from '../services/menuService';
 import dataCache from '../services/dataCache';
 import { getSafeDaysRemaining } from '../utils/usageUtils';
+import { getLatestReceiptDate } from '../utils/ledgerUtils';
 import { useAuthData } from '../utils/AuthDataContext';
 // import AIUsageInsights from '../components/AIUsageInsights';
 //import ispLogo from '../assets/isp_logo.png';
@@ -74,6 +75,7 @@ const HomeScreen = ({navigation}: any) => {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [planDetails, setPlanDetails] = useState<any>(null);
   const [advanceRenewalRecords, setAdvanceRenewalRecords] = useState<any[]>([]);
+  const [lastPaidDate, setLastPaidDate] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [banners, setBanners] = useState<any[]>([]);
   const [loadingBanners, setLoadingBanners] = useState(true);
@@ -103,6 +105,7 @@ const HomeScreen = ({navigation}: any) => {
           setGlobalAuthData(null);
           setPlanDetails(null);
           setAdvanceRenewalRecords([]);
+          setLastPaidDate(null);
           setBanners([]);
           lastUsernameRef.current = null;
         }
@@ -123,6 +126,7 @@ const HomeScreen = ({navigation}: any) => {
         setGlobalAuthData(null);
         setPlanDetails(null);
         setAdvanceRenewalRecords([]);
+        setLastPaidDate(null);
         setBanners([]);
         setIsLoading(true);
         isFetchingRef.current = false;
@@ -149,6 +153,7 @@ const HomeScreen = ({navigation}: any) => {
         setGlobalAuthData(null);
         setPlanDetails(null);
         setAdvanceRenewalRecords([]);
+        setLastPaidDate(null);
         setBanners([]);
         lastUsernameRef.current = sessionUsername;
         setCurrentUsername(sessionUsername);
@@ -420,6 +425,7 @@ const HomeScreen = ({navigation}: any) => {
     // Temporary client-specific overrides:
     // - Linkway: ALWAYS hide the profile menu regardless of API flags
     // - Metanet / log2space-common: ALWAYS show the profile menu (force enable avatar)
+    // - Microscan: ALWAYS hide billing information box
     try {
       const currentClientId = getClientConfig().clientId;
       if (currentClientId === 'linkway') {
@@ -430,6 +436,8 @@ const HomeScreen = ({navigation}: any) => {
         currentClientId === 'log2space-common'
       ) {
         result.profileMenuEnabled = true;
+      } else if (currentClientId === 'microscan') {
+        result.billingInformationEnabled = false;
       }
     } catch {
       // If client-config fails, just keep parsed value
@@ -680,6 +688,7 @@ const HomeScreen = ({navigation}: any) => {
         setGlobalAuthData(null); // CRITICAL: Clear global context too
         setPlanDetails(null);
         setAdvanceRenewalRecords([]);
+        setLastPaidDate(null);
         setBanners([]);
         setIsLoading(true);
         setLoadingBanners(true);
@@ -720,6 +729,7 @@ const HomeScreen = ({navigation}: any) => {
         setGlobalAuthData(null);
         setPlanDetails(null);
         setAdvanceRenewalRecords([]);
+        setLastPaidDate(null);
         setBanners([]);
         setIsLoading(true);
         setLoadingBanners(true);
@@ -907,6 +917,7 @@ const HomeScreen = ({navigation}: any) => {
         setGlobalAuthData(null);
         setPlanDetails(null);
         setAdvanceRenewalRecords([]);
+        setLastPaidDate(null);
         setBanners([]);
       }
       
@@ -945,6 +956,7 @@ const HomeScreen = ({navigation}: any) => {
           setGlobalAuthData(null);
           setPlanDetails(null);
           setAdvanceRenewalRecords([]);
+          setLastPaidDate(null);
           setBanners([]);
           
           // Clear all caches again
@@ -1013,6 +1025,20 @@ const HomeScreen = ({navigation}: any) => {
             duration: authResponse.planDuration || '30 days',
             dataLimit: authResponse.dataAllotted || '100 GB',
           });
+        }
+
+        try {
+          const clientConfig = getClientConfig();
+          const ledgerData = await apiService.userLedger(username, clientConfig.clientId);
+          const latestSession = await sessionManager.getCurrentSession();
+          if (latestSession?.username === username) {
+            setLastPaidDate(getLatestReceiptDate(ledgerData));
+          }
+        } catch (ledgerError: any) {
+          setLastPaidDate(null);
+          if (__DEV__) {
+            console.warn('[HomeScreen] userLedger => error:', ledgerError?.message || ledgerError);
+          }
         }
 
         try {
@@ -1104,6 +1130,7 @@ const HomeScreen = ({navigation}: any) => {
         setGlobalAuthData(null);
         setPlanDetails(null);
         setAdvanceRenewalRecords([]);
+        setLastPaidDate(null);
         setBanners([]);
         lastUsernameRef.current = sessionUsername;
         setCurrentUsername(sessionUsername);
@@ -1150,6 +1177,7 @@ const HomeScreen = ({navigation}: any) => {
           setGlobalAuthData(null);
           setPlanDetails(null);
           setAdvanceRenewalRecords([]);
+          setLastPaidDate(null);
           setBanners([]);
           return;
         }
@@ -1168,6 +1196,7 @@ const HomeScreen = ({navigation}: any) => {
           setGlobalAuthData(null);
           setPlanDetails(null);
           setAdvanceRenewalRecords([]);
+          setLastPaidDate(null);
           setBanners([]);
           setIsLoading(true);
           setLoadError(null);
@@ -1859,22 +1888,15 @@ const HomeScreen = ({navigation}: any) => {
                 </Text>
               </View>
 
-              {/* Payment Dues Row */}
+              {/* Last Paid Date */}
               <View style={styles.detailRow}>
-                <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>Payment Dues</Text>
-                <Text style={[styles.detailValue, {color: authData?.payment_dues > 0 ? '#F44336' : colors.primary}]}>
-                  {authData?.payment_dues > 0 ? `₹${authData?.payment_dues}` : 'Fully Paid'}
+                <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>
+                  {t('home.lastPaidDate')}
+                </Text>
+                <Text style={[styles.detailValue, {color: colors.text}]}>
+                  {lastPaidDate || t('home.noPaymentRecorded')}
                 </Text>
               </View>
-
-              {/* Pay Now button - only show if there are payment dues */}
-              {authData?.payment_dues > 0 && (
-                <TouchableOpacity 
-                  style={[styles.payNowButton, {backgroundColor: colors.primary, marginTop: 12}]} 
-                  onPress={handlePayBill}>
-                  <Text style={styles.payNowText}>Pay Now</Text>
-                </TouchableOpacity>
-              )}
             </>
           )}
 

@@ -1,0 +1,10 @@
+{
+  "login": {
+    "width": 300,
+    "height": 200
+  },
+  "header": {
+    "width": 200,
+    "height": 140
+  }
+}
