@@ -1,1 +1,28 @@
-{"android":{"namespace":"in.spacecom.log2space.client.microscan","applicationId":"in.spacecom.log2space.client.microscan","versionCode":42,"versionName":"1.0.1","signing":{"debug":{"storeFile":"debug.keystore","storePassword":"android","keyAlias":"androiddebugkey","keyPassword":"android"},"release":{"storeFile":"Log2SpaceEndUserMicroscan.jks","storePassword":"log2space","keyAlias":"log2space","keyPassword":"log2space"}}},"ios":{"bundleIdentifier":"com.l2sClient.microscan","marketingVersion":"3.0.4","buildNumber":"42","displayName":"Microscan"}}
+{
+  "android": {
+    "namespace": "in.spacecom.log2space.client.microscan",
+    "applicationId": "in.spacecom.log2space.client.microscan",
+    "versionCode": 46,
+    "versionName": "46",
+    "signing": {
+      "debug": {
+        "storeFile": "debug.keystore",
+        "storePassword": "android",
+        "keyAlias": "androiddebugkey",
+        "keyPassword": "android"
+      },
+      "release": {
+        "storeFile": "Log2SpaceEndUserMicroscan.jks",
+        "storePassword": "log2space",
+        "keyAlias": "log2space",
+        "keyPassword": "log2space"
+      }
+    }
+  },
+  "ios": {
+    "bundleIdentifier": "com.l2sClient.microscan",
+    "marketingVersion": "3.0.5",
+    "buildNumber": "43",
+    "displayName": "Microscan"
+  }
+}

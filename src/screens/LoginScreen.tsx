@@ -41,7 +41,7 @@ import { getWebsite } from '../config';
 import menuService from '../services/menuService';
 import Feather from 'react-native-vector-icons/Feather';
 import LeftBorderLine from '../components/LeftBorderLine';
-import {extractOtpFromText} from '../utils/otpUtils';
+import {extractOtpFromText, OTP_DIGIT_COUNT} from '../utils/otpUtils';
 
 const {width, height} = Dimensions.get('window');
 
@@ -299,13 +299,13 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
             }
           }
           
-          console.log('=== AUTH METHODS PARSING ===');
-          console.log('authMethods.password:', authMethods.password, '→ pwdFlag:', pwdFlag);
-          console.log('authMethods.sms_otp:', authMethods.sms_otp, '→ otpFlag:', otpFlag);
-          console.log('=== END AUTH METHODS PARSING ===');
+          // console.log('=== AUTH METHODS PARSING ===');
+          // console.log('authMethods.password:', authMethods.password, '→ pwdFlag:', pwdFlag);
+          // console.log('authMethods.sms_otp:', authMethods.sms_otp, '→ otpFlag:', otpFlag);
+          // console.log('=== END AUTH METHODS PARSING ===');
         } else {
           // No auth_methods in server config - both methods enabled by default
-          console.log('=== NO AUTH_METHODS IN SERVER CONFIG, BOTH METHODS ENABLED BY DEFAULT ===');
+          //console.log('=== NO AUTH_METHODS IN SERVER CONFIG, BOTH METHODS ENABLED BY DEFAULT ===');
         }
 
         // Website URL from isp_details.json (e.g. https://www.microscaninternet.com/)
@@ -342,12 +342,12 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
         setAllowOtpLogin(otpAllowedForUi);
         setShowLanguageSwitcher(languageShowFlag);
         
-        console.log('=== FINAL LOGIN METHOD FLAGS ===');
-        console.log('allowPasswordLogin:', pwdFlag);
-        console.log('allowOtpLogin:', otpAllowedForUi);
-        console.log('showOtpLoginLink:', showOtpLoginLink);
-        console.log('loginMode:', loginMode);
-        console.log('=== END FINAL FLAGS ===');
+        // console.log('=== FINAL LOGIN METHOD FLAGS ===');
+        // console.log('allowPasswordLogin:', pwdFlag);
+        // console.log('allowOtpLogin:', otpAllowedForUi);
+        // console.log('showOtpLoginLink:', showOtpLoginLink);
+        // console.log('loginMode:', loginMode);
+        // console.log('=== END FINAL FLAGS ===');
 
         // Ensure current loginMode is valid based on allowed methods
         setLoginMode(() => {
@@ -641,7 +641,7 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
       if (!otpSent) {
         Alert.alert('Info', 'Please click "Send OTP" first');
         isValid = false;
-      } else if (!otp || otp.trim() === '') {
+      } else if (!otp || otp.trim().length !== OTP_DIGIT_COUNT) {
         setOtpError(true);
         isValid = false;
       } else {
@@ -1009,6 +1009,10 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
 
   const appVersion = DeviceInfo.getVersion();
   const buildNumber = DeviceInfo.getBuildNumber();
+  const versionLabel =
+    clientId === 'microscan' && Platform.OS === 'android'
+      ? buildNumber || appVersion
+      : `${appVersion} (${buildNumber})`;
 
   // Language icon handler: show language selection modal
   const handleLanguageIconPress = () => {
@@ -1222,7 +1226,7 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
                           keyboardType="number-pad"
                           textContentType="oneTimeCode"
                           autoComplete="sms-otp"
-                          maxLength={8}
+                          maxLength={6}
                           value={otp}
                           onChangeText={(text) => {
                             const parsed = extractOtpFromText(text, [
@@ -1354,6 +1358,7 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
               <Feather name="activity" size={22} color={colors.primary} style={styles.featureIcon} />
               <Text style={[styles.featureText, {color: colors.text}]}>Speed Test</Text> 
             </TouchableOpacity>
+            {clientId !== 'microscan' && (
             <TouchableOpacity
               style={[styles.featureCard, {backgroundColor: colors.card, borderColor: colors.border}]}
               onPress={handleSupport}
@@ -1362,6 +1367,7 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
               <Feather name="headphones" size={22} color={colors.primary} style={styles.featureIcon} />
               <Text style={[styles.featureText, {color: colors.text}]}>Support</Text>
             </TouchableOpacity>
+            )}
             {effectiveWebsiteUrl && (
               <TouchableOpacity 
                 style={[styles.featureCard, {backgroundColor: colors.card, borderColor: colors.border}]}
@@ -1403,7 +1409,7 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
           </Text>
           {/* Version Info */}
           <Text style={[styles.versionText, {color: colors.textSecondary}]}> 
-            Version {appVersion} ({buildNumber}) 
+            Version {versionLabel} 
           </Text>
         </View>
       </KeyboardAvoidingView>

@@ -14,7 +14,6 @@ export interface VersionInfo {
 
 export interface AuthUserResponse {
   end_user_app_version?: string;
-  end_user_app_version3?: string;
   [key: string]: any;
 }
 
@@ -53,12 +52,52 @@ class VersionCheckService {
     }
   }
 
+  private parseVersionField(raw: unknown): Record<string, any> | null {
+    if (raw == null || raw === '') {
+      return null;
+    }
+
+    if (typeof raw === 'object') {
+      return raw as Record<string, any>;
+    }
+
+    if (typeof raw !== 'string') {
+      return null;
+    }
+
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (typeof parsed === 'string') {
+        return JSON.parse(parsed);
+      }
+      return parsed;
+    } catch {
+      return null;
+    }
+  }
+
+  private extractVersionData(authData: AuthUserResponse): {
+    versionData: Record<string, any>;
+    versionSource: string;
+  } | null {
+    const versionData = this.parseVersionField(authData.end_user_app_version);
+    if (versionData) {
+      return { versionData, versionSource: 'end_user_app_version' };
+    }
+
+    return null;
+  }
+
   /**
    * Check for app updates from server using existing authUser API
    */
-  async checkForUpdates(): Promise<VersionInfo | null> {
+  async checkForUpdates(options?: { forceRefresh?: boolean }): Promise<VersionInfo | null> {
     if (this.isChecking) {
-      // console.log('Version check already in progress');
       return null;
     }
 
@@ -72,68 +111,26 @@ class VersionCheckService {
       // Get username from session manager
       const username = await this.getCurrentUsername();
       if (!username) {
-        // User is not logged in - this is expected, not an error
-        // Version check will be performed after login
         return null;
+      }
+
+      if (options?.forceRefresh) {
+        apiService.clearAuthUserCache();
       }
 
       // Get version info from authUser API
       const authData = await apiService.authUser(username);
-      
-      // Check for version data - prioritize end_user_app_version3
-      let versionData = null;
-      let versionSource = '';
-      
-      // If end_user_app_version3 exists, use it exclusively (ignore end_user_app_version)
-      if (authData.end_user_app_version3) {
-        try {
-          versionData = JSON.parse(authData.end_user_app_version3);
-          versionSource = 'end_user_app_version3';
-          //console.log('✅ Using end_user_app_version3 (ignoring end_user_app_version)');
-        } catch (parseError) {
-          //console.error('Error parsing end_user_app_version3:', parseError);
-          // If parsing fails, don't fallback - return null
-          return null;
-        }
-      } else if (authData.end_user_app_version) {
-        // Only check end_user_app_version if end_user_app_version3 is not present
-        try {
-          versionData = JSON.parse(authData.end_user_app_version);
-          versionSource = 'end_user_app_version';
-          //console.log('✅ Using end_user_app_version (end_user_app_version3 not available)');
-        } catch (parseError) {
-          //console.error('Error parsing end_user_app_version:', parseError);
-          return null;
-        }
-      }
+      const extracted = this.extractVersionData(authData);
 
-      if (!versionData) {
-        // console.log('❌ No version data found. Checked: end_user_app_version3, end_user_app_version');
+      if (!extracted) {
+        if (__DEV__) {
+          console.log('[VersionCheck] No version data in authUser response');
+        }
         return null;
       }
 
-      // console.log('🔎 VersionCheck source selection:', {
-      //   versionSource,
-      //   hasEndUserAppVersion3: !!authData.end_user_app_version3,
-      //   hasEndUserAppVersion: !!authData.end_user_app_version,
-      // });
-      
-      // Print all version information
-      // console.log('📱 ========== VERSION INFORMATION ==========');
-      // console.log('📋 Version Source:', versionSource);
-      // console.log('📋 Using end_user_app_version3?', versionSource === 'end_user_app_version3');
-      // console.log('📋 Raw API Response - end_user_app_version3:', authData.end_user_app_version3 ? 'EXISTS' : 'NOT FOUND');
-      // console.log('📋 Raw API Response - end_user_app_version:', authData.end_user_app_version ? 'EXISTS' : 'NOT FOUND');
-      // console.log('📋 All Version Fields:', Object.keys(versionData));
-      // console.log('📋 Full Version Data:', JSON.stringify(versionData, null, 2));
-      // console.log('📱 iOS App Version:', versionData.iOSAppVersion || 'Not set');
-      // console.log('📱 iOS Beta App Version:', versionData.iOSBetaAppVersion || 'Not set');
-      // console.log('🤖 Android App Version:', versionData.androidAppVersion || 'Not set');
-      // console.log('🤖 Android Beta App Version:', versionData.androidBetaAppVersion || 'Not set');
-      // console.log('📱 Current App Version (iOS):', isIOS ? currentVersion : 'N/A');
-      // console.log('🤖 Current Build Number (Android):', !isIOS ? currentVersion : 'N/A');
-      // console.log('==========================================');
-      
+      const { versionData, versionSource } = extracted;
+
       // Use only stable production keys for update checks.
       // Beta keys should not affect production apps.
       const serverVersionForCompare = this.getStableServerVersion(versionData, isIOS);
@@ -225,17 +222,23 @@ class VersionCheckService {
         // });
       }
 
+      if (__DEV__) {
+        console.log('[VersionCheck] decision:', {
+          versionSource,
+          platform: Platform.OS,
+          currentAppVersion,
+          currentBuildNumber,
+          androidAppVersion: versionData?.androidAppVersion,
+          androidBetaAppVersion: versionData?.androidBetaAppVersion,
+          serverVersionForCompare,
+          currentVersionForResult,
+          needsUpdate,
+        });
+      }
+
       if (needsUpdate) {
         const serverVersion = this.getStableServerVersion(versionData, isIOS);
         const updateUrl = this.getStoreUrl();
-        
-        // console.log('Update needed, returning version info:', {
-        //   currentVersion: currentVersionForResult,
-        //   latestVersion: serverVersion,
-        //   needsUpdate,
-        //   updateUrl,
-        //   forceUpdate: true
-        // });
         
         return {
           currentVersion: currentVersionForResult,
@@ -298,19 +301,8 @@ class VersionCheckService {
 
       // Call authUser API
       const authData = await apiService.authUser(username);
-      
-      // Parse the end_user_app_version JSON string
-      let versionData = null;
-      if (authData.end_user_app_version) {
-        try {
-          versionData = JSON.parse(authData.end_user_app_version3);
-          // console.log('Parsed version data from end_user_app_version:', versionData);
-          // console.log('Available version fields:', Object.keys(versionData));
-        } catch (parseError) {
-          // console.error('Error parsing end_user_app_version:', parseError);
-          return null;
-        }
-      }
+      const extracted = this.extractVersionData(authData);
+      const versionData = extracted?.versionData ?? null;
 
       if (!versionData) {
         // console.log('No version data found in end_user_app_version');

@@ -19,6 +19,9 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { useTheme } from '../utils/ThemeContext';
 import { getThemeColors } from '../utils/themeStyles';
 import CommonHeader from '../components/CommonHeader';
+import TicketCreatedSuccessModal from '../components/TicketCreatedSuccessModal';
+import ActiveTicketModal from '../components/ActiveTicketModal';
+import { buildTicketErrorModalData, ActiveTicketModalData } from '../utils/ticketErrors';
 import { resolveTroubleshootingImages } from '../config/troubleshooting-image-map';
 import { getClientConfig } from '../config/client-config';
 import { apiService, getAppUrl } from '../services/api';
@@ -34,16 +37,6 @@ import {
 
 /** Flows/titles/steps load from selfcareFetchCrmRuntimeConfigs (not a bundled JSON file). */
 const USER_SELF_DIAGNOSIS_CONFIG = 'user_self_diagnosis';
-const isTicketResolvedStatus = (status: string): boolean => {
-  const normalized = String(status || '')
-    .toLowerCase()
-    .replace(/[\s_]/g, '');
-  return (
-    normalized === 'resolved' ||
-    normalized === 'closed' ||
-    normalized === 'closedonline'
-  );
-};
 
 /** One row per unique step label (avoids duplicate "Check Router Power & Lights"). */
 function formatAnswersForSummary(answers: TroubleshootingAnswer[]): string[] {
@@ -73,6 +66,11 @@ const TroubleshootingScreen = ({ navigation }: any) => {
   const [answers, setAnswers] = useState<TroubleshootingAnswer[]>([]);
   const [ticketDescription, setTicketDescription] = useState('');
   const [isSubmittingTicket, setIsSubmittingTicket] = useState(false);
+  const [ticketSuccessModal, setTicketSuccessModal] = useState<{
+    ticketNo: string;
+    dateCreated: string;
+  } | null>(null);
+  const [activeTicketModal, setActiveTicketModal] = useState<ActiveTicketModalData | null>(null);
   const selectedFlowIdRef = useRef<string | null>(null);
 
   const loadRuntimeConfig = useCallback(async (showHubLoading = true) => {
@@ -251,19 +249,6 @@ const TroubleshootingScreen = ({ navigation }: any) => {
 
       const formattedUsername = username.toLowerCase().trim();
       const realm = getClientConfig().clientId;
-      if (realm === 'microscan') {
-        const existingTickets = await apiService.lastTenComplaints(realm);
-        const hasActiveTicket = existingTickets.some(
-          (ticket: { status?: string }) => !isTicketResolvedStatus(ticket?.status || ''),
-        );
-        if (hasActiveTicket) {
-          Alert.alert(
-            'Ticket already open',
-            'Please wait until your existing ticket is resolved before raising a new one.',
-          );
-          return;
-        }
-      }
       const problem = {
         value: selectedFlow.id,
         label: selectedFlow.title,
@@ -277,18 +262,33 @@ const TroubleshootingScreen = ({ navigation }: any) => {
       );
 
       if (response?.success) {
-        Alert.alert('Success', response.message || 'Ticket created successfully!', [
-          {
-            text: 'OK',
-            onPress: () => navigation.navigate('Tickets'),
-          },
-        ]);
+        let ticketNo = response.ticketNo || '';
+        let dateCreated = response.dateCreated || '';
+
+        if (!ticketNo) {
+          try {
+            const tickets = await apiService.lastTenComplaints(realm);
+            const latest = tickets?.[0];
+            if (latest) {
+              ticketNo = latest.ticketNo || '';
+              dateCreated = latest.dateCreated || dateCreated;
+            }
+          } catch {
+            // Show modal with fallback date if ticket list fetch fails
+          }
+        }
+
+        setTicketSuccessModal({
+          ticketNo,
+          dateCreated,
+        });
         return;
       }
 
       throw new Error(response?.message || 'Failed to create ticket');
     } catch (error: any) {
-      Alert.alert('Error', error?.message || 'Failed to create ticket');
+      const apiMessage = error?.message || 'Failed to create ticket';
+      setActiveTicketModal(buildTicketErrorModalData(apiMessage));
     } finally {
       setIsSubmittingTicket(false);
     }
@@ -737,6 +737,30 @@ const TroubleshootingScreen = ({ navigation }: any) => {
         ) : null}
       </ScrollView>
       {renderResolvedModal()}
+      <TicketCreatedSuccessModal
+        visible={!!ticketSuccessModal}
+        ticketNo={ticketSuccessModal?.ticketNo}
+        dateCreated={ticketSuccessModal?.dateCreated}
+        onClose={() => setTicketSuccessModal(null)}
+        onViewTickets={() => {
+          setTicketSuccessModal(null);
+          navigation.navigate('Tickets');
+        }}
+      />
+      <ActiveTicketModal
+        visible={!!activeTicketModal}
+        message={activeTicketModal?.message}
+        title={activeTicketModal?.title}
+        actionLabel={activeTicketModal?.actionLabel}
+        onClose={() => setActiveTicketModal(null)}
+        onAction={() => {
+          const shouldNavigate = activeTicketModal?.navigateToTickets;
+          setActiveTicketModal(null);
+          if (shouldNavigate) {
+            navigation.navigate('Tickets');
+          }
+        }}
+      />
     </SafeAreaView>
   );
 };

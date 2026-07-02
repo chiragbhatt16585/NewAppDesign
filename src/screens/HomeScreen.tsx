@@ -37,7 +37,6 @@ import useMenuSettings from '../hooks/useMenuSettings';
 import menuService from '../services/menuService';
 import dataCache from '../services/dataCache';
 import { getSafeDaysRemaining } from '../utils/usageUtils';
-import { getLatestReceiptDate } from '../utils/ledgerUtils';
 import { useAuthData } from '../utils/AuthDataContext';
 // import AIUsageInsights from '../components/AIUsageInsights';
 //import ispLogo from '../assets/isp_logo.png';
@@ -47,6 +46,9 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 
 const {width: screenWidth} = Dimensions.get('window');
 const modalImageHeight = screenWidth * 0.9;
+
+const usernamesMatch = (a?: string | null, b?: string | null) =>
+  (a?.trim().toLowerCase() ?? '') === (b?.trim().toLowerCase() ?? '');
 
 const HomeScreen = ({navigation}: any) => {
   const isFocused = useIsFocused();
@@ -75,7 +77,6 @@ const HomeScreen = ({navigation}: any) => {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [planDetails, setPlanDetails] = useState<any>(null);
   const [advanceRenewalRecords, setAdvanceRenewalRecords] = useState<any[]>([]);
-  const [lastPaidDate, setLastPaidDate] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [banners, setBanners] = useState<any[]>([]);
   const [loadingBanners, setLoadingBanners] = useState(true);
@@ -105,7 +106,6 @@ const HomeScreen = ({navigation}: any) => {
           setGlobalAuthData(null);
           setPlanDetails(null);
           setAdvanceRenewalRecords([]);
-          setLastPaidDate(null);
           setBanners([]);
           lastUsernameRef.current = null;
         }
@@ -126,7 +126,6 @@ const HomeScreen = ({navigation}: any) => {
         setGlobalAuthData(null);
         setPlanDetails(null);
         setAdvanceRenewalRecords([]);
-        setLastPaidDate(null);
         setBanners([]);
         setIsLoading(true);
         isFetchingRef.current = false;
@@ -153,7 +152,6 @@ const HomeScreen = ({navigation}: any) => {
         setGlobalAuthData(null);
         setPlanDetails(null);
         setAdvanceRenewalRecords([]);
-        setLastPaidDate(null);
         setBanners([]);
         lastUsernameRef.current = sessionUsername;
         setCurrentUsername(sessionUsername);
@@ -199,6 +197,25 @@ const HomeScreen = ({navigation}: any) => {
 
   const primaryAdvanceRenewal = advanceRenewalRecords[0] ?? null;
 
+  const normalizeRenewalDate = (value?: string | null) => {
+    const trimmed = value?.trim();
+    if (!trimmed || trimmed.toUpperCase() === 'NA') {
+      return '';
+    }
+    return trimmed;
+  };
+
+  const microscanNextRenewalDate = useMemo(() => {
+    const advanceRenewalDate = normalizeRenewalDate(
+      primaryAdvanceRenewal?.next_renewal_expiry_date || primaryAdvanceRenewal?.next_renewal_date,
+    );
+    if (advanceRenewalDate) {
+      return advanceRenewalDate;
+    }
+
+    return normalizeRenewalDate(authData?.exp_date);
+  }, [primaryAdvanceRenewal, authData?.exp_date]);
+
   const renderAdvanceRenewalDetailRow = (label: string, value: string) => (
     <View style={styles.billRow} key={label}>
       <Text style={[styles.billLabel, {color: colors.textSecondary}]}>{label}</Text>
@@ -213,7 +230,6 @@ const HomeScreen = ({navigation}: any) => {
       entry_date?: string;
       next_renewal_date?: string;
       next_renewal_expiry_date?: string;
-      exp_date?: string;
     },
     titleSuffix = '',
   ) => (
@@ -227,11 +243,11 @@ const HomeScreen = ({navigation}: any) => {
         </Text>
       </View>
       <View style={styles.billDetails}>
-        {renderAdvanceRenewalDetailRow('Entry Date', record.entry_date || 'N/A')}
-        {renderAdvanceRenewalDetailRow('Renewal Date', record.next_renewal_date || 'N/A')}
+        {renderAdvanceRenewalDetailRow('Renewal Date', record.entry_date || 'N/A')}
+        {renderAdvanceRenewalDetailRow('Next Plan Activation Date', record.next_renewal_date || 'N/A')}
         {renderAdvanceRenewalDetailRow(
-          'Expiry Date',
-          record.next_renewal_expiry_date || record.exp_date || 'N/A',
+          'Next Expiry Date',
+          record.next_renewal_expiry_date || 'N/A',
         )}
       </View>
     </View>
@@ -262,7 +278,7 @@ const HomeScreen = ({navigation}: any) => {
   ]);
   const isHeaderBgClient = headerBgClients.has(currentClientId);
   const activeStatusColor = isMicroscan ? '#4CAF50' : colors.primary;
-  const loginStatusColor = isMicroscan ? '#4CAF50' : colors.primary;
+  const loginStatusColor = colors.primary;
   
   // CRITICAL: Synchronous check to prevent rendering old user data
   // This runs on every render to immediately detect username changes
@@ -688,7 +704,6 @@ const HomeScreen = ({navigation}: any) => {
         setGlobalAuthData(null); // CRITICAL: Clear global context too
         setPlanDetails(null);
         setAdvanceRenewalRecords([]);
-        setLastPaidDate(null);
         setBanners([]);
         setIsLoading(true);
         setLoadingBanners(true);
@@ -729,7 +744,6 @@ const HomeScreen = ({navigation}: any) => {
         setGlobalAuthData(null);
         setPlanDetails(null);
         setAdvanceRenewalRecords([]);
-        setLastPaidDate(null);
         setBanners([]);
         setIsLoading(true);
         setLoadingBanners(true);
@@ -917,7 +931,6 @@ const HomeScreen = ({navigation}: any) => {
         setGlobalAuthData(null);
         setPlanDetails(null);
         setAdvanceRenewalRecords([]);
-        setLastPaidDate(null);
         setBanners([]);
       }
       
@@ -956,7 +969,6 @@ const HomeScreen = ({navigation}: any) => {
           setGlobalAuthData(null);
           setPlanDetails(null);
           setAdvanceRenewalRecords([]);
-          setLastPaidDate(null);
           setBanners([]);
           
           // Clear all caches again
@@ -992,9 +1004,12 @@ const HomeScreen = ({navigation}: any) => {
         const currentSession = await sessionManager.getCurrentSession();
         const currentUsername = currentSession?.username;
         
-        if (!currentUsername || currentUsername !== username) {
+        if (!currentUsername || !usernamesMatch(currentUsername, username)) {
           if (__DEV__) {
-            console.warn('[HomeScreen] Session username changed during fetch');
+            console.warn('[HomeScreen] Session username changed during fetch', {
+              fetchUsername: username,
+              currentUsername,
+            });
           }
           setLoadError('Session changed. Pull down to refresh.');
           return;
@@ -1028,20 +1043,6 @@ const HomeScreen = ({navigation}: any) => {
         }
 
         try {
-          const clientConfig = getClientConfig();
-          const ledgerData = await apiService.userLedger(username, clientConfig.clientId);
-          const latestSession = await sessionManager.getCurrentSession();
-          if (latestSession?.username === username) {
-            setLastPaidDate(getLatestReceiptDate(ledgerData));
-          }
-        } catch (ledgerError: any) {
-          setLastPaidDate(null);
-          if (__DEV__) {
-            console.warn('[HomeScreen] userLedger => error:', ledgerError?.message || ledgerError);
-          }
-        }
-
-        try {
           const advanceRenewalRequest = {
             username,
             plan_type: 'adv_renewal',
@@ -1058,8 +1059,18 @@ const HomeScreen = ({navigation}: any) => {
           });
 
           const latestSession = await sessionManager.getCurrentSession();
-          if (latestSession?.username === username) {
+          if (usernamesMatch(latestSession?.username, username)) {
             setAdvanceRenewalRecords(advanceRenewals);
+            console.log('[HomeScreen] advanceRenewalRecords state updated:', {
+              count: advanceRenewals.length,
+              primary: advanceRenewals[0] ?? null,
+            });
+          } else if (__DEV__) {
+            console.warn('[HomeScreen] Skipped advanceRenewalRecords update - session mismatch', {
+              fetchUsername: username,
+              sessionUsername: latestSession?.username,
+              receivedCount: advanceRenewals?.length ?? 0,
+            });
           }
         } catch (advanceRenewalError: any) {
           setAdvanceRenewalRecords([]);
@@ -1130,7 +1141,6 @@ const HomeScreen = ({navigation}: any) => {
         setGlobalAuthData(null);
         setPlanDetails(null);
         setAdvanceRenewalRecords([]);
-        setLastPaidDate(null);
         setBanners([]);
         lastUsernameRef.current = sessionUsername;
         setCurrentUsername(sessionUsername);
@@ -1177,7 +1187,6 @@ const HomeScreen = ({navigation}: any) => {
           setGlobalAuthData(null);
           setPlanDetails(null);
           setAdvanceRenewalRecords([]);
-          setLastPaidDate(null);
           setBanners([]);
           return;
         }
@@ -1196,7 +1205,6 @@ const HomeScreen = ({navigation}: any) => {
           setGlobalAuthData(null);
           setPlanDetails(null);
           setAdvanceRenewalRecords([]);
-          setLastPaidDate(null);
           setBanners([]);
           setIsLoading(true);
           setLoadError(null);
@@ -1880,23 +1888,44 @@ const HomeScreen = ({navigation}: any) => {
                 </Text>
               </View>
 
-              {/* Login Status */}
+              {isMicroscan && microscanNextRenewalDate && (
+                <View style={styles.detailRow}>
+                  <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>Next Renewal Date</Text>
+                  <Text style={[styles.detailValue, {color: colors.text}]}>
+                    {microscanNextRenewalDate}
+                  </Text>
+                </View>
+              )}
+
+              {!isMicroscan && (
+                <View style={styles.detailRow}>
+                  <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>Login Status</Text>
+                  <Text style={[styles.detailValue, {color: authData?.login_status === 'IN' ? loginStatusColor : '#F44336'}]}>
+                    {authData?.login_status === 'IN' ? 'Online' : 'Offline'}
+                  </Text>
+                </View>
+              )}
+
               <View style={styles.detailRow}>
-                <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>Login Status</Text>
-                <Text style={[styles.detailValue, {color: authData?.login_status === 'IN' ? loginStatusColor : '#F44336'}]}>
-                  {authData?.login_status === 'IN' ? 'Online' : 'Offline'}
+                <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>Payment Dues</Text>
+                <Text style={[styles.detailValue, {color: Number(authData?.payment_dues) > 0 ? '#F44336' : colors.primary}]}>
+                  {Number(authData?.payment_dues) > 0
+                    ? `₹${authData?.payment_dues}`
+                    : isMicroscan
+                      ? '-'
+                      : 'Fully Paid'}
                 </Text>
               </View>
 
-              {/* Last Paid Date */}
-              <View style={styles.detailRow}>
-                <Text style={[styles.detailLabel, {color: colors.textSecondary}]}>
-                  {t('home.lastPaidDate')}
-                </Text>
-                <Text style={[styles.detailValue, {color: colors.text}]}>
-                  {lastPaidDate || t('home.noPaymentRecorded')}
-                </Text>
-              </View>
+              {Number(authData?.payment_dues) > 0 && (
+                <TouchableOpacity
+                  style={[styles.payNowButton, {backgroundColor: colors.primary, marginTop: 12}]}
+                  onPress={handlePayBill}>
+                  <Text style={styles.payNowText}>
+                    {isMicroscan ? t('payBill.payDues') : 'Pay Now'}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </>
           )}
 
@@ -2179,7 +2208,7 @@ const HomeScreen = ({navigation}: any) => {
         </View>
         )}
 
-        {primaryAdvanceRenewal ? renderAdvanceRenewalDetailsBox(primaryAdvanceRenewal) : null}
+        {!isMicroscan && primaryAdvanceRenewal ? renderAdvanceRenewalDetailsBox(primaryAdvanceRenewal) : null}
 
         {/* More Options*/}
         {/* <View style={styles.section}>

@@ -19,6 +19,7 @@ import biometricAuthService from '../services/biometricAuth';
 import { pinStorage } from '../services/pinStorage';
 import DeviceInfo from 'react-native-device-info';
 import versionCheckService from '../services/versionCheck';
+import { apiService } from '../services/api';
 import useMenuSettings from '../hooks/useMenuSettings';
 import LeftBorderLine from '../components/LeftBorderLine';
 import { getClientConfig } from '../config/client-config';
@@ -107,7 +108,8 @@ const SettingsScreen = ({ navigation }: any) => {
   const handleCheckForUpdates = async () => {
     try {
       setIsChecking(true);
-      const versionInfo = await versionCheckService.checkForUpdates();
+      apiService.clearAuthUserCache();
+      const versionInfo = await versionCheckService.checkForUpdates({ forceRefresh: true });
       
       if (versionInfo && versionInfo.needsUpdate) {
         // Show update dialog using Alert

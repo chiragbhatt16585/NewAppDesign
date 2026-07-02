@@ -313,10 +313,6 @@ const TicketsScreen = ({navigation, route}: any) => {
 
   const handleCreateTicket = () => {
     if (isMicroscan && hasActiveMicroscanTicket) {
-      Alert.alert(
-        'Ticket already open',
-        'Please wait until your existing ticket is resolved before raising a new one.',
-      );
       return;
     }
     if (showFixYourInternet) {

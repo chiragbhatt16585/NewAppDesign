@@ -25,6 +25,9 @@ import {
   isFixYourInternetEnabled,
 } from '../utils/appSettingsFromMenu';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import TicketCreatedSuccessModal from '../components/TicketCreatedSuccessModal';
+import ActiveTicketModal from '../components/ActiveTicketModal';
+import { buildTicketErrorModalData, ActiveTicketModalData } from '../utils/ticketErrors';
 
 interface AddTicketScreenProps {
   visible: boolean;
@@ -77,6 +80,11 @@ const AddTicketScreen = ({
   const [faqItems, setFaqItems] = useState<any[]>([]);
   const [showFaqModal, setShowFaqModal] = useState(false);
   const [loadingFaqData, setLoadingFaqData] = useState(false);
+  const [ticketSuccessModal, setTicketSuccessModal] = useState<{
+    ticketNo: string;
+    dateCreated: string;
+  } | null>(null);
+  const [activeTicketModal, setActiveTicketModal] = useState<ActiveTicketModalData | null>(null);
 
   // Determine if description (remarks) should be shown based on menu settings for Tickets
   const allowDescription: boolean = useMemo(() => {
@@ -238,6 +246,28 @@ const AddTicketScreen = ({
     }
   };
 
+  const finalizeTicketCreated = () => {
+    setTicketSuccessModal(null);
+    onClose();
+    if (onTicketCreated) {
+      onTicketCreated();
+    }
+  };
+
+  const handleViewTicketsAfterCreate = () => {
+    finalizeTicketCreated();
+    navigation?.navigate('Tickets');
+  };
+
+  const handleTicketErrorAction = () => {
+    const shouldNavigate = activeTicketModal?.navigateToTickets;
+    setActiveTicketModal(null);
+    if (shouldNavigate) {
+      finalizeTicketCreated();
+      navigation?.navigate('Tickets');
+    }
+  };
+
   const handleSubmit = async () => {
     if (!selectedProblem) {
       Alert.alert('Error', 'Please select a problem type');
@@ -278,32 +308,33 @@ const AddTicketScreen = ({
       );
 
       if (response && response.success) {
-        Alert.alert(
-          'Success', 
-          response.message || 'Ticket created successfully!',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                // Reset form
-                setSelectedProblem(null);
-                setFaqItems([]);
-                setProblemDescription('');
-                onClose();
-                // Notify parent component to refresh tickets
-                if (onTicketCreated) {
-                  onTicketCreated();
-                }
-              }
+        let ticketNo = response.ticketNo || '';
+        let dateCreated = response.dateCreated || '';
+
+        if (!ticketNo) {
+          try {
+            const tickets = await apiService.lastTenComplaints(realm);
+            const latest = tickets?.[0];
+            if (latest) {
+              ticketNo = latest.ticketNo || '';
+              dateCreated = latest.dateCreated || dateCreated;
             }
-          ]
-        );
+          } catch {
+            // Fall back to modal with current date only
+          }
+        }
+
+        setSelectedProblem(null);
+        setFaqItems([]);
+        setProblemDescription('');
+        setTicketSuccessModal({ ticketNo, dateCreated });
       } else {
         throw new Error(response?.message || 'Failed to create ticket');
       }
     } catch (error: any) {
       console.error('Error creating ticket:', error);
-      Alert.alert('Error', error.message || 'Failed to create ticket');
+      const apiMessage = error.message || 'Failed to create ticket';
+      setActiveTicketModal(buildTicketErrorModalData(apiMessage));
     } finally {
       setIsSubmitting(false);
     }
@@ -552,6 +583,21 @@ const AddTicketScreen = ({
           </View>
         </View>
         {renderFaqModal()}
+        <TicketCreatedSuccessModal
+          visible={!!ticketSuccessModal}
+          ticketNo={ticketSuccessModal?.ticketNo}
+          dateCreated={ticketSuccessModal?.dateCreated}
+          onClose={finalizeTicketCreated}
+          onViewTickets={handleViewTicketsAfterCreate}
+        />
+        <ActiveTicketModal
+          visible={!!activeTicketModal}
+          message={activeTicketModal?.message}
+          title={activeTicketModal?.title}
+          actionLabel={activeTicketModal?.actionLabel}
+          onClose={() => setActiveTicketModal(null)}
+          onAction={handleTicketErrorAction}
+        />
       </KeyboardAvoidingView>
     </Modal>
   );

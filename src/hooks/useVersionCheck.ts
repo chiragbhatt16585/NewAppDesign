@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import versionCheckService, { VersionInfo } from '../services/versionCheck';
 import { getClientConfig } from '../config/client-config';
 import { useAuth } from '../utils/AuthContext';
+import sessionManager from '../services/sessionManager';
 
 const VERSION_CHECK_KEY = 'last_version_check';
 const VERSION_CHECK_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
@@ -13,6 +14,7 @@ export const useVersionCheck = () => {
   const [isChecking, setIsChecking] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [lastDismissedTime, setLastDismissedTime] = useState(0);
+  const checkInFlightRef = useRef(false);
 
   // Get authentication state to only check version when user is logged in
   const { isAuthenticated } = useAuth();
@@ -58,17 +60,21 @@ export const useVersionCheck = () => {
   /**
    * Perform version check
    */
-  const checkForUpdates = useCallback(async (showModal: boolean = true) => {
-    // Only check for updates if user is authenticated
-    if (!isAuthenticated) {
+  const checkForUpdates = useCallback(async (
+    showModal: boolean = true,
+    forceRefresh: boolean = false,
+  ) => {
+    const isLoggedIn = await sessionManager.isLoggedIn();
+    if (!isAuthenticated && !isLoggedIn) {
       return;
     }
     
-    if (!isVersionCheckEnabled || isChecking) return;
+    if (!isVersionCheckEnabled || checkInFlightRef.current) return;
 
     try {
+      checkInFlightRef.current = true;
       setIsChecking(true);
-      const versionInfo = await versionCheckService.checkForUpdates();
+      const versionInfo = await versionCheckService.checkForUpdates({ forceRefresh });
       
       if (versionInfo && versionInfo.needsUpdate) {
         setVersionInfo(versionInfo);
@@ -81,9 +87,10 @@ export const useVersionCheck = () => {
     } catch (error) {
       console.error('Error checking for updates:', error);
     } finally {
+      checkInFlightRef.current = false;
       setIsChecking(false);
     }
-  }, [isAuthenticated, isVersionCheckEnabled, isChecking, updateLastCheckTime]);
+  }, [isAuthenticated, isVersionCheckEnabled, updateLastCheckTime]);
 
   /**
    * Check for updates on app state change (when app comes to foreground)
@@ -119,7 +126,7 @@ export const useVersionCheck = () => {
    * Force check for updates (manual check)
    */
   const forceCheckForUpdates = useCallback(() => {
-    checkForUpdates(true);
+    checkForUpdates(true, true);
   }, [checkForUpdates]);
 
   // Set up app state listener
@@ -127,16 +134,19 @@ export const useVersionCheck = () => {
     if (!isVersionCheckEnabled) return;
 
     const subscription = AppState.addEventListener('change', handleAppStateChange);
-    
-    // Check immediately on mount only if user is authenticated
-    if (isAuthenticated) {
-      checkForUpdates(true);
-    }
 
     return () => {
       subscription?.remove();
     };
-  }, [isAuthenticated, isVersionCheckEnabled, handleAppStateChange]); // Removed checkForUpdates from dependencies
+  }, [isVersionCheckEnabled, handleAppStateChange]);
+
+  // Run version check once user session is available
+  useEffect(() => {
+    if (!isVersionCheckEnabled) return;
+    if (!isAuthenticated) return;
+
+    checkForUpdates(true, true);
+  }, [isAuthenticated, isVersionCheckEnabled, checkForUpdates]);
 
   return {
     versionInfo,

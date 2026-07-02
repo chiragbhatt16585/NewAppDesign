@@ -97,6 +97,13 @@ function AppContent() {
     closeUpdateModal,
   } = useVersionCheck();
 
+  // Re-check version after biometric gate or when user reaches the main app
+  useEffect(() => {
+    if (isLoggedIn && !showBiometricAuth && isAuthInitialized) {
+      checkForUpdates();
+    }
+  }, [isLoggedIn, showBiometricAuth, isAuthInitialized, checkForUpdates]);
+
   // Add error boundary for AuthProvider
 
   useEffect(() => {

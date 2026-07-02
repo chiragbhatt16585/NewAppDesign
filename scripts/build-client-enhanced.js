@@ -11,8 +11,8 @@ const CLIENTS = {
     // Must match OLD app (microscanEndUserApp-master-new) so install overwrites and migration works.
     packageName: 'in.spacecom.log2space.client.microscan',
     namespace: 'in.spacecom.log2space.client.microscan',
-    versionCode: 42,
-    versionName: '1.0.1',
+    versionCode: 46,
+    versionName: '46',
     // Use original Microscan upload key for Play Store (SHA1: 08:1C:A0:54:CA:45:95:5B:B3:8B:3A:B8:B2:53:93:FA:F5:64:D0:AE)
     keystore: 'Log2SpaceEndUserMicroscan.jks',
     configDir: 'config/microscan',
@@ -945,6 +945,37 @@ function updateIOSAppDelegate(clientId) {
   logSuccess(`Updated iOS AppDelegate module name to '${moduleName}'`);
 }
 
+// react-native-screens requires MainActivity to skip Android fragment state restoration.
+function ensureMainActivityScreensFix(mainActivityContent) {
+  let content = mainActivityContent;
+
+  if (!content.includes('import android.os.Bundle')) {
+    content = content.replace(
+      /(package\s+[^\n]+\n\n)/,
+      '$1import android.os.Bundle\n'
+    );
+    if (!content.includes('import android.os.Bundle')) {
+      content = content.replace(
+        /(import com\.facebook\.react\.ReactActivity\n)/,
+        'import android.os.Bundle\n$1'
+      );
+    }
+  }
+
+  if (!content.includes('super.onCreate(null)')) {
+    content = content.replace(
+      /(class MainActivity : ReactActivity\(\) \{\n)/,
+      `$1  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(null)
+  }
+
+`
+    );
+  }
+
+  return content;
+}
+
 // Update Android MainActivity
 function updateAndroidMainActivity(clientId) {
   const client = CLIENTS[clientId];
@@ -1031,6 +1062,8 @@ function updateAndroidMainActivity(clientId) {
     /override\s+fun\s+getMainComponentName\(\)\s*:\s*String\s*=\s*"[^"]*"/,
     `override fun getMainComponentName(): String = "${moduleName}"`
   );
+
+  mainActivityContent = ensureMainActivityScreensFix(mainActivityContent);
 
   fs.writeFileSync(mainActivityPath, mainActivityContent);
   logSuccess('Updated Android MainActivity');

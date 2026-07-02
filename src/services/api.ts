@@ -263,6 +263,37 @@ const isTokenExpiredError = (error: any): boolean => {
 };
 
 // API Service Class
+const parseAdvanceRenewalRecords = (response: any): any[] => {
+  const raw = response?.data;
+
+  if (Array.isArray(raw)) {
+    return raw.filter(Boolean);
+  }
+
+  if (typeof raw === 'string' && raw.trim()) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed.filter(Boolean);
+      }
+      if (parsed && typeof parsed === 'object') {
+        return Object.values(parsed).filter((item) => item && typeof item === 'object');
+      }
+    } catch {
+      return [];
+    }
+  }
+
+  if (raw && typeof raw === 'object') {
+    const values = Object.values(raw);
+    if (values.every((item) => item && typeof item === 'object')) {
+      return values.filter(Boolean);
+    }
+  }
+
+  return [];
+};
+
 class ApiService {
   private isRegeneratingToken = false;
   private tokenRegenerationPromise: Promise<string | false> | null = null;
@@ -327,10 +358,10 @@ class ApiService {
         const response = await res.json();
         if (__DEV__) {
           try {
-            console.log(
-              '[getAdminDetials] Full API response:',
-              JSON.stringify(response, null, 2)
-            );
+            // console.log(
+            //   '[getAdminDetials] Full API response:',
+            //   JSON.stringify(response, null, 2)
+            // );
           } catch {
             console.log('[getAdminDetials] Full API response (raw):', response);
           }
@@ -877,6 +908,24 @@ class ApiService {
           raw: response,
         });
 
+        const records = parseAdvanceRenewalRecords(response);
+        console.log('[API] userWiseAddOnPlanPinRecords => parsed records:', {
+          rawDataType: Array.isArray(response?.data)
+            ? 'array'
+            : typeof response?.data,
+          rawDataLength: Array.isArray(response?.data)
+            ? response.data.length
+            : response?.data && typeof response?.data === 'object'
+              ? Object.keys(response.data).length
+              : 0,
+          parsedCount: records.length,
+          records,
+        });
+        console.log(
+          '[API] userWiseAddOnPlanPinRecords => full response JSON:',
+          JSON.stringify(response),
+        );
+
         if (response?.status !== 'ok' && response?.code !== 200) {
           const apiMessage = response?.message || '';
           if (isTokenExpiredMessage(apiMessage)) {
@@ -885,7 +934,7 @@ class ApiService {
           throw new Error(apiMessage || 'Failed to fetch advance renewal records');
         }
 
-        return Array.isArray(response?.data) ? response.data : [];
+        return records;
       } catch (e: any) {
         if (isNetworkError(e)) {
           throw new Error(networkErrorMsg);
@@ -1834,13 +1883,26 @@ class ApiService {
         const response = await res.json();
         
         if (response.status !== 'ok' && response.code !== 200) {
-          let msg = 'You have already open complaint. So you can not create new complaint.';
-          let error = response.message === msg ?
-            'Sorry, we cannot accept a new complaint while an open ticket exists' :
-            response.message;
-          throw new Error(error);
+          throw new Error(response.message || 'Failed to create ticket');
         } else {
-          return { success: true, message: response.message || 'Ticket created successfully' };
+          const payload = response?.data;
+          const ticket = Array.isArray(payload) ? payload[0] : payload;
+          return {
+            success: true,
+            message: response.message || 'Ticket created successfully',
+            ticketNo:
+              ticket?.ticket_no ||
+              ticket?.ticketNo ||
+              ticket?.complaint_no ||
+              ticket?.id ||
+              '',
+            dateCreated:
+              ticket?.ticket_created_date ||
+              ticket?.created_date ||
+              ticket?.datetime ||
+              response?.datetime ||
+              '',
+          };
         }
       } catch (e: any) {
         if (isNetworkError(e)) {

@@ -100,7 +100,12 @@ const MainTabs = React.memo(() => {
     if (!authData?.AppSideNavigationMenu || !Array.isArray(authData.AppSideNavigationMenu)) {
       return false;
     }
-    return authData.AppSideNavigationMenu.includes('First Payment');
+    const shouldHide = authData.AppSideNavigationMenu.includes('First Payment');
+    console.log('[MainTabs] shouldHideRecharge:', {
+      AppSideNavigationMenu: authData.AppSideNavigationMenu,
+      shouldHide,
+    });
+    return shouldHide;
   }, [authData?.AppSideNavigationMenu]);
 
   // Check if proforma_invoices_dues exists and has a value
@@ -119,7 +124,13 @@ const MainTabs = React.memo(() => {
     
     // Hide tabs if dues exist and are greater than 0
     const shouldHide = duesValue !== '' && duesValue !== '0' && !isNaN(numericValue) && numericValue > 0;
-    
+
+    console.log('[MainTabs] shouldHideRenewAndUpgrade:', {
+      proforma_invoices_dues: proformaDues,
+      numericValue,
+      shouldHide,
+    });
+
     return shouldHide;
   }, [authData]);
 
@@ -196,6 +207,29 @@ const MainTabs = React.memo(() => {
     return isActive;
   }, [menu]);
 
+  const renewTabVisible = isRenewPlanActive && !shouldHideRecharge && !shouldHideRenewAndUpgrade;
+  const upgradeTabVisible = isUpgradePlanActive && !shouldHideRenewAndUpgrade;
+
+  useEffect(() => {
+    console.log('[MainTabs] Tab visibility summary:', {
+      isRenewPlanActive,
+      isUpgradePlanActive,
+      shouldHideRecharge,
+      AppSideNavigationMenu: authData?.AppSideNavigationMenu,
+      shouldHideRenewAndUpgrade,
+      renewTabVisible,
+      upgradeTabVisible,
+    });
+  }, [
+    isRenewPlanActive,
+    isUpgradePlanActive,
+    shouldHideRecharge,
+    shouldHideRenewAndUpgrade,
+    renewTabVisible,
+    upgradeTabVisible,
+    authData?.AppSideNavigationMenu,
+  ]);
+
   const screenOptions = useMemo(() => ({
     headerShown: false,
     tabBarActiveTintColor: colors.primary,
@@ -224,7 +258,7 @@ const MainTabs = React.memo(() => {
         options={{ title: 'Home', tabBarIcon: getTabBarIcon('Home') }} 
       />
       {/* Renew Plan: FIRST check if status is "active", THEN check other conditions */}
-      {isRenewPlanActive && !shouldHideRecharge && !shouldHideRenewAndUpgrade && (
+      {renewTabVisible && (
         <Tab.Screen 
           name="Pay" 
           component={RenewPlanScreen} 
@@ -232,7 +266,7 @@ const MainTabs = React.memo(() => {
         />
       )}
       {/* Upgrade Plan: FIRST check if status is "active", THEN check other conditions */}
-      {isUpgradePlanActive && !shouldHideRenewAndUpgrade && (
+      {upgradeTabVisible && (
       <Tab.Screen 
         name="UpgradePlan" 
         component={UpgradePlanScreen} 

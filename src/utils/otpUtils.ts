@@ -1,8 +1,45 @@
-const OTP_MAX_LENGTH = 8;
+const OTP_LENGTH = 6;
+
+export const OTP_DIGIT_COUNT = OTP_LENGTH;
+
+const normalizeDigits = (value?: string | null) => value?.trim().replace(/\D/g, '') || '';
+
+/** Only purely numeric usernames (e.g. 10106543751) are compared against autofill. */
+const getNumericUsername = (username?: string | null) => {
+  const trimmed = username?.trim() || '';
+  if (!trimmed || !/^\d+$/.test(trimmed)) {
+    return '';
+  }
+  return trimmed;
+};
+
+const isLikelyUsernameNotOtp = (
+  digitsOnly: string,
+  knownUsernames: Array<string | null | undefined>,
+): boolean => {
+  const numericUsernames = knownUsernames.map(getNumericUsername).filter(Boolean);
+  if (!digitsOnly || numericUsernames.length === 0) {
+    return false;
+  }
+
+  return numericUsernames.some((username) => {
+    if (digitsOnly === username) {
+      return true;
+    }
+    // iOS may autofill the username and maxLength truncates it (e.g. 10106543751 -> 101065).
+    if (username.startsWith(digitsOnly) || digitsOnly.startsWith(username)) {
+      return true;
+    }
+    if (digitsOnly.endsWith(username) || username.endsWith(digitsOnly)) {
+      return true;
+    }
+    return false;
+  });
+};
 
 /**
  * Extract OTP from SMS text or autofill input.
- * Handles messages like: "026538 is your OTP for username 1010221212. Thanks."
+ * Handles messages like: "310580 is your OTP for user name 10106543751. Thanks"
  */
 export function extractOtpFromText(
   raw: string,
@@ -13,40 +50,39 @@ export function extractOtpFromText(
     return '';
   }
 
-  const normalizedUsernames = knownUsernames
-    .map(u => u?.trim().replace(/\D/g, '') || '')
-    .filter(Boolean);
-
-  // "026538 is your OTP for username …"
-  const leadingOtpMatch = text.match(/^(\d{4,8})\s+is\s+your\s+otp\b/i);
+  // "310580 is your OTP for user name …"
+  const leadingOtpMatch = text.match(new RegExp(`^(\\d{${OTP_LENGTH}})\\s+is\\s+your\\s+otp\\b`, 'i'));
   if (leadingOtpMatch) {
     return leadingOtpMatch[1];
   }
 
-  // "Your OTP is 026538" / "OTP: 026538"
-  const labeledOtpMatch = text.match(/\bOTP\b[:\s]+(\d{4,8})\b/i);
+  // Full SMS pasted/autofilled with OTP embedded before username number.
+  const embeddedOtpMatch = text.match(new RegExp(`(\\d{${OTP_LENGTH}})\\s+is\\s+your\\s+otp\\b`, 'i'));
+  if (embeddedOtpMatch) {
+    return embeddedOtpMatch[1];
+  }
+
+  // "Your OTP is 310580" / "OTP: 310580"
+  const labeledOtpMatch = text.match(new RegExp(`\\bOTP\\b[:\\s]+(\\d{${OTP_LENGTH}})\\b`, 'i'));
   if (labeledOtpMatch) {
     return labeledOtpMatch[1];
   }
 
-  const digitsOnly = text.replace(/\D/g, '');
+  const digitsOnly = normalizeDigits(text);
 
-  // Reject username/mobile mistaken as OTP (e.g. 10-digit autofill)
-  if (
-    digitsOnly &&
-    normalizedUsernames.some(u => u === digitsOnly || digitsOnly.endsWith(u))
-  ) {
+  if (isLikelyUsernameNotOtp(digitsOnly, knownUsernames)) {
     return '';
   }
 
-  if (digitsOnly.length > OTP_MAX_LENGTH) {
-    // Autofill grabbed a long number — try leading segment before "is your OTP"
-    const embedded = text.match(/(\d{4,8})\s+is\s+your\s+otp/i);
-    if (embedded) {
-      return embedded[1];
-    }
+  // Usernames/mobile numbers are 9-11 digits; OTP is always 6 digits.
+  if (digitsOnly.length > OTP_LENGTH) {
     return '';
   }
 
-  return digitsOnly;
+  // Allow partial digits while the user types manually (1–6).
+  if (digitsOnly.length > 0 && digitsOnly.length <= OTP_LENGTH) {
+    return digitsOnly;
+  }
+
+  return '';
 }
