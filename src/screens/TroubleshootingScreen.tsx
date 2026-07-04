@@ -28,6 +28,11 @@ import { apiService, getAppUrl } from '../services/api';
 import sessionManager from '../services/sessionManager';
 import { parseTroubleshootingRuntimeConfig } from '../utils/troubleshootingConfig';
 import {
+  clearTroubleshootingSession,
+  getTroubleshootingSession,
+  setTroubleshootingSession,
+} from '../utils/troubleshootingSession';
+import {
   TroubleshootingAnswer,
   TroubleshootingConfig,
   TroubleshootingFlow,
@@ -57,21 +62,28 @@ function formatAnswersForSummary(answers: TroubleshootingAnswer[]): string[] {
 const TroubleshootingScreen = ({ navigation }: any) => {
   const { isDark } = useTheme();
   const colors = getThemeColors(isDark);
+  const savedSession = getTroubleshootingSession();
   const [config, setConfig] = useState<TroubleshootingConfig | null>(null);
-  const [configLoading, setConfigLoading] = useState(true);
+  const [configLoading, setConfigLoading] = useState(!savedSession?.selectedFlowId);
   const [configError, setConfigError] = useState<string | null>(null);
-  const [selectedFlowId, setSelectedFlowId] = useState<string | null>(null);
-  const [currentNodeId, setCurrentNodeId] = useState<string | null>(null);
-  const [history, setHistory] = useState<string[]>([]);
-  const [answers, setAnswers] = useState<TroubleshootingAnswer[]>([]);
-  const [ticketDescription, setTicketDescription] = useState('');
+  const [selectedFlowId, setSelectedFlowId] = useState<string | null>(
+    savedSession?.selectedFlowId ?? null,
+  );
+  const [currentNodeId, setCurrentNodeId] = useState<string | null>(
+    savedSession?.currentNodeId ?? null,
+  );
+  const [history, setHistory] = useState<string[]>(savedSession?.history ?? []);
+  const [answers, setAnswers] = useState<TroubleshootingAnswer[]>(savedSession?.answers ?? []);
+  const [ticketDescription, setTicketDescription] = useState(
+    savedSession?.ticketDescription ?? '',
+  );
   const [isSubmittingTicket, setIsSubmittingTicket] = useState(false);
   const [ticketSuccessModal, setTicketSuccessModal] = useState<{
     ticketNo: string;
     dateCreated: string;
   } | null>(null);
   const [activeTicketModal, setActiveTicketModal] = useState<ActiveTicketModalData | null>(null);
-  const selectedFlowIdRef = useRef<string | null>(null);
+  const selectedFlowIdRef = useRef<string | null>(savedSession?.selectedFlowId ?? null);
 
   const loadRuntimeConfig = useCallback(async (showHubLoading = true) => {
     if (showHubLoading) {
@@ -129,9 +141,32 @@ const TroubleshootingScreen = ({ navigation }: any) => {
       // Refresh hub config only when not mid-flow (avoids interrupting step navigation).
       if (!selectedFlowIdRef.current) {
         loadRuntimeConfig(true);
+      } else {
+        loadRuntimeConfig(false);
       }
     }, [loadRuntimeConfig]),
   );
+
+  useEffect(() => {
+    const hasProgress =
+      !!selectedFlowId ||
+      !!currentNodeId ||
+      history.length > 0 ||
+      answers.length > 0 ||
+      !!ticketDescription.trim();
+
+    if (!hasProgress) {
+      return;
+    }
+
+    setTroubleshootingSession({
+      selectedFlowId,
+      currentNodeId,
+      history,
+      answers,
+      ticketDescription,
+    });
+  }, [selectedFlowId, currentNodeId, history, answers, ticketDescription]);
 
   const selectedFlow: TroubleshootingFlow | null = useMemo(
     () => config?.flows.find(f => f.id === selectedFlowId) || null,
@@ -178,6 +213,7 @@ const TroubleshootingScreen = ({ navigation }: any) => {
   };
 
   const resetAll = () => {
+    clearTroubleshootingSession();
     setSelectedFlowId(null);
     setCurrentNodeId(null);
     setHistory([]);
@@ -260,6 +296,8 @@ const TroubleshootingScreen = ({ navigation }: any) => {
         summary,
         realm,
       );
+
+      console.log('[Troubleshooting] create ticket response:', JSON.stringify(response));
 
       if (response?.success) {
         let ticketNo = response.ticketNo || '';

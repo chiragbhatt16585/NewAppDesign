@@ -2,8 +2,8 @@
   "android": {
     "namespace": "in.spacecom.log2space.client.microscan",
     "applicationId": "in.spacecom.log2space.client.microscan",
-    "versionCode": 46,
-    "versionName": "46",
+    "versionCode": 47,
+    "versionName": "47",
     "signing": {
       "debug": {
         "storeFile": "debug.keystore",
@@ -21,8 +21,8 @@
   },
   "ios": {
     "bundleIdentifier": "com.l2sClient.microscan",
-    "marketingVersion": "3.0.5",
-    "buildNumber": "43",
+    "marketingVersion": "3.0.6",
+    "buildNumber": "47",
     "displayName": "Microscan"
   }
 }

@@ -235,6 +235,7 @@ const MainTabs = React.memo(() => {
     tabBarActiveTintColor: colors.primary,
     tabBarInactiveTintColor: colors.textSecondary,
     tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.border },
+    lazy: false,
   }), [colors.primary, colors.textSecondary, colors.surface, colors.border]);
 
   const getTabBarIcon = (routeName: string) => ({ color, size }: { color: string; size: number }) => {
@@ -251,7 +252,7 @@ const MainTabs = React.memo(() => {
   };
 
   return (
-    <Tab.Navigator key={tabBarKey} screenOptions={screenOptions}>
+    <Tab.Navigator key={tabBarKey} screenOptions={screenOptions} detachInactiveScreens={false}>
       <Tab.Screen 
         name="Home" 
         component={HomeStack} 

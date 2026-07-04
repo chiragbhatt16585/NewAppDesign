@@ -307,6 +307,8 @@ const AddTicketScreen = ({
         realm
       );
 
+      console.log('[AddTicket] create ticket response:', JSON.stringify(response));
+
       if (response && response.success) {
         let ticketNo = response.ticketNo || '';
         let dateCreated = response.dateCreated || '';

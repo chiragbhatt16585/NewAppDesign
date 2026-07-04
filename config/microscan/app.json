@@ -3,7 +3,7 @@
   "expo": {
     "name": "Microscan",
     "slug": "microscan",
-    "version": "3.0.5",
+    "version": "3.0.6",
     "orientation": "portrait",
     "icon": "./app-icons/icon.png",
     "userInterfaceStyle": "light",
@@ -18,7 +18,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.l2sClient.microscan",
-      "buildNumber": "43"
+      "buildNumber": "47"
     },
     "android": {
       "adaptiveIcon": {
@@ -26,7 +26,7 @@
         "backgroundColor": "#FFFFFF"
       },
       "package": "in.spacecom.log2space.client.microscan",
-      "versionCode": 46
+      "versionCode": 47
     },
     "web": {
       "favicon": "./app-icons/favicon.png"

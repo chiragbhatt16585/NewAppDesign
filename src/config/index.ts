@@ -280,6 +280,16 @@ const clientConfigs: Record<string, ClientConfig> = {
     poweredByWebsite: 'https://spacecom.in',
     bundleId: 'com.spacecom.log2space.aswservice',
   },
+  cityzone: {
+    name: 'Cityzone',
+    companyName: 'Cityzone Infonet Pvt. Ltd',
+    apiUrl: 'https://cityzone.l2s.biz',
+    supportEmail: 'support@cityzoneinfonet.net',
+    website: 'https://cityzone.l2s.biz',
+    poweredBy: 'Spacecom Software LLP',
+    poweredByWebsite: 'https://spacecom.in',
+    bundleId: 'in.spacecom.log2space.client.cityzone',
+  },
 };
 
 // Export current client configuration

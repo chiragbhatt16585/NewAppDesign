@@ -287,14 +287,14 @@ const UpgradePlanScreen = ({navigation}: any) => {
           return true;
         });
         
-        console.log('=== UPGRADE PLAN FILTERING ===');
-        console.log('Current Plan:', currentPlanName);
-        console.log('Current Plan Price:', currentPlanPrice);
-        console.log('Total Plans:', planList.length);
-        console.log('Full Plan List:', JSON.stringify(planList, null, 2));
-        console.log('Upgrade Plans:', upgradePlans.length);
-        console.log('Filtered Upgrade Plans:', JSON.stringify(upgradePlans, null, 2));
-        console.log('=== END UPGRADE PLAN FILTERING ===');
+        // console.log('=== UPGRADE PLAN FILTERING ===');
+        // console.log('Current Plan:', currentPlanName);
+        // console.log('Current Plan Price:', currentPlanPrice);
+        // console.log('Total Plans:', planList.length);
+        // console.log('Full Plan List:', JSON.stringify(planList, null, 2));
+        // console.log('Upgrade Plans:', upgradePlans.length);
+        // console.log('Filtered Upgrade Plans:', JSON.stringify(upgradePlans, null, 2));
+        // console.log('=== END UPGRADE PLAN FILTERING ===');
         
         setPlansData(upgradePlans);
       } catch (planError: any) {

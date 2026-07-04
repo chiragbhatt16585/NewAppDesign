@@ -273,6 +273,7 @@ const HomeScreen = ({navigation}: any) => {
     'one-sevenstar',
     'metanet',
     'monarknet',
+    'cityzone',
     'graceway',
     'log2space-common',
   ]);

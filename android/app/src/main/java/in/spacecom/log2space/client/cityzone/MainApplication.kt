@@ -1,4 +1,4 @@
-package `in`.spacecom.log2space.client.microscan
+package `in`.spacecom.log2space.client.cityzone
 
 import android.app.Application
 import com.facebook.react.PackageList

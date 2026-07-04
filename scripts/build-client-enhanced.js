@@ -11,8 +11,8 @@ const CLIENTS = {
     // Must match OLD app (microscanEndUserApp-master-new) so install overwrites and migration works.
     packageName: 'in.spacecom.log2space.client.microscan',
     namespace: 'in.spacecom.log2space.client.microscan',
-    versionCode: 46,
-    versionName: '46',
+    versionCode: 47,
+    versionName: '47',
     // Use original Microscan upload key for Play Store (SHA1: 08:1C:A0:54:CA:45:95:5B:B3:8B:3A:B8:B2:53:93:FA:F5:64:D0:AE)
     keystore: 'Log2SpaceEndUserMicroscan.jks',
     configDir: 'config/microscan',
@@ -252,6 +252,15 @@ const CLIENTS = {
     versionName: '1.0.1',
     keystore: 'Log2SpaceAswService.jks',
     configDir: 'config/asw-service',
+  },
+  cityzone: {
+    name: 'Cityzone',
+    packageName: 'in.spacecom.log2space.client.cityzone',
+    namespace: 'in.spacecom.log2space.client.cityzone',
+    versionCode: 3,
+    versionName: '3',
+    keystore: 'Log2SpaceCityzone.keystore',
+    configDir: 'config/cityzone',
   },
 };
 
@@ -841,7 +850,7 @@ function updateAndroidBuildGradle(clientId) {
   );
 
   // in.spacecom.log2space.client.* — exclude every sibling app package (microscan, netfix, monarkuser, …)
-  const inClientSuffixes = ['microscan', 'netfix', 'monarkuser'];
+  const inClientSuffixes = ['microscan', 'netfix', 'monarkuser', 'cityzone'];
   let inExcludeBlock = '';
   if (client.namespace.startsWith('in.spacecom.log2space.client.')) {
     const currentSuffix = client.namespace.replace('in.spacecom.log2space.client.', '');
@@ -999,6 +1008,7 @@ function updateAndroidMainActivity(clientId) {
       path.join(javaDir, 'in', 'spacecom', 'log2space', 'client', 'microscan'),
       path.join(javaDir, 'in', 'spacecom', 'log2space', 'client', 'netfix'),
       path.join(javaDir, 'in', 'spacecom', 'log2space', 'client', 'monarkuser'),
+      path.join(javaDir, 'in', 'spacecom', 'log2space', 'client', 'cityzone'),
       path.join(javaDir, 'com', 'microscan', 'app'),
       path.join(javaDir, 'com', 'spacecom', 'log2space', 'microscan'),
       path.join(javaDir, 'com', 'spacecom', 'log2space', 'monarknet'),

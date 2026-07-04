@@ -1881,29 +1881,36 @@ class ApiService {
       try {
         const res = await fetch(`${getApiUrl()}/selfcareCreateTicket`, options);
         const response = await res.json();
-        
-        if (response.status !== 'ok' && response.code !== 200) {
-          throw new Error(response.message || 'Failed to create ticket');
-        } else {
-          const payload = response?.data;
-          const ticket = Array.isArray(payload) ? payload[0] : payload;
-          return {
-            success: true,
-            message: response.message || 'Ticket created successfully',
-            ticketNo:
-              ticket?.ticket_no ||
-              ticket?.ticketNo ||
-              ticket?.complaint_no ||
-              ticket?.id ||
-              '',
-            dateCreated:
-              ticket?.ticket_created_date ||
-              ticket?.created_date ||
-              ticket?.datetime ||
-              response?.datetime ||
-              '',
-          };
+
+        console.log('[submitComplaint] HTTP status:', res.status);
+        console.log('[submitComplaint] raw response:', JSON.stringify(response));
+
+        if (response.status !== 'ok' || response.code !== 200) {
+          const errorMessage = response.message || 'Failed to create ticket';
+          console.log('[submitComplaint] error:', errorMessage);
+          throw new Error(errorMessage);
         }
+
+        const payload = response?.data;
+        const ticket = Array.isArray(payload) ? payload[0] : payload;
+        const result = {
+          success: true,
+          message: response.message || 'Ticket created successfully',
+          ticketNo:
+            ticket?.ticket_no ||
+            ticket?.ticketNo ||
+            ticket?.complaint_no ||
+            ticket?.id ||
+            '',
+          dateCreated:
+            ticket?.ticket_created_date ||
+            ticket?.created_date ||
+            ticket?.datetime ||
+            response?.datetime ||
+            '',
+        };
+        console.log('[submitComplaint] success result:', JSON.stringify(result));
+        return result;
       } catch (e: any) {
         if (isNetworkError(e)) {
           throw new Error(networkErrorMsg);

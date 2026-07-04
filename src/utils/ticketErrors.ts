@@ -22,7 +22,9 @@ export function buildTicketErrorModalData(message: string): ActiveTicketModalDat
   const activeTicket = isActiveTicketError(apiMessage);
 
   return {
-    message: apiMessage,
+    message: activeTicket
+      ? "We're currently working on your issue and will update you soon."
+      : apiMessage,
     title: activeTicket ? 'One Active Ticket Found' : 'Unable to Raise Ticket',
     actionLabel: activeTicket ? 'View my tickets' : 'OK',
     navigateToTickets: activeTicket,

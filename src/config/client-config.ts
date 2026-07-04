@@ -349,7 +349,8 @@ const clientConfigs: Record<string, ClientConfig> = {
       checkInterval: 24,
       forceUpdateEnabled: true,
       packageName: 'com.spacecom.log2space.threesa',
-      appStoreId: undefined,
+      // https://apps.apple.com/us/app/threesa-infoway-end-user-app/id6786651690
+      appStoreId: '6786651690',
     },
   },
   'dna-infotel': {
@@ -2024,6 +2025,70 @@ const clientConfigs: Record<string, ClientConfig> = {
       checkInterval: 24,
       forceUpdateEnabled: true,
       packageName: 'com.spacecom.log2space.aswservice',
+      appStoreId: undefined,
+    },
+  },
+  cityzone: {
+    clientId: 'cityzone',
+    clientName: 'Cityzone',
+    api: {
+      baseURL: 'https://cityzone.l2s.biz/l2s/api',
+      serverURL: 'https://cityzone.l2s.biz',
+      timeout: 30000,
+    },
+    branding: {
+      logo: 'isp_logo.png',
+      primaryColor: '#1976D2',
+      secondaryColor: '#42A5F5',
+      appName: 'Cityzone',
+      headerBackgroundImage: 'header_background.png',
+      logoDimensions: {
+        header: { width: 150, height: 80 },
+        login: { width: 300, height: 200 },
+      },
+    },
+    features: {
+      biometricAuth: true,
+      pushNotifications: true,
+      fileUpload: true,
+      multiLanguage: true,
+    },
+    contact: {
+      whatsappNumber: '9146002255',
+      headOffice: {
+        title: 'Cityzone Infonet Pvt. Ltd',
+        address:
+          'Shop No.01, Sai Kunj Building, Opp Waliv Lake, Waliv Village, Tal. Vasai (E) - 401208',
+        customerSupport: '9146002288, 9146002220, 9146002229, 9146002255',
+      },
+      branchOffices: [],
+      emails: {
+        inquiries: 'support@cityzoneinfonet.net',
+        sales: 'support@cityzoneinfonet.net',
+        support: 'support@cityzoneinfonet.net',
+      },
+      landline: '9146002288',
+    },
+    about: {
+      companyName: 'Cityzone Infonet Pvt. Ltd',
+      establishedYear: '',
+      description:
+        'Cityzone Infonet Pvt. Ltd provides high-speed internet connectivity and related services.',
+      specializations: [
+        'High-speed broadband internet',
+        'Fiber broadband',
+        'Home and business internet solutions',
+      ],
+      serviceAreas: ['Vasai', 'Maharashtra'],
+      achievements: [],
+    },
+    reviewUrl: undefined,
+    website: 'https://cityzone.l2s.biz',
+    versionCheck: {
+      enabled: true,
+      checkInterval: 24,
+      forceUpdateEnabled: true,
+      packageName: 'in.spacecom.log2space.client.cityzone',
       appStoreId: undefined,
     },
   },

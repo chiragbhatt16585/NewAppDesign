@@ -253,10 +253,10 @@ const RenewPlanScreen = ({navigation}: any) => {
           'default'
         );
         // FULL RAW RESPONSE (Plan List)
-        console.log('=== FULL PLAN LIST RAW RESPONSE START ===');
-        console.log('Plan List Type:', typeof planList);
-        console.log('Plan List Is Array:', Array.isArray(planList));
-        console.log('Plan List Length:', Array.isArray(planList) ? planList.length : 'N/A');
+        // console.log('=== FULL PLAN LIST RAW RESPONSE START ===');
+        // console.log('Plan List Type:', typeof planList);
+        // console.log('Plan List Is Array:', Array.isArray(planList));
+        // console.log('Plan List Length:', Array.isArray(planList) ? planList.length : 'N/A');
         // try {
         //   console.log('=== FULL PLAN LIST JSON ===');
         //   console.log(JSON.stringify(planList, null, 2));

@@ -103,13 +103,13 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "in.spacecom.log2space.client.microscan"
+    namespace "in.spacecom.log2space.client.cityzone"
     defaultConfig {
-        applicationId "in.spacecom.log2space.client.microscan"
+        applicationId "in.spacecom.log2space.client.cityzone"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 46
-        versionName "46"
+        versionCode 3
+        versionName "3"
         buildConfigField "boolean", "IS_NEW_ARCHITECTURE_ENABLED", "false"
     }
     
@@ -142,7 +142,7 @@ android {
                 keyPassword 'android'
             }
             release {
-                storeFile file('Log2SpaceEndUserMicroscan.jks')
+                storeFile file('Log2SpaceCityzone.keystore')
                 storePassword 'log2space'
                 keyAlias 'log2space'
                 keyPassword 'log2space'
@@ -176,4 +176,3 @@ dependencies {
     }
 }
 
-apply plugin: "com.google.gms.google-services"
