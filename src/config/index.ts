@@ -290,6 +290,16 @@ const clientConfigs: Record<string, ClientConfig> = {
     poweredByWebsite: 'https://spacecom.in',
     bundleId: 'in.spacecom.log2space.client.cityzone',
   },
+  networksolutions: {
+    name: 'Network Solutions',
+    companyName: 'Network Solution and Services',
+    apiUrl: 'https://networksolutions.l2s.biz',
+    supportEmail: 'networksolutionandservices@gmail.com',
+    website: 'https://networksolutions.l2s.biz',
+    poweredBy: 'Spacecom Software LLP',
+    poweredByWebsite: 'https://spacecom.in',
+    bundleId: 'com.spacecom.log2space.networksolutions',
+  },
 };
 
 // Export current client configuration

@@ -18,19 +18,28 @@ interface ActiveTicketModalProps {
   title?: string;
   message?: string;
   actionLabel?: string;
+  variant?: 'error' | 'success';
 }
+
+const SUCCESS_GREEN = '#1F9D55';
 
 const ActiveTicketModal: React.FC<ActiveTicketModalProps> = ({
   visible,
   onClose,
   onAction,
-  title = 'Unable to Raise Ticket',
+  title,
   message = '',
   actionLabel = 'OK',
+  variant = 'error',
 }) => {
   const { isDark } = useTheme();
   const colors = getThemeColors(isDark);
   const displayMessage = message?.trim();
+  const isSuccess = variant === 'success';
+  const modalTitle = title || (isSuccess ? 'Success' : 'Unable to Raise Ticket');
+  const iconName = isSuccess ? 'check' : 'priority-high';
+  const iconBackground = isSuccess ? SUCCESS_GREEN : colors.primary;
+  const titleColor = isSuccess ? SUCCESS_GREEN : colors.primary;
 
   if (!visible) {
     return null;
@@ -54,11 +63,11 @@ const ActiveTicketModal: React.FC<ActiveTicketModalProps> = ({
             <MaterialIcons name="close" size={22} color={colors.textSecondary} />
           </TouchableOpacity>
 
-          <View style={[styles.iconCircle, { backgroundColor: colors.primary }]}>
-            <MaterialIcons name="priority-high" size={34} color="#fff" />
+          <View style={[styles.iconCircle, { backgroundColor: iconBackground }]}>
+            <MaterialIcons name={iconName} size={34} color="#fff" />
           </View>
 
-          <Text style={[styles.title, { color: colors.primary }]}>{title}</Text>
+          <Text style={[styles.title, { color: titleColor }]}>{modalTitle}</Text>
 
           {displayMessage ? (
             <Text style={[styles.message, { color: colors.textSecondary }]}>

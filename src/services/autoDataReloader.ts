@@ -44,7 +44,11 @@ export class AutoDataReloader {
         this.lastBackgroundTime = Date.now();
         console.log('App going to background, recording time:', new Date(this.lastBackgroundTime).toISOString());
       } else if (nextAppState === 'active') {
-        // App is becoming active, check if we need to reload data
+        // App is becoming active — refresh token first, then reload data if needed
+        const isLoggedIn = await sessionManager.isLoggedIn();
+        if (isLoggedIn) {
+          await sessionManager.autoRefreshSession();
+        }
         await this.checkAndReloadOnAppActive();
       }
     } catch (error) {
@@ -105,11 +109,7 @@ export class AutoDataReloader {
       const shouldRefresh = await sessionManager.shouldAutoRefresh();
       if (shouldRefresh) {
         console.log('Session needs refresh, refreshing first...');
-        const refreshResult = await sessionManager.autoRefreshSession();
-        
-        if (!refreshResult.success) {
-          console.log('Session refresh failed, but continuing with data reload');
-        }
+        await sessionManager.autoRefreshSession();
       }
 
       // Reload user account data

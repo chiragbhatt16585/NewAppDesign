@@ -4,6 +4,8 @@ import React_RCTAppDelegate
 import ReactAppDependencyProvider
 import Foundation
 import FirebaseCore
+import CleverTapSDK
+import CleverTapReact
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -35,6 +37,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
       if FirebaseApp.app() == nil {
         FirebaseApp.configure()
       }
+
+      CleverTap.autoIntegrate()
+      CleverTapReactManager.sharedInstance()?.applicationDidLaunch(options: launchOptions)
 
       let delegate = ReactNativeDelegate()
       let factory = RCTReactNativeFactory(delegate: delegate)
@@ -70,6 +75,28 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     return true
+  }
+
+  // Deep links / custom URL schemes (e.g. microscan://refer-friend)
+  func application(
+    _ app: UIApplication,
+    open url: URL,
+    options: [UIApplication.OpenURLOptionsKey: Any] = [:]
+  ) -> Bool {
+    return RCTLinkingManager.application(app, open: url, options: options)
+  }
+
+  // Universal Links (https://www.microscaninternet.com/...)
+  func application(
+    _ application: UIApplication,
+    continue userActivity: NSUserActivity,
+    restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void
+  ) -> Bool {
+    return RCTLinkingManager.application(
+      application,
+      continue: userActivity,
+      restorationHandler: restorationHandler
+    )
   }
   
   private func showErrorScreen(message: String) {

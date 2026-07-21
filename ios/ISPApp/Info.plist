@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>Cityzone</string>
+	<string>Microscan</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -57,6 +57,8 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>UIUserInterfaceStyle</key>
+	<string>Light</string>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
 	<key>CFBundleURLTypes</key>
@@ -68,15 +70,18 @@
 			<array>
 				<string>paymentresponse</string>
 				<string>isp</string>
-				<string>cityzone</string>
+				<string>microscan</string>
 			</array>
 		</dict>
 	</array>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
+		<!-- Google Pay / Tez -->
 		<string>googlepay</string>
 		<string>tez</string>
 		<string>gpay</string>
+		
+		<!-- Popular UPI Apps -->
 		<string>phonepe</string>
 		<string>phonepepay</string>
 		<string>cred</string>
@@ -98,10 +103,14 @@
 		<string>jio</string>
 		<string>jiopay</string>
 		<string>jiomoney</string>
+		
+		<!-- International Payment Apps -->
 		<string>razorpay</string>
 		<string>stripe</string>
 		<string>square</string>
 		<string>paypal</string>
+		
+		<!-- Bank Apps -->
 		<string>yono</string>
 		<string>icicibank</string>
 		<string>hdfcbank</string>
@@ -128,6 +137,8 @@
 		<string>syndicatebank</string>
 		<string>vijayabank</string>
 		<string>dhanlaxmibank</string>
+		
+		<!-- Android Intent and Market -->
 		<string>intent</string>
 		<string>market</string>
 	</array>
@@ -149,6 +160,12 @@
 		<string>Octicons.ttf</string>
 		<string>Zocial.ttf</string>
 		<string>Fontisto.ttf</string>
-	</array>
+	</array>	<key>CleverTapAccountID</key>
+	<string>7Z6-7R9-677Z</string>
+	<key>CleverTapToken</key>
+	<string>c2a-61a</string>
+	<key>CleverTapRegion</key>
+	<string>in1</string>
+
 </dict>
-</plist>
+</plist> 

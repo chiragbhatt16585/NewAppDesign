@@ -133,6 +133,7 @@ const LogoImage: React.FC<LogoImageProps> = ({style, width, height, type = 'head
         'sprioc-web:isp_logo.png': require('../../config/sprioc-web/assets/isp_logo.png'),
         'asw-service:isp_logo.png': require('../../config/asw-service/assets/isp_logo.png'),
         'cityzone:isp_logo.png': require('../../config/cityzone/assets/isp_logo.png'),
+        'networksolutions:isp_logo.png': require('../../config/networksolutions/assets/isp_logo.png'),
 
         // Legacy / older standalone logo files (if any)
         'microscan_logo.png': require('../assets/microscan_logo.png'),

@@ -10,7 +10,6 @@ import {
   ActivityIndicator,
   Platform,
   TouchableWithoutFeedback,
-  Alert,
   KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,6 +17,7 @@ import Feather from 'react-native-vector-icons/Feather';
 import { useTheme } from '../utils/ThemeContext';
 import { getThemeColors } from '../utils/themeStyles';
 import CommonHeader from '../components/CommonHeader';
+import ActiveTicketModal from '../components/ActiveTicketModal';
 import { getClientConfig } from '../config/client-config';
 import { isReferFriendFieldVisible, isReferFriendFieldRequired } from '../config/refer-friend-config';
 import Toast from 'react-native-toast-message';
@@ -90,6 +90,11 @@ const ReferFriendScreen = ({ navigation }: any) => {
     salesPerson: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [resultModal, setResultModal] = useState<{
+    variant: 'success' | 'error';
+    title: string;
+    message: string;
+  } | null>(null);
 
   const normalizeOption = (item: any) => {
     const value =
@@ -118,11 +123,18 @@ const ReferFriendScreen = ({ navigation }: any) => {
         const normalizedCities = Array.isArray(citiesData)
           ? citiesData.map(normalizeOption).filter((c: any) => c.value && c.label)
           : [];
+        if (__DEV__) {
+          console.log('[ReferFriend] getAllBuildings => response', JSON.stringify(buildingsData, null, 2));
+          console.log('[ReferFriend] getAllCities => response', JSON.stringify(citiesData, null, 2));
+        }
         setBuildings(normalizedBuildings);
         setCities(normalizedCities);
         const authData = await apiService.authUser(session.username);
         if (authData?.display_sales_exec_selection_in_customer_referral === 'yes') {
           const salesData = await apiService.getAllSalesPersons(realm);
+          if (__DEV__) {
+            console.log('[ReferFriend] getAllSalesPersons => response', JSON.stringify(salesData, null, 2));
+          }
           setShowSalesExec(true);
           setSalesPersons(salesData);
         } else {
@@ -248,7 +260,13 @@ const ReferFriendScreen = ({ navigation }: any) => {
         remarks: formData.remarks.trim(),
         salesPerson: formData.salesPerson,
       };
-      await apiService.addNewInquiry(session.username, payload, realm);
+      if (__DEV__) {
+        console.log('[ReferFriend] submit => payload', JSON.stringify(payload, null, 2));
+      }
+      const response = await apiService.addNewInquiry(session.username, payload, realm);
+      if (__DEV__) {
+        console.log('[ReferFriend] submit => api response', JSON.stringify(response, null, 2));
+      }
       setFormData({
         firstName: '',
         lastName: '',
@@ -267,9 +285,17 @@ const ReferFriendScreen = ({ navigation }: any) => {
         remarks: '',
         salesPerson: '',
       });
-      Alert.alert('Success', 'Your Inquiry submitted successfully!');
+      setResultModal({
+        variant: 'success',
+        title: 'Inquiry Submitted',
+        message: response?.message || 'Your inquiry submitted successfully!',
+      });
     } catch (e: any) {
-      Toast.show({ type: 'error', text1: e.message || 'Something went wrong' });
+      setResultModal({
+        variant: 'error',
+        title: 'Unable to Submit Inquiry',
+        message: e.message || 'Something went wrong',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -674,6 +700,15 @@ const ReferFriendScreen = ({ navigation }: any) => {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      <ActiveTicketModal
+        visible={!!resultModal}
+        variant={resultModal?.variant}
+        title={resultModal?.title}
+        message={resultModal?.message}
+        actionLabel="OK"
+        onClose={() => setResultModal(null)}
+        onAction={() => setResultModal(null)}
+      />
       <Toast />
     </SafeAreaView>
   );

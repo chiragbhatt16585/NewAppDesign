@@ -30,10 +30,10 @@ import sessionManager from '../services/sessionManager';
 import { useLanguage } from '../utils/LanguageContext';
 import { useTranslation } from 'react-i18next';
 import { getClientStrings } from '../config/client-config';
-import { credentialStorage } from '../services/credentialStorage';
 import { pinStorage } from '../services/pinStorage';
 import biometricAuthService from '../services/biometricAuth';
 import { ensureDeviceRegistrationAfterLogin } from '../services/notificationService';
+import { consumePendingDeepLink } from '../services/deepLinkService';
 import { getClientConfig } from '../config/client-config';
 import { getDefaultLoginMode, shouldShowOtpLoginLink } from '../config/login-ui-config';
 import { getCustomApi } from '../config/customApiStorage';
@@ -682,10 +682,10 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
     if (!__DEV__) return;
 
     const clientConfig = getClientConfig();
-    console.log('\n========== POST LOGIN DATA ==========');
-    console.log('Client:', clientConfig.clientId);
-    console.log('Username:', loggedInUsername);
-    console.log('API baseURL:', clientConfig.api.baseURL);
+    // console.log('\n========== POST LOGIN DATA ==========');
+    // console.log('Client:', clientConfig.clientId);
+    // console.log('Username:', loggedInUsername);
+    // console.log('API baseURL:', clientConfig.api.baseURL);
 
     try {
       const session = await sessionManager.getCurrentSession();
@@ -701,14 +701,14 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
 
     try {
       const menuData = await menuService.refresh();
-      safeJsonLog('[PostLogin] Menu settings:', menuData);
+      //safeJsonLog('[PostLogin] Menu settings:', menuData);
     } catch (e: any) {
       console.warn('[PostLogin] Menu fetch failed:', e?.message);
     }
 
     try {
       const authUser = await apiService.authUser(loggedInUsername);
-      safeJsonLog('[PostLogin] authUser:', authUser);
+      //safeJsonLog('[PostLogin] authUser:', authUser);
     } catch (e: any) {
       console.warn('[PostLogin] authUser failed:', e?.message);
     }
@@ -817,6 +817,7 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
         
         if (result.success) {
           void logPostLoginData(username);
+          void consumePendingDeepLink();
           try {
             if (result.consentRequired) {
               navigation.replace('CustomerConsent');
@@ -829,16 +830,8 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
               }, 100);
               return;
             }
-            // Save or clear credentials for session regeneration (non-blocking) based on rememberMe
-            if (rememberMe) {
-              credentialStorage.saveCredentials(username, password).catch(err => {
-                console.warn('[LoginScreen] Failed to save credentials:', err);
-              });
-            } else {
-              credentialStorage.clearCredentials().catch(err => {
-                console.warn('[LoginScreen] Failed to clear credentials:', err);
-              });
-            }
+            // Credentials are saved in AuthContext.createSession for silent token refresh.
+            // rememberMe only controls whether the username is pre-filled on next visit.
             
             // Device registration is already handled in AuthContext.login()
             // No need to call it again here - it would be duplicate and slow
@@ -915,6 +908,7 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
         
         if (result.success) {
           void logPostLoginData(usernameForVerify);
+          void consumePendingDeepLink();
           try {
             if (result.consentRequired) {
               navigation.replace('CustomerConsent');

@@ -89,6 +89,7 @@ const CommonHeader = ({
       'sprioc-web:header_background.png': require('../../config/sprioc-web/assets/header_background.png'),
       'asw-service:header_background.png': require('../../config/asw-service/assets/header_background.png'),
       'cityzone:header_background.png': require('../../config/cityzone/assets/header_background.png'),
+      'networksolutions:header_background.png': require('../../config/networksolutions/assets/header_background.png'),
       // 'netplanet:header_background.png': require('../../config/netplanet/assets/header_background.png'),
     };
 
@@ -126,7 +127,8 @@ const CommonHeader = ({
       clientConfig.clientId === 'log2space-common' ||
       clientConfig.clientId === 'sprioc-web' ||
       clientConfig.clientId === 'asw-service' ||
-      clientConfig.clientId === 'cityzone');
+      clientConfig.clientId === 'cityzone' ||
+      clientConfig.clientId === 'networksolutions');
 
   // When there is no header background image, always show logo on the left.
   // When background image is active, respect the explicit logoPosition prop.
@@ -175,7 +177,8 @@ const CommonHeader = ({
       clientConfig.clientId === 'log2space-common' ||
       clientConfig.clientId === 'sprioc-web' ||
       clientConfig.clientId === 'asw-service' ||
-      clientConfig.clientId === 'cityzone');
+      clientConfig.clientId === 'cityzone' ||
+      clientConfig.clientId === 'networksolutions');
 
   // Hide logo for spacecom-live and spacecom-local when using header background image.
   // For other header-bg clients, keep the logo visible (centered) over the background.

@@ -38,6 +38,8 @@ import menuService from '../services/menuService';
 import dataCache from '../services/dataCache';
 import { getSafeDaysRemaining } from '../utils/usageUtils';
 import { useAuthData } from '../utils/AuthDataContext';
+import { updateCleverTapUserProfile } from '../services/cleverTapService';
+import { consumePendingDeepLink } from '../services/deepLinkService';
 // import AIUsageInsights from '../components/AIUsageInsights';
 //import ispLogo from '../assets/isp_logo.png';
 import Feather from 'react-native-vector-icons/Feather';
@@ -94,6 +96,13 @@ const HomeScreen = ({navigation}: any) => {
   useEffect(() => {
     hasAuthDataRef.current = !!authData;
   }, [authData]);
+
+  // Open Refer Friend (or other pending deep link) after login / session restore
+  useEffect(() => {
+    if (isAuthenticated && isFocused) {
+      void consumePendingDeepLink();
+    }
+  }, [isAuthenticated, isFocused]);
 
   // Sync current username and clear data if username doesn't match
   useEffect(() => {
@@ -274,6 +283,7 @@ const HomeScreen = ({navigation}: any) => {
     'metanet',
     'monarknet',
     'cityzone',
+    'networksolutions',
     'graceway',
     'log2space-common',
   ]);
@@ -956,6 +966,15 @@ const HomeScreen = ({navigation}: any) => {
         return;
       }
 
+      // Refresh token before API calls so account summary and menu load reliably
+      const sessionReady = await sessionManager.ensureSessionReady();
+      if (!sessionReady) {
+        const refreshResult = await sessionManager.autoRefreshSession();
+        if (!refreshResult.success && __DEV__) {
+          console.warn('[HomeScreen] Session refresh before fetch failed:', refreshResult.message);
+        }
+      }
+
       const { username } = session;
       
       // CRITICAL: Verify this is the current user - clear state if username changed
@@ -991,7 +1010,7 @@ const HomeScreen = ({navigation}: any) => {
       // Use the enhanced API service with automatic token regeneration
       // console.log('🏠 [HomeScreen] Calling makeAuthenticatedRequest...');
       const authResponse = await apiService.authUser(username);
-      // console.log('🏠 [HomeScreen] API call completed, response received:', !!authResponse);
+      console.log('🏠 [HomeScreen] API call completed, response received:', !!authResponse);
       
       if (__DEV__) {
         console.log('[HomeScreen] authUser response received:', {
@@ -1032,6 +1051,7 @@ const HomeScreen = ({navigation}: any) => {
         }
         setAuthData(authResponse);
         setGlobalAuthData(authResponse);
+        updateCleverTapUserProfile(authResponse, username);
         
         // Extract plan details from auth response
         if (authResponse.currentPlan) {
@@ -1110,6 +1130,7 @@ const HomeScreen = ({navigation}: any) => {
     try {
       setRefreshing(true);
       setLoadError(null);
+      await sessionManager.autoRefreshSession();
       await refreshMenu();
       await fetchAccountData({ force: true });
       try {

@@ -32,6 +32,7 @@ target 'Spacecom End User App' do
   pod 'FirebaseCoreExtension', :modular_headers => true
   pod 'FirebaseInstallations', :modular_headers => true
   pod 'FirebaseMessaging', :modular_headers => true
+  pod 'SDWebImage', :modular_headers => true
 
 
   post_install do |installer|

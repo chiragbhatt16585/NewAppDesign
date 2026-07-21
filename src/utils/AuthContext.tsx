@@ -8,6 +8,10 @@ import biometricAuthService from '../services/biometricAuth';
 import menuService from '../services/menuService';
 import realmAuthService from '../services/realmAuthService';
 import { ensureDeviceRegistrationAfterLogin } from '../services/notificationService';
+import {
+  registerCleverTapUserOnLogin,
+  syncCleverTapWithAuthUser,
+} from '../services/cleverTapService';
 import { getClientConfig } from '../config/client-config';
 // Session monitoring disabled for persistent login
 // import sessionMonitor from '../services/sessionMonitor';
@@ -75,53 +79,49 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const session = await sessionManager.getCurrentSession();
         if (session) {
           console.log('Valid session found:', session.username);
-          
-          // Check if session needs auto refresh (after long periods of inactivity)
-          const shouldRefresh = await sessionManager.shouldAutoRefresh();
-          if (shouldRefresh) {
-            console.log('Session needs auto refresh, refreshing...');
-            const refreshResult = await sessionManager.autoRefreshSession();
-            
-            if (refreshResult.success) {
-              console.log('✅ Session auto-refreshed successfully:', refreshResult.message);
-              // Get updated session after refresh
-              const updatedSession = await sessionManager.getCurrentSession();
-              if (updatedSession) {
-                setIsAuthenticated(true);
-                setUserData({
-                  username: updatedSession.username,
-                  token: updatedSession.token,
-                });
-                setLoading(false);
-                return;
-              }
-            } else {
-              console.log('❌ Session auto-refresh failed:', refreshResult.message);
-              // Continue with existing session if refresh failed
-            }
+
+          // Always try to refresh/regenerate token on app start
+          const refreshResult = await sessionManager.autoRefreshSession();
+          if (refreshResult.success) {
+            console.log('✅ Session auto-refreshed on startup:', refreshResult.message);
+          } else {
+            console.log('⚠️ Session auto-refresh on startup did not renew token:', refreshResult.message);
           }
-          
-          // Use existing session
-          setIsAuthenticated(true);
-          setUserData({
-            username: session.username,
-            token: session.token,
-          });
-          setLoading(false);
-          return;
+
+          const updatedSession = await sessionManager.getCurrentSession();
+          if (updatedSession) {
+            setIsAuthenticated(true);
+            setUserData({
+              username: updatedSession.username,
+              token: updatedSession.token,
+            });
+            setLoading(false);
+            return;
+          }
         }
       }
-      
+
       // Only diagnose session issues if user is not logged in
       console.log('User not logged in, checking for session issues...');
       const sessionDiagnosis = await sessionManager.diagnoseAndFixSession();
-      
+
       if (sessionDiagnosis.needsReset) {
         console.log('Session issues detected during auth check:', sessionDiagnosis.issues);
-        console.log('Resetting session...');
-        
-        // Reset the session
         await sessionManager.resetSession();
+      } else if (sessionDiagnosis.issues.length > 0) {
+        const recovered = await sessionManager.autoRefreshSession();
+        if (recovered.success) {
+          const recoveredSession = await sessionManager.getCurrentSession();
+          if (recoveredSession?.username) {
+            setIsAuthenticated(true);
+            setUserData({
+              username: recoveredSession.username,
+              token: recoveredSession.token,
+            });
+            setLoading(false);
+            return;
+          }
+        }
       }
       
       // Set as not authenticated
@@ -255,7 +255,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
         
         // NOW create the session
-        await sessionManager.createSession(username, response.token, password, clientName);
+        await sessionManager.createSession(username, response.token, password, clientName, 'password');
+        // Login response may include user_password — store only if present
+        await sessionManager.storeRegenerationCredentialsFromAuthUser(username, response);
         
         // Store current username for next login comparison
         await AsyncStorage.setItem('last_logged_in_username', username);
@@ -267,6 +269,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           username,
           token: response.token,
         });
+        registerCleverTapUserOnLogin(username);
+        void apiService
+          .authUser(username)
+          .then(authUserData => {
+            syncCleverTapWithAuthUser(username, authUserData as Record<string, unknown>);
+          })
+          .catch(cleverTapError => {
+            console.warn('[AuthContext] CleverTap authUser sync failed after login:', cleverTapError);
+          });
         console.log('[AuthContext] ✅✅✅ Login successful, session created for:', username);
         console.log('[AuthContext] ✅✅✅ All old data cleared, ready for fresh data fetch');
         
@@ -366,7 +377,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await apiService.verifyOtp(phoneNumber, otp);
       
       if (response && response.token) {
-        await sessionManager.createSession(phoneNumber, response.token, undefined, clientName);
+        await sessionManager.createSession(phoneNumber, response.token, undefined, clientName, 'otp');
+        // OTP login may not include password — authUser will store user_password when available
+        await sessionManager.storeRegenerationCredentialsFromAuthUser(phoneNumber, response);
         
         // Store current username for next login comparison
         await AsyncStorage.setItem('last_logged_in_username', phoneNumber);
@@ -376,6 +389,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           username: phoneNumber,
           token: response.token,
         });
+        registerCleverTapUserOnLogin(phoneNumber);
+        void apiService
+          .authUser(phoneNumber)
+          .then(authUserData => {
+            syncCleverTapWithAuthUser(phoneNumber, authUserData as Record<string, unknown>);
+          })
+          .catch(cleverTapError => {
+            console.warn('[AuthContext] CleverTap authUser sync failed after OTP login:', cleverTapError);
+          });
         console.log('[AuthContext] OTP login successful, session created');
         
         // Device registration in background (non-blocking) - don't wait for it

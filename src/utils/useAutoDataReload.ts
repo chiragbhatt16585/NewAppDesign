@@ -61,9 +61,9 @@ export const useAutoDataReload = (options: UseAutoDataReloadOptions = {}) => {
 
     const handleAppStateChange = async (nextAppState: AppStateStatus) => {
       if (nextAppState === 'active') {
-        // App became active, check if we need to reload
         const isLoggedIn = await sessionManager.isLoggedIn();
         if (isLoggedIn) {
+          await sessionManager.autoRefreshSession();
           const shouldReload = await checkIfReloadNeeded();
           if (shouldReload) {
             console.log('App became active and reload is needed, triggering auto reload');

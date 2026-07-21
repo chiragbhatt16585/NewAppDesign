@@ -4,6 +4,7 @@ import {NavigationContainer} from '@react-navigation/native';
 import {createStackNavigator} from '@react-navigation/stack';
 import MainTabs from './MainTabs';
 import {navigationRef, handlePendingNavigation} from './RootNavigation';
+import { initializeDeepLinking, consumePendingDeepLink } from '../services/deepLinkService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import LoginScreen from '../screens/LoginScreen';
 import DomainEntryScreen from '../screens/DomainEntryScreen';
@@ -105,6 +106,19 @@ const AppNavigator: React.FC<AppNavigatorProps> = ({ initialRoute }) => {
     restoreState();
   }, []); // Remove initialRoute dependency to prevent re-triggering
 
+  useEffect(() => {
+    if (!isReady) {
+      return;
+    }
+    const cleanup = initializeDeepLinking();
+    return cleanup;
+  }, [isReady]);
+
+  const onReady = () => {
+    handlePendingNavigation();
+    void consumePendingDeepLink();
+  };
+
   const onStateChange = async (state: any) => {
     try {
       // console.log('=== NAVIGATION STATE SAVING DISABLED ===');
@@ -133,7 +147,7 @@ const AppNavigator: React.FC<AppNavigatorProps> = ({ initialRoute }) => {
       ref={navigationRef}
       initialState={initialState}
       onStateChange={onStateChange}
-      onReady={handlePendingNavigation}>
+      onReady={onReady}>
       <Stack.Navigator
         initialRouteName={initialState ? undefined : currentInitialRoute}
         screenOptions={{

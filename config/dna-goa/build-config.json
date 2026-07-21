@@ -2,8 +2,8 @@
   "android": {
     "namespace": "com.spacecom.log2space.dnagoa",
     "applicationId": "com.spacecom.log2space.dnagoa",
-    "versionCode": 1,
-    "versionName": "1.0.1",
+    "versionCode": 17,
+    "versionName": "17",
     "signing": {
       "debug": {
         "storeFile": "debug.keystore",
@@ -21,7 +21,7 @@
   },
   "ios": {
     "bundleIdentifier": "com.spacecom.log2space.dnagoa",
-    "marketingVersion": "1.0.1",
+    "marketingVersion": "1.0.5",
     "buildNumber": "1",
     "displayName": "DNA Goa"
   }

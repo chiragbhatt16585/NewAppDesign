@@ -38,6 +38,7 @@ export interface ClientConfig {
     pushNotifications: boolean;
     fileUpload: boolean;
     multiLanguage: boolean;
+    cleverTap?: boolean;
   };
   contact: {
     gstin?: string;
@@ -125,6 +126,7 @@ const clientConfigs: Record<string, ClientConfig> = {
       pushNotifications: true,
       fileUpload: true,
       multiLanguage: true,
+      cleverTap: true,
     },
     contact: {
         gstin: '27AABCM4852A1ZT',
@@ -2089,6 +2091,70 @@ const clientConfigs: Record<string, ClientConfig> = {
       checkInterval: 24,
       forceUpdateEnabled: true,
       packageName: 'in.spacecom.log2space.client.cityzone',
+      appStoreId: undefined,
+    },
+  },
+  networksolutions: {
+    clientId: 'networksolutions',
+    clientName: 'Network Solutions',
+    api: {
+      baseURL: 'https://networksolutions.l2s.biz/l2s/api',
+      serverURL: 'https://networksolutions.l2s.biz',
+      timeout: 30000,
+    },
+    branding: {
+      logo: 'isp_logo.png',
+      primaryColor: '#1976D2',
+      secondaryColor: '#42A5F5',
+      appName: 'Network Solutions',
+      headerBackgroundImage: 'header_background.png',
+      logoDimensions: {
+        header: { width: 150, height: 80 },
+        login: { width: 300, height: 200 },
+      },
+    },
+    features: {
+      biometricAuth: true,
+      pushNotifications: true,
+      fileUpload: true,
+      multiLanguage: true,
+    },
+    contact: {
+      whatsappNumber: '6356883838',
+      headOffice: {
+        title: 'Network Solution and Services',
+        address:
+          'Manchha Empire Shop 106, Mashal Chowk, Daman - Kunta Rd, near Federal Bank, Nani Daman, Daman, Dadra and Nagar Haveli and Daman and Diu 396210',
+        customerSupport: '063568 83838',
+      },
+      branchOffices: [],
+      emails: {
+        inquiries: 'networksolutionandservices@gmail.com',
+        sales: 'networksolutionandservices@gmail.com',
+        support: 'networksolutionandservices@gmail.com',
+      },
+      landline: '6356883838',
+    },
+    about: {
+      companyName: 'Network Solution and Services',
+      establishedYear: '',
+      description:
+        'Network Solution and Services provides high-speed internet connectivity and related services.',
+      specializations: [
+        'High-speed broadband internet',
+        'Fiber broadband',
+        'Home and business internet solutions',
+      ],
+      serviceAreas: ['Daman', 'Dadra and Nagar Haveli and Daman and Diu'],
+      achievements: [],
+    },
+    reviewUrl: undefined,
+    website: 'https://networksolutions.l2s.biz',
+    versionCheck: {
+      enabled: true,
+      checkInterval: 24,
+      forceUpdateEnabled: true,
+      packageName: 'com.spacecom.log2space.networksolutions',
       appStoreId: undefined,
     },
   },

@@ -249,7 +249,11 @@ const isTokenExpiredMessage = (message?: string): boolean => {
     m.includes('token expired') ||
     m.includes('invalid token') ||
     m === 'unauthorized' ||
-    m.includes('session expired')
+    m.includes('session expired') ||
+    m.includes('authentication failed') ||
+    m.includes('auth failed') ||
+    m.includes('not authenticated') ||
+    m.includes('invalid authentication')
   );
 };
 
@@ -606,6 +610,48 @@ class ApiService {
     }
   }
 
+  /**
+   * Renew session token for OTP users (and password fallback) using username-only login.
+   * Matches legacy client API behaviour: empty password + registered device session.
+   */
+  async regenerateSessionToken(username: string): Promise<string | false> {
+    const normalizedUsername = username.toLowerCase().trim();
+    const data = {
+      username: normalizedUsername,
+      password: '',
+      login_from: 'app',
+      request_source: 'app',
+      request_app: 'user_app',
+      phone_no: normalizedUsername,
+    };
+
+    const options = {
+      method,
+      body: toFormData(data),
+      headers: new Headers({ ...fixedHeaders }),
+      timeout,
+    };
+
+    try {
+      const res = await fetchWithTimeout(`${getApiUrl()}/selfcareL2sUserLogin`, options);
+      const response = await res.json();
+
+      if (response.status === 'ok' && response.code === 200 && response.data) {
+        const token =
+          response.data.token ||
+          response.data.Authentication ||
+          response.data.authentication;
+        return token || false;
+      }
+
+      console.warn('[API] Username-only token renewal failed:', response.message || response.status);
+      return false;
+    } catch (error: any) {
+      console.warn('[API] Username-only token renewal error:', error?.message || error);
+      return false;
+    }
+  }
+
   private async performTokenRegeneration() {
     // Use stored credentials via sessionManager (empty-password login does not work)
     return sessionManager.regenerateToken();
@@ -638,32 +684,49 @@ class ApiService {
   // Enhanced API call wrapper with automatic token regeneration
   async makeAuthenticatedRequest<T>(
     requestFn: (token: string) => Promise<T>,
-    maxRetries: number = 1
+    maxRetries: number = 2
   ): Promise<T> {
     let lastError: Error | null = null;
+
+    const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
         console.log(`[API] Attempt ${attempt + 1}/${maxRetries + 1} - Getting token...`);
-        const token = await sessionManager.getToken();
-        
+        let token = await sessionManager.getToken();
+
         if (!token) {
           console.log('[API] No token available, attempting token regeneration...');
-          
-          // Try to regenerate token before giving up
+          await sessionManager.ensureSessionReady();
+          token = await sessionManager.getToken();
+        }
+
+        if (!token) {
           const regeneratedToken = await sessionManager.regenerateToken();
           if (regeneratedToken) {
             console.log('[API] Token regenerated successfully, retrying request...');
             await sessionManager.updateActivityTime();
             return await requestFn(regeneratedToken);
-          } else {
-            console.log('[API] Token regeneration failed, preserving session for manual logout');
-            throw new Error('Authentication failed. Please try again.');
           }
+
+          if (attempt < maxRetries) {
+            await wait(400);
+            continue;
+          }
+
+          console.log('[API] Token regeneration failed after retries');
+          const isOtpSession = await sessionManager.isOtpSession();
+          const hasCredentials = await sessionManager.hasStoredCredentials();
+          throw new Error(
+            isOtpSession
+              ? 'Session expired. Please log in with OTP again.'
+              : hasCredentials
+                ? 'Authentication failed. Please try again.'
+                : 'Session expired. Please log in again.',
+          );
         }
 
         console.log(`[API] Using existing token for attempt ${attempt + 1}`);
-        // Update activity time on every API call
         await sessionManager.updateActivityTime();
 
         return await requestFn(token);
@@ -674,25 +737,35 @@ class ApiService {
         if (isNetworkError(error)) {
           throw new Error(networkErrorMsg);
         }
-        
-        // Check if it's a token expiration error
+
         if (isTokenExpiredError(error) && attempt < maxRetries) {
           console.log('[API] Token expired, attempting regeneration...');
-          
-          // Try to regenerate token
           const regeneratedToken = await sessionManager.regenerateToken();
           if (regeneratedToken) {
             console.log('[API] Token regenerated successfully, retrying request...');
-            continue; // Retry with new token
-          } else {
-            console.log('[API] Token regeneration failed, preserving session for manual logout');
-            throw new Error('Authentication failed. Please try again.');
+            continue;
           }
-        } else {
-          // Not a token error or max retries reached
-          console.log('[API] Not a token error or max retries reached, throwing error');
-          throw error;
+
+          await wait(400);
+          const recovered = await sessionManager.ensureSessionReady();
+          if (recovered) {
+            continue;
+          }
+
+          console.log('[API] Token regeneration failed, preserving session for manual logout');
+          const isOtpSession = await sessionManager.isOtpSession();
+          const hasCredentials = await sessionManager.hasStoredCredentials();
+          throw new Error(
+            isOtpSession
+              ? 'Session expired. Please log in with OTP again.'
+              : hasCredentials
+                ? 'Authentication failed. Please try again.'
+                : 'Session expired. Please log in again.',
+          );
         }
+
+        console.log('[API] Not a token error or max retries reached, throwing error');
+        throw error;
       }
     }
 
@@ -792,8 +865,8 @@ class ApiService {
       } as any;
 
       const menuSettingsUrl = `${getApiUrl()}/selfcareMenuSettings`;
-      console.log('[API] Menu settings endpoint:', menuSettingsUrl);
-      console.log('[API] Menu settings request:', { method, username, request_source: data.request_source, request_app: data.request_app });
+      // console.log('[API] Menu settings endpoint:', menuSettingsUrl);
+      // console.log('[API] Menu settings request:', { method, username, request_source: data.request_source, request_app: data.request_app });
       const res = await fetchWithTimeout(menuSettingsUrl, options);
       const response = await res.json();
       // console.log('[API] POST /selfcareMenuSettings response', {
@@ -1217,6 +1290,10 @@ class ApiService {
         this.authUserCache.username === normalizedUsername &&
         Date.now() - this.authUserCache.ts < this.AUTHUSER_TTL_MS) {
       // console.log('[API] ✅ Using cached data for user:', normalizedUsername);
+      await sessionManager.storeRegenerationCredentialsFromAuthUser(
+        normalizedUsername,
+        this.authUserCache.data,
+      );
       return this.authUserCache.data
     }
     
@@ -1252,6 +1329,10 @@ class ApiService {
           }
           throw new Error(apiMessage || 'Failed to load account data');
         } else {
+          await sessionManager.storeRegenerationCredentialsFromAuthUser(
+            normalizedUsername,
+            response.data,
+          );
           // CRITICAL: Store username with cached data to verify on next request
           this.authUserCache = { 
             data: response.data, 
@@ -2653,6 +2734,9 @@ class ApiService {
     if (formData.salesPerson) {
       data.sales_executive = String(formData.salesPerson);
     }
+    if (__DEV__) {
+      console.log('[ReferFriend] addNewInquiry => request', JSON.stringify(data, null, 2));
+    }
     const options = {
       method,
       headers: headers(Authentication),
@@ -2663,14 +2747,16 @@ class ApiService {
       setTimeout(() => null, 0);
       return res.json().then(res => {
         setTimeout(() => null, 0);
-        if (res.status != 'ok' && res.code != 200) {
-          if (res.message == 'Lead Created Successfully...') {
-            throw new Error('Inquiry Created Successfully.');
-          }
-          //throw new Error('OTP not generated.');
-        } else {
-          return res;
+        if (__DEV__) {
+          console.log('[ReferFriend] addNewInquiry => response', JSON.stringify(res, null, 2));
         }
+        if (res.status !== 'ok' && res.code !== 200) {
+          if (res.message === 'Lead Created Successfully...') {
+            return res;
+          }
+          throw new Error(res.message || 'Could not submit inquiry. Please try again.');
+        }
+        return res;
       });
     }).catch((e) => {
       let msg = (

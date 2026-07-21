@@ -1,4 +1,4 @@
 {
-  "hiddenFields": [],
-  "optionalFields": []
+  "hiddenFields": ["area", "location"],
+  "optionalFields": ["building", "pincode", "address1"]
 }

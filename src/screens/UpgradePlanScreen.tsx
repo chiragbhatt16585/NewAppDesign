@@ -180,7 +180,7 @@ const UpgradePlanScreen = ({navigation}: any) => {
     }, [])
   );
 
-  const loadPlanData = async (forceRefresh = false) => {
+  const loadPlanData = async (forceRefresh = false, hasRetriedAuth = false) => {
     try {
       setIsLoading(true);
       
@@ -201,13 +201,13 @@ const UpgradePlanScreen = ({navigation}: any) => {
       const authResponse = await apiService.makeAuthenticatedRequest(async (token) => {
         return await apiService.authUser(username);
       });
-      console.log('=== AUTH RESPONSE ===');
-      console.log('Full Auth Response:', JSON.stringify(authResponse, null, 2));
-      console.log('Current Plan:', authResponse?.current_plan);
-      console.log('Current Plan1:', authResponse?.current_plan1);
-      console.log('Plan Price:', authResponse?.plan_price);
-      console.log('Admin Login ID:', authResponse?.admin_login_id);
-      console.log('=== END AUTH RESPONSE ===');
+      // console.log('=== AUTH RESPONSE ===');
+      // console.log('Full Auth Response:', JSON.stringify(authResponse, null, 2));
+      // console.log('Current Plan:', authResponse?.current_plan);
+      // console.log('Current Plan1:', authResponse?.current_plan1);
+      // console.log('Plan Price:', authResponse?.plan_price);
+      // console.log('Admin Login ID:', authResponse?.admin_login_id);
+      // console.log('=== END AUTH RESPONSE ===');
       setAuthData(authResponse);
 
       // Get admin tax info
@@ -319,22 +319,24 @@ const UpgradePlanScreen = ({navigation}: any) => {
       });
 
     } catch (error: any) {
-      console.error('Load plan data error:', error);
-      
-      // Handle specific authentication errors
-      if (error.message?.includes('Session expired') || 
-          error.message?.includes('Authentication required') || 
-          error.message?.includes('Authentication failed') ||
-          error.message?.includes('login again')) {
+      const isAuthError =
+        error.message?.includes('Session expired') ||
+        error.message?.includes('Authentication required') ||
+        error.message?.includes('Authentication failed') ||
+        error.message?.includes('Token Expired') ||
+        error.message?.includes('login again');
+
+      if (isAuthError && !hasRetriedAuth) {
+        const refreshResult = await sessionManager.autoRefreshSession();
+        if (refreshResult.success) {
+          return loadPlanData(forceRefresh, true);
+        }
+      }
+
+      if (isAuthError) {
         Alert.alert(
-          'Session Expired', 
-          'Your session has expired. Please login again.',
-          [
-            {
-              text: 'OK',
-              onPress: () => navigation.navigate('Login')
-            }
-          ]
+          'Connection Issue',
+          'Unable to refresh your session right now. Please try again in a moment.',
         );
       } else {
         Alert.alert('Error', error.message || 'Failed to load plan data');
@@ -926,6 +928,28 @@ const UpgradePlanScreen = ({navigation}: any) => {
             {t('common.loading')}
           </Text>
 
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (plansData.length === 0) {
+    return (
+      <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}>
+        <CommonHeader navigation={navigation} />
+        <View style={styles.emptyStateContainer}>
+          <Feather
+            name="info"
+            size={48}
+            color={colors.textSecondary}
+            style={styles.emptyStateIcon}
+          />
+          <Text style={[styles.emptyStateTitle, {color: colors.text}]}>
+            No Plans Available
+          </Text>
+          <Text style={[styles.emptyStateText, {color: colors.textSecondary}]}>
+            Online facility is not available in your area. Kindly contact your ISP.
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -1934,6 +1958,27 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 10,
     fontSize: 16,
+  },
+  emptyStateContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+    paddingVertical: 40,
+  },
+  emptyStateIcon: {
+    marginBottom: 16,
+  },
+  emptyStateTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  emptyStateText: {
+    fontSize: 15,
+    textAlign: 'center',
+    lineHeight: 22,
   },
   filterContainer: {
     flexDirection: 'row',

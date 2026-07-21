@@ -1,9 +1,9 @@
 {
-  "name": "CityzoneApp",
+  "name": "MicroscanApp",
   "expo": {
-    "name": "Cityzone",
-    "slug": "cityzone",
-    "version": "1.0.3",
+    "name": "Microscan",
+    "slug": "microscan",
+    "version": "3.0.6",
     "orientation": "portrait",
     "icon": "./app-icons/icon.png",
     "userInterfaceStyle": "light",
@@ -17,19 +17,19 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "in.spacecom.log2space.client.cityzone",
-      "buildNumber": "3"
+      "bundleIdentifier": "com.l2sClient.microscan",
+      "buildNumber": "47"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./app-icons/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
       },
-      "package": "in.spacecom.log2space.client.cityzone",
-      "versionCode": 3
+      "package": "in.spacecom.log2space.client.microscan",
+      "versionCode": 47
     },
     "web": {
       "favicon": "./app-icons/favicon.png"
     }
   }
-}
+} 

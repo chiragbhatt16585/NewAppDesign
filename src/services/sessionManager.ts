@@ -12,6 +12,7 @@ export interface UserSession {
   lastActivityTime: number; // Track when user last used the app
   sessionExpiry?: number;
   clientName?: string; // Store which client this session belongs to
+  authMethod?: 'password' | 'otp';
 }
 
 export class SessionManager {
@@ -53,11 +54,11 @@ export class SessionManager {
             this.currentSession.isLoggedIn = true;
             await AsyncStorage.setItem(this.SESSION_KEY, JSON.stringify(this.currentSession));
           }
-          // console.log('✅ Valid session found, user is logged in');
           
-          // If token is missing, it will be regenerated automatically on next API call
+          // If token is missing, regenerate in background so the next API call succeeds
           if (!this.currentSession.token) {
-            console.log('⚠️ Session found but token missing - will regenerate automatically');
+            console.log('[SessionManager] Session found but token missing - regenerating in background');
+            this.regenerateToken().catch(() => {});
           }
           
           // Note: API configuration is handled by build scripts, no dynamic update needed
@@ -80,7 +81,13 @@ export class SessionManager {
     }
   }
 
-  async createSession(username: string, token: string, password?: string, clientName?: string): Promise<void> {
+  async createSession(
+    username: string,
+    token: string,
+    password?: string,
+    clientName?: string,
+    authMethod: 'password' | 'otp' = password ? 'password' : 'otp',
+  ): Promise<void> {
     try {
       const session: UserSession = {
         isLoggedIn: true,
@@ -89,14 +96,25 @@ export class SessionManager {
         lastLoginTime: Date.now(),
         lastActivityTime: Date.now(), // Keep for tracking but don't use for logout
         clientName: clientName || 'dna-infotel', // Default to dna-infotel if not specified
+        authMethod,
       };
 
       this.currentSession = session;
       await AsyncStorage.setItem(this.SESSION_KEY, JSON.stringify(session));
       
-      // Store credentials in AsyncStorage for token regeneration
-      if (password) {
+      // Store credentials in AsyncStorage for password-based token regeneration
+      if (password && authMethod === 'password') {
         await credentialStorage.saveCredentials(username, password);
+      } else if (authMethod === 'otp') {
+        // Only clear stale credentials from a different user — never wipe on app update
+        const existing = await credentialStorage.getCredentials();
+        const newUser = username.toLowerCase().trim();
+        if (
+          existing?.username &&
+          existing.username.toLowerCase().trim() !== newUser
+        ) {
+          await credentialStorage.clearCredentials();
+        }
       }
       
       // Store current client for token regeneration
@@ -170,6 +188,12 @@ export class SessionManager {
         // Ensure isLoggedIn flag is set for backwards compatibility
         if (!this.currentSession.isLoggedIn) {
           this.currentSession.isLoggedIn = true;
+          await AsyncStorage.setItem(this.SESSION_KEY, JSON.stringify(this.currentSession));
+        }
+        // Infer auth method for sessions created before this field existed
+        if (!this.currentSession.authMethod) {
+          const creds = await credentialStorage.getCredentials();
+          this.currentSession.authMethod = creds?.password ? 'password' : 'otp';
           await AsyncStorage.setItem(this.SESSION_KEY, JSON.stringify(this.currentSession));
         }
         return this.currentSession;
@@ -286,39 +310,140 @@ export class SessionManager {
     }
   }
 
+  private extractTokenFromLoginResponse(response: any): string | null {
+    if (!response) {
+      return null;
+    }
+    if (typeof response.token === 'string' && response.token.trim()) {
+      return response.token;
+    }
+    if (typeof response.Authentication === 'string' && response.Authentication.trim()) {
+      return response.Authentication;
+    }
+    if (typeof response.authentication === 'string' && response.authentication.trim()) {
+      return response.authentication;
+    }
+    return null;
+  }
+
+  async hasStoredCredentials(): Promise<boolean> {
+    const creds = await credentialStorage.getCredentials();
+    return !!(creds?.username && creds?.password);
+  }
+
+  private extractUserPassword(authData: any): string | null {
+    if (!authData || typeof authData !== 'object') {
+      return null;
+    }
+
+    const raw = authData.user_password;
+    if (typeof raw !== 'string') {
+      return null;
+    }
+
+    const password = raw.trim();
+    if (
+      !password ||
+      password.toLowerCase() === 'null' ||
+      password.toLowerCase() === 'undefined'
+    ) {
+      return null;
+    }
+
+    return password;
+  }
+
+  /**
+   * Save user_password from authUser (or login) only when the API returns a real value.
+   * No-op when missing — never clears or overwrites with empty data.
+   */
+  async storeRegenerationCredentialsFromAuthUser(
+    username: string,
+    authData: any,
+  ): Promise<boolean> {
+    try {
+      const password = this.extractUserPassword(authData);
+      if (!password) {
+        return false;
+      }
+
+      const session = await this.getCurrentSession();
+      if (!session?.username) {
+        return false;
+      }
+
+      const sessionUser = session.username.toLowerCase().trim();
+      const authUser = username.toLowerCase().trim();
+      if (sessionUser !== authUser) {
+        return false;
+      }
+
+      await credentialStorage.saveCredentials(sessionUser, password);
+      return true;
+    } catch (error) {
+      console.warn('[SessionManager] Failed to store credentials from authUser:', error);
+      return false;
+    }
+  }
+
+  async isOtpSession(): Promise<boolean> {
+    const session = await this.getCurrentSession();
+    if (session?.authMethod === 'otp') {
+      return true;
+    }
+    if (session?.authMethod === 'password') {
+      return false;
+    }
+    return !(await this.hasStoredCredentials());
+  }
+
   private async performRegenerateToken(): Promise<string | false> {
     try {
-      if (!this.currentSession) {
+      const session = await this.getCurrentSession();
+      if (!session?.username) {
         console.error('[SessionManager] No current session for token regeneration');
         return false;
       }
 
+      const username = session.username.toLowerCase().trim();
+      let token: string | null = null;
+
       const creds = await credentialStorage.getCredentials();
-      if (!creds) {
-        console.error('[SessionManager] No stored credentials for token regeneration');
-        return false;
+      if (creds?.password) {
+        try {
+          const loginResponse = await apiService.authenticate(
+            username,
+            creds.password,
+            '',
+            'none',
+            undefined,
+            'password',
+          );
+          token = this.extractTokenFromLoginResponse(loginResponse);
+        } catch (passwordError: any) {
+          console.warn(
+            '[SessionManager] Password token regeneration failed:',
+            passwordError?.message || passwordError,
+          );
+        }
       }
 
-      const { username, password } = creds;
-      const loginResponse = await apiService.authenticate(
-        username,
-        password,
-        '',
-        'none',
-        undefined,
-        'password',
-      );
+      if (!token) {
+        console.log('[SessionManager] Attempting username-only session token renewal');
+        const renewed = await apiService.regenerateSessionToken(username);
+        token = renewed || null;
+      }
 
-      if (loginResponse?.token) {
+      if (token) {
         if (this.currentSession) {
-          this.currentSession.token = loginResponse.token;
+          this.currentSession.token = token;
           this.currentSession.lastActivityTime = Date.now();
           await AsyncStorage.setItem(this.SESSION_KEY, JSON.stringify(this.currentSession));
         }
-        return loginResponse.token;
+        return token;
       }
 
-      console.error('[SessionManager] Authentication failed - no token received');
+      console.error('[SessionManager] Token regeneration failed');
       return false;
     } catch (error: any) {
       const message = error?.message || String(error);
@@ -499,77 +624,88 @@ export class SessionManager {
     }
   }
 
+  // Try to restore a usable auth token without logging the user out
+  async ensureSessionReady(): Promise<boolean> {
+    try {
+      const session = await this.getCurrentSession();
+      if (!session?.username) {
+        return false;
+      }
+
+      if (session.token) {
+        return true;
+      }
+
+      const newToken = await this.regenerateToken();
+      return !!newToken;
+    } catch (error) {
+      console.error('[SessionManager] ensureSessionReady failed:', error);
+      return false;
+    }
+  }
+
   // Enhanced method to check and fix session issues
   async diagnoseAndFixSession(): Promise<{ needsReset: boolean; issues: string[] }> {
     try {
-      // console.log('=== DIAGNOSING SESSION ISSUES ===');
-      
       const issues: string[] = [];
       let needsReset = false;
-      
-      // Check if session exists in AsyncStorage
+
       const savedSession = await AsyncStorage.getItem(this.SESSION_KEY);
       if (!savedSession) {
         issues.push('No session found in AsyncStorage');
-        needsReset = true;
-      } else {
-        try {
-          const parsedSession = JSON.parse(savedSession);
-          // console.log('Parsed session:', parsedSession);
-          
-          // Check session structure - be more lenient
-          if (!parsedSession.username) {
-            issues.push('Session missing username');
-            needsReset = true;
-          }
-          
-          // Don't reset if token is missing - let API handle token regeneration
-          if (!parsedSession.token) {
-            issues.push('Session missing token - will attempt regeneration');
-            // Don't set needsReset = true here - let the API try to regenerate
-          }
-          
-          if (!parsedSession.isLoggedIn) {
-            issues.push('Session marked as not logged in');
-            needsReset = true;
-          }
-          
-          // Check stored credentials - be more lenient
-          const storedUsername = await AsyncStorage.getItem('stored_username');
-          const storedPassword = await AsyncStorage.getItem('stored_password');
-          
-          if (!storedUsername || !storedPassword) {
-            issues.push('Missing stored credentials for token regeneration');
-            // Only reset if we also don't have a valid token
-            if (!parsedSession.token) {
-              needsReset = true;
-            }
-          }
-          
-          // Check if username matches between session and stored credentials
-          if (storedUsername && parsedSession.username && storedUsername !== parsedSession.username) {
-            issues.push('Username mismatch between session and stored credentials');
-            needsReset = true;
-          }
-          
-          // If we have a valid session structure, don't reset even if some issues exist
-          if (parsedSession.username && parsedSession.isLoggedIn) {
-            // console.log('Session has valid structure, keeping it');
-            needsReset = false;
-          }
-          
-        } catch (parseError) {
-          issues.push('Session data corrupted (JSON parse error)');
-          needsReset = true;
+        return { needsReset: true, issues };
+      }
+
+      let parsedSession: UserSession;
+      try {
+        parsedSession = JSON.parse(savedSession);
+      } catch {
+        issues.push('Session data corrupted (JSON parse error)');
+        return { needsReset: true, issues };
+      }
+
+      if (!parsedSession.username) {
+        issues.push('Session missing username');
+        return { needsReset: true, issues };
+      }
+
+      // Auto-repair legacy sessions that lost the isLoggedIn flag
+      if (!parsedSession.isLoggedIn) {
+        issues.push('Session missing isLoggedIn flag - repaired automatically');
+        parsedSession.isLoggedIn = true;
+        this.currentSession = parsedSession;
+        await AsyncStorage.setItem(this.SESSION_KEY, JSON.stringify(parsedSession));
+      }
+
+      const storedUsername = await AsyncStorage.getItem('stored_username');
+      const storedPassword = await AsyncStorage.getItem('stored_password');
+
+      if (storedUsername && parsedSession.username && storedUsername !== parsedSession.username) {
+        issues.push('Username mismatch between session and stored credentials');
+        return { needsReset: true, issues };
+      }
+
+      if (!parsedSession.token) {
+        issues.push('Session missing token - attempting regeneration');
+        const newToken = await this.regenerateToken();
+        if (newToken) {
+          issues.push('Token regenerated successfully');
+        } else if (!storedUsername || !storedPassword) {
+          issues.push('Token regeneration failed and stored credentials are missing');
+          // Keep session if username exists; API layer may still recover later
         }
       }
-      
-      // console.log('Session diagnosis complete:', { needsReset, issues });
+
+      if ((!storedUsername || !storedPassword) && !parsedSession.token) {
+        issues.push('Missing stored credentials and no active token');
+      }
+
+      // Never force reset for recoverable session state — user should stay logged in
+      needsReset = false;
       return { needsReset, issues };
-      
     } catch (error) {
       console.error('Error diagnosing session:', error);
-      return { needsReset: true, issues: ['Error during diagnosis'] };
+      return { needsReset: false, issues: ['Error during diagnosis'] };
     }
   }
 
@@ -586,7 +722,7 @@ export class SessionManager {
 
       // console.log('Current session found:', session.username);
       
-      // Check if token needs regeneration (if missing or expired)
+      // Regenerate whenever token is missing
       const needsTokenRegeneration = !session.token || await this.isTokenExpired(session.token);
       
       if (needsTokenRegeneration) {
@@ -632,7 +768,8 @@ export class SessionManager {
       const lastActivity = session.lastActivityTime || 0;
       const hoursSinceLastActivity = (Date.now() - lastActivity) / (60 * 60 * 1000);
       
-      const shouldRefresh = hoursSinceLastActivity > 1; // Refresh if more than 1 hour
+      // Proactively refresh token after 30 minutes of inactivity
+      const shouldRefresh = hoursSinceLastActivity > 0.5;
       
       // console.log('Auto refresh check:', {
       //   hoursSinceLastActivity: Math.round(hoursSinceLastActivity),

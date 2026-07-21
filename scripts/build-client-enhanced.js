@@ -48,8 +48,8 @@ const CLIENTS = {
     name: 'DNA Goa',
     packageName: 'com.spacecom.log2space.dnagoa',
     namespace: 'com.spacecom.log2space.dnagoa',
-    versionCode: 1,
-    versionName: '1.0.1',
+    versionCode: 17,
+    versionName: '17',
     keystore: 'Log2spaceDNAGoaKey_V3.jks',
     configDir: 'config/dna-goa',
   },
@@ -261,6 +261,15 @@ const CLIENTS = {
     versionName: '3',
     keystore: 'Log2SpaceCityzone.keystore',
     configDir: 'config/cityzone',
+  },
+  networksolutions: {
+    name: 'Network Solutions',
+    packageName: 'com.spacecom.log2space.networksolutions',
+    namespace: 'com.spacecom.log2space.networksolutions',
+    versionCode: 1,
+    versionName: '1',
+    keystore: 'Log2SpaceNetworksolutions.jks',
+    configDir: 'config/networksolutions',
   },
 };
 
@@ -565,6 +574,9 @@ function copyClientConfig(clientId) {
       }
     }
     
+    const clevertapConfig = clientId === 'microscan' ? loadCleverTapConfig(client.configDir) : null;
+    infoPlistContent = injectCleverTapInfoPlist(infoPlistContent, clevertapConfig);
+
     // CRITICAL: Validate the final XML before writing
     const tempFile = path.join(appDir, 'ios', 'ISPApp', 'Info.plist.tmp');
     fs.writeFileSync(tempFile, infoPlistContent);
@@ -873,7 +885,7 @@ function updateAndroidBuildGradle(clientId) {
   }
   // Match legacy "When building one 'in' client…" or newer "in.spacecom…client.X — exclude…" comment + following excludes
   const inBlockPattern =
-    /\n[ \t]*\/\/ (?:When building one 'in' client[^\n]*|in\.spacecom\.log2space\.client\.[^\n]+)\n(?:[ \t]*exclude '\*\*\/in\/spacecom\/log2space\/client\/[^']+'[ \t]*\n)+(?:[ \t]*\/\/ Exclude other[^\n]*\n)?/;
+    /\n[ \t]*\/\/ (?:When building one 'in' client[^\n]*|in\.spacecom\.log2space\.client\.[^\n]+|Non-in client[^\n]*)\n(?:[ \t]*exclude '\*\*\/in\/spacecom\/log2space\/client\/[^']+'[ \t]*\n)+/;
   if (inBlockPattern.test(buildGradleContent)) {
     buildGradleContent = buildGradleContent.replace(inBlockPattern, '\n' + inExcludeBlock);
   } else {
@@ -914,6 +926,110 @@ function updateAndroidBuildGradle(clientId) {
 
   fs.writeFileSync(buildGradlePath, buildGradleContent);
   logSuccess('Updated Android build.gradle');
+}
+
+function loadCleverTapConfig(configDir) {
+  const configPath = path.join(__dirname, '..', configDir, 'clevertap-config.json');
+  if (!fs.existsSync(configPath)) {
+    return null;
+  }
+
+  try {
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    if (!config.enabled || !config.accountId) {
+      return null;
+    }
+    return config;
+  } catch (error) {
+    logWarning(`Failed to read CleverTap config: ${error.message}`);
+    return null;
+  }
+}
+
+function injectCleverTapInfoPlist(plistContent, config) {
+  let content = plistContent
+    .replace(/\t<key>CleverTapAccountID<\/key>\s*<string>[^<]*<\/string>\s*/g, '')
+    .replace(/\t<key>CleverTapToken<\/key>\s*<string>[^<]*<\/string>\s*/g, '')
+    .replace(/\t<key>CleverTapRegion<\/key>\s*<string>[^<]*<\/string>\s*/g, '');
+
+  if (!config?.accountId) {
+    return content;
+  }
+
+  const block = `\t<key>CleverTapAccountID</key>
+\t<string>${config.accountId}</string>
+\t<key>CleverTapToken</key>
+\t<string>${config.token || ''}</string>
+\t<key>CleverTapRegion</key>
+\t<string>${config.region || 'in1'}</string>
+`;
+
+  return content.replace(/(\s*)<\/dict>\s*<\/plist>/, `${block}$1</dict>\n</plist>`);
+}
+
+function updateAndroidManifestCleverTap(clientId) {
+  const client = CLIENTS[clientId];
+  const manifestPath = path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'AndroidManifest.xml');
+  if (!fs.existsSync(manifestPath)) {
+    logWarning('AndroidManifest.xml not found, skipping CleverTap update');
+    return;
+  }
+
+  let content = fs.readFileSync(manifestPath, 'utf8');
+  content = content.replace(/\s*<!-- CLEVERTAP START -->[\s\S]*?<!-- CLEVERTAP END -->/g, '');
+
+  const config = clientId === 'microscan' ? loadCleverTapConfig(client.configDir) : null;
+  if (config) {
+    const block = `
+      <!-- CLEVERTAP START -->
+      <meta-data android:name="CLEVERTAP_ACCOUNT_ID" android:value="${config.accountId}"/>
+      <meta-data android:name="CLEVERTAP_TOKEN" android:value="${config.token || ''}"/>
+      <meta-data android:name="CLEVERTAP_REGION" android:value="${config.region || 'in1'}"/>
+      <!-- CLEVERTAP END -->`;
+    content = content.replace(/(<application[^>]*>)/, `$1${block}`);
+    logSuccess('Injected CleverTap credentials into AndroidManifest.xml');
+  }
+
+  fs.writeFileSync(manifestPath, content);
+}
+
+function updateIOSAppDelegateCleverTap(clientId) {
+  const appDelegatePath = path.join(__dirname, '..', 'ios', 'ISPApp', 'AppDelegate.swift');
+  if (!fs.existsSync(appDelegatePath)) {
+    logWarning('AppDelegate.swift not found, skipping CleverTap update');
+    return;
+  }
+
+  let content = fs.readFileSync(appDelegatePath, 'utf8');
+  content = content.replace(/\nimport CleverTapSDK\n/g, '\n');
+  content = content.replace(/\nimport CleverTapReact\n/g, '\n');
+  content = content.replace(
+    /\n\s*CleverTap\.autoIntegrate\(\)\n\s*CleverTapReactManager\.sharedInstance\(\)\?\.applicationDidLaunch\(options: launchOptions\)\n/g,
+    '\n',
+  );
+
+  const config = clientId === 'microscan' ? loadCleverTapConfig(CLIENTS[clientId].configDir) : null;
+  if (config) {
+    if (!content.includes('import CleverTapSDK')) {
+      content = content.replace(
+        'import FirebaseCore',
+        'import FirebaseCore\nimport CleverTapSDK\nimport CleverTapReact',
+      );
+    }
+
+    content = content.replace(
+      /if FirebaseApp\.app\(\) == nil \{\n        FirebaseApp\.configure\(\)\n      \}/,
+      `if FirebaseApp.app() == nil {
+        FirebaseApp.configure()
+      }
+
+      CleverTap.autoIntegrate()
+      CleverTapReactManager.sharedInstance()?.applicationDidLaunch(options: launchOptions)`,
+    );
+    logSuccess('Enabled CleverTap initialization in AppDelegate.swift');
+  }
+
+  fs.writeFileSync(appDelegatePath, content);
 }
 
 // Update iOS AppDelegate
@@ -1009,6 +1125,7 @@ function updateAndroidMainActivity(clientId) {
       path.join(javaDir, 'in', 'spacecom', 'log2space', 'client', 'netfix'),
       path.join(javaDir, 'in', 'spacecom', 'log2space', 'client', 'monarkuser'),
       path.join(javaDir, 'in', 'spacecom', 'log2space', 'client', 'cityzone'),
+      path.join(javaDir, 'in', 'spacecom', 'log2space', 'client', 'networksolutions'),
       path.join(javaDir, 'com', 'microscan', 'app'),
       path.join(javaDir, 'com', 'spacecom', 'log2space', 'microscan'),
       path.join(javaDir, 'com', 'spacecom', 'log2space', 'monarknet'),
@@ -1035,7 +1152,6 @@ function updateAndroidMainActivity(clientId) {
 
   // Find a source MainActivity to use as template
   const sourcePaths = [
-    path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'java', 'in', 'spacecom', 'log2space', 'client', 'microscan', 'MainActivity.kt'),
     path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'java', 'in', 'spacecom', 'log2space', 'client', 'netfix', 'MainActivity.kt'),
     path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'java', 'com', 'spacecom', 'log2space', 'microscan', 'MainActivity.kt'),
     path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'java', 'com', 'netfixnetworks', 'MainActivity.kt'),
@@ -1045,10 +1161,18 @@ function updateAndroidMainActivity(clientId) {
   ];
   
   let sourceMainActivity = null;
-  for (const sourcePath of sourcePaths) {
-    if (fs.existsSync(sourcePath)) {
-      sourceMainActivity = sourcePath;
-      break;
+  if (clientId === 'microscan') {
+    const microscanActivity = path.join(__dirname, '..', client.configDir, 'android', 'MainActivity.kt');
+    if (fs.existsSync(microscanActivity)) {
+      sourceMainActivity = microscanActivity;
+    }
+  }
+  if (!sourceMainActivity) {
+    for (const sourcePath of sourcePaths) {
+      if (fs.existsSync(sourcePath)) {
+        sourceMainActivity = sourcePath;
+        break;
+      }
     }
   }
 
@@ -1065,6 +1189,7 @@ function updateAndroidMainActivity(clientId) {
     : newPackageName;
   const packageRegex = /package\s+[^\s;]+;?/;
   mainActivityContent = mainActivityContent.replace(packageRegex, `package ${packageDeclaration}`);
+  mainActivityContent = mainActivityContent.replace(/PACKAGE_PLACEHOLDER/g, packageDeclaration);
 
   // Use fixed name so JS (index.js) and native always match; avoids "X has not been registered" on client switch.
   const moduleName = 'ISPApp';
@@ -1080,7 +1205,6 @@ function updateAndroidMainActivity(clientId) {
 
   // Also update MainApplication if it exists or needs to be created
   const sourceApplicationPaths = [
-    path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'java', 'in', 'spacecom', 'log2space', 'client', 'microscan', 'MainApplication.kt'),
     path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'java', 'in', 'spacecom', 'log2space', 'client', 'netfix', 'MainApplication.kt'),
     path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'java', 'com', 'spacecom', 'log2space', 'microscan', 'MainApplication.kt'),
     path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'java', 'com', 'netfixnetworks', 'MainApplication.kt'),
@@ -1090,16 +1214,31 @@ function updateAndroidMainActivity(clientId) {
   ];
   
   let sourceMainApplication = null;
-  for (const sourcePath of sourceApplicationPaths) {
-    if (fs.existsSync(sourcePath)) {
-      sourceMainApplication = sourcePath;
-      break;
+  if (clientId === 'microscan') {
+    const microscanApplication = path.join(__dirname, '..', client.configDir, 'android', 'MainApplication.kt');
+    if (fs.existsSync(microscanApplication)) {
+      sourceMainApplication = microscanApplication;
+    }
+  }
+  if (!sourceMainApplication) {
+    const standardApplication = path.join(__dirname, '..', 'config', '_templates', 'MainApplication.standard.kt');
+    if (fs.existsSync(standardApplication)) {
+      sourceMainApplication = standardApplication;
+    }
+  }
+  if (!sourceMainApplication) {
+    for (const sourcePath of sourceApplicationPaths) {
+      if (fs.existsSync(sourcePath)) {
+        sourceMainApplication = sourcePath;
+        break;
+      }
     }
   }
 
   if (sourceMainApplication) {
     let mainApplicationContent = fs.readFileSync(sourceMainApplication, 'utf8');
     mainApplicationContent = mainApplicationContent.replace(packageRegex, `package ${packageDeclaration}`);
+    mainApplicationContent = mainApplicationContent.replace(/PACKAGE_PLACEHOLDER/g, packageDeclaration);
     fs.writeFileSync(mainApplicationPath, mainApplicationContent);
     logSuccess('Updated Android MainApplication');
   }
@@ -1181,6 +1320,8 @@ function main() {
         copyClientConfig(clientId);
         updateAndroidBuildGradle(clientId);
         updateIOSAppDelegate(clientId);
+        updateIOSAppDelegateCleverTap(clientId);
+        updateAndroidManifestCleverTap(clientId);
         updateAndroidMainActivity(clientId);
         logSuccess(`Configuration switched to ${CLIENTS[clientId].name}`);
         break;
@@ -1195,6 +1336,8 @@ function main() {
         copyClientConfig(clientId);
         updateAndroidBuildGradle(clientId);
         updateIOSAppDelegate(clientId);
+        updateIOSAppDelegateCleverTap(clientId);
+        updateAndroidManifestCleverTap(clientId);
         updateAndroidMainActivity(clientId);
         buildAPK(clientId);
         logSuccess(`Build completed for ${CLIENTS[clientId].name}`);
@@ -1208,6 +1351,8 @@ function main() {
             copyClientConfig(client);
             updateAndroidBuildGradle(client);
             updateIOSAppDelegate(client);
+            updateIOSAppDelegateCleverTap(client);
+            updateAndroidManifestCleverTap(client);
             updateAndroidMainActivity(client);
             buildAPK(client);
             logSuccess(`✅ ${CLIENTS[client].name} build completed`);

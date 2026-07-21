@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import menuService, { MenuSettings } from '../services/menuService';
 import { useAuth } from '../utils/AuthContext';
+import sessionManager from '../services/sessionManager';
 
 export const useMenuSettings = () => {
   const { isAuthenticated } = useAuth();
@@ -30,6 +31,7 @@ export const useMenuSettings = () => {
     try {
       setLoading(true);
       setError(null);
+      await sessionManager.ensureSessionReady();
       const data = await menuService.get();
       setMenu(data);
     } catch (e: any) {
@@ -49,6 +51,7 @@ export const useMenuSettings = () => {
     try {
       setLoading(true);
       setError(null);
+      await sessionManager.ensureSessionReady();
       const data = await menuService.refreshIfStale();
       setMenu(data);
     } catch (e: any) {
@@ -70,6 +73,7 @@ export const useMenuSettings = () => {
       setError(null);
       // Clear cache first to ensure fresh data
       menuService.clearCache();
+      await sessionManager.ensureSessionReady();
       const data = await menuService.refresh();
       setMenu(data);
     } catch (e: any) {

@@ -1,4 +1,4 @@
-package `in`.spacecom.log2space.client.cityzone
+package com.spacecom.log2space.networksolutions
 
 import android.os.Bundle
 import com.facebook.react.ReactActivity

@@ -181,31 +181,27 @@ const AccountDetailsScreen = ({navigation}: any) => {
       // First, diagnose session issues
       // console.log('=== DIAGNOSING SESSION BEFORE API CALL ===');
       const sessionDiagnosis = await sessionManager.diagnoseAndFixSession();
-      
+
       if (sessionDiagnosis.needsReset) {
-        // console.log('Session issues detected:', sessionDiagnosis.issues);
-        // console.log('Resetting session and redirecting to login...');
-        
-        // Reset the session
-        await sessionManager.resetSession();
-        
-        // Show alert to user
         Alert.alert(
           'Session Issue Detected',
-          'Your session has expired or is corrupted. Please login again.',
+          'Your session could not be restored. Please login again.',
           [
             {
               text: 'OK',
               onPress: () => {
-                // Navigate to login screen
                 navigation.navigate('Login');
               }
             }
           ]
         );
-        
+
         setIsLoading(false);
         return;
+      }
+
+      if (sessionDiagnosis.issues.length > 0) {
+        await sessionManager.autoRefreshSession();
       }
       
       const session = await sessionManager.getCurrentSession();
@@ -257,29 +253,24 @@ const AccountDetailsScreen = ({navigation}: any) => {
       }
     } catch (error: any) {
       console.error('Error fetching account data:', error);
-      
-      // Check if it's an authentication error
-      if (error.message && (
+
+      const isAuthError = error.message && (
         error.message.includes('invalid username or password') ||
         error.message.includes('Authentication required') ||
-        error.message.includes('Authentication failed')
-      )) {
-        // console.log('Authentication error detected, resetting session...');
-        
-        // Reset session and redirect to login
-        await sessionManager.resetSession();
-        
+        error.message.includes('Authentication failed') ||
+        error.message.includes('Token Expired') ||
+        error.message.includes('Session expired')
+      );
+
+      if (isAuthError) {
+        const refreshResult = await sessionManager.autoRefreshSession();
+        if (refreshResult.success) {
+          return fetchAccountData();
+        }
+
         Alert.alert(
-          'Authentication Error',
-          'Your session has expired. Please login again.',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                navigation.navigate('Login');
-              }
-            }
-          ]
+          'Connection Issue',
+          'Unable to refresh your session right now. Please try again in a moment.',
         );
       } else {
         Alert.alert('Error', 'Failed to fetch account data. Please try again.');

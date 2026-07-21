@@ -226,13 +226,9 @@ function AppContent() {
           console.log('App came to foreground from background, checking biometric auth...');
         }
         checkBiometricOnResume();
-        // Proactively refresh session/token so menu and other API calls don't show "Token Expired"
+        // Always refresh session/token when app returns to foreground
         if (isLoggedIn) {
-          sessionManager.shouldAutoRefresh().then((should) => {
-            if (should) {
-              sessionManager.autoRefreshSession().catch(() => {});
-            }
-          });
+          sessionManager.autoRefreshSession().catch(() => {});
         }
       }
 
@@ -357,6 +353,15 @@ function AppContent() {
       }
       
       if (loggedIn) {
+        // Refresh token in background so expired tokens are renewed before any screen loads
+        try {
+          await sessionManager.autoRefreshSession();
+        } catch (refreshError) {
+          if (__DEV__) {
+            console.warn('Session auto-refresh on launch failed (non-fatal):', refreshError);
+          }
+        }
+
         // User is logged in, always show authentication on app launch
         console.log('✅ User is logged in, checking authentication setup...');
         
@@ -482,19 +487,15 @@ function AppContent() {
   const handleLoginRedirect = async () => {
     console.log('Redirecting to login screen...');
     setShowBiometricAuth(false);
-    setIsLoggedIn(false); // Ensure user is marked as not logged in
-    setHasAuthenticatedThisSession(false); // Reset authentication state
-    
-    // Clear the session so user can login fresh
+    setIsLoggedIn(false);
+    setHasAuthenticatedThisSession(false);
+
+    // Keep stored session/credentials so token can still be regenerated
     try {
-      await sessionManager.clearSession();
-      console.log('Session cleared for fresh login');
-      
-      // Set a flag to disable session check in login screen
       await AsyncStorage.setItem('disableSessionCheck', 'true');
       console.log('Session check disabled for login screen');
     } catch (error) {
-      console.error('Failed to clear session:', error);
+      console.error('Failed to update login redirect flags:', error);
     }
   };
 
