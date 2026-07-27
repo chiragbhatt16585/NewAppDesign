@@ -429,7 +429,7 @@
 				DEVELOPMENT_TEAM = NADT67WN3N;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = ISPApp/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Microscan";
+				INFOPLIST_KEY_CFBundleDisplayName = Microscan;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -462,7 +462,7 @@
 				CURRENT_PROJECT_VERSION = 47;
 				DEVELOPMENT_TEAM = NADT67WN3N;
 				INFOPLIST_FILE = ISPApp/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Microscan";
+				INFOPLIST_KEY_CFBundleDisplayName = Microscan;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (

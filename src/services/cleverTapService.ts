@@ -1,14 +1,63 @@
-import { NativeModules, TurboModuleRegistry } from 'react-native';
+import {
+  DeviceEventEmitter,
+  EmitterSubscription,
+  NativeEventEmitter,
+  NativeModules,
+  Platform,
+  TurboModuleRegistry,
+} from 'react-native';
 import { getClientConfig } from '../config/client-config';
+import { handleDeepLinkUrl } from './deepLinkService';
 
 type CleverTapModule = {
   onUserLogin: (profile: Record<string, unknown>) => void;
   profileSet: (profile: Record<string, unknown>) => void;
   recordEvent: (eventName: string, props?: Record<string, unknown>) => void;
   getCleverTapID: (callback: (err: unknown, id: string) => void) => void;
+  createNotificationChannel?: (
+    channelId: string,
+    channelName: string,
+    channelDescription: string,
+    importance: number,
+    showBadge: boolean,
+  ) => void;
+  setFCMPushTokenAsString?: (token: string) => void;
+  registerForPush?: () => void;
+  promptForPushPermission?: (showFallbackSettings: boolean) => void;
+  promptPushPrimer?: (localInAppConfig: Record<string, unknown>) => void;
+  isPushPermissionGranted?: (callback: (err: unknown, res: boolean) => void) => void;
+  setDebugLevel?: (level: number) => void;
+  onEventListenerAdded?: (eventName: string) => void;
+  getInitialUrl?: (callback: (err: unknown, url: string) => void) => void;
 };
 
+/** CleverTap SDK debug levels — see React Native Advanced Features docs. */
+const CLEVERTAP_DEBUG_LEVEL_DEV = 3; // verbose
+const CLEVERTAP_DEBUG_LEVEL_PROD = -1; // disabled
+
+const CLEVERTAP_PUSH_CHANNEL_ID = 'clevertap_channel';
+const CLEVERTAP_PUSH_CLICKED_EVENT = 'CleverTapPushNotificationClicked';
+const CLEVERTAP_PUSH_PERMISSION_EVENT = 'CleverTapPushPermissionResponseReceived';
+
+const CLEVERTAP_DATA_CAPTURE_EVENTS = [
+  'CleverTapProfileDidInitialize',
+  'CleverTapProfileSync',
+  'CleverTapInAppNotificationShowed',
+  'CleverTapInAppNotificationDismissed',
+  'CleverTapInAppNotificationButtonTapped',
+  'CleverTapDisplayUnitsLoaded',
+  'CleverTapInboxDidInitialize',
+  'CleverTapInboxMessagesDidUpdate',
+  'CleverTapInboxMessageTapped',
+  'CleverTapInboxMessageButtonTapped',
+  CLEVERTAP_PUSH_CLICKED_EVENT,
+  CLEVERTAP_PUSH_PERMISSION_EVENT,
+] as const;
+
 let cleverTapModule: CleverTapModule | null | undefined;
+let cleverTapPushInitialized = false;
+let cleverTapEventEmitter: NativeEventEmitter | typeof DeviceEventEmitter | null = null;
+const cleverTapDataCaptureSubscriptions: EmitterSubscription[] = [];
 
 const resolveCleverTapNativeModule = (): CleverTapModule | null => {
   try {
@@ -40,6 +89,122 @@ const logCleverTapDebug = (action: string, details: Record<string, unknown>) => 
   } catch {
     console.log(`[CleverTap] ${action}`, details);
   }
+};
+
+const serializeCleverTapPayload = (payload: unknown): unknown => {
+  if (payload === undefined || payload === null) {
+    return payload;
+  }
+  if (typeof payload !== 'object') {
+    return payload;
+  }
+  try {
+    return JSON.parse(JSON.stringify(payload));
+  } catch {
+    return {
+      type: typeof payload,
+      keys: Object.keys(payload as Record<string, unknown>),
+    };
+  }
+};
+
+const getCleverTapEventEmitter = (
+  cleverTap: CleverTapModule,
+): NativeEventEmitter | typeof DeviceEventEmitter => {
+  if (cleverTapEventEmitter) {
+    return cleverTapEventEmitter;
+  }
+
+  cleverTapEventEmitter =
+    Platform.OS === 'ios'
+      ? new NativeEventEmitter(NativeModules.CleverTapReact)
+      : DeviceEventEmitter;
+
+  return cleverTapEventEmitter;
+};
+
+/** Enable native CleverTap SDK logs (debug in dev, off in production). */
+export const enableCleverTapSdkDebugLogging = (): void => {
+  if (!isCleverTapEnabled()) {
+    return;
+  }
+
+  const cleverTap = getCleverTap();
+  if (!cleverTap?.setDebugLevel) {
+    logCleverTapDebug('setDebugLevel skipped', { reason: 'method unavailable on native module' });
+    return;
+  }
+
+  const level = __DEV__ ? CLEVERTAP_DEBUG_LEVEL_DEV : CLEVERTAP_DEBUG_LEVEL_PROD;
+  try {
+    cleverTap.setDebugLevel(level);
+    logCleverTapDebug('setDebugLevel', { level });
+  } catch (error) {
+    console.warn('[CleverTap] setDebugLevel failed:', error);
+  }
+};
+
+const addCleverTapDataCaptureListener = (
+  cleverTap: CleverTapModule,
+  eventName: string,
+  handler: (payload: unknown) => void,
+): EmitterSubscription => {
+  if (typeof cleverTap.onEventListenerAdded === 'function') {
+    cleverTap.onEventListenerAdded(eventName);
+  }
+
+  return getCleverTapEventEmitter(cleverTap).addListener(eventName, handler);
+};
+
+const logCleverTapInitialUrl = (cleverTap: CleverTapModule): void => {
+  if (!__DEV__ || typeof cleverTap.getInitialUrl !== 'function') {
+    return;
+  }
+
+  cleverTap.getInitialUrl((err, url) => {
+    logCleverTapDebug('getInitialUrl', {
+      url: url || null,
+      error: err ? String(err) : null,
+    });
+  });
+};
+
+/** Register listeners that log all incoming CleverTap campaign/profile data. */
+export const registerCleverTapDataCaptureListeners = (): void => {
+  if (!isCleverTapEnabled() || cleverTapDataCaptureSubscriptions.length > 0) {
+    return;
+  }
+
+  const cleverTap = getCleverTap();
+  if (!cleverTap) {
+    logCleverTapDebug('data capture listeners skipped', {
+      reason: 'CleverTap SDK not available',
+    });
+    return;
+  }
+
+  for (const eventName of CLEVERTAP_DATA_CAPTURE_EVENTS) {
+    const subscription = addCleverTapDataCaptureListener(cleverTap, eventName, (payload) => {
+      logCleverTapDebug(`event: ${eventName}`, {
+        payload: serializeCleverTapPayload(payload),
+      });
+
+      if (eventName === CLEVERTAP_PUSH_CLICKED_EVENT) {
+        const deepLink = extractDeepLinkFromPushPayload(payload);
+        if (deepLink) {
+          handleDeepLinkUrl(deepLink).catch((error) => {
+            console.warn('[CleverTap] push deep link handling failed:', error);
+          });
+        }
+      }
+    });
+    cleverTapDataCaptureSubscriptions.push(subscription);
+  }
+
+  logCleverTapInitialUrl(cleverTap);
+  logCleverTapDebug('data capture listeners registered', {
+    events: [...CLEVERTAP_DATA_CAPTURE_EVENTS],
+  });
 };
 
 const clean = (value: unknown): string | undefined => {
@@ -181,11 +346,31 @@ const getPlanValidity = (
     return undefined;
   }
 
-  // Keep "Unlimited" etc. as-is; otherwise normalize to "X Days"
+  // Prefer numeric validity only (e.g. "360"); keep labels like "Unlimited"
   if (/^\d+$/.test(days)) {
-    return `${days} Days`;
+    return days;
+  }
+  const daysMatch = days.match(/^(\d+)\s*days?$/i);
+  if (daysMatch) {
+    return daysMatch[1];
   }
   return days;
+};
+
+/** CleverTap expects title case (e.g. "Active"), not lowercase API values. */
+const getAccountStatus = (
+  authData: Record<string, unknown> | null | undefined,
+): string | undefined => {
+  const status = pickAuthField(authData, [
+    'user_status',
+    'Account Status',
+    'account_status',
+    'status',
+  ]);
+  if (!status) {
+    return undefined;
+  }
+  return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
 };
 
 /**
@@ -436,12 +621,7 @@ const buildProfileFromAuthData = (
       'mobile_no',
     ]),
   );
-  const accountStatus = pickAuthField(normalizedAuthData, [
-    'user_status',
-    'Account Status',
-    'account_status',
-    'status',
-  ]);
+  const accountStatus = getAccountStatus(normalizedAuthData);
   const city = pickAuthField(normalizedAuthData, [
     'city_name',
     'City',
@@ -564,9 +744,7 @@ const logAuthFieldsUsed = (
   logCleverTapDebug(`${source} => authUser/login fields used for mapping`, {
     username,
     Identity: pickAuthField(normalizedAuthData, ['username', 'Username']) || clean(username),
-    'Account Status':
-      pickAuthField(normalizedAuthData, ['user_status', 'Account Status', 'account_status']) ||
-      null,
+    'Account Status': getAccountStatus(normalizedAuthData) || null,
     City: pickAuthField(normalizedAuthData, ['city_name', 'City', 'city']) || null,
     Email: pickAuthField(normalizedAuthData, ['primary_email', 'Email', 'email']) || null,
     'Renew Date':
@@ -722,7 +900,149 @@ export const logCleverTapEvent = (
 
   try {
     cleverTap.recordEvent(eventName, props || {});
+    logCleverTapDebug('recordEvent', {
+      eventName,
+      props: props || {},
+    });
   } catch (error) {
     console.warn('[CleverTap] recordEvent failed:', error);
+  }
+};
+
+/** Register FCM/APNs token with CleverTap (Android uses setFCMPushTokenAsString). */
+export const setCleverTapFcmToken = (token?: string | null): void => {
+  if (!token || !isCleverTapEnabled()) {
+    return;
+  }
+
+  const cleverTap = getCleverTap();
+  if (!cleverTap?.setFCMPushTokenAsString) {
+    logCleverTapDebug('setFCMPushToken skipped', {
+      reason: !cleverTap ? 'SDK unavailable' : 'setFCMPushTokenAsString missing',
+    });
+    return;
+  }
+
+  try {
+    cleverTap.setFCMPushTokenAsString(token);
+    logCleverTapDebug('setFCMPushToken', {
+      tokenPreview: `${token.slice(0, 12)}...`,
+    });
+  } catch (error) {
+    console.warn('[CleverTap] setFCMPushToken failed:', error);
+  }
+};
+
+const extractDeepLinkFromPushPayload = (payload: unknown): string | null => {
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+  const data = payload as Record<string, unknown>;
+  const candidates = [
+    data.wzrk_dl,
+    data.deepLink,
+    data.deeplink,
+    data.dl,
+    data.url,
+    (data.customExtras as Record<string, unknown> | undefined)?.wzrk_dl,
+  ];
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && candidate.trim()) {
+      return candidate.trim();
+    }
+  }
+  return null;
+};
+
+/**
+ * Create Android notification channel, register iOS push, and listen for
+ * CleverTap push click / permission callbacks. Safe to call multiple times.
+ */
+export const initializeCleverTapPush = (): void => {
+  if (!isCleverTapEnabled()) {
+    logCleverTapDebug('initializeCleverTapPush skipped', {
+      reason: 'CleverTap disabled (not microscan build)',
+    });
+    return;
+  }
+
+  const cleverTap = getCleverTap();
+  if (!cleverTap) {
+    logCleverTapDebug('initializeCleverTapPush skipped', {
+      reason: 'CleverTap SDK not available',
+    });
+    return;
+  }
+
+  if (cleverTapPushInitialized) {
+    return;
+  }
+  cleverTapPushInitialized = true;
+
+  try {
+    enableCleverTapSdkDebugLogging();
+    registerCleverTapDataCaptureListeners();
+
+    if (Platform.OS === 'android' && typeof cleverTap.createNotificationChannel === 'function') {
+      const appName = getClientConfig().branding?.appName || 'Microscan';
+      // Primary channel used by our campaigns
+      cleverTap.createNotificationChannel(
+        CLEVERTAP_PUSH_CHANNEL_ID,
+        `${appName} Alerts`,
+        `Push notifications from ${appName}`,
+        5,
+        true,
+      );
+      // CleverTap dashboard / SDK fallbacks often use these ids
+      cleverTap.createNotificationChannel(
+        'Miscellaneous',
+        `${appName} Notifications`,
+        `General notifications from ${appName}`,
+        5,
+        true,
+      );
+      cleverTap.createNotificationChannel(
+        'default-channel',
+        `${appName} Notifications`,
+        `Notifications from ${appName}`,
+        5,
+        true,
+      );
+      logCleverTapDebug('createNotificationChannel', {
+        channelId: CLEVERTAP_PUSH_CHANNEL_ID,
+        alsoCreated: ['Miscellaneous', 'default-channel'],
+      });
+    }
+
+    if (Platform.OS === 'ios' && typeof cleverTap.registerForPush === 'function') {
+      cleverTap.registerForPush();
+      logCleverTapDebug('registerForPush', { platform: 'ios' });
+    }
+
+    // Android 13+ / iOS: request permission only if not already granted
+    // (docs: promptForPushPermission / isPushPermissionGranted)
+    if (typeof cleverTap.isPushPermissionGranted === 'function') {
+      cleverTap.isPushPermissionGranted((err, granted) => {
+        logCleverTapDebug('isPushPermissionGranted', {
+          granted,
+          error: err ? String(err) : null,
+        });
+        if (!granted && typeof cleverTap.promptForPushPermission === 'function') {
+          cleverTap.promptForPushPermission(false);
+        }
+      });
+    } else if (typeof cleverTap.promptForPushPermission === 'function') {
+      cleverTap.promptForPushPermission(false);
+    }
+
+    logCleverTapDebug('initializeCleverTapPush complete', {
+      platform: Platform.OS,
+    });
+  } catch (error) {
+    cleverTapPushInitialized = false;
+    logCleverTapDebug('initializeCleverTapPush failed', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    console.warn('[CleverTap] initializeCleverTapPush failed:', error);
   }
 };

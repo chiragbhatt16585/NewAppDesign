@@ -6,9 +6,10 @@ import Foundation
 import FirebaseCore
 import CleverTapSDK
 import CleverTapReact
+import UserNotifications
 
 @main
-class AppDelegate: UIResponder, UIApplicationDelegate {
+class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate, CleverTapURLDelegate {
   var window: UIWindow?
 
   var reactNativeDelegate: ReactNativeDelegate?
@@ -39,7 +40,19 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
       }
 
       CleverTap.autoIntegrate()
+      #if DEBUG
+      CleverTap.setDebugLevel(3)
+      #endif
       CleverTapReactManager.sharedInstance()?.applicationDidLaunch(options: launchOptions)
+      CleverTap.sharedInstance()?.setUrlDelegate(self)
+      // Take UNUserNotificationCenterDelegate so we can show foreground banners + log payloads.
+      // Must forward to CleverTap via handleNotification(withData:) so click/viewed analytics
+      // and CleverTapPushNotificationClicked still fire (autoIntegrate loses the delegate).
+      UNUserNotificationCenter.current().delegate = self
+
+      if let remoteNotification = launchOptions?[.remoteNotification] as? [AnyHashable: Any] {
+        print("[CleverTap] Cold-start push payload: \(remoteNotification)")
+      }
 
       let delegate = ReactNativeDelegate()
       let factory = RCTReactNativeFactory(delegate: delegate)
@@ -75,6 +88,73 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     return true
+  }
+
+  // MARK: - APNs registration
+
+  func application(
+    _ application: UIApplication,
+    didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+  ) {
+    let token = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
+    print("[CleverTap] APNs device token registered: \(token.prefix(16))...")
+    CleverTap.sharedInstance()?.setPushToken(deviceToken)
+  }
+
+  func application(
+    _ application: UIApplication,
+    didFailToRegisterForRemoteNotificationsWithError error: Error
+  ) {
+    print("[CleverTap] APNs registration failed: \(error.localizedDescription)")
+  }
+
+  func application(
+    _ application: UIApplication,
+    didReceiveRemoteNotification userInfo: [AnyHashable: Any],
+    fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
+  ) {
+    // Logging only — CleverTap.autoIntegrate() swizzles this for processing.
+    print("[CleverTap] didReceiveRemoteNotification: \(userInfo)")
+    completionHandler(.noData)
+  }
+
+  // MARK: - UNUserNotificationCenterDelegate (CleverTap / APNs)
+
+  /// Show push while app is in foreground and record viewed event.
+  func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    willPresent notification: UNNotification,
+    withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+  ) {
+    let userInfo = notification.request.content.userInfo
+    print("[CleverTap] willPresent notification: \(userInfo)")
+    CleverTap.sharedInstance()?.recordNotificationViewedEvent(withData: userInfo)
+    if #available(iOS 14.0, *) {
+      completionHandler([.banner, .list, .sound, .badge])
+    } else {
+      completionHandler([.alert, .sound, .badge])
+    }
+  }
+
+  /// Push tap — forward to CleverTap so JS gets CleverTapPushNotificationClicked.
+  func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    didReceive response: UNNotificationResponse,
+    withCompletionHandler completionHandler: @escaping () -> Void
+  ) {
+    let userInfo = response.notification.request.content.userInfo
+    print("[CleverTap] didReceive notification response: \(userInfo)")
+    CleverTap.sharedInstance()?.handleNotification(withData: userInfo)
+    completionHandler()
+  }
+
+  // CleverTapURLDelegate — push / in-app / inbox deep links
+  func shouldHandleCleverTap(_ url: URL?, for channel: CleverTapChannel) -> Bool {
+    guard let url else {
+      return false
+    }
+    print("[CleverTap] Handling URL: \(url) for channel: \(channel)")
+    return RCTLinkingManager.application(UIApplication.shared, open: url, options: [:])
   }
 
   // Deep links / custom URL schemes (e.g. microscan://refer-friend)

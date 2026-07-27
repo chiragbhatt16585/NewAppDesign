@@ -985,6 +985,16 @@ function updateAndroidManifestCleverTap(clientId) {
       <meta-data android:name="CLEVERTAP_ACCOUNT_ID" android:value="${config.accountId}"/>
       <meta-data android:name="CLEVERTAP_TOKEN" android:value="${config.token || ''}"/>
       <meta-data android:name="CLEVERTAP_REGION" android:value="${config.region || 'in1'}"/>
+      <meta-data android:name="CLEVERTAP_NOTIFICATION_ICON" android:value="ic_stat_microscan"/>
+      <meta-data android:name="FCM_SENDER_ID" android:value="id:450663766072"/>
+      <!-- CleverTap FCM: custom service normalizes TEST- account id from test campaigns -->
+      <service
+        android:name=".MicroscanFcmMessageListenerService"
+        android:exported="true">
+        <intent-filter>
+          <action android:name="com.google.firebase.MESSAGING_EVENT" />
+        </intent-filter>
+      </service>
       <!-- CLEVERTAP END -->`;
     content = content.replace(/(<application[^>]*>)/, `$1${block}`);
     logSuccess('Injected CleverTap credentials into AndroidManifest.xml');
@@ -1016,6 +1026,27 @@ function updateIOSAppDelegateCleverTap(clientId) {
         'import FirebaseCore\nimport CleverTapSDK\nimport CleverTapReact',
       );
     }
+    if (!content.includes('import UserNotifications')) {
+      content = content.replace(
+        'import CleverTapReact',
+        'import CleverTapReact\nimport UserNotifications',
+      );
+    }
+    if (!content.includes('UNUserNotificationCenterDelegate')) {
+      content = content.replace(
+        'class AppDelegate: UIResponder, UIApplicationDelegate {',
+        'class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate, CleverTapURLDelegate {',
+      );
+      content = content.replace(
+        'class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate {',
+        'class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate, CleverTapURLDelegate {',
+      );
+    } else if (!content.includes('CleverTapURLDelegate')) {
+      content = content.replace(
+        'UNUserNotificationCenterDelegate {',
+        'UNUserNotificationCenterDelegate, CleverTapURLDelegate {',
+      );
+    }
 
     content = content.replace(
       /if FirebaseApp\.app\(\) == nil \{\n        FirebaseApp\.configure\(\)\n      \}/,
@@ -1024,8 +1055,190 @@ function updateIOSAppDelegateCleverTap(clientId) {
       }
 
       CleverTap.autoIntegrate()
+#if DEBUG
+      CleverTap.setDebugLevel(3)
+#endif
       CleverTapReactManager.sharedInstance()?.applicationDidLaunch(options: launchOptions)`,
     );
+
+    if (!content.includes('UNUserNotificationCenter.current().delegate = self')) {
+      content = content.replace(
+        'CleverTapReactManager.sharedInstance()?.applicationDidLaunch(options: launchOptions)',
+        `CleverTapReactManager.sharedInstance()?.applicationDidLaunch(options: launchOptions)
+      CleverTap.sharedInstance()?.setUrlDelegate(self)
+      // Take UNUserNotificationCenterDelegate so we can show foreground banners + log payloads.
+      // Must forward to CleverTap via handleNotification(withData:) so click/viewed analytics
+      // and CleverTapPushNotificationClicked still fire (autoIntegrate loses the delegate).
+      UNUserNotificationCenter.current().delegate = self`,
+      );
+    } else if (!content.includes('setUrlDelegate(self)')) {
+      content = content.replace(
+        'UNUserNotificationCenter.current().delegate = self',
+        `CleverTap.sharedInstance()?.setUrlDelegate(self)
+      UNUserNotificationCenter.current().delegate = self`,
+      );
+    }
+
+    if (!content.includes('Cold-start push payload')) {
+      content = content.replace(
+        'UNUserNotificationCenter.current().delegate = self\n\n      let delegate = ReactNativeDelegate()',
+        `UNUserNotificationCenter.current().delegate = self
+
+      if let remoteNotification = launchOptions?[.remoteNotification] as? [AnyHashable: Any] {
+        print("[CleverTap] Cold-start push payload: \\(remoteNotification)")
+      }
+
+      let delegate = ReactNativeDelegate()`,
+      );
+    }
+
+    if (!content.includes('didRegisterForRemoteNotificationsWithDeviceToken')) {
+      content = content.replace(
+        '  // Deep links / custom URL schemes',
+        `  // MARK: - APNs registration
+
+  func application(
+    _ application: UIApplication,
+    didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+  ) {
+    let token = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
+    print("[CleverTap] APNs device token registered: \\(token.prefix(16))...")
+    CleverTap.sharedInstance()?.setPushToken(deviceToken)
+  }
+
+  func application(
+    _ application: UIApplication,
+    didFailToRegisterForRemoteNotificationsWithError error: Error
+  ) {
+    print("[CleverTap] APNs registration failed: \\(error.localizedDescription)")
+  }
+
+  func application(
+    _ application: UIApplication,
+    didReceiveRemoteNotification userInfo: [AnyHashable: Any],
+    fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
+  ) {
+    // Logging only — CleverTap.autoIntegrate() swizzles this for processing.
+    print("[CleverTap] didReceiveRemoteNotification: \\(userInfo)")
+    completionHandler(.noData)
+  }
+
+  // MARK: - UNUserNotificationCenterDelegate (CleverTap / APNs)
+
+  /// Show push while app is in foreground and record viewed event.
+  func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    willPresent notification: UNNotification,
+    withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+  ) {
+    let userInfo = notification.request.content.userInfo
+    print("[CleverTap] willPresent notification: \\(userInfo)")
+    CleverTap.sharedInstance()?.recordNotificationViewedEvent(withData: userInfo)
+    if #available(iOS 14.0, *) {
+      completionHandler([.banner, .list, .sound, .badge])
+    } else {
+      completionHandler([.alert, .sound, .badge])
+    }
+  }
+
+  /// Push tap — forward to CleverTap so JS gets CleverTapPushNotificationClicked.
+  func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    didReceive response: UNNotificationResponse,
+    withCompletionHandler completionHandler: @escaping () -> Void
+  ) {
+    let userInfo = response.notification.request.content.userInfo
+    print("[CleverTap] didReceive notification response: \\(userInfo)")
+    CleverTap.sharedInstance()?.handleNotification(withData: userInfo)
+    completionHandler()
+  }
+
+  // CleverTapURLDelegate — push / in-app / inbox deep links
+  func shouldHandleCleverTap(_ url: URL?, for channel: CleverTapChannel) -> Bool {
+    guard let url else {
+      return false
+    }
+    print("[CleverTap] Handling URL: \\(url) for channel: \\(channel)")
+    return RCTLinkingManager.application(UIApplication.shared, open: url, options: [:])
+  }
+
+  // Deep links / custom URL schemes`,
+      );
+    } else if (!content.includes('shouldHandleCleverTap')) {
+      content = content.replace(
+        '  // Deep links / custom URL schemes',
+        `  // CleverTapURLDelegate — push / in-app / inbox deep links
+  func shouldHandleCleverTap(_ url: URL?, for channel: CleverTapChannel) -> Bool {
+    guard let url else {
+      return false
+    }
+    print("[CleverTap] Handling URL: \\(url) for channel: \\(channel)")
+    return RCTLinkingManager.application(UIApplication.shared, open: url, options: [:])
+  }
+
+  // Deep links / custom URL schemes`,
+      );
+    } else if (!content.includes('didReceive response')) {
+      // Older builds only had willPresent — upgrade click + APNs handlers.
+      content = content.replace(
+        /\/\/ Show push notifications while app is in foreground \(CleverTap \/ APNs\)[\s\S]*?completionHandler\(\[\.alert, \.sound, \.badge\]\)\n    \}\n  \}/,
+        `// MARK: - APNs registration
+
+  func application(
+    _ application: UIApplication,
+    didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+  ) {
+    let token = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
+    print("[CleverTap] APNs device token registered: \\(token.prefix(16))...")
+    CleverTap.sharedInstance()?.setPushToken(deviceToken)
+  }
+
+  func application(
+    _ application: UIApplication,
+    didFailToRegisterForRemoteNotificationsWithError error: Error
+  ) {
+    print("[CleverTap] APNs registration failed: \\(error.localizedDescription)")
+  }
+
+  func application(
+    _ application: UIApplication,
+    didReceiveRemoteNotification userInfo: [AnyHashable: Any],
+    fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
+  ) {
+    // Logging only — CleverTap.autoIntegrate() swizzles this for processing.
+    print("[CleverTap] didReceiveRemoteNotification: \\(userInfo)")
+    completionHandler(.noData)
+  }
+
+  // MARK: - UNUserNotificationCenterDelegate (CleverTap / APNs)
+
+  func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    willPresent notification: UNNotification,
+    withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+  ) {
+    let userInfo = notification.request.content.userInfo
+    print("[CleverTap] willPresent notification: \\(userInfo)")
+    CleverTap.sharedInstance()?.recordNotificationViewedEvent(withData: userInfo)
+    if #available(iOS 14.0, *) {
+      completionHandler([.banner, .list, .sound, .badge])
+    } else {
+      completionHandler([.alert, .sound, .badge])
+    }
+  }
+
+  func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    didReceive response: UNNotificationResponse,
+    withCompletionHandler completionHandler: @escaping () -> Void
+  ) {
+    let userInfo = response.notification.request.content.userInfo
+    print("[CleverTap] didReceive notification response: \\(userInfo)")
+    CleverTap.sharedInstance()?.handleNotification(withData: userInfo)
+    completionHandler()
+  }`,
+      );
+    }
     logSuccess('Enabled CleverTap initialization in AppDelegate.swift');
   }
 
@@ -1241,6 +1454,18 @@ function updateAndroidMainActivity(clientId) {
     mainApplicationContent = mainApplicationContent.replace(/PACKAGE_PLACEHOLDER/g, packageDeclaration);
     fs.writeFileSync(mainApplicationPath, mainApplicationContent);
     logSuccess('Updated Android MainApplication');
+  }
+
+  if (clientId === 'microscan') {
+    const fcmServiceSource = path.join(__dirname, '..', client.configDir, 'android', 'MicroscanFcmMessageListenerService.kt');
+    const fcmServiceTarget = path.join(packageDir, 'MicroscanFcmMessageListenerService.kt');
+    if (fs.existsSync(fcmServiceSource)) {
+      let fcmServiceContent = fs.readFileSync(fcmServiceSource, 'utf8');
+      fcmServiceContent = fcmServiceContent.replace(packageRegex, `package ${packageDeclaration}`);
+      fcmServiceContent = fcmServiceContent.replace(/PACKAGE_PLACEHOLDER/g, packageDeclaration);
+      fs.writeFileSync(fcmServiceTarget, fcmServiceContent);
+      logSuccess('Updated MicroscanFcmMessageListenerService');
+    }
   }
 }
 

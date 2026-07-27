@@ -157,6 +157,7 @@ function AppContent() {
     
     // Initialize push notifications - wrapped in try-catch with delay
     // Add delay to ensure Firebase is initialized first
+    // Microscan: CleverTap-only (handled inside initializePushNotifications)
     setTimeout(() => {
       (async () => {
         try {

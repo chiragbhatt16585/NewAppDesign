@@ -72,6 +72,12 @@ jest.mock('../../api', () => ({
   },
 }));
 
+jest.mock('../cleverTapService', () => ({
+  setCleverTapFcmToken: jest.fn(),
+  isCleverTapEnabled: jest.fn(() => false),
+  initializeCleverTapPush: jest.fn(),
+}));
+
 describe('NotificationService', () => {
   const mockToken = 'test-fcm-token-12345';
   const mockRealm = 'test-realm';

@@ -8,13 +8,93 @@ import firebase from '@react-native-firebase/app'
 import { initializeFirebase, waitForFirebaseAppReady } from './firebaseInit'
 import { getClientConfig } from '../config/client-config'
 import { navigate } from '../navigation/RootNavigation'
+import { setCleverTapFcmToken, initializeCleverTapPush, isCleverTapEnabled } from './cleverTapService'
 
 let isInitialized = false
 let isInitializing = false
 let lastRegisteredToken: string | null = null
 let pendingToken: string | null = null
 
+/**
+ * Microscan: CleverTap-only push (no RN PushNotification / ISP backend registration).
+ * Gets FCM token, registers it with CleverTap, creates CT channels + listeners.
+ */
+export async function initializeCleverTapOnlyPush(): Promise<void> {
+  if (!isCleverTapEnabled()) {
+    return
+  }
+  if (isInitialized) {
+    initializeCleverTapPush()
+    return
+  }
+  if (isInitializing) {
+    return
+  }
+  isInitializing = true
+  // eslint-disable-next-line no-console
+  console.log('[Push][CleverTap] initializeCleverTapOnlyPush start')
+
+  try {
+    try {
+      if (Platform.OS === 'ios') {
+        try {
+          await messaging().registerDeviceForRemoteMessages()
+        } catch {}
+      }
+    } catch {}
+
+    await requestNotificationPermissions()
+
+    try {
+      if (!firebase.apps || firebase.apps.length === 0) {
+        initializeFirebase()
+      }
+      await waitForFirebaseAppReady(7000, 200)
+    } catch {}
+
+    try {
+      await messaging().requestPermission()
+      const fcmToken = await messaging().getToken()
+      // eslint-disable-next-line no-console
+      console.log(
+        '[Push][CleverTap] FCM token',
+        fcmToken ? `${fcmToken.substring(0, 12)}...` : 'none',
+      )
+      if (fcmToken) {
+        pendingToken = fcmToken
+        lastRegisteredToken = fcmToken
+        setCleverTapFcmToken(fcmToken)
+      }
+
+      messaging().onTokenRefresh((newToken) => {
+        // eslint-disable-next-line no-console
+        console.log(
+          '[Push][CleverTap] onTokenRefresh',
+          newToken ? `${newToken.substring(0, 12)}...` : 'none',
+        )
+        pendingToken = newToken
+        lastRegisteredToken = newToken
+        setCleverTapFcmToken(newToken)
+      })
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('[Push][CleverTap] FCM token setup failed', e)
+    }
+
+    initializeCleverTapPush()
+    isInitialized = true
+  } finally {
+    isInitializing = false
+  }
+}
+
 export async function initializePushNotifications(realm?: string): Promise<void> {
+  // Microscan uses CleverTap push only
+  if (isCleverTapEnabled()) {
+    await initializeCleverTapOnlyPush()
+    return
+  }
+
   if (isInitialized) return
   if (isInitializing) {
     console.log('[Push] initializePushNotifications already running, skipping duplicate call')
@@ -75,6 +155,7 @@ export async function initializePushNotifications(realm?: string): Promise<void>
       try { /* require('react-native').Alert.alert('PushDebug', `FCM token: ${fcmToken ? fcmToken.substring(0,10)+'...' : 'none'}`) */ } catch {}
       if (fcmToken) {
         pendingToken = fcmToken
+        setCleverTapFcmToken(fcmToken)
         const device_info = {
           deviceId: DeviceInfo.getDeviceId(),
           brand: DeviceInfo.getBrand(),
@@ -109,6 +190,7 @@ export async function initializePushNotifications(realm?: string): Promise<void>
             console.log('[Push][FCM] FULL FCM TOKEN (refresh)', newToken)
           }
           pendingToken = newToken
+          setCleverTapFcmToken(newToken)
           const device_info = {
             deviceId: DeviceInfo.getDeviceId(),
             brand: DeviceInfo.getBrand(),
@@ -165,6 +247,7 @@ export async function initializePushNotifications(realm?: string): Promise<void>
           if (!token || token === lastRegisteredToken) return
           lastRegisteredToken = token
           pendingToken = token
+          setCleverTapFcmToken(token)
 
           const device_info = {
             deviceId: DeviceInfo.getDeviceId(),
@@ -287,6 +370,21 @@ export function showLocalNotification(title: string, message: string): void {
 }
 
 export async function registerPendingPushToken(realm?: string): Promise<boolean> {
+  // Microscan: CleverTap-only — refresh FCM token with CleverTap, skip ISP backend
+  if (isCleverTapEnabled()) {
+    try {
+      const token = pendingToken || (await messaging().getToken())
+      if (token) {
+        setCleverTapFcmToken(token)
+        pendingToken = null
+        return true
+      }
+    } catch (e) {
+      console.warn('[Push][CleverTap] registerPendingPushToken failed', e)
+    }
+    return false
+  }
+
   if (!pendingToken) {
     // Try multiple methods to get FCM token
     console.log('[Push] No pending token, trying to get FCM token directly...');
@@ -318,6 +416,7 @@ export async function registerPendingPushToken(realm?: string): Promise<boolean>
           console.log('[Push] FULL FCM TOKEN (registerPending)', directToken);
         }
         pendingToken = directToken; // Set it as pending for registration
+        setCleverTapFcmToken(directToken);
       } else {
         console.log('[Push] No FCM token available from direct call');
       }
@@ -400,6 +499,20 @@ export async function registerPendingPushToken(realm?: string): Promise<boolean>
 
 // Debug/manual trigger: call backend registration even if onRegister hasn't provided a token yet
 export async function registerDeviceManually(realm?: string): Promise<boolean> {
+  // Microscan: CleverTap-only — no ISP device registration
+  if (isCleverTapEnabled()) {
+    try {
+      const token = pendingToken || (await messaging().getToken())
+      if (token) {
+        setCleverTapFcmToken(token)
+        return true
+      }
+    } catch (e) {
+      console.warn('[Push][CleverTap] registerDeviceManually failed', e)
+    }
+    return false
+  }
+
   try {
     const device_info = {
       deviceId: DeviceInfo.getDeviceId(),

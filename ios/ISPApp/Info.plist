@@ -160,7 +160,11 @@
 		<string>Octicons.ttf</string>
 		<string>Zocial.ttf</string>
 		<string>Fontisto.ttf</string>
-	</array>	<key>CleverTapAccountID</key>
+	</array>	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
+	<key>CleverTapAccountID</key>
 	<string>7Z6-7R9-677Z</string>
 	<key>CleverTapToken</key>
 	<string>c2a-61a</string>

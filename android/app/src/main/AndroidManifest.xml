@@ -93,6 +93,16 @@
       <meta-data android:name="CLEVERTAP_ACCOUNT_ID" android:value="7Z6-7R9-677Z"/>
       <meta-data android:name="CLEVERTAP_TOKEN" android:value="c2a-61a"/>
       <meta-data android:name="CLEVERTAP_REGION" android:value="in1"/>
+      <meta-data android:name="CLEVERTAP_NOTIFICATION_ICON" android:value="ic_stat_microscan"/>
+      <meta-data android:name="FCM_SENDER_ID" android:value="id:450663766072"/>
+      <!-- CleverTap FCM: custom service normalizes TEST- account id from test campaigns -->
+      <service
+        android:name=".MicroscanFcmMessageListenerService"
+        android:exported="true">
+        <intent-filter>
+          <action android:name="com.google.firebase.MESSAGING_EVENT" />
+        </intent-filter>
+      </service>
       <!-- CLEVERTAP END -->
       <activity
         android:name=".MainActivity"
@@ -261,13 +271,13 @@
           <action android:name="android.intent.action.BOOT_COMPLETED" />
         </intent-filter>
       </receiver>
+      <!-- Prevent RN Firebase Messaging from stealing FCM delivery from CleverTap -->
       <service
-        android:name="com.dieam.reactnativepushnotification.modules.RNPushNotificationListenerService"
-        android:exported="false">
-        <intent-filter>
-          <action android:name="com.google.firebase.MESSAGING_EVENT" />
-        </intent-filter>
-      </service>
+        android:name="io.invertase.firebase.messaging.ReactNativeFirebaseMessagingService"
+        tools:node="remove" />
+      <receiver
+        android:name="io.invertase.firebase.messaging.ReactNativeFirebaseMessagingReceiver"
+        tools:node="remove" />
 
       <!-- Removed ARCore metadata as app doesn't use AR; avoids Play min_apk_version requirement -->
 

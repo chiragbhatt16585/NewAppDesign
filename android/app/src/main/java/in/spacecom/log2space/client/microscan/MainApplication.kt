@@ -28,6 +28,8 @@ class MainApplication : CleverTapApplication(), ReactApplication {
 
   override fun onCreate() {
     super.onCreate()
+    // Ensure CleverTap default instance exists before any FCM delivery thread runs.
+    CleverTapAPI.getDefaultInstance(this)
     if (BuildConfig.DEBUG) {
       CleverTapAPI.setDebugLevel(CleverTapAPI.LogLevel.VERBOSE)
     }
