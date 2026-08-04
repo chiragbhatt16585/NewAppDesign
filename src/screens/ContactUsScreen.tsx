@@ -138,22 +138,78 @@ const ContactUsScreen = ({navigation}: any) => {
 
   const isMonarknet = clientConfig.clientId === 'monarknet';
 
-  const primaryPhone =
-    contactInfo.headOffice.customerSupport ||
-    contactInfo.tollFree ||
-    contactInfo.landline;
+  /** Parse "Label: number | Label: number" landline entries. */
+  const parseLabeledLandlines = (
+    raw?: string,
+  ): Array<{ label: string; number: string }> => {
+    if (!raw) {
+      return [];
+    }
+    return raw
+      .split('|')
+      .map(part => part.trim())
+      .filter(Boolean)
+      .map(part => {
+        const colonIdx = part.indexOf(':');
+        if (colonIdx > 0) {
+          const label = part.slice(0, colonIdx).trim();
+          const number = part
+            .slice(colonIdx + 1)
+            .replace(/[^\d+]/g, '')
+            .trim();
+          if (label && number) {
+            return { label, number };
+          }
+        }
+        const number = part.replace(/[^\d+]/g, '').trim();
+        return number ? { label: tr('contactUs.landline', 'Landline'), number } : null;
+      })
+      .filter((item): item is { label: string; number: string } => Boolean(item));
+  };
+
+  const supportPhoneRows: Array<{
+    icon: 'phone';
+    label: string;
+    value: string;
+    onPress?: () => void;
+  }> = [];
+
+  if (!isMonarknet) {
+    if (contactInfo.tollFree) {
+      supportPhoneRows.push({
+        icon: 'phone',
+        label: tr('contactUs.tollFree', 'Toll Free'),
+        value: contactInfo.tollFree,
+        onPress: () => handlePhoneCall(contactInfo.tollFree!),
+      });
+    }
+
+    const labeledLandlines = parseLabeledLandlines(contactInfo.landline);
+    if (labeledLandlines.length > 0) {
+      labeledLandlines.forEach(({ label, number }) => {
+        supportPhoneRows.push({
+          icon: 'phone',
+          label,
+          value: number,
+          onPress: () => handlePhoneCall(number),
+        });
+      });
+    } else {
+      const fallbackPhone =
+        contactInfo.headOffice.customerSupport || contactInfo.landline;
+      if (fallbackPhone) {
+        supportPhoneRows.push({
+          icon: 'phone',
+          label: tr('contactUs.callSupport', 'Call Support'),
+          value: fallbackPhone,
+          onPress: () => handlePhoneCall(fallbackPhone),
+        });
+      }
+    }
+  }
 
   const contactRows = [
-    ...(!isMonarknet
-      ? [
-          {
-            icon: 'phone' as const,
-            label: tr('contactUs.callSupport', 'Call Support'),
-            value: primaryPhone,
-            onPress: primaryPhone ? () => handlePhoneCall(primaryPhone) : undefined,
-          },
-        ]
-      : []),
+    ...supportPhoneRows,
     {
       icon: 'mail' as const, // Feather icon
       label: tr('contactUs.email', 'Email'),
@@ -285,6 +341,13 @@ const ContactUsScreen = ({navigation}: any) => {
                     style={styles.heroIcon}
                   />
                   <View style={{flex: 1, minWidth: 0}}>
+                    {!!row.label && (
+                      <Text
+                        style={[styles.heroLabel, {color: colors.textSecondary}]}
+                        numberOfLines={1}>
+                        {row.label}
+                      </Text>
+                    )}
                     <Text
                       style={[
                         styles.heroValue,
@@ -496,6 +559,11 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     minWidth: 0,
     lineHeight: 18,
+  },
+  heroLabel: {
+    fontSize: 11,
+    marginBottom: 2,
+    fontWeight: '500',
   },
   heroArrow: {
     fontSize: 16,

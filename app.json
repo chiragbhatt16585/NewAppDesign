@@ -1,9 +1,9 @@
 {
-  "name": "MicroscanApp",
+  "name": "DNAInfotelApp",
   "expo": {
-    "name": "Microscan",
-    "slug": "microscan",
-    "version": "3.0.6",
+    "name": "DNA Infotel",
+    "slug": "dna-infotel",
+    "version": "4.0.0",
     "orientation": "portrait",
     "icon": "./app-icons/icon.png",
     "userInterfaceStyle": "light",
@@ -17,16 +17,16 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.l2sClient.microscan",
-      "buildNumber": "47"
+      "bundleIdentifier": "com.spacecom.log2space.dnainfotel",
+      "buildNumber": "4"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./app-icons/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
       },
-      "package": "in.spacecom.log2space.client.microscan",
-      "versionCode": 47
+      "package": "com.spacecom.log2space.dnainfotel",
+      "versionCode": 4
     },
     "web": {
       "favicon": "./app-icons/favicon.png"

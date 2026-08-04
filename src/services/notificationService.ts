@@ -54,28 +54,38 @@ export async function initializeCleverTapOnlyPush(): Promise<void> {
 
     try {
       await messaging().requestPermission()
-      const fcmToken = await messaging().getToken()
-      // eslint-disable-next-line no-console
-      console.log(
-        '[Push][CleverTap] FCM token',
-        fcmToken ? `${fcmToken.substring(0, 12)}...` : 'none',
-      )
-      if (fcmToken) {
-        pendingToken = fcmToken
-        lastRegisteredToken = fcmToken
-        setCleverTapFcmToken(fcmToken)
-      }
-
-      messaging().onTokenRefresh((newToken) => {
+      // Android: CleverTap needs the FCM token via setFCMPushTokenAsString.
+      // iOS: CleverTap sends via APNs — token is set in AppDelegate.setPushToken.
+      // Do NOT call setFCMPushTokenAsString on iOS; an FCM token overwrite causes APNSBadDeviceToken.
+      if (Platform.OS === 'android') {
+        const fcmToken = await messaging().getToken()
         // eslint-disable-next-line no-console
         console.log(
-          '[Push][CleverTap] onTokenRefresh',
-          newToken ? `${newToken.substring(0, 12)}...` : 'none',
+          '[Push][CleverTap] FCM token',
+          fcmToken ? `${fcmToken.substring(0, 12)}...` : 'none',
         )
-        pendingToken = newToken
-        lastRegisteredToken = newToken
-        setCleverTapFcmToken(newToken)
-      })
+        if (fcmToken) {
+          pendingToken = fcmToken
+          lastRegisteredToken = fcmToken
+          setCleverTapFcmToken(fcmToken)
+        }
+
+        messaging().onTokenRefresh((newToken) => {
+          // eslint-disable-next-line no-console
+          console.log(
+            '[Push][CleverTap] onTokenRefresh',
+            newToken ? `${newToken.substring(0, 12)}...` : 'none',
+          )
+          pendingToken = newToken
+          lastRegisteredToken = newToken
+          setCleverTapFcmToken(newToken)
+        })
+      } else {
+        // eslint-disable-next-line no-console
+        console.log(
+          '[Push][CleverTap] iOS: skipping FCM token — using APNs token from AppDelegate',
+        )
+      }
     } catch (e) {
       // eslint-disable-next-line no-console
       console.warn('[Push][CleverTap] FCM token setup failed', e)

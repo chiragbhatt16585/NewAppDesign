@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useMemo} from 'react';
+import React, {useState, useEffect, useMemo, useRef, useCallback} from 'react';
 import {useFocusEffect} from '@react-navigation/native';
 import {
   View,
@@ -11,6 +11,9 @@ import {
   Modal,
   ActivityIndicator,
   Image,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
+  LayoutChangeEvent,
 } from 'react-native';
 import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 import Feather from 'react-native-vector-icons/Feather';
@@ -54,6 +57,117 @@ type DropdownOption = {
 
 // Fixed speed filter options (temporarily limit to 3 buckets)
 const SPEED_FILTER_OPTIONS = ['Upto 50Mbps', '50-100Mbps', '100Mbps above'];
+
+type OttProvider = {
+  content_provider?: string;
+  app_logo_file?: string;
+  full_path_app_logo_file?: string;
+};
+
+/** Horizontal OTT logos with left/right chevrons when content overflows. */
+const OttLogosScrollRow = ({
+  providers,
+  renderIcon,
+  textColor,
+  compact = false,
+}: {
+  providers: OttProvider[];
+  renderIcon: (provider: OttProvider) => React.ReactNode;
+  textColor: string;
+  compact?: boolean;
+}) => {
+  const scrollRef = useRef<ScrollView>(null);
+  const scrollX = useRef(0);
+  const contentWidth = useRef(0);
+  const layoutWidth = useRef(0);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const updateArrows = useCallback(() => {
+    const maxScroll = Math.max(0, contentWidth.current - layoutWidth.current);
+    const x = scrollX.current;
+    setCanScrollLeft(x > 4);
+    setCanScrollRight(maxScroll > 4 && x < maxScroll - 4);
+  }, []);
+
+  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    scrollX.current = e.nativeEvent.contentOffset.x;
+    updateArrows();
+  };
+
+  const onContentSizeChange = (w: number) => {
+    contentWidth.current = w;
+    updateArrows();
+  };
+
+  const onLayout = (e: LayoutChangeEvent) => {
+    layoutWidth.current = e.nativeEvent.layout.width;
+    updateArrows();
+  };
+
+  const scrollBy = (direction: 'left' | 'right') => {
+    const delta = direction === 'left' ? -140 : 140;
+    const maxScroll = Math.max(0, contentWidth.current - layoutWidth.current);
+    const next = Math.max(0, Math.min(maxScroll, scrollX.current + delta));
+    scrollRef.current?.scrollTo({x: next, animated: true});
+    scrollX.current = next;
+    updateArrows();
+  };
+
+  if (!providers?.length) {
+    return null;
+  }
+
+  return (
+    <View style={compact ? undefined : styles.ottLogosSection}>
+      <View style={styles.ottScrollRow}>
+        {canScrollLeft && (
+          <TouchableOpacity
+            style={styles.ottScrollArrow}
+            onPress={() => scrollBy('left')}
+            hitSlop={{top: 10, bottom: 10, left: 6, right: 6}}
+            accessibilityLabel="Scroll OTT logos left"
+            accessibilityRole="button">
+            <Feather name="chevron-left" size={12} color={textColor} />
+          </TouchableOpacity>
+        )}
+
+        <ScrollView
+          ref={scrollRef}
+          horizontal
+          scrollEnabled
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.ottLogosScrollContainer}
+          style={styles.ottLogosScrollView}
+          nestedScrollEnabled
+          onScroll={onScroll}
+          scrollEventThrottle={16}
+          onContentSizeChange={onContentSizeChange}
+          onLayout={onLayout}>
+          {providers.map((provider, index) => (
+            <View key={`${provider.content_provider || 'ott'}-${index}`} style={styles.ottLogoItem}>
+              <View style={styles.ottLogoWrapper}>{renderIcon(provider)}</View>
+              <Text style={[styles.ottServiceName, {color: textColor}]} numberOfLines={1}>
+                {provider.content_provider || 'OTT'}
+              </Text>
+            </View>
+          ))}
+        </ScrollView>
+
+        {canScrollRight && (
+          <TouchableOpacity
+            style={styles.ottScrollArrow}
+            onPress={() => scrollBy('right')}
+            hitSlop={{top: 10, bottom: 10, left: 6, right: 6}}
+            accessibilityLabel="Scroll OTT logos right"
+            accessibilityRole="button">
+            <Feather name="chevron-right" size={12} color={textColor} />
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  );
+};
 
 const UpgradePlanScreen = ({navigation}: any) => {
   const {isDark} = useTheme();
@@ -885,21 +999,12 @@ const UpgradePlanScreen = ({navigation}: any) => {
               <Text style={[styles.ottTitle, {color: colors.textSecondary}]}>
                 {t('renewPlan.ottServices')}
               </Text>
-              <ScrollView 
-                horizontal 
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.ottScrollContainer}
-                nestedScrollEnabled={true}
-                scrollEnabled={true}>
-                {item.content_providers.map((provider: any, index: number) => (
-                  <View key={index} style={styles.ottItem}>
-                    {renderOTTIcon(provider)}
-                    <Text style={[styles.ottName, {color: colors.textSecondary}]}>
-                      {provider.content_provider}
-                    </Text>
-                  </View>
-                ))}
-              </ScrollView>
+              <OttLogosScrollRow
+                providers={item.content_providers}
+                renderIcon={renderOTTIcon}
+                textColor={colors.textSecondary}
+                compact
+              />
             </View>
           )}
 
@@ -1275,26 +1380,11 @@ const UpgradePlanScreen = ({navigation}: any) => {
                             marginBottom: 2,
                           }}
                         />
-                        <View style={styles.ottLogosSection}>
-                          <ScrollView 
-                            horizontal 
-                            scrollEnabled={true}
-                            showsHorizontalScrollIndicator={false}
-                            contentContainerStyle={styles.ottLogosScrollContainer}
-                            style={styles.ottLogosScrollView}
-                            nestedScrollEnabled={true}>
-                            {plan.content_providers.map((provider: any, index: number) => (
-                              <View key={index} style={styles.ottLogoItem}>
-                                <View style={styles.ottLogoWrapper}>
-                                  {renderOTTIcon(provider)}
-                                </View>
-                                <Text style={[styles.ottServiceName, {color: colors.textSecondary}]} numberOfLines={1}>
-                                  {provider.content_provider || 'OTT'}
-                                </Text>
-                              </View>
-                            ))}
-                          </ScrollView>
-                        </View>
+                        <OttLogosScrollRow
+                          providers={plan.content_providers}
+                          renderIcon={renderOTTIcon}
+                          textColor={colors.textSecondary}
+                        />
                       </>
                     )}
                   </View>
@@ -2391,10 +2481,23 @@ const styles = StyleSheet.create({
     marginBottom: 2,
     width: '100%',
   },
+  ottScrollRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+  },
+  ottScrollArrow: {
+    width: 14,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    opacity: 0.55,
+  },
   ottLogosScrollView: {
     maxHeight: 70,
     paddingVertical: 0,
-    width: '100%',
+    flex: 1,
   },
   ottLogosScrollContainer: {
     flexDirection: 'row',

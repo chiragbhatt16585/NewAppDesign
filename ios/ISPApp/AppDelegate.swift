@@ -40,15 +40,20 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
       }
 
       CleverTap.autoIntegrate()
+      // Verbose logs + Integration Debugger in DEBUG only. Does NOT switch Live↔Test
+      // (that is controlled by CleverTapAccountID / Token in Info.plist).
       #if DEBUG
       CleverTap.setDebugLevel(3)
+      #else
+      CleverTap.setDebugLevel(-1)
       #endif
+      logCleverTapNativeCredentials()
       CleverTapReactManager.sharedInstance()?.applicationDidLaunch(options: launchOptions)
       CleverTap.sharedInstance()?.setUrlDelegate(self)
-      // Take UNUserNotificationCenterDelegate so we can show foreground banners + log payloads.
-      // Must forward to CleverTap via handleNotification(withData:) so click/viewed analytics
-      // and CleverTapPushNotificationClicked still fire (autoIntegrate loses the delegate).
-      UNUserNotificationCenter.current().delegate = self
+
+      // CleverTap Step 3: request permission + register with APNs (mandatory for iOS push).
+      // Must run on main thread; prompts user on first launch and obtains device token.
+      registerForPush()
 
       if let remoteNotification = launchOptions?[.remoteNotification] as? [AnyHashable: Any] {
         print("[CleverTap] Cold-start push payload: \(remoteNotification)")
@@ -90,7 +95,24 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     return true
   }
 
-  // MARK: - APNs registration
+  // MARK: - APNs registration (CleverTap Step 3)
+
+  /// Request notification permission and register with APNs.
+  /// Without this, the device never gets a push token and CleverTap cannot deliver iOS pushes.
+  func registerForPush() {
+    UNUserNotificationCenter.current().delegate = self
+    UNUserNotificationCenter.current().requestAuthorization(options: [.sound, .badge, .alert]) { granted, error in
+      if let error {
+        print("[CleverTap] Push authorization error: \(error.localizedDescription)")
+      }
+      print("[CleverTap] Push authorization granted: \(granted)")
+      if granted {
+        DispatchQueue.main.async {
+          UIApplication.shared.registerForRemoteNotifications()
+        }
+      }
+    }
+  }
 
   func application(
     _ application: UIApplication,
@@ -201,6 +223,19 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     ])
     
     window.rootViewController = errorViewController
+  }
+
+  private func logCleverTapNativeCredentials() {
+    let accountId = Bundle.main.object(forInfoDictionaryKey: "CleverTapAccountID") as? String ?? "(missing)"
+    let token = Bundle.main.object(forInfoDictionaryKey: "CleverTapToken") as? String ?? "(missing)"
+    let region = Bundle.main.object(forInfoDictionaryKey: "CleverTapRegion") as? String ?? "(missing)"
+    let env = accountId.hasPrefix("TEST-") ? "TEST" : "LIVE"
+    #if DEBUG
+    let debugLevel = "ON(3)"
+    #else
+    let debugLevel = "OFF(-1)"
+    #endif
+    print("[CleverTapCreds] NATIVE CREDENTIALS accountId=\(accountId) token=\(token) region=\(region) environment=\(env) debugLevel=\(debugLevel)")
   }
 }
 

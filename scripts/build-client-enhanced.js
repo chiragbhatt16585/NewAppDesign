@@ -11,8 +11,8 @@ const CLIENTS = {
     // Must match OLD app (microscanEndUserApp-master-new) so install overwrites and migration works.
     packageName: 'in.spacecom.log2space.client.microscan',
     namespace: 'in.spacecom.log2space.client.microscan',
-    versionCode: 47,
-    versionName: '47',
+    versionCode: 48,
+    versionName: '48',
     // Use original Microscan upload key for Play Store (SHA1: 08:1C:A0:54:CA:45:95:5B:B3:8B:3A:B8:B2:53:93:FA:F5:64:D0:AE)
     keystore: 'Log2SpaceEndUserMicroscan.jks',
     configDir: 'config/microscan',
@@ -936,10 +936,34 @@ function loadCleverTapConfig(configDir) {
 
   try {
     const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-    if (!config.enabled || !config.accountId) {
+    if (!config.enabled) {
       return null;
     }
-    return config;
+
+    // Resolve live vs test credentials.
+    // Switch with: "mode": "live" | "test" in clevertap-config.json
+    // Or override: CLEVERTAP_MODE=test node scripts/build-client-enhanced.js switch microscan
+    const mode = String(process.env.CLEVERTAP_MODE || config.mode || 'live').toLowerCase();
+    const fromCredentials = config.credentials?.[mode];
+    const accountId = fromCredentials?.accountId || config.accountId;
+    const token = fromCredentials?.token || config.token;
+
+    if (!accountId) {
+      return null;
+    }
+
+    log(
+      `CleverTap mode: ${mode} (accountId=${accountId}, token=${token ? `${String(token).slice(0, 6)}...` : 'missing'})`,
+      'cyan',
+    );
+
+    return {
+      ...config,
+      mode,
+      accountId,
+      token,
+      region: config.region || 'in1',
+    };
   } catch (error) {
     logWarning(`Failed to read CleverTap config: ${error.message}`);
     return null;
@@ -1055,11 +1079,39 @@ function updateIOSAppDelegateCleverTap(clientId) {
       }
 
       CleverTap.autoIntegrate()
-#if DEBUG
-      CleverTap.setDebugLevel(3)
-#endif
+      // -1 = OFF → Live environment. Level 3 routes events to Test/Integration Debugger.
+      CleverTap.setDebugLevel(-1)
+      logCleverTapNativeCredentials()
       CleverTapReactManager.sharedInstance()?.applicationDidLaunch(options: launchOptions)`,
     );
+
+    if (!content.includes('logCleverTapNativeCredentials()')) {
+      content = content.replace(
+        'CleverTap.setDebugLevel(-1)\n      CleverTapReactManager.sharedInstance()?.applicationDidLaunch(options: launchOptions)',
+        `CleverTap.setDebugLevel(-1)
+      logCleverTapNativeCredentials()
+      CleverTapReactManager.sharedInstance()?.applicationDidLaunch(options: launchOptions)`,
+      );
+    }
+
+    if (!content.includes('private func logCleverTapNativeCredentials()')) {
+      content = content.replace(
+        'window.rootViewController = errorViewController\n  }\n}\n\nclass ReactNativeDelegate',
+        `window.rootViewController = errorViewController
+  }
+
+  private func logCleverTapNativeCredentials() {
+    let accountId = Bundle.main.object(forInfoDictionaryKey: "CleverTapAccountID") as? String ?? "(missing)"
+    let token = Bundle.main.object(forInfoDictionaryKey: "CleverTapToken") as? String ?? "(missing)"
+    let region = Bundle.main.object(forInfoDictionaryKey: "CleverTapRegion") as? String ?? "(missing)"
+    let env = accountId.hasPrefix("TEST-") ? "TEST" : "LIVE"
+    print("[CleverTapCreds] NATIVE CREDENTIALS accountId=\\(accountId) token=\\(token) region=\\(region) environment=\\(env) debugLevel=OFF(-1)")
+  }
+}
+
+class ReactNativeDelegate`,
+      );
+    }
 
     if (!content.includes('UNUserNotificationCenter.current().delegate = self')) {
       content = content.replace(

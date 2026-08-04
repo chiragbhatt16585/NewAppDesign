@@ -31,9 +31,61 @@ type CleverTapModule = {
   getInitialUrl?: (callback: (err: unknown, url: string) => void) => void;
 };
 
-/** CleverTap SDK debug levels — see React Native Advanced Features docs. */
-const CLEVERTAP_DEBUG_LEVEL_DEV = 3; // verbose
-const CLEVERTAP_DEBUG_LEVEL_PROD = -1; // disabled
+/** CleverTap SDK debug levels — see React Native Advanced Features docs.
+ * Level 3 = verbose logs + Integration Debugger (does NOT switch Live↔Test).
+ * Live vs Test is controlled by Account ID / Token (TEST- prefix = Test board).
+ * In __DEV__, enable verbose logs so Live profile uploads are visible. */
+const CLEVERTAP_SDK_DEBUG_ENABLED = __DEV__;
+const CLEVERTAP_DEBUG_LEVEL_ON = 3; // verbose + Integration Debugger
+const CLEVERTAP_DEBUG_LEVEL_OFF = -1; // disabled — production only
+
+type CleverTapConfigFile = {
+  enabled?: boolean;
+  mode?: string;
+  region?: string;
+  apiPasscode?: string;
+  credentials?: {
+    live?: { accountId?: string; token?: string };
+    test?: { accountId?: string; token?: string };
+  };
+};
+
+/** Resolve Account ID / Token / Passcode from clevertap-config.json and print them. */
+const logCleverTapCredentialsInUse = (): void => {
+  try {
+    // Bundled from config/microscan — native AndroidManifest/Info.plist must match after switch.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const config = require('../../config/microscan/clevertap-config.json') as CleverTapConfigFile;
+    const mode = String(config.mode || 'live').toLowerCase();
+    const creds = config.credentials?.[mode as 'live' | 'test'] || config.credentials?.live;
+    const accountId = creds?.accountId || '(missing)';
+    const token = creds?.token || '(missing)';
+    const passcode = config.apiPasscode || '(missing)';
+    const region = config.region || '(missing)';
+    const env =
+      accountId.startsWith('TEST-') || mode === 'test' ? 'TEST' : 'LIVE';
+
+    const payload = {
+      mode,
+      environment: env,
+      accountId,
+      token,
+      passcode,
+      region,
+      sdkDebugEnabled: CLEVERTAP_SDK_DEBUG_ENABLED,
+      sdkDebugLevel: CLEVERTAP_SDK_DEBUG_ENABLED
+        ? CLEVERTAP_DEBUG_LEVEL_ON
+        : CLEVERTAP_DEBUG_LEVEL_OFF,
+      note:
+        'Native SDK reads CLEVERTAP_ACCOUNT_ID / CLEVERTAP_TOKEN from AndroidManifest (Android) or Info.plist (iOS). Passcode is API-only (not sent by SDK).',
+    };
+
+    // Always print credentials so Live vs Test can be verified in Metro/logcat.
+    console.log('[CleverTap] CREDENTIALS IN USE', JSON.stringify(payload, null, 2));
+  } catch (error) {
+    console.warn('[CleverTap] Failed to log credentials:', error);
+  }
+};
 
 const CLEVERTAP_PUSH_CHANNEL_ID = 'clevertap_channel';
 const CLEVERTAP_PUSH_CLICKED_EVENT = 'CleverTapPushNotificationClicked';
@@ -123,7 +175,7 @@ const getCleverTapEventEmitter = (
   return cleverTapEventEmitter;
 };
 
-/** Enable native CleverTap SDK logs (debug in dev, off in production). */
+/** Force CleverTap SDK debug OFF for Live environment (level -1). */
 export const enableCleverTapSdkDebugLogging = (): void => {
   if (!isCleverTapEnabled()) {
     return;
@@ -135,10 +187,13 @@ export const enableCleverTapSdkDebugLogging = (): void => {
     return;
   }
 
-  const level = __DEV__ ? CLEVERTAP_DEBUG_LEVEL_DEV : CLEVERTAP_DEBUG_LEVEL_PROD;
+  const level = CLEVERTAP_SDK_DEBUG_ENABLED ? CLEVERTAP_DEBUG_LEVEL_ON : CLEVERTAP_DEBUG_LEVEL_OFF;
   try {
     cleverTap.setDebugLevel(level);
-    logCleverTapDebug('setDebugLevel', { level });
+    logCleverTapDebug('setDebugLevel', {
+      level,
+      mode: CLEVERTAP_SDK_DEBUG_ENABLED ? 'test/debug' : 'live/off',
+    });
   } catch (error) {
     console.warn('[CleverTap] setDebugLevel failed:', error);
   }
@@ -700,24 +755,26 @@ const applyCleverTapProfileSet = (
     return;
   }
 
-  const { Identity: _identity, ...profilePayload } = profile;
-
-  logCleverTapDebug(`${source} => sending profile`, profilePayload);
-  cleverTap.profileSet(profilePayload);
+  // Keep Identity on profileSet so iOS Live still attaches props if onUserLogin raced/skipped.
+  console.log(`[CleverTap] ${source} => sending profileSet`, JSON.stringify(profile));
+  cleverTap.profileSet(profile);
   logCleverTapId(cleverTap, source);
 };
 
 const logCleverTapId = (cleverTap: CleverTapModule, source: string) => {
-  if (!__DEV__ || typeof cleverTap.getCleverTapID !== 'function') {
+  if (typeof cleverTap.getCleverTapID !== 'function') {
     return;
   }
 
   cleverTap.getCleverTapID((err, id) => {
-    logCleverTapDebug(`${source} => getCleverTapID response`, {
-      success: !err,
-      error: err ? String(err) : null,
-      cleverTapId: id || null,
-    });
+    console.log(
+      `[CleverTap] ${source} => getCleverTapID`,
+      JSON.stringify({
+        success: !err,
+        error: err ? String(err) : null,
+        cleverTapId: id || null,
+      }),
+    );
   });
 };
 
@@ -806,7 +863,10 @@ export const registerCleverTapUserOnLogin = (username: string): void => {
     }
 
     const profile = { Identity: identity };
-    logCleverTapDebug('onUserLogin => sending identity only (authUser sync follows)', profile);
+    console.log(
+      '[CleverTap] onUserLogin => sending identity only (authUser sync follows)',
+      JSON.stringify(profile),
+    );
     cleverTap.onUserLogin(profile);
     logCleverTapId(cleverTap, 'onUserLogin');
   } catch (error) {
@@ -847,7 +907,10 @@ export const syncCleverTapWithAuthUser = (
       return;
     }
 
-    logCleverTapDebug('authUser sync => onUserLogin with full profile', profile);
+    console.log(
+      '[CleverTap] authUser sync => onUserLogin with full profile',
+      JSON.stringify(profile),
+    );
     cleverTap.onUserLogin(profile);
     logCleverTapId(cleverTap, 'authUser sync onUserLogin');
     applyCleverTapProfileSet(cleverTap, authData, username, 'authUser sync profileSet');
@@ -980,6 +1043,7 @@ export const initializeCleverTapPush = (): void => {
   cleverTapPushInitialized = true;
 
   try {
+    logCleverTapCredentialsInUse();
     enableCleverTapSdkDebugLogging();
     registerCleverTapDataCaptureListeners();
 

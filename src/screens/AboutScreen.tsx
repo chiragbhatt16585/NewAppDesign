@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
@@ -14,21 +13,128 @@ import { getClientConfig } from '../config/client-config';
 import CommonHeader from '../components/CommonHeader';
 import { apiService } from '../services/api';
 
+const escapeHtml = (value: string): string =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+
+/** Build About Company HTML from client-config static content. */
+const buildStaticAboutHtml = (isDark: boolean): string => {
+  const about = getClientConfig().about;
+  const companyName = escapeHtml(about?.companyName || 'About Us');
+  const established = about?.establishedYear
+    ? `Established ${escapeHtml(about.establishedYear)}`
+    : '';
+  const descriptionParagraphs = (about?.description || '')
+    .split(/\n+/)
+    .map(part => part.trim())
+    .filter(Boolean)
+    .map(part => `<p>${escapeHtml(part)}</p>`)
+    .join('');
+  const specializations = (about?.specializations || [])
+    .map(item => `<li>${escapeHtml(item)}</li>`)
+    .join('');
+  const serviceAreas = (about?.serviceAreas || [])
+    .map(item => `<li>${escapeHtml(item)}</li>`)
+    .join('');
+  const achievements = (about?.achievements || [])
+    .map(item => `<li>${escapeHtml(item)}</li>`)
+    .join('');
+
+  const textColor = isDark ? '#F5F5F5' : '#333';
+  const headingColor = isDark ? '#FFFFFF' : '#2c3e50';
+  const subHeadingColor = isDark ? '#E0E0E0' : '#34495e';
+  const metaColor = isDark ? '#B0B0B0' : '#666';
+  const borderColor = isDark ? '#4A90E2' : '#3498db';
+  const bgColor = isDark ? '#121212' : '#FFFFFF';
+
+  return `<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        margin: 20px;
+        line-height: 1.6;
+        color: ${textColor};
+        background: ${bgColor};
+      }
+      h1 { color: ${headingColor}; border-bottom: 2px solid ${borderColor}; padding-bottom: 10px; }
+      h2 { color: ${subHeadingColor}; margin-top: 24px; font-size: 18px; }
+      p { margin-bottom: 15px; }
+      ul { padding-left: 20px; }
+      .meta { color: ${metaColor}; margin-bottom: 20px; }
+    </style>
+  </head>
+  <body>
+    <h1>${companyName}</h1>
+    ${established ? `<p class="meta">${established}</p>` : ''}
+    ${descriptionParagraphs}
+    ${specializations ? `<h2>What we offer</h2><ul>${specializations}</ul>` : ''}
+    ${serviceAreas ? `<h2>Service areas</h2><ul>${serviceAreas}</ul>` : ''}
+    ${achievements ? `<h2>Highlights</h2><ul>${achievements}</ul>` : ''}
+  </body>
+</html>`;
+};
+
+/** True when CRM returned a usable About HTML page (not an L2S error payload). */
+const isValidAboutHtml = (text: string): boolean => {
+  const trimmed = (text || '').trim();
+  if (!trimmed) {
+    return false;
+  }
+
+  const lower = trimmed.toLowerCase();
+
+  // L2S / CRM error payloads
+  if (
+    lower.includes('resource not allocated') ||
+    lower.includes('token expired') ||
+    lower.includes('"status":"error"') ||
+    lower.includes('"status": "error"')
+  ) {
+    return false;
+  }
+
+  // JSON error objects returned with HTTP 200
+  if (trimmed.startsWith('{')) {
+    try {
+      const json = JSON.parse(trimmed);
+      if (json?.status === 'error' || json?.code || json?.message) {
+        return false;
+      }
+    } catch {
+      // not JSON — continue
+    }
+  }
+
+  // Prefer real HTML; reject bare error strings
+  if (!lower.includes('<html') && !lower.includes('<body') && !lower.includes('<p') && !lower.includes('<div')) {
+    return false;
+  }
+
+  return true;
+};
+
 const AboutScreen = ({ navigation }: any) => {
   const { isDark } = useTheme();
   const colors = getThemeColors(isDark);
   const [htmlContent, setHtmlContent] = useState<string>('');
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [usingFallback, setUsingFallback] = useState(false);
 
-  useEffect(() => {
-    fetchAboutUs();
-  }, []);
+  const showStaticAbout = useCallback(() => {
+    setHtmlContent(buildStaticAboutHtml(isDark));
+    setUsingFallback(true);
+  }, [isDark]);
 
-  const fetchAboutUs = async () => {
+  const fetchAboutUs = useCallback(async () => {
     try {
       setLoading(true);
-      setError(null);
+      setUsingFallback(false);
 
       const clientConfig = getClientConfig();
       const baseUrl = clientConfig.api.baseURL;
@@ -42,7 +148,6 @@ const AboutScreen = ({ navigation }: any) => {
 
       const url = `https://${domain}/tmp/aboutus.html`;
 
-      // Use authenticated request so token is sent and auto-refresh runs on expiry
       const html = await apiService.makeAuthenticatedRequest(async (token) => {
         const response = await fetch(url, {
           headers: new Headers({
@@ -62,7 +167,7 @@ const AboutScreen = ({ navigation }: any) => {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        // Server may return 200 with an error page; treat as token error so we retry
+        // Server may return 200 with token-expired JSON — retry via makeAuthenticatedRequest
         if (lower.includes('token') && (lower.includes('expired') || lower.includes('error'))) {
           throw new Error('Token Expired');
         }
@@ -70,59 +175,37 @@ const AboutScreen = ({ navigation }: any) => {
         return text;
       });
 
-      setHtmlContent(html);
+      if (isValidAboutHtml(html)) {
+        setHtmlContent(html);
+        setUsingFallback(false);
+      } else {
+        // Missing /tmp/aboutus.html → "Resource not allocated", etc.
+        console.warn('[AboutScreen] Remote about HTML invalid/missing — using client-config content');
+        showStaticAbout();
+      }
     } catch (err: any) {
-      console.error('Error fetching About Us:', err);
-      const isTokenError = err?.message?.includes('Token') || err?.message?.includes('Session expired') || err?.message?.includes('Authentication required');
-      setError(isTokenError ? 'Session expired. Please try again.' : 'Failed to load About Us. Please try again later.');
-      
-      // Show fallback content
-      setHtmlContent(`
-        <html>
-          <head>
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <style>
-              body { 
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-                margin: 20px; 
-                line-height: 1.6; 
-                color: #333;
-              }
-              h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
-              h2 { color: #34495e; margin-top: 30px; }
-              p { margin-bottom: 15px; }
-              .error { color: #e74c3c; background: #fdf2f2; padding: 15px; border-radius: 5px; border-left: 4px solid #e74c3c; }
-            </style>
-          </head>
-          <body>
-            <h1>About Us</h1>
-            <div class="error">
-              <h2>⚠️ Content Unavailable</h2>
-              <p>We're unable to load the About Us information at the moment. This could be due to:</p>
-              <ul>
-                <li>Network connectivity issues</li>
-                <li>Server maintenance</li>
-                <li>Temporary service disruption</li>
-              </ul>
-              <p>Please try again later or contact our support team for assistance.</p>
-            </div>
-          </body>
-        </html>
-      `);
+      console.warn('[AboutScreen] Failed to fetch remote about HTML — using client-config content:', err?.message || err);
+      showStaticAbout();
     } finally {
       setLoading(false);
     }
-  };
+  }, [showStaticAbout]);
 
-  const retryFetch = () => {
+  useEffect(() => {
     fetchAboutUs();
-  };
+  }, [fetchAboutUs]);
+
+  // Rebuild static HTML if theme changes while on fallback
+  useEffect(() => {
+    if (usingFallback) {
+      setHtmlContent(buildStaticAboutHtml(isDark));
+    }
+  }, [isDark, usingFallback]);
 
   if (loading && !htmlContent) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <CommonHeader navigation={navigation} />
-        
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
@@ -137,43 +220,25 @@ const AboutScreen = ({ navigation }: any) => {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <CommonHeader navigation={navigation} />
 
-      {/* Error Message */}
-      {error && (
-        <View style={styles.errorContainer}>
-          <Text style={[styles.errorText, { color: colors.error || '#e74c3c' }]}>
-            {error}
-          </Text>
-          <TouchableOpacity 
-            style={[styles.retryButton, { backgroundColor: colors.primary }]}
-            onPress={retryFetch}>
-            <Text style={styles.retryButtonText}>Retry</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* WebView */}
       <View style={styles.webViewContainer}>
         {loading && (
           <View style={styles.webViewLoadingContainer}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-              Loading...
-            </Text>
           </View>
         )}
         <WebView
-          source={{ html: htmlContent }}
-          style={styles.webview}
-          onLoadStart={() => setLoading(true)}
+          source={{ html: htmlContent, baseUrl: '' }}
+          style={[styles.webview, { backgroundColor: colors.background }]}
           onLoadEnd={() => setLoading(false)}
           javaScriptEnabled={true}
           domStorageEnabled={true}
-          startInLoadingState={true}
+          startInLoadingState={false}
           scalesPageToFit={true}
+          originWhitelist={['*']}
           onError={(syntheticEvent) => {
-            const { nativeEvent } = syntheticEvent;
-            console.error('WebView error:', nativeEvent);
-            setError('Failed to display About Us. Please try again.');
+            console.error('WebView error:', syntheticEvent.nativeEvent);
+            showStaticAbout();
+            setLoading(false);
           }}
         />
       </View>
@@ -194,25 +259,6 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
   },
-  errorContainer: {
-    padding: 20,
-    alignItems: 'center',
-  },
-  errorText: {
-    fontSize: 16,
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  retryButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
   webViewContainer: {
     flex: 1,
     position: 'relative',
@@ -225,7 +271,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     zIndex: 1,
   },
   webview: {

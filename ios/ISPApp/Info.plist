@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>Microscan</string>
+	<string>DNA Infotel App</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -57,10 +57,12 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>UIUserInterfaceStyle</key>
-	<string>Light</string>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -70,7 +72,7 @@
 			<array>
 				<string>paymentresponse</string>
 				<string>isp</string>
-				<string>microscan</string>
+				<string>dna-infotel</string>
 			</array>
 		</dict>
 	</array>
@@ -160,16 +162,6 @@
 		<string>Octicons.ttf</string>
 		<string>Zocial.ttf</string>
 		<string>Fontisto.ttf</string>
-	</array>	<key>UIBackgroundModes</key>
-	<array>
-		<string>remote-notification</string>
 	</array>
-	<key>CleverTapAccountID</key>
-	<string>7Z6-7R9-677Z</string>
-	<key>CleverTapToken</key>
-	<string>c2a-61a</string>
-	<key>CleverTapRegion</key>
-	<string>in1</string>
-
 </dict>
 </plist> 

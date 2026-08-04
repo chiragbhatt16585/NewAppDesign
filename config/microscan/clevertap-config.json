@@ -1,7 +1,17 @@
 {
   "enabled": true,
-  "accountId": "7Z6-7R9-677Z",
-  "token": "c2a-61a",
+  "mode": "live",
   "region": "in1",
-  "apiPasscode": "UVC-BSV-OTEL"
+  "apiPasscode": "WVC-BSV-OTEL",
+  "credentials": {
+    "live": {
+      "accountId": "6Z6-7R9-677Z",
+      "token": "c2a-616"
+    },
+    "test": {
+      "accountId": "TEST-7Z6-7R9-677Z",
+      "token": "TEST-c2a-61a"
+    }
+  },
+  "_comment": "mode=live uses live credentials (no TEST- prefix). For Test board: set mode to test (TEST- accountId/token). Debug level 3 only enables Integration Debugger logs — it does not switch Live↔Test."
 }

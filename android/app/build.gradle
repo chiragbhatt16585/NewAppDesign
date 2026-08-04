@@ -103,13 +103,13 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "in.spacecom.log2space.client.microscan"
+    namespace "com.h8.dnasubscriber"
     defaultConfig {
-        applicationId "in.spacecom.log2space.client.microscan"
+        applicationId "com.h8.dnasubscriber"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 47
-        versionName "47"
+        versionCode 298
+        versionName "1.0.298"
         buildConfigField "boolean", "IS_NEW_ARCHITECTURE_ENABLED", (findProperty("newArchEnabled") ?: "false")
     }
     
@@ -126,7 +126,8 @@ android {
                 exclude '**/com/spacecom/log2space/onesevenstar/**'
                 exclude '**/com/microscan/**'
                 exclude '**/com/netfixnetworks/**'
-                // in.spacecom.log2space.client.microscan — exclude other in.* client packages
+                // Non-in client — exclude all in.* client app packages
+                exclude '**/in/spacecom/log2space/client/microscan/**'
                 exclude '**/in/spacecom/log2space/client/netfix/**'
                 exclude '**/in/spacecom/log2space/client/monarkuser/**'
                 exclude '**/in/spacecom/log2space/client/cityzone/**'
@@ -142,10 +143,10 @@ android {
                 keyPassword 'android'
             }
             release {
-                storeFile file('Log2SpaceEndUserMicroscan.jks')
-                storePassword 'log2space'
-                keyAlias 'log2space'
-                keyPassword 'log2space'
+                storeFile file('Log2spaceDNAInfotelAppKey.jks')
+                storePassword 'dnasubscriber'
+                keyAlias 'dnasubscriber'
+                keyPassword 'dnasubscriber'
             }
         }
 

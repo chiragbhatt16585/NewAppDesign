@@ -1,5 +1,7 @@
 package PACKAGE_PLACEHOLDER
 
+import android.content.pm.PackageManager
+import android.util.Log
 import com.clevertap.android.sdk.CleverTapAPI
 import com.clevertap.react.CleverTapApplication
 import com.facebook.react.PackageList
@@ -28,11 +30,29 @@ class MainApplication : CleverTapApplication(), ReactApplication {
 
   override fun onCreate() {
     super.onCreate()
+    logCleverTapNativeCredentials()
     // Ensure CleverTap default instance exists before any FCM delivery thread runs.
     CleverTapAPI.getDefaultInstance(this)
-    if (BuildConfig.DEBUG) {
-      CleverTapAPI.setDebugLevel(CleverTapAPI.LogLevel.VERBOSE)
-    }
+    // OFF (-1): send profiles/events to Live. VERBOSE (3) routes to Test/Integration Debugger.
+    CleverTapAPI.setDebugLevel(CleverTapAPI.LogLevel.OFF)
     ReactNativeApplicationEntryPoint.loadReactNative(this)
+  }
+
+  private fun logCleverTapNativeCredentials() {
+    try {
+      val meta = packageManager
+        .getApplicationInfo(packageName, PackageManager.GET_META_DATA)
+        .metaData
+      val accountId = meta?.getString("CLEVERTAP_ACCOUNT_ID") ?: "(missing)"
+      val token = meta?.getString("CLEVERTAP_TOKEN") ?: "(missing)"
+      val region = meta?.getString("CLEVERTAP_REGION") ?: "(missing)"
+      val env = if (accountId.startsWith("TEST-")) "TEST" else "LIVE"
+      Log.i(
+        "CleverTapCreds",
+        "NATIVE CREDENTIALS accountId=$accountId token=$token region=$region environment=$env debugLevel=OFF(-1)",
+      )
+    } catch (e: Exception) {
+      Log.w("CleverTapCreds", "Failed to read CleverTap meta-data", e)
+    }
   }
 }

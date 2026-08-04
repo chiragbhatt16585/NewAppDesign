@@ -30,4 +30,3 @@ class MainApplication : Application(), ReactApplication {
     ReactNativeApplicationEntryPoint.loadReactNative(this)
   }
 }
-

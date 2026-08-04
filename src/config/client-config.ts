@@ -384,31 +384,39 @@ const clientConfigs: Record<string, ClientConfig> = {
       headOffice: {
         title: 'Head Office',
         address: '2nd  Floor, Icchapurti Sai Building, Near Saibaba Temple, Gaothan Road, Virar – West, Palghar- 401303',
+        // Head office is in Virar — local landline for this location card
+        customerSupport: '0250-6635100',
       },
       branchOffices: [
         {
           title: 'Branch Office - Nallasopara (E)',
           address: 'Ground Floor, Sai Kiran Building, Tulinj Rd, near Utsav Hotel, Nalasopara East, Maharashtra 401209',
+          customerSupport: '0250-6635100',
         },
         {
           title: 'Branch Office - Nallasopara (W)',
           address: 'Shop No.8, Neelganga Apartment, Sriprastha Complex, Opp to Jyoti Bungalow, Shanti Park, Nallasopara (West) - 401203',
+          customerSupport: '0250-6635100',
         },
         {
           title: 'Branch Office - Virar (W)',
           address: 'Shop No.2, Ground Floor, Vishnu Sanmale, Umbergothan, Post - Agashi, Virar (West), Dist : Palghar - 401301',
+          customerSupport: '0250-6635100',
         },
         {
           title: 'Branch Office - Vasai (E)',
           address: 'Shop No. A-105, Imperial Splendora, Survey Number - 274 & 275, Madhuban, Vasai East',
+          customerSupport: '0250-6635235',
         },
         {
-          title: 'Branch Office - Navghar, Vasai (W))',
+          title: 'Branch Office - Navghar, Vasai (W)',
           address: 'Shop No. 6, 7, 8, 9, 10, Darshit Apartment, near St Francis School, Navghar, Vasai West, Vasai-Virar, Maharashtra 401202',
+          customerSupport: '0250-6635235',
         },
         {
           title: 'Branch Office - Virar (W)',
           address: 'Shop No. 207-211, Gold Crest 369, Opp New Virar College, Virar West',
+          customerSupport: '0250-6635100',
         },
       ],
       emails: {
@@ -416,26 +424,29 @@ const clientConfigs: Record<string, ClientConfig> = {
         sales: 'sales@dnainfotel.com',
       },
       tollFree: '1800-313-6345',
-      landline: '0250-6635100',
+      // Shown with location labels on Contact Us
+      landline: 'Virar / Nallasopara: 0250-6635100 | Vasai: 0250-6635235',
     },
     about: {
       companyName: 'DNA INFOTEL PVT LTD',
-      establishedYear: '2008',
-      description: 'A brand Established in the year 2008, in association with M/s Digital Network Associates PVT LTD also known as "DNA". We have our services operating extensively from Vasai to Virar Region includes Highway and coastal region.',
+      establishedYear: '2010',
+      description:
+        'Since 2010, DNA INFOTEL PVT LTD has had one clear mission: to keep Vasai and Virar connected at the speed of life. In association with the renowned M/s Digital Network Associates Pvt. Ltd (DNA), we bring world-class internet directly to your doorstep.\n\nWhether you are streaming in 4K, gaming, or running a home office, our next-generation GePON/GPON Fiber technology ensures you never face a lag. We are proud to serve the diverse landscape of our region, from the bustling highways to the serene coastal areas.',
       specializations: [
-        'Hi-Speed Broadband Internet connection',
-        'GePON/GPON technology (FTTH - Fibre to the Home)',
-        'Leased Line connections for Small, Medium and large scale enterprises'
+        'Next-generation GePON/GPON Fiber (FTTH)',
+        'High-speed broadband for streaming, gaming & home office',
+        'World-class internet in association with Digital Network Associates (DNA)',
       ],
       serviceAreas: [
-        'Vasai to Virar Region',
+        'Vasai',
+        'Virar',
         'Highway region',
-        'Coastal region'
+        'Coastal region',
       ],
       achievements: [
-        'Successfully reached to a prominent broadband supplier',
-        'Extensive service coverage across multiple regions',
-        'Latest technology implementation'
+        'Serving Vasai–Virar since 2010',
+        'Lag-free GePON/GPON Fiber connectivity',
+        'Coverage across highways and coastal areas',
       ],
     },
     reviewUrl: 'https://g.page/r/CSrSiBGUlFE_EB0/review',
