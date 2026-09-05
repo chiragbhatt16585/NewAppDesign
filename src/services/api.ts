@@ -2037,25 +2037,30 @@ class ApiService {
     });
   }
 
-  async planList(adminname: string, username: string, currentplan: string, isShowAllPlan: boolean, is_dashboard: boolean, realm: string): Promise<any[]> {
+  async planList(
+    adminname: string,
+    username: string,
+    currentplan: string,
+    onlineRenewalPlanList: any,
+    is_dashboard: boolean,
+    realm: string,
+  ): Promise<any[]> {
     return this.makeAuthenticatedRequest(async (token: string) => {
+      // Matches old-app planList payload for /selfcareGetPlanAmount.
+      // online_renewal_plan_list comes from admin settings (selfcareGetAdminDetails).
       const data: any = {
         admin_login_id: adminname,
-        username: username.toLowerCase().trim(),
+        username: username,
         planname: currentplan,
         is_dashboard: is_dashboard ? is_dashboard : false,
         online_renewal: 'yes',
         request_source: 'app',
-        request_app: 'user_app'
+        request_app: 'user_app',
       };
 
-      if (isShowAllPlan) {
-        data.online_renewal_plan_list = 'yes';
+      if (onlineRenewalPlanList) {
+        data.online_renewal_plan_list = onlineRenewalPlanList;
       }
-
-      // console.log('=== API SERVICE: Plan list data ===', data);
-      // console.log('=== API SERVICE: Making request to ===', `${url}/selfcareGetPlanAmount`);
-      // console.log('=== API SERVICE: Token available ===', !!token);
 
       const options = {
         method,
@@ -2212,7 +2217,26 @@ class ApiService {
         if (response.status !== 'ok' && response.code !== 200) {
           throw new Error('Tax info not found. Please try again.');
         } else {
-          return response.data;
+          const payload = Array.isArray(response.data)
+            ? response.data[0] || {}
+            : response.data || {};
+          const settings =
+            payload?.settings && typeof payload.settings === 'object'
+              ? payload.settings
+              : payload;
+          const onlineRenewalPlanList =
+            payload?.online_renewal_plan_list ??
+            settings?.online_renewal_plan_list ??
+            payload?.isShowAllPlan ??
+            settings?.isShowAllPlan;
+
+          return {
+            ...payload,
+            settings,
+            online_renewal_plan_list: onlineRenewalPlanList,
+            // Back-compat for older call sites
+            isShowAllPlan: !!onlineRenewalPlanList,
+          };
         }
       } catch (e: any) {
         if (isNetworkError(e)) {

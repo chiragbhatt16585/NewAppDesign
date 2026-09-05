@@ -4,12 +4,10 @@ import React_RCTAppDelegate
 import ReactAppDependencyProvider
 import Foundation
 import FirebaseCore
-import CleverTapSDK
-import CleverTapReact
 import UserNotifications
 
 @main
-class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate, CleverTapURLDelegate {
+class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate {
   var window: UIWindow?
 
   var reactNativeDelegate: ReactNativeDelegate?
@@ -37,26 +35,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
       // This fixes "No Firebase App '[DEFAULT]'" and allows FCM to work on iOS.
       if FirebaseApp.app() == nil {
         FirebaseApp.configure()
-      }
-
-      CleverTap.autoIntegrate()
-      // Verbose logs + Integration Debugger in DEBUG only. Does NOT switch Live↔Test
-      // (that is controlled by CleverTapAccountID / Token in Info.plist).
-      #if DEBUG
-      CleverTap.setDebugLevel(3)
-      #else
-      CleverTap.setDebugLevel(-1)
-      #endif
-      logCleverTapNativeCredentials()
-      CleverTapReactManager.sharedInstance()?.applicationDidLaunch(options: launchOptions)
-      CleverTap.sharedInstance()?.setUrlDelegate(self)
-
-      // CleverTap Step 3: request permission + register with APNs (mandatory for iOS push).
-      // Must run on main thread; prompts user on first launch and obtains device token.
-      registerForPush()
-
-      if let remoteNotification = launchOptions?[.remoteNotification] as? [AnyHashable: Any] {
-        print("[CleverTap] Cold-start push payload: \(remoteNotification)")
       }
 
       let delegate = ReactNativeDelegate()
@@ -93,90 +71,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     }
 
     return true
-  }
-
-  // MARK: - APNs registration (CleverTap Step 3)
-
-  /// Request notification permission and register with APNs.
-  /// Without this, the device never gets a push token and CleverTap cannot deliver iOS pushes.
-  func registerForPush() {
-    UNUserNotificationCenter.current().delegate = self
-    UNUserNotificationCenter.current().requestAuthorization(options: [.sound, .badge, .alert]) { granted, error in
-      if let error {
-        print("[CleverTap] Push authorization error: \(error.localizedDescription)")
-      }
-      print("[CleverTap] Push authorization granted: \(granted)")
-      if granted {
-        DispatchQueue.main.async {
-          UIApplication.shared.registerForRemoteNotifications()
-        }
-      }
-    }
-  }
-
-  func application(
-    _ application: UIApplication,
-    didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
-  ) {
-    let token = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
-    print("[CleverTap] APNs device token registered: \(token.prefix(16))...")
-    CleverTap.sharedInstance()?.setPushToken(deviceToken)
-  }
-
-  func application(
-    _ application: UIApplication,
-    didFailToRegisterForRemoteNotificationsWithError error: Error
-  ) {
-    print("[CleverTap] APNs registration failed: \(error.localizedDescription)")
-  }
-
-  func application(
-    _ application: UIApplication,
-    didReceiveRemoteNotification userInfo: [AnyHashable: Any],
-    fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
-  ) {
-    // Logging only — CleverTap.autoIntegrate() swizzles this for processing.
-    print("[CleverTap] didReceiveRemoteNotification: \(userInfo)")
-    completionHandler(.noData)
-  }
-
-  // MARK: - UNUserNotificationCenterDelegate (CleverTap / APNs)
-
-  /// Show push while app is in foreground and record viewed event.
-  func userNotificationCenter(
-    _ center: UNUserNotificationCenter,
-    willPresent notification: UNNotification,
-    withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
-  ) {
-    let userInfo = notification.request.content.userInfo
-    print("[CleverTap] willPresent notification: \(userInfo)")
-    CleverTap.sharedInstance()?.recordNotificationViewedEvent(withData: userInfo)
-    if #available(iOS 14.0, *) {
-      completionHandler([.banner, .list, .sound, .badge])
-    } else {
-      completionHandler([.alert, .sound, .badge])
-    }
-  }
-
-  /// Push tap — forward to CleverTap so JS gets CleverTapPushNotificationClicked.
-  func userNotificationCenter(
-    _ center: UNUserNotificationCenter,
-    didReceive response: UNNotificationResponse,
-    withCompletionHandler completionHandler: @escaping () -> Void
-  ) {
-    let userInfo = response.notification.request.content.userInfo
-    print("[CleverTap] didReceive notification response: \(userInfo)")
-    CleverTap.sharedInstance()?.handleNotification(withData: userInfo)
-    completionHandler()
-  }
-
-  // CleverTapURLDelegate — push / in-app / inbox deep links
-  func shouldHandleCleverTap(_ url: URL?, for channel: CleverTapChannel) -> Bool {
-    guard let url else {
-      return false
-    }
-    print("[CleverTap] Handling URL: \(url) for channel: \(channel)")
-    return RCTLinkingManager.application(UIApplication.shared, open: url, options: [:])
   }
 
   // Deep links / custom URL schemes (e.g. microscan://refer-friend)
@@ -223,19 +117,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     ])
     
     window.rootViewController = errorViewController
-  }
-
-  private func logCleverTapNativeCredentials() {
-    let accountId = Bundle.main.object(forInfoDictionaryKey: "CleverTapAccountID") as? String ?? "(missing)"
-    let token = Bundle.main.object(forInfoDictionaryKey: "CleverTapToken") as? String ?? "(missing)"
-    let region = Bundle.main.object(forInfoDictionaryKey: "CleverTapRegion") as? String ?? "(missing)"
-    let env = accountId.hasPrefix("TEST-") ? "TEST" : "LIVE"
-    #if DEBUG
-    let debugLevel = "ON(3)"
-    #else
-    let debugLevel = "OFF(-1)"
-    #endif
-    print("[CleverTapCreds] NATIVE CREDENTIALS accountId=\(accountId) token=\(token) region=\(region) environment=\(env) debugLevel=\(debugLevel)")
   }
 }
 

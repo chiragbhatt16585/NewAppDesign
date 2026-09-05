@@ -21,7 +21,7 @@ import {useAuth} from '../utils/AuthContext';
 import {useFocusEffect} from '@react-navigation/native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Feather from 'react-native-vector-icons/Feather';
-import { getClientConfig } from '../config/client-config';
+import { getClientConfig, isMicroscanClient } from '../config/client-config';
 import useMenuSettings from '../hooks/useMenuSettings';
 
 const AccountDetailsScreen = ({navigation}: any) => {
@@ -34,7 +34,7 @@ const AccountDetailsScreen = ({navigation}: any) => {
   const lastUsernameRef = useRef<string | null>(null);
   const primaryUsageDetail = authData?.usage_details?.[0];
   const usageDaysRemainingText = getSafeDaysRemaining(primaryUsageDetail);
-  const isMicroscan = getClientConfig().clientId === 'microscan';
+  const isMicroscan = isMicroscanClient();
   const accountActiveColor = isMicroscan ? '#4CAF50' : 'black';
 
   const { menu } = useMenuSettings();

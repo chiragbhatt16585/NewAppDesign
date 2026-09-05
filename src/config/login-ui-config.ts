@@ -7,7 +7,7 @@ export const CLIENTS_HIDING_OTP_LOGIN_LINK: readonly string[] = ['monarknet'];
 /**
  * Clients where OTP login is shown first; username/password is the secondary toggle option.
  */
-export const CLIENTS_WITH_OTP_PRIMARY_LOGIN: readonly string[] = ['microscan'];
+export const CLIENTS_WITH_OTP_PRIMARY_LOGIN: readonly string[] = ['microscan', 'microscan-dptest'];
 
 export const shouldShowOtpLoginLink = (clientId: string): boolean =>
   !CLIENTS_HIDING_OTP_LOGIN_LINK.includes(clientId);

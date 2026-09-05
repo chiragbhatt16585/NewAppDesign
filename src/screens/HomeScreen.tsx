@@ -28,7 +28,7 @@ import {apiService} from '../services/api';
 import sessionManager from '../services/sessionManager';
 import {useSessionValidation} from '../utils/useSessionValidation';
 import {useScreenDataReload} from '../utils/useAutoDataReload';
-import { getClientConfig } from '../config/client-config';
+import { getClientConfig, isMicroscanClient } from '../config/client-config';
 import { initializePushNotifications, registerPendingPushToken, registerDeviceManually, updateDeviceWithRealFCMToken } from '../services/notificationService';
 import { debugVersionCheck, quickVersionTest } from '../services/versionDebug';
 import { debugFCMTokenIssues, forceFCMTokenGeneration } from '../services/fcmDebug';
@@ -264,7 +264,7 @@ const HomeScreen = ({navigation}: any) => {
   const { menu, loading: menuLoading, error: menuError, refresh: refreshMenu, forceRefresh: forceRefreshMenu } = useMenuSettings();
   const [refreshing, setRefreshing] = useState(false);
   const currentClientId = getClientConfig().clientId;
-  const isMicroscan = currentClientId === 'microscan';
+  const isMicroscan = isMicroscanClient(currentClientId);
   const isThreesaInfoway = currentClientId === 'threesa-infoway';
   // Clients that use a colored header background image – header icons should be white for contrast
   const headerBgClients = new Set([
@@ -463,7 +463,7 @@ const HomeScreen = ({navigation}: any) => {
         currentClientId === 'log2space-common'
       ) {
         result.profileMenuEnabled = true;
-      } else if (currentClientId === 'microscan') {
+      } else if (isMicroscanClient(currentClientId)) {
         result.billingInformationEnabled = false;
       }
     } catch {
@@ -1017,6 +1017,30 @@ const HomeScreen = ({navigation}: any) => {
           hasResponse: !!authResponse,
           keys: authResponse ? Object.keys(authResponse) : [],
         });
+        console.log('[HomeScreen] authUser raw date fields:', {
+          renew_date: authResponse?.renew_date,
+          renewal_date: authResponse?.renewal_date,
+          renewDate: authResponse?.renewDate,
+          exp_date: authResponse?.exp_date,
+          expiry_date: authResponse?.expiry_date,
+          expiryDate: authResponse?.expiryDate,
+          plan_expiry: authResponse?.plan_expiry,
+          plan_exp_date: authResponse?.plan_exp_date,
+        });
+        console.log(
+          '[HomeScreen] authUser sample fields:',
+          JSON.stringify({
+            username: authResponse?.username || authResponse?.Username,
+            full_name: authResponse?.full_name || authResponse?.Name,
+            primary_email: authResponse?.primary_email || authResponse?.Email,
+            primary_mobile: authResponse?.primary_mobile || authResponse?.Phone,
+            user_status: authResponse?.user_status || authResponse?.status,
+            city_name: authResponse?.city_name || authResponse?.City,
+            current_plan: authResponse?.current_plan || authResponse?.currentPlan,
+            plan_days: authResponse?.plan_days,
+            franchiseename: authResponse?.franchiseename || authResponse?.admin_login_id,
+          }),
+        );
       }
       
       if (authResponse) {

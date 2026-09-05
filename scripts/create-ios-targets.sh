@@ -16,7 +16,7 @@ echo ""
 # Client configurations
 declare -A clients
 clients[microscan]="in.spacecom.log2space.client.microscan:Microscan:MicroscanApp"
-clients[dnainfotel]="com.h8.dnasubscriber:DNA Infotel:DNAInfotelApp"
+clients[dnainfotel]="com.spacecom.log2space.dnainfotel:DNA Infotel:DNAInfotelApp"
 clients[onesevenstar]="com.spacecom.log2space.onesevenstar:One Sevenstar:OneSevenstarApp"
 
 echo "📋 Available clients:"

@@ -7,7 +7,7 @@ import { useTheme } from '../utils/ThemeContext';
 import { getThemeColors } from '../utils/themeStyles';
 import { useAuthData } from '../utils/AuthDataContext';
 import useMenuSettings from '../hooks/useMenuSettings';
-import { getClientConfig } from '../config/client-config';
+import { getClientConfig, isMicroscanClient } from '../config/client-config';
 
 // Screens
 import HomeScreen from '../screens/HomeScreen';
@@ -79,7 +79,7 @@ const MainTabs = React.memo(() => {
   const colors = getThemeColors(isDark);
   const { authData } = useAuthData();
   const { menu, refresh: refreshMenu } = useMenuSettings();
-  const isMicroscan = getClientConfig().clientId === 'microscan';
+  const isMicroscan = isMicroscanClient();
   const [tabBarKey, setTabBarKey] = useState(0);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
 

@@ -334,7 +334,8 @@
     "proceedToPay": "ચુકવણી માટે આગળ વધો",
     "paymentSuccess": "ચુકવણી સફળ",
     "paymentSuccessMessage": "તમારો પ્લાન સફળતાપૂર્વક નવીકરણ થયો છે! તમને ટૂંક સમયમાં પુષ્ટિ ઈમેલ મળશે.",
-    "advanceRenewalNote": "તમારી વર્તમાન યોજના પૂર્ણ થયા પછી નવી યોજના આપમેળે સક્રિય થઈ જશે."
+    "advanceRenewalNote": "તમારી વર્તમાન યોજના પૂર્ણ થયા પછી નવી યોજના આપમેળે સક્રિય થઈ જશે.",
+    "fupOttRenewalNote": "એકવાર FUP અથવા OTT પ્લાનનું નવીકરણ થઈ જાય પછી, વર્તમાન પ્લાન સમાપ્ત થાય ત્યાં સુધી તેને અપગ્રેડ અથવા ફેરફાર કરી શકાતું નથી."
   },
   "payBill": {
     "title": "બિલ ચૂકવો",
@@ -434,12 +435,23 @@
   "referFriend": {
     "title": "મિત્રને રેફર કરો",
     "subtitle": "તમારા મિત્રો ને અમારા નેટવર્કમાં જોડો અને ઇનામ મેળવો!",
+    "subtitleMicroscan": "તમારા મિત્રને રેફર કરો અને રોમાંચક ઇનામ મેળવો",
     "personalDetails": "વ્યક્તિગત વિગતો",
     "firstName": "પ્રથમ નામ*",
     "middleName": "મધ્ય નામ",
     "lastName": "છેલ્લું નામ*",
     "firstNameRequired": "પ્રથમ નામ જરૂરી છે",
     "lastNameRequired": "છેલ્લું નામ જરૂરી છે",
+    "friendName": "મિત્રનું નામ",
+    "friendNamePlaceholder": "મિત્રનું નામ",
+    "friendNameRequired": "મિત્રનું નામ જરૂરી છે",
+    "friendMobile": "મિત્રનો મોબાઇલ નંબર",
+    "friendMobilePlaceholder": "મિત્રનો મોબાઇલ નંબર",
+    "friendMobileRequired": "મિત્રનો મોબાઇલ નંબર જરૂરી છે",
+    "friendAreaPincode": "મિત્રનો વિસ્તાર/પિનકોડ",
+    "friendAreaPincodePlaceholder": "મિત્રનો વિસ્તાર/પિનકોડ",
+    "friendAreaPincodeRequired": "મિત્રનો વિસ્તાર/પિનકોડ જરૂરી છે",
+    "friendCity": "શહેર પસંદ કરો",
     "mobileNumber": "મોબાઇલ નંબર*",
     "mobileNumberRequired": "મોબાઇલ નંબર જરૂરી છે",
     "email": "ઇમેઇલ*",

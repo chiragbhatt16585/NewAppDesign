@@ -27,7 +27,7 @@ import sessionManager from '../services/sessionManager';
 import dataCache from '../services/dataCache';
 import LeftBorderLine from '../components/LeftBorderLine';
 import useMenuSettings from '../hooks/useMenuSettings';
-import { getClientConfig } from '../config/client-config';
+import { getClientConfig, isMicroscanClient } from '../config/client-config';
 
 interface Plan {
   id: string;
@@ -178,7 +178,7 @@ const RenewPlanScreen = ({navigation}: any) => {
   const colors = getThemeColors(isDark);
   const {t} = useTranslation();
   const { menu } = useMenuSettings();
-  const isMicroscan = getClientConfig().clientId === 'microscan';
+  const isMicroscan = isMicroscanClient();
 
   const [isLoading, setIsLoading] = useState(true);
   const [plansData, setPlansData] = useState<Plan[]>([]);
@@ -342,15 +342,21 @@ const RenewPlanScreen = ({navigation}: any) => {
       );
       setPayDues(payDuesAmount);
 
-      // Get plan list
-      const isShowAllPlan = taxInfo?.isShowAllPlan || false;
-      //Alert.alert('isShowAllPlan', isShowAllPlan.toString());
+      // Get plan list — online_renewal_plan_list from admin settings
+      const onlineRenewalPlanList = taxInfo?.online_renewal_plan_list;
+      const currentPlanName =
+        authResponse?.current_plan ||
+        authResponse?.current_plan1 ||
+        authResponse?.currentPlan ||
+        authResponse?.usage_details?.[0]?.current_plan ||
+        '';
+      //Alert.alert('online_renewal_plan_list', String(onlineRenewalPlanList));
       
       // console.log('=== PLAN API CALL DEBUG ===');
       // console.log('Admin ID:', authResponse.admin_login_id);
       // console.log('Username:', username);
-      // console.log('Current Plan:', authResponse.current_plan1);
-      // console.log('Show All Plans:', isShowAllPlan);
+      // console.log('Current Plan:', currentPlanName);
+      // console.log('online_renewal_plan_list:', onlineRenewalPlanList);
       // console.log('Is Dashboard:', false);
       // console.log('Realm:', 'default');
       // console.log('Auth Response Keys:', Object.keys(authResponse));
@@ -361,8 +367,8 @@ const RenewPlanScreen = ({navigation}: any) => {
         planList = await apiService.planList(
           authResponse.admin_login_id,
           username,
-          authResponse.current_plan1,
-          isShowAllPlan,
+          currentPlanName,
+          onlineRenewalPlanList,
           false, // is_dashboard
           'default'
         );

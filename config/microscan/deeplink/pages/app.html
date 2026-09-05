@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Microscan – Open App</title>
+  <!--
+    Deploy as:
+      https://www.microscaninternet.com/app
+
+    Behavior on open:
+      1) Open Microscan app (if installed)
+      2) Else after ~1.6s → Play Store (Android) / App Store (iOS)
+  -->
+  <script>
+    (function () {
+      var APP_SCHEME = 'microscan://';
+      var ANDROID_PACKAGE = 'in.spacecom.log2space.client.microscan';
+      var PLAY_STORE =
+        'https://play.google.com/store/apps/details?id=' + ANDROID_PACKAGE;
+      var APP_STORE =
+        'https://apps.apple.com/us/app/microscan-recharge-support/id1526127574';
+
+      var ua = navigator.userAgent || '';
+      var isAndroid = /Android/i.test(ua);
+      var isIOS = /iPhone|iPad|iPod/i.test(ua);
+
+      var androidIntent =
+        'intent://open#Intent;scheme=microscan;package=' +
+        ANDROID_PACKAGE +
+        ';S.browser_fallback_url=' +
+        encodeURIComponent(PLAY_STORE) +
+        ';end';
+
+      var leftForApp = false;
+      var storeTimer = null;
+
+      function goStore() {
+        if (leftForApp) {
+          return;
+        }
+        if (isAndroid) {
+          window.location.href = PLAY_STORE;
+        } else if (isIOS) {
+          window.location.href = APP_STORE;
+        }
+      }
+
+      function openApp() {
+        if (isAndroid) {
+          window.location.href = androidIntent;
+        } else {
+          window.location.href = APP_SCHEME;
+        }
+      }
+
+      document.addEventListener('visibilitychange', function () {
+        if (document.hidden) {
+          leftForApp = true;
+          if (storeTimer) {
+            clearTimeout(storeTimer);
+            storeTimer = null;
+          }
+        }
+      });
+
+      window.addEventListener('pagehide', function () {
+        leftForApp = true;
+        if (storeTimer) {
+          clearTimeout(storeTimer);
+          storeTimer = null;
+        }
+      });
+
+      // Open app immediately on page load
+      openApp();
+
+      // If app is not installed / did not open, go to store
+      storeTimer = setTimeout(goStore, 1600);
+    })();
+  </script>
+  <style>
+    :root {
+      --brand: #FF791F;
+      --brand-dark: #E8650A;
+      --brand-soft: #FFF3EA;
+      --bg: #FFF8F3;
+      --card: #FFFFFF;
+      --text: #1F1A17;
+      --muted: #7A6E66;
+      --border: #F0E2D6;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(ellipse 120% 80% at 50% -20%, rgba(255, 121, 31, 0.22), transparent 55%),
+        radial-gradient(ellipse 80% 50% at 100% 100%, rgba(255, 176, 120, 0.18), transparent 45%),
+        var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+      line-height: 1.5;
+    }
+    .card {
+      width: 100%;
+      max-width: 400px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 28px 22px;
+      text-align: center;
+      box-shadow: 0 8px 24px rgba(255, 121, 31, 0.08);
+    }
+    .card img {
+      width: min(200px, 70vw);
+      height: auto;
+      object-fit: contain;
+      margin-bottom: 16px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--brand-dark);
+      letter-spacing: -0.02em;
+    }
+    p {
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    a.btn {
+      display: block;
+      width: 100%;
+      padding: 14px 16px;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      text-align: center;
+      text-decoration: none;
+      color: #fff;
+      background: linear-gradient(180deg, #FF8A3D 0%, var(--brand) 55%, var(--brand-dark) 100%);
+      box-shadow: 0 6px 16px rgba(255, 121, 31, 0.35);
+    }
+    a.btn.ghost {
+      margin-top: 10px;
+      background: var(--brand-soft);
+      color: var(--brand-dark);
+      border: 1px solid var(--border);
+      box-shadow: none;
+      font-weight: 600;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <img src="./isp_logo.png" alt="Microscan" />
+    <h1>Opening Microscan…</h1>
+    <p>
+      Taking you to the <strong>Microscan</strong> app.<br />
+      If the app doesn’t open, download it below.
+    </p>
+    <a
+      class="btn"
+      id="storeBtn"
+      href="https://play.google.com/store/apps/details?id=in.spacecom.log2space.client.microscan"
+    >
+      Get the App
+    </a>
+    <a class="btn ghost" id="openAppBtn" href="microscan://">
+      Open Microscan App
+    </a>
+  </div>
+  <script>
+    (function () {
+      var ua = navigator.userAgent || '';
+      var isAndroid = /Android/i.test(ua);
+      var isIOS = /iPhone|iPad|iPod/i.test(ua);
+      var ANDROID_PACKAGE = 'in.spacecom.log2space.client.microscan';
+      var PLAY_STORE =
+        'https://play.google.com/store/apps/details?id=' + ANDROID_PACKAGE;
+      var APP_STORE =
+        'https://apps.apple.com/us/app/microscan-recharge-support/id1526127574';
+
+      var storeBtn = document.getElementById('storeBtn');
+      var openAppBtn = document.getElementById('openAppBtn');
+
+      if (isIOS && storeBtn) {
+        storeBtn.href = APP_STORE;
+      }
+
+      if (isAndroid && openAppBtn) {
+        openAppBtn.href =
+          'intent://open#Intent;scheme=microscan;package=' +
+          ANDROID_PACKAGE +
+          ';S.browser_fallback_url=' +
+          encodeURIComponent(PLAY_STORE) +
+          ';end';
+      }
+    })();
+  </script>
+</body>
+</html>

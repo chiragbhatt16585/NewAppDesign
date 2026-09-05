@@ -17,9 +17,9 @@ const switchJavaPackage = (client) => {
     appJsonPath = './config/microscan/app.json';
     packagePath = `${javaSrcPath}/com/microscan/app`;
   } else if (client === 'dna-infotel') {
-    mainActivityPath = `${javaSrcPath}/com/h8/dnasubscriber/MainActivity.kt`;
+    mainActivityPath = `${javaSrcPath}/com/spacecom/log2space/dnfinfotel/MainActivity.kt`;
     appJsonPath = './config/dna-infotel/app.json';
-    packagePath = `${javaSrcPath}/com/h8/dnasubscriber`;
+    packagePath = `${javaSrcPath}/com/spacecom/log2space/dnfinfotel`;
   } else if (client === 'one-sevenstar') {
     mainActivityPath = `${javaSrcPath}/com/h8/dnasubscriber/MainActivity.kt`;
     appJsonPath = './config/one-sevenstar/app.json';
@@ -62,6 +62,8 @@ const switchJavaPackage = (client) => {
     // Update package declaration
     if (client === 'microscan') {
       content = content.replace(/package com\.h8\.dnasubscriber/, 'package in.spacecom.log2space.client.microscan');
+    } else if (client === 'dna-infotel') {
+      content = content.replace(/package com\.h8\.dnasubscriber/, 'package com.spacecom.log2space.dnainfotel');
     } else if (client === 'linkway') {
       content = content.replace(/package com\.h8\.dnasubscriber/, 'package com.spacecom.log2space.linkway');
     }

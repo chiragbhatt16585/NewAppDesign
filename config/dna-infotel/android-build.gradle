@@ -77,13 +77,13 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.h8.dnasubscriber"
+    namespace "com.spacecom.log2space.dnainfotel"
     defaultConfig {
-        applicationId "com.h8.dnasubscriber"
+        applicationId "com.spacecom.log2space.dnainfotel"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 294
-        versionName "294.0.0"
+        versionCode 298
+        versionName "298"
         buildConfigField "boolean", "IS_NEW_ARCHITECTURE_ENABLED", "false"
     }
     
@@ -95,10 +95,10 @@ android {
             keyPassword 'android'
         }
         release {
-            storeFile file('Log2spaceDNAInfotelAppKey.jks')
-            storePassword 'dnasubscriber'
-            keyAlias 'dnasubscriber'
-            keyPassword 'dnasubscriber'
+            storeFile file('NewL2SDnaInfotel.jks')
+            storePassword 'log2space'
+            keyAlias 'log2space'
+            keyPassword 'log2space'
         }
     }
     

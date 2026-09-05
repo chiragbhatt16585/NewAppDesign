@@ -6,7 +6,7 @@ import {
   Platform,
   TurboModuleRegistry,
 } from 'react-native';
-import { getClientConfig } from '../config/client-config';
+import { getClientConfig, isMicroscanClient } from '../config/client-config';
 import { handleDeepLinkUrl } from './deepLinkService';
 
 type CleverTapModule = {
@@ -275,7 +275,7 @@ const clean = (value: unknown): string | undefined => {
 
 export const isCleverTapEnabled = (): boolean => {
   const config = getClientConfig();
-  return config.clientId === 'microscan' && config.features?.cleverTap === true;
+  return isMicroscanClient(config.clientId) && config.features?.cleverTap === true;
 };
 
 const getCleverTap = (): CleverTapModule | null => {
@@ -464,19 +464,32 @@ const MONTH_NAME_TO_INDEX: Record<string, number> = {
 
 const toEpochSeconds = (value: unknown): number | undefined => {
   if (value === undefined || value === null) {
+    if (__DEV__) {
+      console.log('[CleverTapDateParse] input=null/undefined => result=undefined');
+    }
     return undefined;
   }
 
   // Already a unix timestamp (seconds or milliseconds)
   if (typeof value === 'number' && Number.isFinite(value)) {
     if (value <= 0) {
+      if (__DEV__) {
+        console.log('[CleverTapDateParse] input=', value, 'type=number => result=undefined (non-positive)');
+      }
       return undefined;
     }
-    return value > 1e12 ? Math.floor(value / 1000) : Math.floor(value);
+    const epoch = value > 1e12 ? Math.floor(value / 1000) : Math.floor(value);
+    if (__DEV__) {
+      console.log('[CleverTapDateParse] input=', value, 'type=number => epochSeconds=', epoch, 'iso=', new Date(epoch * 1000).toISOString());
+    }
+    return epoch;
   }
 
   const raw = String(value).trim();
   if (!raw) {
+    if (__DEV__) {
+      console.log('[CleverTapDateParse] input=empty string => result=undefined');
+    }
     return undefined;
   }
 
@@ -491,13 +504,20 @@ const toEpochSeconds = (value: unknown): number | undefined => {
     '0000-00-00 00:00:00',
   ]);
   if (invalids.has(raw.toUpperCase())) {
+    if (__DEV__) {
+      console.log('[CleverTapDateParse] input=', raw, '=> result=undefined (invalid sentinel)');
+    }
     return undefined;
   }
 
   // Numeric string epoch
   if (/^\d{9,13}$/.test(raw)) {
     const num = Number(raw);
-    return num > 1e12 ? Math.floor(num / 1000) : Math.floor(num);
+    const epoch = num > 1e12 ? Math.floor(num / 1000) : Math.floor(num);
+    if (__DEV__) {
+      console.log('[CleverTapDateParse] input=', raw, 'format=numeric-string => epochSeconds=', epoch, 'iso=', new Date(epoch * 1000).toISOString());
+    }
+    return epoch;
   }
 
   const buildEpoch = (
@@ -552,6 +572,9 @@ const toEpochSeconds = (value: unknown): number | undefined => {
         dMonY[6] ? Number(dMonY[6]) : 0,
       );
       if (epoch !== undefined) {
+        if (__DEV__) {
+          console.log('[CleverTapDateParse] input=', raw, 'format=d-Mon-y => epochSeconds=', epoch, 'iso=', new Date(epoch * 1000).toISOString(), 'cleverTap=', `$D_${epoch}`);
+        }
         return epoch;
       }
     }
@@ -571,6 +594,9 @@ const toEpochSeconds = (value: unknown): number | undefined => {
       dmy[6] ? Number(dmy[6]) : 0,
     );
     if (epoch !== undefined) {
+      if (__DEV__) {
+        console.log('[CleverTapDateParse] input=', raw, 'format=dd-mm-yyyy => epochSeconds=', epoch, 'iso=', new Date(epoch * 1000).toISOString(), 'cleverTap=', `$D_${epoch}`);
+      }
       return epoch;
     }
   }
@@ -589,6 +615,9 @@ const toEpochSeconds = (value: unknown): number | undefined => {
       ymd[6] ? Number(ymd[6]) : 0,
     );
     if (epoch !== undefined) {
+      if (__DEV__) {
+        console.log('[CleverTapDateParse] input=', raw, 'format=yyyy-mm-dd => epochSeconds=', epoch, 'iso=', new Date(epoch * 1000).toISOString(), 'cleverTap=', `$D_${epoch}`);
+      }
       return epoch;
     }
   }
@@ -596,9 +625,16 @@ const toEpochSeconds = (value: unknown): number | undefined => {
   // Last resort: native Date parse (ISO etc.)
   const parsed = new Date(raw);
   if (!Number.isNaN(parsed.getTime())) {
-    return Math.floor(parsed.getTime() / 1000);
+    const epoch = Math.floor(parsed.getTime() / 1000);
+    if (__DEV__) {
+      console.log('[CleverTapDateParse] input=', raw, 'format=native-Date => epochSeconds=', epoch, 'iso=', parsed.toISOString(), 'cleverTap=', `$D_${epoch}`);
+    }
+    return epoch;
   }
 
+  if (__DEV__) {
+    console.log('[CleverTapDateParse] input=', raw, '=> result=undefined (unparseable)');
+  }
   return undefined;
 };
 
@@ -656,7 +692,14 @@ const buildProfileFromAuthData = (
 ): Record<string, unknown> => {
   const normalizedAuthData = normalizeAuthUserData(authData);
   const identity =
-    pickAuthField(normalizedAuthData, ['username', 'Username']) || clean(username);
+    clean(username) ||
+    pickAuthField(normalizedAuthData, [
+      'username',
+      'Username',
+      'user_id',
+      'userid',
+      'login_id',
+    ]);
   if (!identity) {
     return {};
   }
@@ -723,6 +766,7 @@ const buildProfileFromAuthData = (
     Name: name,
     'MSG-whatsapp': Boolean(phone),
   };
+  setIfPresent(profile, 'username', identity);
 
   setIfPresent(profile, 'Email', email);
   setIfPresent(profile, 'Phone', phone);
@@ -747,7 +791,8 @@ const applyCleverTapProfileSet = (
   logAuthFieldsUsed(source, authData, username);
 
   const profile = buildProfileFromAuthData(authData, username);
-  if (!profile.Identity) {
+  const identity = (clean(username) || profile.Identity) as string | undefined;
+  if (!identity) {
     logCleverTapDebug(`${source} skipped`, {
       reason: 'Missing Identity/username',
       username,
@@ -755,9 +800,23 @@ const applyCleverTapProfileSet = (
     return;
   }
 
-  // Keep Identity on profileSet so iOS Live still attaches props if onUserLogin raced/skipped.
-  console.log(`[CleverTap] ${source} => sending profileSet`, JSON.stringify(profile));
-  cleverTap.profileSet(profile);
+  // CleverTap only accepts Identity via onUserLogin — profileSet drops it.
+  const identifiedProfile = {
+    ...profile,
+    Identity: identity,
+    username: identity,
+  };
+
+  console.log(
+    `[CleverTap] ${source} => onUserLogin with Identity + profile`,
+    JSON.stringify(identifiedProfile),
+  );
+  cleverTap.onUserLogin(identifiedProfile);
+
+  const propertiesOnly = {...identifiedProfile};
+  delete propertiesOnly.Identity;
+  console.log(`[CleverTap] ${source} => profileSet without Identity`, JSON.stringify(propertiesOnly));
+  cleverTap.profileSet(propertiesOnly);
   logCleverTapId(cleverTap, source);
 };
 
@@ -788,6 +847,22 @@ const logAuthFieldsUsed = (
   }
 
   const normalizedAuthData = normalizeAuthUserData(authData);
+  const renewDateRaw = getDateFieldRaw(normalizedAuthData, [
+    'renew_date',
+    'Renew Date',
+    'renewal_date',
+    'renewDate',
+  ]);
+  const expiryDateRaw = getDateFieldRaw(normalizedAuthData, [
+    'exp_date',
+    'Expiry Date',
+    'expiry_date',
+    'expiryDate',
+    'plan_expiry',
+    'plan_exp_date',
+  ]);
+  const renewDateParsed = toCleverTapEpochDate(renewDateRaw);
+  const expiryDateParsed = toCleverTapEpochDate(expiryDateRaw);
   const phone = formatPhone(
     pickAuthField(normalizedAuthData, [
       'primary_mobile',
@@ -798,27 +873,50 @@ const logAuthFieldsUsed = (
     ]),
   );
 
+  console.log('[CleverTap] ===== AUTH DATA PARSE DEBUG =====');
+  console.log('[CleverTap] source=', source, 'username=', username);
+  console.log('[CleverTap] raw authData keys=', normalizedAuthData ? Object.keys(normalizedAuthData) : []);
+  console.log('[CleverTap] raw renew_date field=', renewDateRaw, '=> parsed=', renewDateParsed);
+  console.log('[CleverTap] raw exp_date field=', expiryDateRaw, '=> parsed=', expiryDateParsed);
+  console.log(
+    '[CleverTap] mapped profile fields=',
+    JSON.stringify({
+      Identity: pickAuthField(normalizedAuthData, ['username', 'Username']) || clean(username),
+      'Account Status': getAccountStatus(normalizedAuthData) || null,
+      City: pickAuthField(normalizedAuthData, ['city_name', 'City', 'city']) || null,
+      Email: pickAuthField(normalizedAuthData, ['primary_email', 'Email', 'email']) || null,
+      'Renew Date': renewDateParsed || null,
+      'Expiry Date': expiryDateParsed || null,
+      Franchisee:
+        pickAuthField(normalizedAuthData, [
+          'franchiseename',
+          'franchisee_name',
+          'franchise_name',
+          'Franchisee',
+          'admin_login_id',
+        ]) || null,
+      'MSG-whatsapp': Boolean(phone),
+      Name:
+        pickAuthField(normalizedAuthData, ['full_name', 'Name', 'name']) ||
+        `${pickAuthField(normalizedAuthData, ['first_name']) || ''} ${pickAuthField(normalizedAuthData, ['last_name']) || ''}`.trim() ||
+        null,
+      Phone: phone || null,
+      'Plan Name': getPlanName(normalizedAuthData) || null,
+      'Plan Validity': getPlanValidity(normalizedAuthData) || null,
+    }),
+  );
+  console.log('[CleverTap] ===== END AUTH DATA PARSE DEBUG =====');
+
   logCleverTapDebug(`${source} => authUser/login fields used for mapping`, {
     username,
     Identity: pickAuthField(normalizedAuthData, ['username', 'Username']) || clean(username),
     'Account Status': getAccountStatus(normalizedAuthData) || null,
     City: pickAuthField(normalizedAuthData, ['city_name', 'City', 'city']) || null,
     Email: pickAuthField(normalizedAuthData, ['primary_email', 'Email', 'email']) || null,
-    'Renew Date':
-      toCleverTapEpochDate(
-        getDateFieldRaw(normalizedAuthData, ['renew_date', 'Renew Date', 'renewal_date', 'renewDate']),
-      ) || null,
-    'Expiry Date':
-      toCleverTapEpochDate(
-        getDateFieldRaw(normalizedAuthData, [
-          'exp_date',
-          'Expiry Date',
-          'expiry_date',
-          'expiryDate',
-          'plan_expiry',
-          'plan_exp_date',
-        ]),
-      ) || null,
+    'Renew Date raw': renewDateRaw ?? null,
+    'Renew Date': renewDateParsed || null,
+    'Expiry Date raw': expiryDateRaw ?? null,
+    'Expiry Date': expiryDateParsed || null,
     Franchisee:
       pickAuthField(normalizedAuthData, [
         'franchiseename',
@@ -862,9 +960,9 @@ export const registerCleverTapUserOnLogin = (username: string): void => {
       return;
     }
 
-    const profile = { Identity: identity };
+    const profile = {Identity: identity, username: identity};
     console.log(
-      '[CleverTap] onUserLogin => sending identity only (authUser sync follows)',
+      '[CleverTap] onUserLogin => sending Identity',
       JSON.stringify(profile),
     );
     cleverTap.onUserLogin(profile);
@@ -899,7 +997,8 @@ export const syncCleverTapWithAuthUser = (
 
   try {
     const profile = buildProfileFromAuthData(authData, username);
-    if (!profile.Identity) {
+    const identity = clean(username) || (profile.Identity as string | undefined);
+    if (!identity) {
       logCleverTapDebug('authUser sync skipped', {
         reason: 'Missing Identity/username',
         username,
@@ -907,13 +1006,7 @@ export const syncCleverTapWithAuthUser = (
       return;
     }
 
-    console.log(
-      '[CleverTap] authUser sync => onUserLogin with full profile',
-      JSON.stringify(profile),
-    );
-    cleverTap.onUserLogin(profile);
-    logCleverTapId(cleverTap, 'authUser sync onUserLogin');
-    applyCleverTapProfileSet(cleverTap, authData, username, 'authUser sync profileSet');
+    applyCleverTapProfileSet(cleverTap, authData, username, 'authUser sync');
   } catch (error) {
     logCleverTapDebug('authUser sync failed', {
       error: error instanceof Error ? error.message : String(error),
@@ -943,6 +1036,7 @@ export const updateCleverTapUserProfile = (
   }
 
   try {
+    registerCleverTapUserOnLogin(fallbackUsername);
     applyCleverTapProfileSet(cleverTap, authData, fallbackUsername, 'profileSet');
   } catch (error) {
     logCleverTapDebug('profileSet failed', {
@@ -972,9 +1066,17 @@ export const logCleverTapEvent = (
   }
 };
 
-/** Register FCM/APNs token with CleverTap (Android uses setFCMPushTokenAsString). */
+/** Register FCM token with CleverTap on Android only. iOS uses APNs from AppDelegate. */
 export const setCleverTapFcmToken = (token?: string | null): void => {
   if (!token || !isCleverTapEnabled()) {
+    return;
+  }
+
+  if (Platform.OS !== 'android') {
+    logCleverTapDebug('setFCMPushToken skipped', {
+      reason: 'Firebase FCM token is Android-only; iOS uses APNs',
+      platform: Platform.OS,
+    });
     return;
   }
 
@@ -989,6 +1091,7 @@ export const setCleverTapFcmToken = (token?: string | null): void => {
   try {
     cleverTap.setFCMPushTokenAsString(token);
     logCleverTapDebug('setFCMPushToken', {
+      platform: 'android',
       tokenPreview: `${token.slice(0, 12)}...`,
     });
   } catch (error) {

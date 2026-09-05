@@ -3,7 +3,7 @@
     "namespace": "in.spacecom.log2space.client.monarkuser",
     "applicationId": "in.spacecom.log2space.client.monarkuser",
     "launcherIconBackgroundColor": "#ffffff",
-    "versionCode": 3,
+    "versionCode": 4,
     "versionName": "1.0.1",
     "signing": {
       "debug": {
@@ -13,7 +13,7 @@
         "keyPassword": "android"
       },
       "release": {
-        "storeFile": "Log2spceGatewayFTTHKey_V3.jks",
+        "storeFile": "Log2SpaceEndUserMonarkKey.jks",
         "storePassword": "log2space",
         "keyAlias": "log2space",
         "keyPassword": "log2space"
@@ -21,8 +21,8 @@
     }
   },
   "ios": {
-    "bundleIdentifier": "in.spacecom.log2space.client.monarkuser",
-    "marketingVersion": "1.0.1",
+    "bundleIdentifier": "com.l2sClient.Monark",
+    "marketingVersion": "1.0.5",
     "buildNumber": "1",
     "displayName": "Monark Broadband"
   }

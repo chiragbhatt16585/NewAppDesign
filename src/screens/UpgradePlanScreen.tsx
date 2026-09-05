@@ -328,7 +328,7 @@ const UpgradePlanScreen = ({navigation}: any) => {
       const taxInfo = await apiService.getAdminTaxInfo(authResponse.admin_login_id, 'default');
       console.log('=== TAX INFO ===');
       console.log('Tax Info:', JSON.stringify(taxInfo, null, 2));
-      console.log('Show All Plans:', taxInfo?.isShowAllPlan);
+      console.log('online_renewal_plan_list:', taxInfo?.online_renewal_plan_list);
       console.log('=== END TAX INFO ===');
       
       // Keep dues source aligned with HomeScreen (authUser -> payment_dues).
@@ -341,8 +341,14 @@ const UpgradePlanScreen = ({navigation}: any) => {
       console.log('Dues Amount:', payDuesAmount);
       console.log('=== END PAYMENT DUES ===');
 
-      // Get plan list
-      const isShowAllPlan = taxInfo?.isShowAllPlan || false;
+      // Get plan list — online_renewal_plan_list from admin settings
+      const onlineRenewalPlanList = taxInfo?.online_renewal_plan_list;
+      const currentPlanName =
+        authResponse?.current_plan ||
+        authResponse?.current_plan1 ||
+        authResponse?.currentPlan ||
+        authResponse?.usage_details?.[0]?.current_plan ||
+        '';
       
       let planList: any[] = [];
       try {
@@ -350,8 +356,8 @@ const UpgradePlanScreen = ({navigation}: any) => {
         console.log('=== UPGRADE PLAN API REQUEST ===');
         console.log('admin_login_id:', authResponse.admin_login_id);
         console.log('username:', username);
-        console.log('current_plan1 (for comparison):', authResponse.current_plan1);
-        console.log('isShowAllPlan:', isShowAllPlan);
+        console.log('current plan (planname):', currentPlanName);
+        console.log('online_renewal_plan_list:', onlineRenewalPlanList);
         console.log('is_dashboard:', false);
         console.log('realm:', 'default');
         console.log('=== END UPGRADE PLAN API REQUEST ===');
@@ -359,8 +365,8 @@ const UpgradePlanScreen = ({navigation}: any) => {
         planList = await apiService.planList(
           authResponse.admin_login_id,
           username,
-          authResponse.current_plan1,
-          isShowAllPlan,
+          currentPlanName,
+          onlineRenewalPlanList,
           false, // is_dashboard
           'default'
         );

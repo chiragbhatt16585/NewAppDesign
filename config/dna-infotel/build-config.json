@@ -1,9 +1,9 @@
 {
   "android": {
-    "namespace": "com.h8.dnasubscriber",
-    "applicationId": "com.h8.dnasubscriber",
-    "versionCode": 1,
-    "versionName": "1.0.1",
+    "namespace": "com.spacecom.log2space.dnainfotel",
+    "applicationId": "com.spacecom.log2space.dnainfotel",
+    "versionCode": 299,
+    "versionName": "299",
     "signing": {
       "debug": {
         "storeFile": "debug.keystore",
@@ -12,15 +12,15 @@
         "keyPassword": "android"
       },
       "release": {
-        "storeFile": "Log2spaceDNAInfotelAppKey.jks",
-        "storePassword": "dnasubscriber",
-        "keyAlias": "dnasubscriber",
-        "keyPassword": "dnasubscriber"
+        "storeFile": "NewL2SDnaInfotel.jks",
+        "storePassword": "log2space",
+        "keyAlias": "log2space",
+        "keyPassword": "log2space"
       }
     }
   },
   "ios": {
-    "bundleIdentifier": "com.h8.dnasubscriber",
+    "bundleIdentifier": "com.spacecom.log2space.dnainfotel",
     "marketingVersion": "1.0.1",
     "buildNumber": "1",
     "displayName": "DNA Infotel"

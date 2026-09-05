@@ -86,6 +86,35 @@ function extractRenewPlanHighSpeedNote(parsed: any): string {
   return '';
 }
 
+function extractPlanModificationRestrictionNote(parsed: any): string {
+  if (!parsed || typeof parsed !== 'object') return '';
+  const dps =
+    parsed.display_plan_settings ||
+    parsed.displayPlanSettings ||
+    parsed.display_plan_setting ||
+    {};
+  const candidates = [
+    dps.plan_modification_restriction_note,
+    dps.planModificationRestrictionNote,
+    parsed.plan_modification_restriction_note,
+  ];
+  for (const c of candidates) {
+    if (typeof c === 'string' && c.trim()) return c.trim();
+  }
+  return '';
+}
+
+function planHasOtt(plan: {ott_plan?: string; ottServices?: string[]}): boolean {
+  return (
+    plan.ott_plan?.toLowerCase() === 'yes' ||
+    (Array.isArray(plan.ottServices) && plan.ottServices.length > 0)
+  );
+}
+
+function planHasFup(plan: {fup_flag?: string}): boolean {
+  return plan.fup_flag?.toLowerCase() === 'yes';
+}
+
 /** Horizontal OTT logos with left/right chevrons when content overflows. */
 const OttLogosScrollRow = ({
   providers,
@@ -301,12 +330,13 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
   // Read display_option_json settings for "Renew Plan" menu to control plan name visibility
   // and whether to blend plan params (speed/validity/OTTs) into the header row.
   // The high-speed / router note is static text from menu JSON (not inferred from plan speed).
-  const { showL2SPlanName, showPlanParamsBlend, showDiscountCoupon, highSpeedPlanNote } = useMemo(() => {
+  const { showL2SPlanName, showPlanParamsBlend, showDiscountCoupon, highSpeedPlanNote, planModificationRestrictionNote } = useMemo(() => {
     let result = {
       showL2SPlanName: true,
       showPlanParamsBlend: false,
       showDiscountCoupon: false,
       highSpeedPlanNote: '',
+      planModificationRestrictionNote: '',
     };
     try {
       const menuItems = normalizeMenuItems(menu);
@@ -354,6 +384,7 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
       let blendFlag = false;
       let discountCouponFlag = false;
       const noteText = extractRenewPlanHighSpeedNote(parsed);
+      const restrictionNoteText = extractPlanModificationRestrictionNote(parsed);
 
       if (typeof rawNameFlag === 'boolean') nameFlag = rawNameFlag;
       else if (typeof rawNameFlag === 'string') nameFlag = rawNameFlag.toLowerCase() === 'true';
@@ -369,6 +400,7 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
         showPlanParamsBlend: blendFlag,
         showDiscountCoupon: discountCouponFlag,
         highSpeedPlanNote: noteText,
+        planModificationRestrictionNote: restrictionNoteText,
       };
     } catch {
       return result;
@@ -407,13 +439,13 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
 
         // Get current plan details from planList (same as UpgradePlanConfirmation)
         const taxInfo = await apiService.getAdminTaxInfo(authResponse.admin_login_id, 'default');
-        const isShowAllPlan = taxInfo?.isShowAllPlan || false;
+        const onlineRenewalPlanList = taxInfo?.online_renewal_plan_list;
 
         const planList = await apiService.planList(
           authResponse.admin_login_id,
           session.username,
           currentPlanName,
-          isShowAllPlan,
+          onlineRenewalPlanList,
           false,
           'default',
         );
@@ -1445,20 +1477,65 @@ const PlanConfirmationScreen = ({navigation, route}: any) => {
             </View>
           </View>
 
-          {/* Advance Renewal Note (only if account status is active) */}
-          {isAccountActive && (
-            <View style={[styles.noteCard, {backgroundColor: '#FFF8E1', shadowColor: colors.shadow}]}> 
-              {/* <Text style={styles.noteTitle}>Note</Text> */}
-              <Text style={[styles.noteText, {color: colors.textSecondary}]}>{t('planConfirmation.advanceRenewalNote')}</Text>
-            </View>
-          )}
+          {/* Plan notes — grouped in one compact card when multiple apply */}
+          {(() => {
+            const notes: {key: string; text: string; bg: string; border: string; textColor?: string; bold?: boolean}[] = [];
+            if (isAccountActive) {
+              notes.push({
+                key: 'advance',
+                text: t('planConfirmation.advanceRenewalNote'),
+                bg: '#FFF8E1',
+                border: '#FFE082',
+              });
+            }
+            if (highSpeedPlanNote) {
+              notes.push({
+                key: 'highSpeed',
+                text: highSpeedPlanNote,
+                bg: '#E3F2FD',
+                border: '#90CAF9',
+                textColor: '#1976D2',
+                bold: true,
+              });
+            }
+            if (
+              planModificationRestrictionNote &&
+              (planHasFup(selectedPlan) || planHasOtt(selectedPlan))
+            ) {
+              notes.push({
+                key: 'planModification',
+                text: planModificationRestrictionNote,
+                bg: '#FFF3E0',
+                border: '#FFCC80',
+              });
+            }
+            if (notes.length === 0) return null;
 
-          {/* High Speed Plan Note (if configured in settings) */}
-          {highSpeedPlanNote && (
-            <View style={[styles.noteCard, styles.highSpeedNoteCard, {backgroundColor: '#E3F2FD', shadowColor: colors.shadow}]}> 
-              <Text style={[styles.noteText, styles.highSpeedNoteText, {color: '#1976D2'}]}>{highSpeedPlanNote}</Text>
-            </View>
-          )}
+            if (notes.length === 1) {
+              const note = notes[0];
+              return (
+                <View style={[styles.noteCard, {backgroundColor: note.bg, borderColor: note.border, shadowColor: colors.shadow}]}>
+                  <Text style={[styles.noteText, note.textColor ? {color: note.textColor} : {color: colors.textSecondary}, note.bold && styles.highSpeedNoteText]}>
+                    {note.text}
+                  </Text>
+                </View>
+              );
+            }
+
+            return (
+              <View style={[styles.notesGroup, {shadowColor: colors.shadow}]}>
+                {notes.map(note => (
+                  <View
+                    key={note.key}
+                    style={[styles.noteGroupItem, {backgroundColor: note.bg, borderColor: note.border}]}>
+                    <Text style={[styles.noteText, note.textColor ? {color: note.textColor} : {color: colors.textSecondary}, note.bold && styles.highSpeedNoteText]}>
+                      {note.text}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            );
+          })()}
 
           {/* Plan Comparison (only when selected plan is different from current) */}
           {!selectedPlan.isCurrentPlan && renderPlanComparison()}
@@ -1842,32 +1919,41 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   noteCard: {
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 16,
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    marginBottom: 8,
     shadowOffset: {width: 0, height: 1},
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowOpacity: 0.04,
+    shadowRadius: 1,
+    elevation: 1,
     borderWidth: 1,
     borderColor: '#FFE082',
   },
   noteTitle: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '800',
     color: '#795548',
-    marginBottom: 6,
+    marginBottom: 4,
     textTransform: 'uppercase',
   },
   noteText: {
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: '600',
   },
-  highSpeedNoteCard: {
-    borderColor: '#90CAF9',
+  notesGroup: {
+    marginBottom: 8,
+    gap: 6,
+  },
+  noteGroupItem: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 1,
   },
   highSpeedNoteText: {
-    fontWeight: '500',
+    fontWeight: '700',
   },
   pricingRow: {
     flexDirection: 'row',

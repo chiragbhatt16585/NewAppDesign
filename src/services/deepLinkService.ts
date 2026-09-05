@@ -1,6 +1,6 @@
 import { AppState, Linking, type AppStateStatus, type NativeEventSubscription } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getClientConfig } from '../config/client-config';
+import { getClientConfig, isMicroscanClient } from '../config/client-config';
 import sessionManager from './sessionManager';
 import { navigate } from '../navigation/RootNavigation';
 
@@ -29,7 +29,7 @@ let listenerAttached = false;
 let lastHandledUrl: string | null = null;
 let lastHandledAt = 0;
 
-const isMicroscan = (): boolean => getClientConfig().clientId === 'microscan';
+const isMicroscan = (): boolean => isMicroscanClient();
 
 const normalizePath = (path: string): string => {
   if (!path) {

@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Microscan – Deep Link Tester</title>
+  <style>
+    :root {
+      --brand: #FF791F;
+      --brand-dark: #E8650A;
+      --brand-soft: #FFF3EA;
+      --brand-mid: #FFB078;
+      --bg: #FFF8F3;
+      --card: #FFFFFF;
+      --text: #1F1A17;
+      --muted: #7A6E66;
+      --border: #F0E2D6;
+      --ok: #1B9E5A;
+      --warn-bg: #FFF6E8;
+      --warn-border: #F5C97A;
+      --warn-text: #8A5A00;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(ellipse 120% 80% at 50% -20%, rgba(255, 121, 31, 0.22), transparent 55%),
+        radial-gradient(ellipse 80% 50% at 100% 100%, rgba(255, 176, 120, 0.18), transparent 45%),
+        var(--bg);
+      line-height: 1.5;
+    }
+    .wrap {
+      max-width: 440px;
+      margin: 0 auto;
+      padding: 28px 18px 48px;
+    }
+    .brand {
+      text-align: center;
+      margin-bottom: 22px;
+    }
+    .brand img {
+      width: min(220px, 72vw);
+      height: auto;
+      object-fit: contain;
+    }
+    .brand h1 {
+      margin: 14px 0 4px;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--brand-dark);
+    }
+    .brand p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .banner {
+      background: var(--warn-bg);
+      border: 1px solid var(--warn-border);
+      color: var(--warn-text);
+      border-radius: 14px;
+      padding: 12px 14px;
+      font-size: 13px;
+      margin-bottom: 14px;
+    }
+    .banner strong { color: var(--brand-dark); }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 18px 16px;
+      margin-bottom: 14px;
+      box-shadow: 0 8px 24px rgba(255, 121, 31, 0.08);
+    }
+    .card h2 {
+      font-size: 12px;
+      margin: 0 0 8px;
+      color: var(--brand);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 700;
+    }
+    .hint {
+      margin: 0 0 12px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .status {
+      font-size: 13px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: var(--brand-soft);
+      color: var(--muted);
+      word-break: break-all;
+      min-height: 42px;
+      margin-top: 10px;
+      border: 1px solid var(--border);
+    }
+    .status.active {
+      color: var(--ok);
+      border-color: #B7E4C7;
+      background: #F0FBF5;
+    }
+    a.btn, button.btn {
+      display: block;
+      width: 100%;
+      margin-top: 10px;
+      padding: 15px 16px;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      text-align: center;
+      text-decoration: none;
+      color: #fff;
+      background: linear-gradient(180deg, #FF8A3D 0%, var(--brand) 55%, var(--brand-dark) 100%);
+      box-shadow: 0 6px 16px rgba(255, 121, 31, 0.35);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    a.btn.secondary, button.btn.secondary {
+      background: #fff;
+      color: var(--brand-dark);
+      border: 2px solid var(--brand);
+      box-shadow: none;
+    }
+    a.btn.ghost, button.btn.ghost {
+      background: var(--brand-soft);
+      color: var(--brand-dark);
+      border: 1px solid var(--border);
+      box-shadow: none;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    a.btn:active, button.btn:active { opacity: 0.9; transform: scale(0.99); }
+    code {
+      font-size: 12px;
+      background: var(--brand-soft);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--brand-dark);
+    }
+    ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: 13px; }
+    li { margin-bottom: 6px; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .chip {
+      font-size: 12px;
+      padding: 5px 11px;
+      border-radius: 999px;
+      background: var(--brand-soft);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .chip.on {
+      color: var(--brand-dark);
+      border-color: var(--brand-mid);
+      background: #FFE8D6;
+    }
+    .footer {
+      text-align: center;
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="brand">
+      <img src="./isp_logo.png" alt="Microscan" />
+      <h1>Deep Link Tester</h1>
+      <p>Open Refer a Friend in the Microscan app</p>
+    </div>
+
+    <div class="banner">
+      <strong>Note:</strong>
+      Live SMS URL still opens the website until the site is updated.
+      Use the buttons below to test the app deep link now.
+    </div>
+
+    <div class="card">
+      <h2>Device</h2>
+      <div class="row" id="deviceChips"></div>
+      <div class="status" id="status">Ready — tap a button below.</div>
+    </div>
+
+    <div class="card">
+      <h2>1. Open app (best test)</h2>
+      <p class="hint">
+        Opens <code>microscan://refer-friend</code> after you tap.
+      </p>
+      <a class="btn" id="linkScheme" href="microscan://refer-friend">
+        Open Refer Friend in App
+      </a>
+    </div>
+
+    <div class="card">
+      <h2>2. Android Intent (Chrome)</h2>
+      <p class="hint">Same method production <code>/download-app</code> should use.</p>
+      <a class="btn secondary" id="linkIntent" href="#">Open via Android Intent</a>
+    </div>
+
+    <div class="card">
+      <h2>3. Smart open + store fallback</h2>
+      <p class="hint">Tries app first, then Play/App Store after ~1.6s if needed.</p>
+      <a class="btn ghost" href="./download-app.html">Open download-app.html</a>
+    </div>
+
+    <div class="card">
+      <h2>Expected</h2>
+      <ul>
+        <li>Logged in → Refer a Friend screen</li>
+        <li>Logged out → Login, then Refer a Friend</li>
+        <li>Live website SMS link → still opens website until site is updated</li>
+      </ul>
+    </div>
+
+    <p class="footer">Microscan Recharge &amp; Support</p>
+  </div>
+
+  <script>
+    (function () {
+      var APP_SCHEME = 'microscan://refer-friend';
+      var ANDROID_PACKAGE = 'in.spacecom.log2space.client.microscan';
+      var PLAY_STORE =
+        'https://play.google.com/store/apps/details?id=' + ANDROID_PACKAGE;
+
+      var ua = navigator.userAgent || '';
+      var isAndroid = /Android/i.test(ua);
+      var isIOS = /iPhone|iPad|iPod/i.test(ua);
+
+      var androidIntent =
+        'intent://refer-friend#Intent;scheme=microscan;package=' +
+        ANDROID_PACKAGE +
+        ';S.browser_fallback_url=' +
+        encodeURIComponent(PLAY_STORE) +
+        ';end';
+
+      var statusEl = document.getElementById('status');
+      var chipsEl = document.getElementById('deviceChips');
+      var intentLink = document.getElementById('linkIntent');
+
+      function setStatus(msg, active) {
+        statusEl.textContent = msg;
+        statusEl.className = 'status' + (active ? ' active' : '');
+      }
+
+      function chip(label, on) {
+        var span = document.createElement('span');
+        span.className = 'chip' + (on ? ' on' : '');
+        span.textContent = label;
+        return span;
+      }
+
+      chipsEl.appendChild(chip(isAndroid ? 'Android' : isIOS ? 'iOS' : 'Desktop / other', true));
+      chipsEl.appendChild(chip(isAndroid ? 'Use Intent or scheme' : 'Use scheme link', true));
+
+      if (isAndroid) {
+        intentLink.href = androidIntent;
+      } else {
+        intentLink.href = APP_SCHEME;
+        intentLink.textContent = 'Open via scheme (iOS / non-Android)';
+      }
+
+      document.getElementById('linkScheme').addEventListener('click', function () {
+        setStatus('Opening ' + APP_SCHEME + ' …', true);
+      });
+
+      intentLink.addEventListener('click', function () {
+        setStatus(
+          isAndroid ? 'Opening Android Intent …' : 'Opening scheme …',
+          true
+        );
+      });
+    })();
+  </script>
+</body>
+</html>

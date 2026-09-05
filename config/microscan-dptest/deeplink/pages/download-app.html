@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Microscan – Refer a Friend</title>
+  <!--
+    Deploy this as https://www.microscaninternet.com/download-app
+    (or inject the script into the existing Wix/page).
+
+    Behavior:
+    1) Try to open the installed Microscan app (Refer Friend)
+    2) If app is not installed, fall back to store after a short delay
+  -->
+  <script>
+    (function () {
+      var APP_SCHEME = 'microscan://refer-friend';
+      var ANDROID_PACKAGE = 'in.spacecom.log2space.client.microscan';
+      var PLAY_STORE =
+        'https://play.google.com/store/apps/details?id=' + ANDROID_PACKAGE;
+      var APP_STORE =
+        'https://apps.apple.com/us/app/microscan-recharge-support/id1526127574';
+
+      var ua = navigator.userAgent || '';
+      var isAndroid = /Android/i.test(ua);
+      var isIOS = /iPhone|iPad|iPod/i.test(ua);
+
+      // Android Chrome Intent URL (best effort without verified App Links)
+      var androidIntent =
+        'intent://refer-friend#Intent;scheme=microscan;package=' +
+        ANDROID_PACKAGE +
+        ';S.browser_fallback_url=' +
+        encodeURIComponent(PLAY_STORE) +
+        ';end';
+
+      function goStore() {
+        if (isAndroid) {
+          window.location.href = PLAY_STORE;
+        } else if (isIOS) {
+          window.location.href = APP_STORE;
+        }
+      }
+
+      // Try open app immediately
+      if (isAndroid) {
+        window.location.href = androidIntent;
+      } else {
+        window.location.href = APP_SCHEME;
+      }
+
+      // Fallback to store if app does not open
+      setTimeout(goStore, 1600);
+    })();
+  </script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif;
+      margin: 0;
+      padding: 32px 20px;
+      text-align: center;
+      color: #1a1a1a;
+      background: #f7f7f8;
+    }
+    .card {
+      max-width: 420px;
+      margin: 40px auto;
+      background: #fff;
+      border-radius: 16px;
+      padding: 28px 22px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+    }
+    h1 { font-size: 22px; margin: 0 0 10px; }
+    p { color: #555; line-height: 1.5; }
+    a.btn {
+      display: inline-block;
+      margin-top: 18px;
+      padding: 12px 18px;
+      border-radius: 10px;
+      background: #e11d2e;
+      color: #fff;
+      text-decoration: none;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Opening Microscan App…</h1>
+    <p>
+      If the app does not open automatically, download
+      <strong>Microscan Recharge &amp; Support</strong> and try again.
+    </p>
+    <a class="btn" href="https://play.google.com/store/apps/details?id=in.spacecom.log2space.client.microscan">
+      Get the App
+    </a>
+  </div>
+</body>
+</html>

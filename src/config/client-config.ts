@@ -198,6 +198,98 @@ const clientConfigs: Record<string, ClientConfig> = {
       appStoreId: '1526127574',
     },
   },
+  'microscan-dptest': {
+    clientId: 'microscan-dptest',
+    clientName: 'Microscan',
+    api: {
+      baseURL: 'dptest.microscan.co.in/l2s/api',
+      serverURL: 'dptest.microscan.co.in',
+      timeout: 30000,
+    },
+    branding: {
+      logo: 'isp_logo.png',
+      primaryColor: '#FF791F',
+      secondaryColor: '#FF791F',
+      appName: 'Microscan',
+      headerBorderColors: {
+        left: '',
+        top: '',
+      },
+    },
+    features: {
+      biometricAuth: true,
+      pushNotifications: true,
+      fileUpload: true,
+      multiLanguage: true,
+      cleverTap: true,
+    },
+    contact: {
+        gstin: '27AABCM4852A1ZT',
+        headOffice: {
+          title: 'Head Office - Mumbai',
+          address: 'A/301-303, Everest Grande, Mahakali Caves Road, Andheri (East), Mumbai – 400 093',
+          customerSupport: '+91 22-6969-0000',
+          customerSupportHours: 'Mon – Sun | 24x7',
+          corporateHours: 'Mon – Fri | 9:30 a.m. to 6:30 p.m.',
+        },
+        emails: {
+          support: 'customersupport@microscaninternet.com',
+        },
+        branchOffices: [
+          {
+            title: 'Branch Office - Pune',
+            address: 'A/101, Teerth Technospace, Mumbai-Bengaluru Highway, Baner, Pune, Maharashtra-411045',
+            corporateHours: 'Mon – Fri | 9:30 a.m. to 6:30 p.m.',
+          },
+        ],
+        enterpriseEscalation: {
+          title: 'Escalation Matrix',
+          l1: {
+            level: 'L1 - Call Centre - (Call Centre : 24x7)',
+            emails: ['customersupport@microscaninternet.com'],
+            phone: '+91 22-6969-0000',
+          },
+          l2: {
+            level: 'L2 - Call Centre Operational TL',
+            emails: ['devika.nikharange@microscaninternet.com'],
+          },
+          l3: {
+            level: 'L3 - Customer Support HOD',
+            emails: ['avantika.sidana@microscan.co.in'],
+          },
+        },
+      },
+      about: {
+        companyName: 'MICROSCAN',
+        establishedYear: '2010',
+        description: 'Microscan is a leading internet service provider committed to delivering high-quality broadband services to residential and business customers.',
+        specializations: [
+          'High-speed broadband internet',
+          'Fiber optic technology',
+          'Business internet solutions',
+          '24/7 customer support'
+        ],
+        serviceAreas: [
+          'Mumbai Metropolitan Region',
+          'Pune and surrounding areas',
+          'Maharashtra state'
+        ],
+      achievements: [
+          'Trusted by thousands of customers',
+          'Award-winning customer service',
+          'Continuous network expansion'
+        ],
+      },
+    reviewUrl: 'https://play.google.com/store/apps/details?id=in.spacecom.log2space.client.microscan',
+    website: 'https://www.microscaninternet.com/',
+    versionCheck: {
+      enabled: true,
+      checkInterval: 24,
+      forceUpdateEnabled: true,
+      packageName: 'in.spacecom.log2space.client.microscan',
+      appStoreId: '1526127574',
+    },
+  },
   'spacecom-local': {
     clientId: 'spacecom-local',
     clientName: 'Spacecom Local',
@@ -454,7 +546,7 @@ const clientConfigs: Record<string, ClientConfig> = {
       enabled: true,
       checkInterval: 24, // Check every 24 hours
       forceUpdateEnabled: true,
-      packageName: 'com.h8.dnasubscriber',
+      packageName: 'com.spacecom.log2space.dnainfotel',
       appStoreId: '1559045355',
     },
   },
@@ -2203,6 +2295,18 @@ export const getClientConfig = (): ClientConfig => {
   }
   
   return config;
+};
+
+export const isMicroscanClient = (clientId?: string): boolean => {
+  let id = clientId;
+  if (!id) {
+    try {
+      id = require('./current-client.json').clientId;
+    } catch {
+      id = 'microscan';
+    }
+  }
+  return id === 'microscan' || id === 'microscan-dptest';
 };
 
 // Get configuration for a specific client

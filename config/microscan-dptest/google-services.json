@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "450663766072",
+    "project_id": "l2s-microscan",
+    "storage_bucket": "l2s-microscan.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:450663766072:android:0c2b42cde31c95b3762ecd",
+        "android_client_info": {
+          "package_name": "in.spacecom.log2space.client.microscan"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBeMeFvIFsDljpUkWSHBz1ve0zEc3tqZO4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

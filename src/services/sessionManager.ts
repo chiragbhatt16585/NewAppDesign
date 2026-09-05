@@ -405,12 +405,16 @@ export class SessionManager {
         return false;
       }
 
-      const username = session.username.toLowerCase().trim();
+      const creds = await credentialStorage.getCredentials();
+      const username = (
+        creds?.username ||
+        session.username
+      ).toLowerCase().trim();
       let token: string | null = null;
 
-      const creds = await credentialStorage.getCredentials();
       if (creds?.password) {
         try {
+          console.log('[SessionManager] Regenerating token with saved credentials for:', username);
           const loginResponse = await apiService.authenticate(
             username,
             creds.password,
@@ -426,6 +430,11 @@ export class SessionManager {
             passwordError?.message || passwordError,
           );
         }
+      } else {
+        console.warn(
+          '[SessionManager] No saved password found for token regeneration; username=',
+          username,
+        );
       }
 
       if (!token) {
@@ -440,6 +449,7 @@ export class SessionManager {
           this.currentSession.lastActivityTime = Date.now();
           await AsyncStorage.setItem(this.SESSION_KEY, JSON.stringify(this.currentSession));
         }
+        console.log('[SessionManager] Token regenerated successfully');
         return token;
       }
 
@@ -712,38 +722,50 @@ export class SessionManager {
   // New method to automatically refresh session and regenerate token if needed
   async autoRefreshSession(): Promise<{ success: boolean; message: string }> {
     try {
-      // console.log('=== AUTO REFRESHING SESSION ===');
-      
       const session = await this.getCurrentSession();
-      if (!session) {
-        // console.log('No session found for auto refresh');
+      if (!session?.username) {
         return { success: false, message: 'No active session found' };
       }
 
-      // console.log('Current session found:', session.username);
-      
-      // Regenerate whenever token is missing
-      const needsTokenRegeneration = !session.token || await this.isTokenExpired(session.token);
-      
+      // Prefer regenerating with saved password whenever credentials exist.
+      // Server tokens can expire while local session still has a stale token value.
+      const hasCredentials = await this.hasStoredCredentials();
+      const needsTokenRegeneration =
+        !session.token ||
+        hasCredentials ||
+        (await this.isTokenExpired(session.token));
+
       if (needsTokenRegeneration) {
-        // console.log('Token needs regeneration, attempting...');
+        console.log(
+          '[SessionManager] Auto-refresh regenerating token (hasCredentials=',
+          hasCredentials,
+          ', hasToken=',
+          !!session.token,
+          ')',
+        );
         const newToken = await this.regenerateToken();
-        
+
         if (newToken) {
-          // console.log('✅ Token regenerated successfully');
           await this.updateToken(newToken);
           await this.refreshSession();
           return { success: true, message: 'Session refreshed and token regenerated' };
-        } else {
-          // console.log('❌ Token regeneration failed');
-          return { success: false, message: 'Failed to regenerate token' };
         }
-      } else {
-        // console.log('✅ Token is still valid, just refreshing session');
-        await this.refreshSession();
-        return { success: true, message: 'Session refreshed' };
+
+        // Keep going with existing token if regen failed (e.g. offline) —
+        // makeAuthenticatedRequest will retry on Token Expired later.
+        if (session.token) {
+          await this.refreshSession();
+          return {
+            success: true,
+            message: 'Token regeneration failed; using existing session token',
+          };
+        }
+
+        return { success: false, message: 'Failed to regenerate token' };
       }
-      
+
+      await this.refreshSession();
+      return { success: true, message: 'Session refreshed' };
     } catch (error) {
       console.error('Error during auto refresh:', error);
       return { success: false, message: 'Error refreshing session' };

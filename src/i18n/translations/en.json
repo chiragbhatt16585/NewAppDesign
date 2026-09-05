@@ -237,7 +237,8 @@
     "proceedToPay": "Proceed to Pay",
     "paymentSuccess": "Payment Successful",
     "paymentSuccessMessage": "Your plan has been renewed successfully! You will receive a confirmation email shortly.",
-    "advanceRenewalNote": "The new plan will activate automatically after your current plan expires."
+    "advanceRenewalNote": "The new plan will activate automatically after your current plan expires.",
+    "fupOttRenewalNote": "Once an FUP or OTT plan has been renewed, it cannot be upgraded nor modified until the current plan expires."
   },
   "payBill": {
     "title": "Pay Bill",
@@ -462,6 +463,7 @@
   "referFriend": {
     "title": "Refer a Friend",
     "subtitle": "Refer your friends and enjoy exciting rewards",
+    "subtitleMicroscan": "Refer your friend and enjoy exciting rewards",
     "personalDetails": "Personal Details",
     "installationAddress": "Installation Address",
     "additionalInfo": "Additional Information",
@@ -471,6 +473,16 @@
     "lastName": "Last Name*",
     "firstNameRequired": "Full name is required",
     "lastNameRequired": "Last name is required",
+    "friendName": "Friend's Name",
+    "friendNamePlaceholder": "Friend's Name",
+    "friendNameRequired": "Friend's name is required",
+    "friendMobile": "Friend's Mobile No",
+    "friendMobilePlaceholder": "Friend's Mobile No",
+    "friendMobileRequired": "Friend's mobile number is required",
+    "friendAreaPincode": "Friend's Area/Pincode",
+    "friendAreaPincodePlaceholder": "Friend's Area/Pincode",
+    "friendAreaPincodeRequired": "Friend's area/pincode is required",
+    "friendCity": "Select City",
     "mobileNumber": "Phone Number",
     "altPhone": "Alternative Phone Number",
     "mobileNumberRequired": "Phone number is required",

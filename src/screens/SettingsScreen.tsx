@@ -22,7 +22,7 @@ import versionCheckService from '../services/versionCheck';
 import { apiService } from '../services/api';
 import useMenuSettings from '../hooks/useMenuSettings';
 import LeftBorderLine from '../components/LeftBorderLine';
-import { getClientConfig } from '../config/client-config';
+import { getClientConfig, isMicroscanClient } from '../config/client-config';
 import { getApiUrl } from '../services/api';
 import { Platform } from 'react-native';
 import {
@@ -41,7 +41,7 @@ const SettingsScreen = ({ navigation }: any) => {
   const [appVersion, setAppVersion] = useState<string>('1.0.0');
   const [isChecking, setIsChecking] = useState<boolean>(false);
   const { menu, loading: menuLoading } = useMenuSettings();
-  const isMicroscan = getClientConfig().clientId === 'microscan';
+  const isMicroscan = isMicroscanClient();
   const [settingsConfig, setSettingsConfig] = useState<any>(null);
 
   useEffect(() => {

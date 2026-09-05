@@ -34,7 +34,7 @@ import { pinStorage } from '../services/pinStorage';
 import biometricAuthService from '../services/biometricAuth';
 import { ensureDeviceRegistrationAfterLogin } from '../services/notificationService';
 import { consumePendingDeepLink } from '../services/deepLinkService';
-import { getClientConfig } from '../config/client-config';
+import { getClientConfig, isMicroscanClient } from '../config/client-config';
 import { getDefaultLoginMode, shouldShowOtpLoginLink } from '../config/login-ui-config';
 import { getCustomApi } from '../config/customApiStorage';
 import { getWebsite } from '../config';
@@ -105,7 +105,7 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
   // For other clients, prefer isp_details.json, fallback to static config
   const effectiveWebsiteUrl = (() => {
     const clientId = getClientConfig().clientId;
-    if (clientId === 'microscan') {
+    if (isMicroscanClient(clientId)) {
       return 'https://www.microscaninternet.com/';
     }
     if (clientId === 'inshansa-dnagoa') {
@@ -1004,7 +1004,7 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
   const appVersion = DeviceInfo.getVersion();
   const buildNumber = DeviceInfo.getBuildNumber();
   const versionLabel =
-    clientId === 'microscan' && Platform.OS === 'android'
+    isMicroscanClient(clientId) && Platform.OS === 'android'
       ? buildNumber || appVersion
       : `${appVersion} (${buildNumber})`;
 
@@ -1352,7 +1352,7 @@ const LoginScreen = ({navigation, disableSessionCheck = false}: any) => {
               <Feather name="activity" size={22} color={colors.primary} style={styles.featureIcon} />
               <Text style={[styles.featureText, {color: colors.text}]}>Speed Test</Text> 
             </TouchableOpacity>
-            {clientId !== 'microscan' && (
+            {!isMicroscanClient(clientId) && (
             <TouchableOpacity
               style={[styles.featureCard, {backgroundColor: colors.card, borderColor: colors.border}]}
               onPress={handleSupport}

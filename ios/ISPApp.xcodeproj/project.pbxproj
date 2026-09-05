@@ -443,7 +443,7 @@
 					"-lc++",
 					"-Wl,-rpath,@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.h8.dnasubscriber;
+				PRODUCT_BUNDLE_IDENTIFIER = com.spacecom.log2space.dnainfotel;
 				PRODUCT_NAME = DNAInfotelApp;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -476,7 +476,7 @@
 					"-lc++",
 					"-Wl,-rpath,@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.h8.dnasubscriber;
+				PRODUCT_BUNDLE_IDENTIFIER = com.spacecom.log2space.dnainfotel;
 				PRODUCT_NAME = DNAInfotelApp;
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";

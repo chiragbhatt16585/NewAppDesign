@@ -3,7 +3,7 @@
   "expo": {
     "name": "Monark Broadband",
     "slug": "monarknet",
-    "version": "1.0.1",
+    "version": "1.0.5",
     "orientation": "portrait",
     "icon": "./app-icons/icon.png",
     "userInterfaceStyle": "light",
@@ -17,7 +17,7 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "in.spacecom.log2space.client.monarkuser",
+      "bundleIdentifier": "com.l2sClient.Monark",
       "buildNumber": "1"
     },
     "android": {
@@ -26,7 +26,7 @@
         "backgroundColor": "#FFFFFF"
       },
       "package": "in.spacecom.log2space.client.monarkuser",
-      "versionCode": 1
+      "versionCode": 4
     },
     "web": {
       "favicon": "./app-icons/favicon.png"

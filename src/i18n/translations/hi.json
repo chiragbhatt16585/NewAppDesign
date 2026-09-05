@@ -338,7 +338,8 @@
     "proceedToPay": "भुगतान के लिए आगे बढ़ें",
     "paymentSuccess": "भुगतान सफल",
     "paymentSuccessMessage": "आपकी योजना सफलतापूर्वक नवीनीकरण हो गई है! आपको शीघ्र ही एक पुष्टि ईमेल प्राप्त होगा।",
-    "advanceRenewalNote": "आपकी वर्तमान योजना की समाप्ति के बाद नई योजना स्वचालित रूप से सक्रिय हो जाएगी।"
+    "advanceRenewalNote": "आपकी वर्तमान योजना की समाप्ति के बाद नई योजना स्वचालित रूप से सक्रिय हो जाएगी।",
+    "fupOttRenewalNote": "एक बार FUP या OTT योजना का नवीनीकरण हो जाने के बाद, वर्तमान योजना समाप्त होने तक उसे अपग्रेड या संशोधित नहीं किया जा सकता।"
   },
   "payBill": {
     "title": "बिल भुगतान",
@@ -438,12 +439,23 @@
   "referFriend": {
     "title": "मित्र को रेफर करें",
     "subtitle": "अपने मित्रों को हमारे नेटवर्क से जोड़ें और पुरस्कार पाएं!",
+    "subtitleMicroscan": "अपने मित्र को रेफर करें और रोमांचक पुरस्कार पाएं",
     "personalDetails": "व्यक्तिगत विवरण",
     "firstName": "पहला नाम*",
     "middleName": "मध्य नाम",
     "lastName": "अंतिम नाम*",
     "firstNameRequired": "पहला नाम आवश्यक है",
     "lastNameRequired": "अंतिम नाम आवश्यक है",
+    "friendName": "मित्र का नाम",
+    "friendNamePlaceholder": "मित्र का नाम",
+    "friendNameRequired": "मित्र का नाम आवश्यक है",
+    "friendMobile": "मित्र का मोबाइल नंबर",
+    "friendMobilePlaceholder": "मित्र का मोबाइल नंबर",
+    "friendMobileRequired": "मित्र का मोबाइल नंबर आवश्यक है",
+    "friendAreaPincode": "मित्र का क्षेत्र/पिनकोड",
+    "friendAreaPincodePlaceholder": "मित्र का क्षेत्र/पिनकोड",
+    "friendAreaPincodeRequired": "मित्र का क्षेत्र/पिनकोड आवश्यक है",
+    "friendCity": "शहर चुनें",
     "mobileNumber": "मोबाइल नंबर*",
     "mobileNumberRequired": "मोबाइल नंबर आवश्यक है",
     "email": "ईमेल",

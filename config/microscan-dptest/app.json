@@ -1,0 +1,35 @@
+{
+  "name": "MicroscanDpTestApp",
+  "expo": {
+    "name": "Microscan",
+    "slug": "microscan-dptest",
+    "version": "3.0.7",
+    "orientation": "portrait",
+    "icon": "./app-icons/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./app-icons/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.l2sClient.microscan",
+      "buildNumber": "48"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./app-icons/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "package": "in.spacecom.log2space.client.microscan",
+      "versionCode": 48
+    },
+    "web": {
+      "favicon": "./app-icons/favicon.png"
+    }
+  }
+}

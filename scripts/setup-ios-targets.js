@@ -14,7 +14,7 @@ const clients = {
   },
   dnainfotel: {
     name: 'DNA Infotel',
-    bundleId: 'com.h8.dnasubscriber',
+    bundleId: 'com.spacecom.log2space.dnainfotel',
     displayName: 'DNA Infotel',
     scheme: 'DNAInfotelApp',
     target: 'DNAInfotelApp'

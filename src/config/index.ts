@@ -40,6 +40,16 @@ const clientConfigs: Record<string, ClientConfig> = {
     poweredByWebsite: 'https://spacecom.in',
     bundleId: 'in.spacecom.log2space.client.microscan',
   },
+  'microscan-dptest': {
+    name: 'Microscan',
+    companyName: 'Microscan Internet Private Limited',
+    apiUrl: 'https://dptest.microscan.co.in',
+    supportEmail: 'support@microscan.in',
+    website: 'https://www.microscaninternet.com/',
+    poweredBy: 'Spacecom Software LLP',
+    poweredByWebsite: 'https://spacecom.in',
+    bundleId: 'in.spacecom.log2space.client.microscan',
+  },
   'dna-infotel': {
     name: 'DNA Infotel App',
     companyName: 'DNA Infotel Private Limited',
@@ -48,7 +58,7 @@ const clientConfigs: Record<string, ClientConfig> = {
     website: 'https://dnainfotel.com',
     poweredBy: 'Spacecom Software LLP',
     poweredByWebsite: 'https://spacecom.in',
-    bundleId: 'com.h8.dnasubscriber',
+    bundleId: 'com.spacecom.log2space.dnainfotel',
   },
   'dna-goa': {
     name: 'DNA Goa',

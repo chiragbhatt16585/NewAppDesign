@@ -104,6 +104,7 @@ const LogoImage: React.FC<LogoImageProps> = ({style, width, height, type = 'head
         // Client-specific isp_logo variants (note: config directory is at project root)
         'spacecom-live:isp_logo.png': require('../../config/spacecom-live/assets/isp_logo.png'),
         'microscan:isp_logo.png': require('../../config/microscan/assets/isp_logo.png'),
+        'microscan-dptest:isp_logo.png': require('../../config/microscan-dptest/assets/isp_logo.png'),
         'dna-infotel:isp_logo.png': require('../../config/dna-infotel/assets/isp_logo.png'),
         'dna-goa:isp_logo.png': require('../../config/dna-goa/assets/isp_logo.png'),
         'inshansa-dnagoa:isp_logo.png': require('../../config/inshansa-dnagoa/assets/isp_logo.png'),

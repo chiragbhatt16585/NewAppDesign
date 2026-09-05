@@ -12,6 +12,25 @@ import {
   registerCleverTapUserOnLogin,
   syncCleverTapWithAuthUser,
 } from '../services/cleverTapService';
+
+/** Identify the current session user in CleverTap (login + already-logged-in app updates). */
+const identifyCleverTapSessionUser = (username?: string | null): void => {
+  if (!username) {
+    return;
+  }
+  registerCleverTapUserOnLogin(username);
+  void apiService
+    .authUser(username)
+    .then(authUserData => {
+      syncCleverTapWithAuthUser(username, authUserData as Record<string, unknown>);
+    })
+    .catch(authUserError => {
+      console.warn(
+        '[AuthContext] authUser fetch failed for CleverTap identity sync:',
+        authUserError,
+      );
+    });
+};
 import { getClientConfig } from '../config/client-config';
 // Session monitoring disabled for persistent login
 // import sessionMonitor from '../services/sessionMonitor';
@@ -95,6 +114,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               username: updatedSession.username,
               token: updatedSession.token,
             });
+            identifyCleverTapSessionUser(updatedSession.username);
             setLoading(false);
             return;
           }
@@ -118,6 +138,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               username: recoveredSession.username,
               token: recoveredSession.token,
             });
+            identifyCleverTapSessionUser(recoveredSession.username);
             setLoading(false);
             return;
           }
@@ -269,20 +290,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           username,
           token: response.token,
         });
-        registerCleverTapUserOnLogin(username);
-        void apiService
-          .authUser(username)
-          .then(authUserData => {
-            syncCleverTapWithAuthUser(username, authUserData as Record<string, unknown>);
-          })
-          .catch(authUserError => {
-            // ISP authUser API failed — CleverTap identity was already sent above;
-            // HomeScreen may still enrich the profile via updateCleverTapUserProfile.
-            console.warn(
-              '[AuthContext] authUser fetch failed after login (CleverTap profile enrichment skipped):',
-              authUserError,
-            );
-          });
+        identifyCleverTapSessionUser(username);
         console.log('[AuthContext] ✅✅✅ Login successful, session created for:', username);
         console.log('[AuthContext] ✅✅✅ All old data cleared, ready for fresh data fetch');
         
@@ -394,18 +402,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           username: phoneNumber,
           token: response.token,
         });
-        registerCleverTapUserOnLogin(phoneNumber);
-        void apiService
-          .authUser(phoneNumber)
-          .then(authUserData => {
-            syncCleverTapWithAuthUser(phoneNumber, authUserData as Record<string, unknown>);
-          })
-          .catch(authUserError => {
-            console.warn(
-              '[AuthContext] authUser fetch failed after OTP login (CleverTap profile enrichment skipped):',
-              authUserError,
-            );
-          });
+        identifyCleverTapSessionUser(phoneNumber);
         console.log('[AuthContext] OTP login successful, session created');
         
         // Device registration in background (non-blocking) - don't wait for it

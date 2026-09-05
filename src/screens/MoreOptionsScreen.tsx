@@ -17,7 +17,7 @@ import CommonHeader from '../components/CommonHeader';
 import {useTranslation} from 'react-i18next';
 import {useAuth} from '../utils/AuthContext';
 import Feather from 'react-native-vector-icons/Feather';
-import {getClientConfig} from '../config/client-config';
+import {getClientConfig, isMicroscanClient} from '../config/client-config';
 import useMenuSettings from '../hooks/useMenuSettings';
 import menuService from '../services/menuService';
 import { useAuthData } from '../utils/AuthDataContext';
@@ -195,7 +195,7 @@ const MoreOptionsScreen = ({navigation}: any) => {
 
 
   type DynItem = { id: string; title: string; subtitle: string; icon: string; iconType?: 'feather'; onPress: () => void; isLogout?: boolean };
-  const isMicroscan = getClientConfig().clientId === 'microscan';
+  const isMicroscan = isMicroscanClient();
   const dynamicMenuItems: DynItem[] = useMemo(() => {
     const desiredOrder = [
       'Renew Plan',

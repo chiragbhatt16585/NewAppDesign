@@ -1,4 +1,4 @@
-package com.h8.dnasubscriber
+package com.spacecom.log2space.dnainfotel
 
 import android.app.Application
 import com.facebook.react.PackageList

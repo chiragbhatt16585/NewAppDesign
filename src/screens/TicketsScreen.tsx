@@ -22,7 +22,7 @@ import {
   getAppSettingsFromMenu,
   isFixYourInternetEnabled,
 } from '../utils/appSettingsFromMenu';
-import {getClientConfig} from '../config/client-config';
+import {getClientConfig, isMicroscanClient} from '../config/client-config';
 import Feather from 'react-native-vector-icons/Feather';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 
@@ -41,7 +41,7 @@ const TicketsScreen = ({navigation, route}: any) => {
   const {isDark} = useTheme();
   const colors = getThemeColors(isDark);
   const {t} = useTranslation();
-  const isMicroscan = getClientConfig().clientId === 'microscan';
+  const isMicroscan = isMicroscanClient();
   const showCreateTicketButton = true;
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);

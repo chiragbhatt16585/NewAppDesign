@@ -16,11 +16,11 @@ const CLIENTS = {
   },
   'dna-infotel': {
     name: 'DNA Infotel',
-    packageName: 'com.h8.dnasubscriber',
-    namespace: 'com.h8.dnasubscriber',
-    versionCode: 296,
-    versionName: '296.0.0',
-    keystore: 'Log2spaceDNAInfotelAppKey.jks',
+    packageName: 'com.spacecom.log2space.dnainfotel',
+    namespace: 'com.spacecom.log2space.dnainfotel',
+    versionCode: 298,
+    versionName: '298',
+    keystore: 'NewL2SDnaInfotel.jks',
     configDir: 'config/dna-infotel',
   },
   'logon-broadband': {

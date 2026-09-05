@@ -18,7 +18,7 @@ fi
 
 # Client configurations
 clients_microscan="Microscan:in.spacecom.log2space.client.microscan:33.0.0"
-clients_dnainfotel="DNA Infotel:com.h8.dnasubscriber:294.0.0"
+clients_dnainfotel="DNA Infotel:com.spacecom.log2space.dnainfotel:298"
 clients_onesevenstar="One Sevenstar:com.spacecom.log2space.onesevenstar:4.0.0"
 
 # Function to build a client
@@ -106,7 +106,7 @@ validate_keystores() {
                 keystore="android/app/Log2SpaceEndUserMicroscan.jks"
                 ;;
             "dnainfotel")
-                keystore="android/app/Log2spaceDNAInfotelAppKey.jks"
+                keystore="android/app/NewL2SDnaInfotel.jks"
                 ;;
             "onesevenstar")
                 keystore="android/app/OneSevenStar.jks"

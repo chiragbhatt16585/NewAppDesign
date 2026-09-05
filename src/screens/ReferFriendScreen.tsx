@@ -11,6 +11,9 @@ import {
   Platform,
   TouchableWithoutFeedback,
   KeyboardAvoidingView,
+  Modal,
+  FlatList,
+  Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Feather from 'react-native-vector-icons/Feather';
@@ -18,7 +21,7 @@ import { useTheme } from '../utils/ThemeContext';
 import { getThemeColors } from '../utils/themeStyles';
 import CommonHeader from '../components/CommonHeader';
 import ActiveTicketModal from '../components/ActiveTicketModal';
-import { getClientConfig } from '../config/client-config';
+import { getClientConfig, isMicroscanClient } from '../config/client-config';
 import { isReferFriendFieldVisible, isReferFriendFieldRequired } from '../config/refer-friend-config';
 import Toast from 'react-native-toast-message';
 import { Picker } from '@react-native-picker/picker';
@@ -49,7 +52,7 @@ const ReferFriendScreen = ({ navigation }: any) => {
   const { isDark } = useTheme();
   const colors = getThemeColors(isDark);
   const { t } = useTranslation();
-  const isMicroscan = getClientConfig().clientId === 'microscan';
+  const isMicroscan = isMicroscanClient();
   const showBuildingField = isReferFriendFieldVisible('building');
   const showAreaField = isReferFriendFieldVisible('area');
   const showLocationField = isReferFriendFieldVisible('location');
@@ -114,7 +117,9 @@ const ReferFriendScreen = ({ navigation }: any) => {
         const clientConfig = getClientConfig();
         const realm = clientConfig.clientId;
         const [buildingsData, citiesData] = await Promise.all([
-          showBuildingField ? apiService.getAllBuildings(realm) : Promise.resolve([]),
+          !isMicroscan && showBuildingField
+            ? apiService.getAllBuildings(realm)
+            : Promise.resolve([]),
           apiService.getAllCities(realm),
         ]);
         const normalizedBuildings = Array.isArray(buildingsData)
@@ -147,7 +152,7 @@ const ReferFriendScreen = ({ navigation }: any) => {
       }
     };
     fetchData();
-  }, [showBuildingField]);
+  }, [showBuildingField, isMicroscan]);
 
   const handleInputChange = (field: keyof FormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -157,6 +162,30 @@ const ReferFriendScreen = ({ navigation }: any) => {
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
     let isValid = true;
+
+    if (isMicroscan) {
+      if (!formData.firstName.trim()) {
+        newErrors.firstName = t('referFriend.friendNameRequired');
+        isValid = false;
+      }
+      if (!formData.mobileNumber.trim()) {
+        newErrors.mobileNumber = t('referFriend.friendMobileRequired');
+        isValid = false;
+      } else if (!/^\d{10}$/.test(formData.mobileNumber.trim())) {
+        newErrors.mobileNumber = t('referFriend.friendMobileRequired');
+        isValid = false;
+      }
+      if (!formData.area.trim() && !formData.pincode.trim()) {
+        newErrors.area = t('referFriend.friendAreaPincodeRequired');
+        isValid = false;
+      }
+      if (!formData.city) {
+        newErrors.city = t('referFriend.cityRequired');
+        isValid = false;
+      }
+      setErrors(newErrors);
+      return isValid;
+    }
 
     if (firstNameRequired && !formData.firstName.trim()) {
       newErrors.firstName = t('referFriend.firstNameRequired');
@@ -242,19 +271,39 @@ const ReferFriendScreen = ({ navigation }: any) => {
       const { getClientConfig } = require('../config/client-config');
       const clientConfig = getClientConfig();
       const realm = clientConfig.clientId;
+
+      let firstName = formData.firstName.trim();
+      let lastName = formData.lastName.trim();
+      let area = formData.area.trim();
+      let pincode = formData.pincode.trim();
+      if (isMicroscan) {
+        const nameParts = firstName.split(/\s+/).filter(Boolean);
+        firstName = nameParts[0] || '';
+        lastName = nameParts.slice(1).join(' ') || firstName;
+        const areaPincode = (formData.area.trim() || formData.pincode.trim()).trim();
+        if (/^\d{6}$/.test(areaPincode)) {
+          pincode = areaPincode;
+          area = areaPincode;
+        } else {
+          area = areaPincode;
+          const digits = areaPincode.match(/\d{6}/)?.[0];
+          pincode = digits || '';
+        }
+      }
+
       const payload = {
-        firstName: formData.firstName.trim(),
+        firstName,
         middleName: '',
-        lastName: formData.lastName.trim(),
+        lastName,
         mobileNumber: formData.mobileNumber.trim(),
         email: formData.email.trim(),
-        address1: formData.address1.trim(),
+        address1: formData.address1.trim() || (isMicroscan ? area : ''),
         address2: formData.altPhone.trim(),
         building_id: formData.building_id,
         building_name: formData.building_name,
-        area: formData.area.trim(),
+        area,
         location: formData.location.trim(),
-        pincode: formData.pincode.trim(),
+        pincode,
         city: formData.city,
         city_name: formData.city_name,
         remarks: formData.remarks.trim(),
@@ -303,6 +352,7 @@ const ReferFriendScreen = ({ navigation }: any) => {
 
   const inputStyle = (hasError?: boolean) => [
     styles.input,
+    isMicroscan && styles.microscanInput,
     {
       backgroundColor: colors.surface,
       borderColor: hasError ? '#EF4444' : colors.border,
@@ -418,20 +468,27 @@ const ReferFriendScreen = ({ navigation }: any) => {
           {showDropdown && filteredBuildings.length > 0 && (
             <TouchableWithoutFeedback>
               <View style={[styles.dropdownContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                {filteredBuildings.map(building => (
-                  <TouchableHighlight
-                    key={building.value}
-                    onPress={() => {
-                      handleBuildingSelect(building);
-                      inputRef.current?.blur?.();
-                    }}
-                    underlayColor="#F3F4F6"
-                  >
-                    <View style={styles.dropdownItem}>
-                      <Text style={[styles.buildingName, { color: colors.text }]}>{building.label}</Text>
-                    </View>
-                  </TouchableHighlight>
-                ))}
+                <ScrollView
+                  nestedScrollEnabled
+                  keyboardShouldPersistTaps="handled"
+                  style={styles.dropdownScroll}
+                  bounces={false}
+                >
+                  {filteredBuildings.map(building => (
+                    <TouchableHighlight
+                      key={building.value}
+                      onPress={() => {
+                        handleBuildingSelect(building);
+                        inputRef.current?.blur?.();
+                      }}
+                      underlayColor="#F3F4F6"
+                    >
+                      <View style={styles.dropdownItem}>
+                        <Text style={[styles.buildingName, { color: colors.text }]}>{building.label}</Text>
+                      </View>
+                    </TouchableHighlight>
+                  ))}
+                </ScrollView>
               </View>
             </TouchableWithoutFeedback>
           )}
@@ -441,53 +498,350 @@ const ReferFriendScreen = ({ navigation }: any) => {
     );
   };
 
-  const CitySelector = () => (
-    <View style={[styles.fieldBlock, styles.halfField]}>
-      <FieldLabel label={t('referFriend.city')} required={cityRequired} />
+  const CitySelector = ({ half = true, hideLabel = false }: { half?: boolean; hideLabel?: boolean }) => (
+    <View style={[styles.fieldBlock, half ? styles.halfField : undefined]}>
+      {!hideLabel && (
+        <FieldLabel
+          label={isMicroscan ? t('referFriend.friendCity') : t('referFriend.city')}
+          required={isMicroscan || cityRequired}
+        />
+      )}
       <View style={[styles.selectWrap, errors.city ? styles.inputErrorWrap : null]}>
         <TouchableOpacity
           style={[inputStyle(!!errors.city), styles.selectButton]}
-          onPress={() => setShowCityDropdown(!showCityDropdown)}
+          onPress={() => setShowCityDropdown(true)}
           activeOpacity={0.7}
         >
           <Text
             style={[
               styles.selectText,
+              isMicroscan && styles.microscanSelectText,
               { color: formData.city_name ? colors.text : colors.textSecondary },
             ]}
             numberOfLines={1}
           >
-            {formData.city_name || t('referFriend.selectCity')}
+            {formData.city_name ||
+              (hideLabel ? `${t('referFriend.friendCity')}*` : t('referFriend.selectCity'))}
           </Text>
           <Feather name="chevron-down" size={18} color={colors.textSecondary} />
         </TouchableOpacity>
-        {showCityDropdown && (
-          <View style={[styles.dropdownContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            {cities.map(city => (
-              <TouchableHighlight
-                key={city.value}
-                onPress={() => {
-                  handleInputChange('city', city.value);
-                  handleInputChange('city_name', city.label);
-                  setShowCityDropdown(false);
-                }}
-                underlayColor="#F3F4F6"
-              >
-                <View style={styles.dropdownItem}>
-                  <Text style={{ color: colors.text, fontSize: 15 }}>{city.label}</Text>
-                </View>
-              </TouchableHighlight>
-            ))}
-          </View>
-        )}
       </View>
       {errors.city ? <Text style={styles.errorText}>{errors.city}</Text> : null}
     </View>
   );
 
+  const handleAreaPincodeChange = (value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      area: value,
+      pincode: /^\d{6}$/.test(value.trim()) ? value.trim() : prev.pincode,
+    }));
+    setErrors(prev => ({ ...prev, area: '', pincode: '' }));
+  };
+
+  const renderMicroscanForm = () => (
+    <>
+      <SectionHeader icon="user" title={t('referFriend.personalDetails')} />
+      <View style={[styles.sectionDivider, { backgroundColor: colors.border }]} />
+
+      <View style={styles.row}>
+        <View style={[styles.fieldBlock, styles.halfField]}>
+          <TextInput
+            style={inputStyle(!!errors.firstName)}
+            placeholder={`${t('referFriend.friendNamePlaceholder')}*`}
+            value={formData.firstName}
+            onChangeText={v => handleInputChange('firstName', v)}
+            placeholderTextColor={colors.textSecondary}
+          />
+          {errors.firstName ? <Text style={styles.errorText}>{errors.firstName}</Text> : null}
+        </View>
+        <View style={[styles.fieldBlock, styles.halfField]}>
+          <TextInput
+            style={inputStyle(!!errors.mobileNumber)}
+            placeholder={`${t('referFriend.friendMobilePlaceholder')}*`}
+            value={formData.mobileNumber}
+            onChangeText={v => handleInputChange('mobileNumber', v)}
+            keyboardType="phone-pad"
+            maxLength={10}
+            placeholderTextColor={colors.textSecondary}
+          />
+          {errors.mobileNumber ? <Text style={styles.errorText}>{errors.mobileNumber}</Text> : null}
+        </View>
+      </View>
+
+      <View style={styles.row}>
+        <View style={[styles.fieldBlock, styles.halfField]}>
+          <TextInput
+            style={inputStyle(!!errors.area)}
+            placeholder={`${t('referFriend.friendAreaPincodePlaceholder')}*`}
+            value={formData.area}
+            onChangeText={handleAreaPincodeChange}
+            placeholderTextColor={colors.textSecondary}
+          />
+          {errors.area ? <Text style={styles.errorText}>{errors.area}</Text> : null}
+        </View>
+        <CitySelector half hideLabel />
+      </View>
+
+      {showSalesExec && (
+        <>
+          <SectionHeader icon="briefcase" title={t('referFriend.salesExecutive')} />
+          <View style={[styles.sectionDivider, { backgroundColor: colors.border }]} />
+          <View style={[styles.salesPickerContainer, { borderColor: colors.border }]}>
+            <Picker
+              selectedValue={formData.salesPerson}
+              onValueChange={v => handleInputChange('salesPerson', v)}
+              style={{ color: colors.text }}
+            >
+              <Picker.Item label={t('referFriend.selectSalesExecutive')} value="" />
+              {salesPersons.map(person => (
+                <Picker.Item key={person.value} label={person.label} value={person.value} />
+              ))}
+            </Picker>
+          </View>
+        </>
+      )}
+
+      <View style={styles.fieldBlock}>
+        <TextInput
+          style={[inputStyle(), styles.remarksInput]}
+          placeholder={t('referFriend.remarks')}
+          value={formData.remarks}
+          onChangeText={v => handleInputChange('remarks', v)}
+          multiline
+          numberOfLines={4}
+          textAlignVertical="top"
+          placeholderTextColor={colors.textSecondary}
+        />
+        <Text style={[styles.privacyNote, { color: colors.textSecondary }]}>
+          <Text style={styles.noteBold}>{t('referFriend.noteLabel')} </Text>
+          {t('referFriend.privacyNote')}
+        </Text>
+      </View>
+
+      <TouchableOpacity
+        style={[styles.submitButton, { backgroundColor: colors.primary }, isSubmitting && styles.submitDisabled]}
+        onPress={handleSubmit}
+        disabled={isSubmitting}
+        activeOpacity={0.85}
+      >
+        {isSubmitting ? (
+          <ActivityIndicator color="#FFFFFF" />
+        ) : (
+          <Text style={styles.submitButtonText}>{t('referFriend.submit')}</Text>
+        )}
+      </TouchableOpacity>
+    </>
+  );
+
+  const renderDefaultForm = () => (
+    <>
+      <SectionHeader icon="user" title={t('referFriend.personalDetails')} />
+      <View style={[styles.sectionDivider, { backgroundColor: colors.border }]} />
+
+      <View style={styles.row}>
+        <View style={[styles.fieldBlock, styles.halfField]}>
+          <FieldLabel label={t('referFriend.firstName')} required={firstNameRequired} />
+          <TextInput
+            style={inputStyle(!!errors.firstName)}
+            placeholder={t('referFriend.firstName')}
+            value={formData.firstName}
+            onChangeText={v => handleInputChange('firstName', v)}
+            placeholderTextColor={colors.textSecondary}
+          />
+          {errors.firstName ? <Text style={styles.errorText}>{errors.firstName}</Text> : null}
+        </View>
+        <View style={[styles.fieldBlock, styles.halfField]}>
+          <FieldLabel label={t('referFriend.lastName')} required={lastNameRequired} />
+          <TextInput
+            style={inputStyle(!!errors.lastName)}
+            placeholder={t('referFriend.lastName')}
+            value={formData.lastName}
+            onChangeText={v => handleInputChange('lastName', v)}
+            placeholderTextColor={colors.textSecondary}
+          />
+          {errors.lastName ? <Text style={styles.errorText}>{errors.lastName}</Text> : null}
+        </View>
+      </View>
+
+      <View style={styles.row}>
+        <View style={[styles.fieldBlock, styles.halfField]}>
+          <FieldLabel label={t('referFriend.mobileNumber')} required={mobileNumberRequired} />
+          <TextInput
+            style={inputStyle(!!errors.mobileNumber)}
+            placeholder={t('referFriend.mobileNumber')}
+            value={formData.mobileNumber}
+            onChangeText={v => handleInputChange('mobileNumber', v)}
+            keyboardType="phone-pad"
+            maxLength={10}
+            placeholderTextColor={colors.textSecondary}
+          />
+          {errors.mobileNumber ? <Text style={styles.errorText}>{errors.mobileNumber}</Text> : null}
+        </View>
+        <View style={[styles.fieldBlock, styles.halfField]}>
+          <FieldLabel label={t('referFriend.altPhone')} />
+          <TextInput
+            style={inputStyle()}
+            placeholder={t('referFriend.altPhone')}
+            value={formData.altPhone}
+            onChangeText={v => handleInputChange('altPhone', v)}
+            keyboardType="phone-pad"
+            maxLength={10}
+            placeholderTextColor={colors.textSecondary}
+          />
+        </View>
+      </View>
+
+      <View style={styles.fieldBlock}>
+        <FieldLabel label={t('referFriend.email')} required={emailRequired} />
+        <TextInput
+          style={inputStyle(!!errors.email)}
+          placeholder={t('referFriend.email')}
+          value={formData.email}
+          onChangeText={v => handleInputChange('email', v)}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          placeholderTextColor={colors.textSecondary}
+        />
+        {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
+      </View>
+
+      <SectionHeader icon="map-pin" title={t('referFriend.installationAddress')} />
+      <View style={[styles.sectionDivider, { backgroundColor: colors.border }]} />
+
+      <View style={styles.fieldBlock}>
+        <FieldLabel label={t('referFriend.address1')} required={address1Required} />
+        <TextInput
+          style={inputStyle(!!errors.address1)}
+          placeholder={t('referFriend.address1')}
+          value={formData.address1}
+          onChangeText={v => handleInputChange('address1', v)}
+          placeholderTextColor={colors.textSecondary}
+        />
+        {errors.address1 ? <Text style={styles.errorText}>{errors.address1}</Text> : null}
+      </View>
+
+      {showBuildingField ? <BuildingSelector /> : null}
+
+      {showAreaField || showLocationField ? (
+        <View style={styles.row}>
+          {showAreaField ? (
+            <View style={[styles.fieldBlock, addressFieldWidthStyle]}>
+              <FieldLabel label={t('referFriend.area')} required />
+              <TextInput
+                style={inputStyle(!!errors.area)}
+                placeholder={t('referFriend.area')}
+                value={formData.area}
+                onChangeText={v => handleInputChange('area', v)}
+                placeholderTextColor={colors.textSecondary}
+              />
+              {errors.area ? <Text style={styles.errorText}>{errors.area}</Text> : null}
+            </View>
+          ) : null}
+          {showLocationField ? (
+            <View style={[styles.fieldBlock, addressFieldWidthStyle]}>
+              <FieldLabel label={t('referFriend.landmark')} required />
+              <TextInput
+                style={inputStyle(!!errors.location)}
+                placeholder={t('referFriend.landmark')}
+                value={formData.location}
+                onChangeText={v => handleInputChange('location', v)}
+                placeholderTextColor={colors.textSecondary}
+              />
+              {errors.location ? <Text style={styles.errorText}>{errors.location}</Text> : null}
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+
+      <View style={styles.row}>
+        <CitySelector />
+        <View style={[styles.fieldBlock, styles.halfField]}>
+          <FieldLabel label={t('referFriend.pincode')} required={pincodeRequired} />
+          <TextInput
+            style={inputStyle(!!errors.pincode)}
+            placeholder={t('referFriend.pincode')}
+            value={formData.pincode}
+            onChangeText={v => handleInputChange('pincode', v)}
+            keyboardType="numeric"
+            maxLength={6}
+            placeholderTextColor={colors.textSecondary}
+          />
+          {errors.pincode ? <Text style={styles.errorText}>{errors.pincode}</Text> : null}
+        </View>
+      </View>
+
+      {showSalesExec && (
+        <>
+          <SectionHeader icon="briefcase" title={t('referFriend.salesExecutive')} />
+          <View style={[styles.sectionDivider, { backgroundColor: colors.border }]} />
+          <View style={[styles.salesPickerContainer, { borderColor: colors.border }]}>
+            <Picker
+              selectedValue={formData.salesPerson}
+              onValueChange={v => handleInputChange('salesPerson', v)}
+              style={{ color: colors.text }}
+            >
+              <Picker.Item label={t('referFriend.selectSalesExecutive')} value="" />
+              {salesPersons.map(person => (
+                <Picker.Item key={person.value} label={person.label} value={person.value} />
+              ))}
+            </Picker>
+          </View>
+        </>
+      )}
+
+      <SectionHeader icon="message-circle" title={t('referFriend.additionalInfo')} />
+      <View style={[styles.sectionDivider, { backgroundColor: colors.border }]} />
+
+      <View style={styles.fieldBlock}>
+        <TextInput
+          style={[inputStyle(), styles.remarksInput]}
+          placeholder={t('referFriend.remarks')}
+          value={formData.remarks}
+          onChangeText={v => handleInputChange('remarks', v)}
+          multiline
+          numberOfLines={4}
+          textAlignVertical="top"
+          placeholderTextColor={colors.textSecondary}
+        />
+        <Text style={[styles.privacyNote, { color: colors.textSecondary }]}>
+          <Text style={styles.noteBold}>{t('referFriend.noteLabel')} </Text>
+          {t('referFriend.privacyNote')}
+        </Text>
+      </View>
+
+      <TouchableOpacity
+        style={[styles.submitButton, { backgroundColor: colors.primary }, isSubmitting && styles.submitDisabled]}
+        onPress={handleSubmit}
+        disabled={isSubmitting}
+        activeOpacity={0.85}
+      >
+        {isSubmitting ? (
+          <ActivityIndicator color="#FFFFFF" />
+        ) : (
+          <Text style={styles.submitButtonText}>{t('referFriend.submit')}</Text>
+        )}
+      </TouchableOpacity>
+    </>
+  );
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <CommonHeader navigation={navigation} />
+      {isMicroscan ? (
+        <View style={styles.microscanHeader}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.microscanBackButton}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+          >
+            <Feather name="chevron-left" size={28} color={colors.text} />
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <CommonHeader navigation={navigation} />
+      )}
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -498,208 +852,88 @@ const ReferFriendScreen = ({ navigation }: any) => {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.headingContainer}>
-            <Text style={[styles.pageHeading, { color: colors.text }]}>{t('referFriend.title')}</Text>
+            <Text
+              style={[
+                styles.pageHeading,
+                { color: isMicroscan ? colors.primary : colors.text },
+              ]}
+            >
+              {t('referFriend.title')}
+            </Text>
             <Text style={[styles.pageSubheading, { color: colors.textSecondary }]}>
-              {t('referFriend.subtitle')}
+              {isMicroscan ? t('referFriend.subtitleMicroscan') : t('referFriend.subtitle')}
             </Text>
           </View>
 
           <View style={[styles.formCard, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
             {isPageLoading ? (
               <ActivityIndicator size="large" color={colors.primary} style={styles.pageLoader} />
+            ) : isMicroscan ? (
+              renderMicroscanForm()
             ) : (
-              <>
-                <SectionHeader icon="user" title={t('referFriend.personalDetails')} />
-                <View style={[styles.sectionDivider, { backgroundColor: colors.border }]} />
-
-                <View style={styles.row}>
-                  <View style={[styles.fieldBlock, styles.halfField]}>
-                    <FieldLabel label={t('referFriend.firstName')} required={firstNameRequired} />
-                    <TextInput
-                      style={inputStyle(!!errors.firstName)}
-                      placeholder={t('referFriend.firstName')}
-                      value={formData.firstName}
-                      onChangeText={v => handleInputChange('firstName', v)}
-                      placeholderTextColor={colors.textSecondary}
-                    />
-                    {errors.firstName ? <Text style={styles.errorText}>{errors.firstName}</Text> : null}
-                  </View>
-                  <View style={[styles.fieldBlock, styles.halfField]}>
-                    <FieldLabel label={t('referFriend.lastName')} required={lastNameRequired} />
-                    <TextInput
-                      style={inputStyle(!!errors.lastName)}
-                      placeholder={t('referFriend.lastName')}
-                      value={formData.lastName}
-                      onChangeText={v => handleInputChange('lastName', v)}
-                      placeholderTextColor={colors.textSecondary}
-                    />
-                    {errors.lastName ? <Text style={styles.errorText}>{errors.lastName}</Text> : null}
-                  </View>
-                </View>
-
-                <View style={styles.row}>
-                  <View style={[styles.fieldBlock, styles.halfField]}>
-                    <FieldLabel label={t('referFriend.mobileNumber')} required={mobileNumberRequired} />
-                    <TextInput
-                      style={inputStyle(!!errors.mobileNumber)}
-                      placeholder={t('referFriend.mobileNumber')}
-                      value={formData.mobileNumber}
-                      onChangeText={v => handleInputChange('mobileNumber', v)}
-                      keyboardType="phone-pad"
-                      maxLength={10}
-                      placeholderTextColor={colors.textSecondary}
-                    />
-                    {errors.mobileNumber ? <Text style={styles.errorText}>{errors.mobileNumber}</Text> : null}
-                  </View>
-                  <View style={[styles.fieldBlock, styles.halfField]}>
-                    <FieldLabel label={t('referFriend.altPhone')} />
-                    <TextInput
-                      style={inputStyle()}
-                      placeholder={t('referFriend.altPhone')}
-                      value={formData.altPhone}
-                      onChangeText={v => handleInputChange('altPhone', v)}
-                      keyboardType="phone-pad"
-                      maxLength={10}
-                      placeholderTextColor={colors.textSecondary}
-                    />
-                  </View>
-                </View>
-
-                <View style={styles.fieldBlock}>
-                  <FieldLabel label={t('referFriend.email')} required={emailRequired} />
-                  <TextInput
-                    style={inputStyle(!!errors.email)}
-                    placeholder={t('referFriend.email')}
-                    value={formData.email}
-                    onChangeText={v => handleInputChange('email', v)}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    placeholderTextColor={colors.textSecondary}
-                  />
-                  {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
-                </View>
-
-                <SectionHeader icon="map-pin" title={t('referFriend.installationAddress')} />
-                <View style={[styles.sectionDivider, { backgroundColor: colors.border }]} />
-
-                <View style={styles.fieldBlock}>
-                  <FieldLabel label={t('referFriend.address1')} required={address1Required} />
-                  <TextInput
-                    style={inputStyle(!!errors.address1)}
-                    placeholder={t('referFriend.address1')}
-                    value={formData.address1}
-                    onChangeText={v => handleInputChange('address1', v)}
-                    placeholderTextColor={colors.textSecondary}
-                  />
-                  {errors.address1 ? <Text style={styles.errorText}>{errors.address1}</Text> : null}
-                </View>
-
-                {showBuildingField ? <BuildingSelector /> : null}
-
-                {showAreaField || showLocationField ? (
-                  <View style={styles.row}>
-                    {showAreaField ? (
-                      <View style={[styles.fieldBlock, addressFieldWidthStyle]}>
-                        <FieldLabel label={t('referFriend.area')} required />
-                        <TextInput
-                          style={inputStyle(!!errors.area)}
-                          placeholder={t('referFriend.area')}
-                          value={formData.area}
-                          onChangeText={v => handleInputChange('area', v)}
-                          placeholderTextColor={colors.textSecondary}
-                        />
-                        {errors.area ? <Text style={styles.errorText}>{errors.area}</Text> : null}
-                      </View>
-                    ) : null}
-                    {showLocationField ? (
-                      <View style={[styles.fieldBlock, addressFieldWidthStyle]}>
-                        <FieldLabel label={t('referFriend.landmark')} required />
-                        <TextInput
-                          style={inputStyle(!!errors.location)}
-                          placeholder={t('referFriend.landmark')}
-                          value={formData.location}
-                          onChangeText={v => handleInputChange('location', v)}
-                          placeholderTextColor={colors.textSecondary}
-                        />
-                        {errors.location ? <Text style={styles.errorText}>{errors.location}</Text> : null}
-                      </View>
-                    ) : null}
-                  </View>
-                ) : null}
-
-                <View style={styles.row}>
-                  <CitySelector />
-                  <View style={[styles.fieldBlock, styles.halfField]}>
-                    <FieldLabel label={t('referFriend.pincode')} required={pincodeRequired} />
-                    <TextInput
-                      style={inputStyle(!!errors.pincode)}
-                      placeholder={t('referFriend.pincode')}
-                      value={formData.pincode}
-                      onChangeText={v => handleInputChange('pincode', v)}
-                      keyboardType="numeric"
-                      maxLength={6}
-                      placeholderTextColor={colors.textSecondary}
-                    />
-                    {errors.pincode ? <Text style={styles.errorText}>{errors.pincode}</Text> : null}
-                  </View>
-                </View>
-
-                {showSalesExec && (
-                  <>
-                    <SectionHeader icon="briefcase" title={t('referFriend.salesExecutive')} />
-                    <View style={[styles.sectionDivider, { backgroundColor: colors.border }]} />
-                    <View style={[styles.salesPickerContainer, { borderColor: colors.border }]}>
-                      <Picker
-                        selectedValue={formData.salesPerson}
-                        onValueChange={v => handleInputChange('salesPerson', v)}
-                        style={{ color: colors.text }}
-                      >
-                        <Picker.Item label={t('referFriend.selectSalesExecutive')} value="" />
-                        {salesPersons.map(person => (
-                          <Picker.Item key={person.value} label={person.label} value={person.value} />
-                        ))}
-                      </Picker>
-                    </View>
-                  </>
-                )}
-
-                <SectionHeader icon="message-circle" title={t('referFriend.additionalInfo')} />
-                <View style={[styles.sectionDivider, { backgroundColor: colors.border }]} />
-
-                <View style={styles.fieldBlock}>
-                  <TextInput
-                    style={[inputStyle(), styles.remarksInput]}
-                    placeholder={t('referFriend.remarks')}
-                    value={formData.remarks}
-                    onChangeText={v => handleInputChange('remarks', v)}
-                    multiline
-                    numberOfLines={4}
-                    textAlignVertical="top"
-                    placeholderTextColor={colors.textSecondary}
-                  />
-                  <Text style={[styles.privacyNote, { color: colors.textSecondary }]}>
-                    <Text style={styles.noteBold}>{t('referFriend.noteLabel')} </Text>
-                    {t('referFriend.privacyNote')}
-                  </Text>
-                </View>
-
-                <TouchableOpacity
-                  style={[styles.submitButton, { backgroundColor: colors.primary }, isSubmitting && styles.submitDisabled]}
-                  onPress={handleSubmit}
-                  disabled={isSubmitting}
-                  activeOpacity={0.85}
-                >
-                  {isSubmitting ? (
-                    <ActivityIndicator color="#FFFFFF" />
-                  ) : (
-                    <Text style={styles.submitButtonText}>{t('referFriend.submit')}</Text>
-                  )}
-                </TouchableOpacity>
-              </>
+              renderDefaultForm()
             )}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      <Modal
+        visible={showCityDropdown}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowCityDropdown(false)}
+      >
+        <Pressable style={styles.cityModalOverlay} onPress={() => setShowCityDropdown(false)}>
+          <Pressable
+            style={[styles.cityModalSheet, { backgroundColor: colors.card }]}
+            onPress={e => e.stopPropagation()}
+          >
+            <View style={[styles.cityModalHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.cityModalTitle, { color: colors.text }]}>
+                {t('referFriend.selectCity')}
+              </Text>
+              <TouchableOpacity
+                onPress={() => setShowCityDropdown(false)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Feather name="x" size={22} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={cities}
+              keyExtractor={item => String(item.value)}
+              keyboardShouldPersistTaps="handled"
+              style={styles.cityModalList}
+              renderItem={({ item }) => {
+                const selected = formData.city === item.value;
+                return (
+                  <TouchableOpacity
+                    style={[
+                      styles.cityModalItem,
+                      { borderBottomColor: colors.border },
+                      selected && { backgroundColor: isDark ? '#1F2937' : '#F3F4F6' },
+                    ]}
+                    onPress={() => {
+                      handleInputChange('city', item.value);
+                      handleInputChange('city_name', item.label);
+                      setShowCityDropdown(false);
+                      setErrors(prev => ({ ...prev, city: '' }));
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={{ color: colors.text, fontSize: 15, flex: 1 }}>{item.label}</Text>
+                    {selected ? <Feather name="check" size={18} color={colors.primary} /> : null}
+                  </TouchableOpacity>
+                );
+              }}
+              ListEmptyComponent={
+                <Text style={[styles.cityModalEmpty, { color: colors.textSecondary }]}>
+                  {t('referFriend.noBuildingsFound')}
+                </Text>
+              }
+            />
+          </Pressable>
+        </Pressable>
+      </Modal>
       <ActiveTicketModal
         visible={!!resultModal}
         variant={resultModal?.variant}
@@ -717,6 +951,17 @@ const ReferFriendScreen = ({ navigation }: any) => {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   flex: { flex: 1 },
+  microscanHeader: {
+    paddingHorizontal: 8,
+    paddingTop: 4,
+    paddingBottom: 0,
+  },
+  microscanBackButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   headingContainer: {
     paddingHorizontal: 20,
     paddingTop: 20,
@@ -798,6 +1043,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     minHeight: 48,
   },
+  microscanInput: {
+    fontSize: 12,
+    paddingHorizontal: 10,
+  },
+  microscanSelectText: {
+    fontSize: 12,
+  },
   inputError: {
     borderColor: '#EF4444',
   },
@@ -871,6 +1123,47 @@ const styles = StyleSheet.create({
     elevation: 8,
     marginTop: 4,
     overflow: 'hidden',
+  },
+  dropdownScroll: {
+    maxHeight: 200,
+  },
+  cityModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  cityModalSheet: {
+    height: '70%',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    overflow: 'hidden',
+  },
+  cityModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  cityModalTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  cityModalList: {
+    flex: 1,
+  },
+  cityModalItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  cityModalEmpty: {
+    textAlign: 'center',
+    paddingVertical: 24,
+    fontSize: 14,
   },
   dropdownItem: {
     padding: 12,

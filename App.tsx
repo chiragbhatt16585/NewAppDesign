@@ -566,14 +566,14 @@ const SafeLanguageProvider = ({ children }: { children: ReactNode }) => {
 };
 
 const SafeAuthProvider = ({ children }: { children: ReactNode }) => {
+  // Do NOT fall back to bare {children} — screens call useAuth / useAuthData
+  // and will crash if rendered outside these providers.
   return (
-    <ErrorBoundary fallback={<>{children}</>}>
+    <ErrorBoundary>
       <AuthProvider>
-        <ErrorBoundary fallback={<>{children}</>}>
-          <AuthDataProvider>
-            {children}
-          </AuthDataProvider>
-        </ErrorBoundary>
+        <AuthDataProvider>
+          {children}
+        </AuthDataProvider>
       </AuthProvider>
     </ErrorBoundary>
   );

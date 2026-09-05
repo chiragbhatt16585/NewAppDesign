@@ -60,7 +60,14 @@ export const AuthDataProvider: React.FC<{ children: ReactNode }> = ({ children }
 export const useAuthData = () => {
   const context = useContext(AuthDataContext);
   if (context === undefined) {
-    throw new Error('useAuthData must be used within an AuthDataProvider');
+    // Avoid hard-crashing the tree (e.g. ErrorBoundary fallback without provider).
+    if (__DEV__) {
+      console.error('useAuthData must be used within an AuthDataProvider');
+    }
+    return {
+      authData: null,
+      setAuthData: () => {},
+    };
   }
   return context;
 };
