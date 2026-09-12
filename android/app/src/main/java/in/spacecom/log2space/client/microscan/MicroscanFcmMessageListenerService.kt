@@ -1,4 +1,4 @@
-package PACKAGE_PLACEHOLDER
+package `in`.spacecom.log2space.client.microscan
 
 import android.os.Bundle
 import android.util.Log

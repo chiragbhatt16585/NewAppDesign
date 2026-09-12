@@ -165,5 +165,8 @@
 	<array>
 		<string>remote-notification</string>
 	</array>
+	<!-- Prevent CleverTap from using IDFV as CleverTap ID (avoids bad profile merges on reinstall) -->
+	<key>CleverTapDisableIDFV</key>
+	<true/>
 </dict>
 </plist> 

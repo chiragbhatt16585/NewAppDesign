@@ -17,7 +17,8 @@ let pendingToken: string | null = null
 
 /**
  * Microscan: CleverTap-only push (no RN PushNotification / ISP backend registration).
- * Gets FCM token, registers it with CleverTap, creates CT channels + listeners.
+ * Android: requests POST_NOTIFICATIONS once, registers FCM token with CleverTap.
+ * iOS: permission + APNs token are handled only in AppDelegate (avoids double popup / FCM on iOS).
  */
 export async function initializeCleverTapOnlyPush(): Promise<void> {
   if (!isCleverTapEnabled()) {
@@ -35,29 +36,17 @@ export async function initializeCleverTapOnlyPush(): Promise<void> {
   console.log('[Push][CleverTap] initializeCleverTapOnlyPush start')
 
   try {
-    try {
-      if (Platform.OS === 'ios') {
-        try {
-          await messaging().registerDeviceForRemoteMessages()
-        } catch {}
-      }
-    } catch {}
+    if (Platform.OS === 'android') {
+      await requestNotificationPermissions()
 
-    await requestNotificationPermissions()
+      try {
+        if (!firebase.apps || firebase.apps.length === 0) {
+          initializeFirebase()
+        }
+        await waitForFirebaseAppReady(7000, 200)
+      } catch {}
 
-    try {
-      if (!firebase.apps || firebase.apps.length === 0) {
-        initializeFirebase()
-      }
-      await waitForFirebaseAppReady(7000, 200)
-    } catch {}
-
-    try {
-      await messaging().requestPermission()
-      // Android: CleverTap needs the FCM token via setFCMPushTokenAsString.
-      // iOS: CleverTap sends via APNs — token is set in AppDelegate.setPushToken.
-      // Do NOT call setFCMPushTokenAsString on iOS; an FCM token overwrite causes APNSBadDeviceToken.
-      if (Platform.OS === 'android') {
+      try {
         const fcmToken = await messaging().getToken()
         // eslint-disable-next-line no-console
         console.log(
@@ -80,15 +69,15 @@ export async function initializeCleverTapOnlyPush(): Promise<void> {
           lastRegisteredToken = newToken
           setCleverTapFcmToken(newToken)
         })
-      } else {
+      } catch (e) {
         // eslint-disable-next-line no-console
-        console.log(
-          '[Push][CleverTap] iOS: skipping FCM token — using APNs token from AppDelegate',
-        )
+        console.warn('[Push][CleverTap] FCM token setup failed', e)
       }
-    } catch (e) {
+    } else {
       // eslint-disable-next-line no-console
-      console.warn('[Push][CleverTap] FCM token setup failed', e)
+      console.log(
+        '[Push][CleverTap] iOS: skipping JS permission + FCM — AppDelegate handles APNs',
+      )
     }
 
     initializeCleverTapPush()
@@ -380,8 +369,11 @@ export function showLocalNotification(title: string, message: string): void {
 }
 
 export async function registerPendingPushToken(realm?: string): Promise<boolean> {
-  // Microscan: CleverTap-only — refresh FCM token with CleverTap, skip ISP backend
+  // Microscan: CleverTap-only — FCM token is Android-only (iOS uses APNs from AppDelegate)
   if (isCleverTapEnabled()) {
+    if (Platform.OS !== 'android') {
+      return true
+    }
     try {
       const token = pendingToken || (await messaging().getToken())
       if (token) {

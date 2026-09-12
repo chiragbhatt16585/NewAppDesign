@@ -9,7 +9,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:000000000000:android:placeholderlog2spacecommon",
         "android_client_info": {
-          "package_name": "in.spacecom.log2space.user"
+          "package_name": "com.spacecom.log2space.enduser"
         }
       },
       "oauth_client": [],

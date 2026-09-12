@@ -2,7 +2,9 @@ package PACKAGE_PLACEHOLDER
 
 import android.content.pm.PackageManager
 import android.util.Log
+import com.clevertap.android.pushtemplates.PushTemplateNotificationHandler
 import com.clevertap.android.sdk.CleverTapAPI
+import com.clevertap.android.sdk.interfaces.NotificationHandler
 import com.clevertap.react.CleverTapApplication
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
@@ -29,6 +31,8 @@ class MainApplication : CleverTapApplication(), ReactApplication {
     get() = getDefaultReactHost(applicationContext, reactNativeHost)
 
   override fun onCreate() {
+    // Rich push templates + image rendering (must be set before CleverTap init)
+    CleverTapAPI.setNotificationHandler(PushTemplateNotificationHandler() as NotificationHandler)
     super.onCreate()
     logCleverTapNativeCredentials()
     // Ensure CleverTap default instance exists before any FCM delivery thread runs.

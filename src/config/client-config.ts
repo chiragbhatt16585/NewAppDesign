@@ -825,7 +825,7 @@ const clientConfigs: Record<string, ClientConfig> = {
       enabled: false, // No version check for log2space-common (dynamic domain)
       checkInterval: 24,
       forceUpdateEnabled: false,
-      packageName: 'in.spacecom.log2space.user',
+      packageName: 'com.spacecom.log2space.enduser',
       appStoreId: undefined,
     },
   },

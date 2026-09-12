@@ -88,7 +88,7 @@ const clientConfigs: Record<string, ClientConfig> = {
     website: 'https://spacecom.in',
     poweredBy: 'Spacecom Software LLP',
     poweredByWebsite: 'https://spacecom.in',
-    bundleId: 'in.spacecom.log2space.user',
+    bundleId: 'com.spacecom.log2space.enduser',
   },
   netfix: {
     name: 'Netfix',

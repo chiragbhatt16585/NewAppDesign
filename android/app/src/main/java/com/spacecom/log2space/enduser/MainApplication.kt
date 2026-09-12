@@ -1,4 +1,4 @@
-package `in`.spacecom.log2space.user
+package com.spacecom.log2space.enduser
 
 import android.app.Application
 import com.facebook.react.PackageList

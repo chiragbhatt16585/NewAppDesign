@@ -173,11 +173,11 @@ const CLIENTS = {
   },
   'log2space-common': {
     name: 'Log2space',
-    packageName: 'in.spacecom.log2space.user',
-    namespace: 'in.spacecom.log2space.user',
-    versionCode: 14,
-    versionName: '1.0.14',
-    keystore: 'log2space.jks',
+    packageName: 'com.spacecom.log2space.enduser',
+    namespace: 'com.spacecom.log2space.enduser',
+    versionCode: 1,
+    versionName: '1',
+    keystore: 'Log2SpaceEndUser.jks',
     configDir: 'config/log2space-common',
   },
   skynetwifi: {
@@ -987,7 +987,9 @@ function injectCleverTapInfoPlist(plistContent, config) {
   let content = plistContent
     .replace(/\t<key>CleverTapAccountID<\/key>\s*<string>[^<]*<\/string>\s*/g, '')
     .replace(/\t<key>CleverTapToken<\/key>\s*<string>[^<]*<\/string>\s*/g, '')
-    .replace(/\t<key>CleverTapRegion<\/key>\s*<string>[^<]*<\/string>\s*/g, '');
+    .replace(/\t<key>CleverTapRegion<\/key>\s*<string>[^<]*<\/string>\s*/g, '')
+    .replace(/\t<!-- Prevent CleverTap from using IDFV[\s\S]*?-->\s*/g, '')
+    .replace(/\t<key>CleverTapDisableIDFV<\/key>\s*<(true|false)\/>\s*/g, '');
 
   if (!config?.accountId) {
     return content;
@@ -999,6 +1001,9 @@ function injectCleverTapInfoPlist(plistContent, config) {
 \t<string>${config.token || ''}</string>
 \t<key>CleverTapRegion</key>
 \t<string>${config.region || 'in1'}</string>
+\t<!-- Prevent CleverTap from using IDFV as CleverTap ID (avoids bad profile merges on reinstall) -->
+\t<key>CleverTapDisableIDFV</key>
+\t<true/>
 `;
 
   return content.replace(/(\s*)<\/dict>\s*<\/plist>/, `${block}$1</dict>\n</plist>`);
@@ -1181,15 +1186,28 @@ class ReactNativeDelegate`,
 
   func registerForPush() {
     UNUserNotificationCenter.current().delegate = self
-    UNUserNotificationCenter.current().requestAuthorization(options: [.sound, .badge, .alert]) { granted, error in
-      if let error {
-        print("[CleverTap] Push authorization error: \\(error.localizedDescription)")
-      }
-      print("[CleverTap] Push authorization granted: \\(granted)")
-      if granted {
+    // Request system permission only once (when status is .notDetermined).
+    // JS/CleverTap must not also call requestAuthorization / promptForPushPermission.
+    UNUserNotificationCenter.current().getNotificationSettings { settings in
+      switch settings.authorizationStatus {
+      case .notDetermined:
+        UNUserNotificationCenter.current().requestAuthorization(options: [.sound, .badge, .alert]) { granted, error in
+          if let error {
+            print("[CleverTap] Push authorization error: \\(error.localizedDescription)")
+          }
+          print("[CleverTap] Push authorization granted: \\(granted)")
+          if granted {
+            DispatchQueue.main.async {
+              UIApplication.shared.registerForRemoteNotifications()
+            }
+          }
+        }
+      case .authorized, .provisional, .ephemeral:
         DispatchQueue.main.async {
           UIApplication.shared.registerForRemoteNotifications()
         }
+      default:
+        print("[CleverTap] Push authorization status: \\(settings.authorizationStatus.rawValue)")
       }
     }
   }
@@ -1228,7 +1246,7 @@ class ReactNativeDelegate`,
   ) {
     let userInfo = notification.request.content.userInfo
     print("[CleverTap] willPresent notification: \\(userInfo)")
-    CleverTap.sharedInstance()?.recordNotificationViewedEvent(withData: userInfo)
+    // Push Impressions are recorded in NotificationService (NSE).
     if #available(iOS 14.0, *) {
       completionHandler([.banner, .list, .sound, .badge])
     } else {
@@ -1263,6 +1281,65 @@ class ReactNativeDelegate`,
   fs.writeFileSync(appDelegatePath, content);
   logSuccess('Enabled CleverTap initialization in AppDelegate.swift');
 }
+
+function syncCleverTapNotificationServicePlist(clientId) {
+  const nsePlistPath = path.join(__dirname, '..', 'ios', 'NotificationService', 'Info.plist');
+  if (!fs.existsSync(nsePlistPath)) {
+    return;
+  }
+
+  let content = fs.readFileSync(nsePlistPath, 'utf8');
+  content = content
+    .replace(/\t<key>CleverTapAccountID<\/key>\s*<string>[^<]*<\/string>\s*/g, '')
+    .replace(/\t<key>CleverTapToken<\/key>\s*<string>[^<]*<\/string>\s*/g, '')
+    .replace(/\t<key>CleverTapRegion<\/key>\s*<string>[^<]*<\/string>\s*/g, '')
+    .replace(/\t<key>CleverTapDisableIDFV<\/key>\s*<(true|false)\/>\s*/g, '');
+
+  const config = isMicroscanFamily(clientId) ? loadCleverTapConfig(CLIENTS[clientId].configDir) : null;
+  if (config?.accountId) {
+    const block = `\t<key>CleverTapAccountID</key>
+\t<string>${config.accountId}</string>
+\t<key>CleverTapToken</key>
+\t<string>${config.token || ''}</string>
+\t<key>CleverTapRegion</key>
+\t<string>${config.region || 'in1'}</string>
+\t<key>CleverTapDisableIDFV</key>
+\t<true/>
+`;
+    content = content.replace(/(\s*)<\/dict>\s*<\/plist>/, `${block}$1</dict>\n</plist>`);
+    logSuccess('Synced CleverTap credentials into NotificationService Info.plist');
+  } else {
+    log('Cleared CleverTap credentials from NotificationService Info.plist (non-Microscan)', 'yellow');
+  }
+
+  fs.writeFileSync(nsePlistPath, content);
+
+  // Keep NSE bundle id prefixed with the active iOS app bundle id (App Store requirement)
+  try {
+    const buildConfigPath = path.join(__dirname, '..', CLIENTS[clientId].configDir, 'build-config.json');
+    let iosBundleId = 'com.l2sClient.microscan';
+    if (fs.existsSync(buildConfigPath)) {
+      const buildConfig = JSON.parse(fs.readFileSync(buildConfigPath, 'utf8'));
+      iosBundleId =
+        buildConfig?.ios?.bundleIdentifier ||
+        buildConfig?.bundleIdentifier ||
+        iosBundleId;
+    }
+    const nseBundleId = `${iosBundleId}.NotificationService`;
+    const pbx = path.join(__dirname, '..', 'ios', 'ISPApp.xcodeproj', 'project.pbxproj');
+    let pbxContent = fs.readFileSync(pbx, 'utf8');
+    pbxContent = pbxContent.replace(
+      /(INFOPLIST_FILE = NotificationService\/Info\.plist;[\s\S]*?PRODUCT_BUNDLE_IDENTIFIER = )[^;]+(;)/g,
+      `$1${nseBundleId}$2`,
+    );
+    fs.writeFileSync(pbx, pbxContent);
+    logSuccess(`NotificationService bundle id -> ${nseBundleId}`);
+  } catch (e) {
+    logWarning(`Failed to sync NotificationService bundle id: ${e.message}`);
+  }
+}
+
+
 
 // Update iOS AppDelegate
 function updateIOSAppDelegate(clientId) {
@@ -1566,6 +1643,7 @@ function main() {
         updateAndroidBuildGradle(clientId);
         updateIOSAppDelegate(clientId);
         updateIOSAppDelegateCleverTap(clientId);
+        syncCleverTapNotificationServicePlist(clientId);
         updateAndroidManifestCleverTap(clientId);
         updateAndroidMainActivity(clientId);
         logSuccess(`Configuration switched to ${CLIENTS[clientId].name}`);
@@ -1582,6 +1660,7 @@ function main() {
         updateAndroidBuildGradle(clientId);
         updateIOSAppDelegate(clientId);
         updateIOSAppDelegateCleverTap(clientId);
+        syncCleverTapNotificationServicePlist(clientId);
         updateAndroidManifestCleverTap(clientId);
         updateAndroidMainActivity(clientId);
         buildAPK(clientId);
@@ -1597,6 +1676,7 @@ function main() {
             updateAndroidBuildGradle(client);
             updateIOSAppDelegate(client);
             updateIOSAppDelegateCleverTap(client);
+            syncCleverTapNotificationServicePlist(client);
             updateAndroidManifestCleverTap(client);
             updateAndroidMainActivity(client);
             buildAPK(client);

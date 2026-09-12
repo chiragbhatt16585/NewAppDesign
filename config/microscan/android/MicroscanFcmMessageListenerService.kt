@@ -10,6 +10,7 @@ import com.google.firebase.messaging.RemoteMessage
 /**
  * CleverTap test campaigns include a TEST- prefix in wzrk_acct_id, but the SDK registers
  * the default instance without that prefix. Normalize before rendering push notifications.
+ * Also records Push Impressions after the notification is rendered.
  */
 class MicroscanFcmMessageListenerService : FirebaseMessagingService() {
   private val handler = CTFcmMessageHandler()
@@ -22,6 +23,8 @@ class MicroscanFcmMessageListenerService : FirebaseMessagingService() {
       val info = CleverTapAPI.getNotificationInfo(bundle)
       if (info.fromCleverTap) {
         CleverTapAPI.createNotification(applicationContext, bundle)
+        // createNotification + PushTemplateNotificationHandler raise Push Impressions
+        // when enabled in CleverTap dashboard (Settings → Schema → Push Impressions).
         Log.d(TAG, "Rendered CleverTap notification: ${bundle.getString("nt")}")
         return
       }

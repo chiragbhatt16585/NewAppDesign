@@ -801,15 +801,17 @@ const applyCleverTapProfileSet = (
   }
 
   // CleverTap only accepts Identity via onUserLogin — profileSet drops it.
+  // Always push Identity as a string so Android/iOS profiles stay identified.
   const identifiedProfile = {
     ...profile,
-    Identity: identity,
-    username: identity,
+    Identity: String(identity),
+    username: String(identity),
   };
 
   console.log(
     `[CleverTap] ${source} => onUserLogin with Identity + profile`,
     JSON.stringify(identifiedProfile),
+    {platform: Platform.OS},
   );
   cleverTap.onUserLogin(identifiedProfile);
 
@@ -937,8 +939,8 @@ const logAuthFieldsUsed = (
   });
 };
 
-/** Register CleverTap user identity immediately after login. */
-export const registerCleverTapUserOnLogin = (username: string): void => {
+/** Register CleverTap user identity immediately after login. Retries if native module is not ready yet (common on Android cold start). */
+export const registerCleverTapUserOnLogin = (username: string, attempt = 0): void => {
   if (!isCleverTapEnabled()) {
     logCleverTapDebug('onUserLogin skipped', {
       reason: 'CleverTap disabled (not microscan build)',
@@ -946,24 +948,37 @@ export const registerCleverTapUserOnLogin = (username: string): void => {
     return;
   }
 
+  const identity = clean(username);
+  if (!identity) {
+    logCleverTapDebug('onUserLogin skipped', {reason: 'empty username'});
+    return;
+  }
+
   const cleverTap = getCleverTap();
   if (!cleverTap) {
+    if (attempt < 8) {
+      logCleverTapDebug('onUserLogin deferred', {
+        reason: 'CleverTap SDK not available yet',
+        attempt,
+        identity,
+      });
+      setTimeout(() => registerCleverTapUserOnLogin(identity, attempt + 1), 400);
+      return;
+    }
     logCleverTapDebug('onUserLogin skipped', {
-      reason: 'CleverTap SDK not available',
+      reason: 'CleverTap SDK not available after retries',
+      identity,
     });
     return;
   }
 
   try {
-    const identity = clean(username);
-    if (!identity) {
-      return;
-    }
-
-    const profile = {Identity: identity, username: identity};
+    // Identity must be a string and must go through onUserLogin (profileSet drops it).
+    const profile = {Identity: String(identity), username: String(identity)};
     console.log(
       '[CleverTap] onUserLogin => sending Identity',
       JSON.stringify(profile),
+      {platform: Platform.OS, attempt},
     );
     cleverTap.onUserLogin(profile);
     logCleverTapId(cleverTap, 'onUserLogin');
@@ -979,6 +994,7 @@ export const registerCleverTapUserOnLogin = (username: string): void => {
 export const syncCleverTapWithAuthUser = (
   username: string,
   authData: Record<string, unknown> | null | undefined,
+  attempt = 0,
 ): void => {
   if (!isCleverTapEnabled()) {
     logCleverTapDebug('authUser sync skipped', {
@@ -987,10 +1003,21 @@ export const syncCleverTapWithAuthUser = (
     return;
   }
 
-  const cleverTap = getCleverTap();
-  if (!cleverTap || !authData) {
+  if (!authData) {
     logCleverTapDebug('authUser sync skipped', {
-      reason: !cleverTap ? 'CleverTap SDK not available' : 'authUser response missing',
+      reason: 'authUser response missing',
+    });
+    return;
+  }
+
+  const cleverTap = getCleverTap();
+  if (!cleverTap) {
+    if (attempt < 8) {
+      setTimeout(() => syncCleverTapWithAuthUser(username, authData, attempt + 1), 400);
+      return;
+    }
+    logCleverTapDebug('authUser sync skipped', {
+      reason: 'CleverTap SDK not available after retries',
     });
     return;
   }
@@ -1006,7 +1033,7 @@ export const syncCleverTapWithAuthUser = (
       return;
     }
 
-    applyCleverTapProfileSet(cleverTap, authData, username, 'authUser sync');
+    applyCleverTapProfileSet(cleverTap, authData, String(identity), 'authUser sync');
   } catch (error) {
     logCleverTapDebug('authUser sync failed', {
       error: error instanceof Error ? error.message : String(error),
@@ -1181,29 +1208,13 @@ export const initializeCleverTapPush = (): void => {
       });
     }
 
-    if (Platform.OS === 'ios' && typeof cleverTap.registerForPush === 'function') {
-      cleverTap.registerForPush();
-      logCleverTapDebug('registerForPush', { platform: 'ios' });
-    }
-
-    // Android 13+ / iOS: request permission only if not already granted
-    // (docs: promptForPushPermission / isPushPermissionGranted)
-    if (typeof cleverTap.isPushPermissionGranted === 'function') {
-      cleverTap.isPushPermissionGranted((err, granted) => {
-        logCleverTapDebug('isPushPermissionGranted', {
-          granted,
-          error: err ? String(err) : null,
-        });
-        if (!granted && typeof cleverTap.promptForPushPermission === 'function') {
-          cleverTap.promptForPushPermission(false);
-        }
-      });
-    } else if (typeof cleverTap.promptForPushPermission === 'function') {
-      cleverTap.promptForPushPermission(false);
-    }
+    // iOS push permission is requested once in AppDelegate.registerForPush.
+    // Android 13+ permission is requested once in notificationService.requestNotificationPermissions.
+    // Do NOT call registerForPush / promptForPushPermission here — that causes a double system popup.
 
     logCleverTapDebug('initializeCleverTapPush complete', {
       platform: Platform.OS,
+      note: 'Permission handled natively (iOS AppDelegate) or via PermissionsAndroid (Android)',
     });
   } catch (error) {
     cleverTapPushInitialized = false;

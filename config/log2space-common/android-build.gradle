@@ -14,13 +14,13 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "in.spacecom.log2space.user"
+    namespace "com.spacecom.log2space.enduser"
     defaultConfig {
-        applicationId "in.spacecom.log2space.user"
+        applicationId "com.spacecom.log2space.enduser"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 14
-        versionName "1.0.14"
+        versionCode 1
+        versionName "1"
         buildConfigField "boolean", "IS_NEW_ARCHITECTURE_ENABLED", "false"
     }
     
@@ -32,9 +32,9 @@ android {
             keyPassword 'android'
         }
         release {
-                storeFile file('log2space.jks')
+            storeFile file('Log2SpaceEndUser.jks')
             storePassword 'log2space'
-            keyAlias 'log2space-common'
+            keyAlias 'log2space'
             keyPassword 'log2space'
         }
     }

@@ -11,25 +11,55 @@
 		106B55022F68097D00F8C727 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 106B55012F68097D00F8C727 /* GoogleService-Info.plist */; };
 		6B3437EE31F41DFA6A621A39 /* libPods-Spacecom End User App.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C2426C2995933B31BA7C9163 /* libPods-Spacecom End User App.a */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
+		77C54DB78B4D464B0B9A106C /* NotificationService.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B51B63136AA047F416349E43 /* NotificationService.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		8670C44E7F6F751BD4C0B00C /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75A912395EB0FE86C25C6893 /* NotificationService.swift */; };
 		A6A1A9FEE29649983A95CBB1 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
+		BA11B744C96F0F2EFDB7902A /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 82B074106AB8148E61C7A0E5 /* Foundation.framework */; };
+		F5BE9F3DA869FC2E35D98AF5 /* libPods-NotificationService.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 25CFBA43A409B4E35D4B4D69 /* libPods-NotificationService.a */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		517C67A0B302A9E7B7585069 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 83CBB9F71A601CBA00E9B192 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 57454264AC1BB0826B624A4F;
+			remoteInfo = NotificationService;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		5FAD44F0160149DAA861B371 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				77C54DB78B4D464B0B9A106C /* NotificationService.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		031FBF96E4B9469892301289 /* AntDesign.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = AntDesign.ttf; path = "../node_modules/react-native-vector-icons/Fonts/AntDesign.ttf"; sourceTree = "<group>"; };
 		05CFB8C0F0504362BEE6A598 /* security.png */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = security.png; path = "../src/assets/intro-icons/security.png"; sourceTree = "<group>"; };
 		106B55012F68097D00F8C727 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		106B55032F681A2000F8C727 /* Spacecom End User App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Spacecom End User App.entitlements"; sourceTree = "<group>"; };
-		13B07F961A680F5B00A75B9A /* ComcastApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ComcastApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		13B07F961A680F5B00A75B9A /* MonarkBroadbandApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MonarkBroadbandApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = ISPApp/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = ISPApp/Info.plist; sourceTree = "<group>"; };
 		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = ISPApp/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		174CFF3D8B8543B1AAD772AC /* MaterialCommunityIcons.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = MaterialCommunityIcons.ttf; path = "../node_modules/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf"; sourceTree = "<group>"; };
 		18EAD0A2979B4D8CB1787838 /* FontAwesome5_Solid.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = FontAwesome5_Solid.ttf; path = "../node_modules/react-native-vector-icons/Fonts/FontAwesome5_Solid.ttf"; sourceTree = "<group>"; };
 		25CD9DED76E341DFA5D7D4E1 /* isp_logo.png */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = isp_logo.png; path = ../src/assets/isp_logo.png; sourceTree = "<group>"; };
+		25CFBA43A409B4E35D4B4D69 /* libPods-NotificationService.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-NotificationService.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		26BB9CCA90F74AA681AF9B18 /* dna_logo.png */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = dna_logo.png; path = ../src/assets/dna_logo.png; sourceTree = "<group>"; };
 		2D7B0DF2B1924FA68053567B /* Group-60974.webp */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Group-60974.webp"; path = "../src/assets/Group-60974.webp"; sourceTree = "<group>"; };
 		33271BED263A4085A0BA5BBC /* Entypo.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = Entypo.ttf; path = "../node_modules/react-native-vector-icons/Fonts/Entypo.ttf"; sourceTree = "<group>"; };
 		335167EF8FDA42FABC12F2C3 /* isp_logo_old.png */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = isp_logo_old.png; path = ../src/assets/isp_logo_old.png; sourceTree = "<group>"; };
+		35E741595C13A2C3DDCC9BDF /* Pods-NotificationService.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-NotificationService.release.xcconfig"; path = "Target Support Files/Pods-NotificationService/Pods-NotificationService.release.xcconfig"; sourceTree = "<group>"; };
 		3EBC367A61814AB7AC2A126D /* Foundation.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = Foundation.ttf; path = "../node_modules/react-native-vector-icons/Fonts/Foundation.ttf"; sourceTree = "<group>"; };
 		4876842321624544917F7859 /* EvilIcons.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = EvilIcons.ttf; path = "../node_modules/react-native-vector-icons/Fonts/EvilIcons.ttf"; sourceTree = "<group>"; };
 		4A428AEF5082447EA13F3B01 /* wifi.png */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = wifi.png; path = "../src/assets/intro-icons/wifi.png"; sourceTree = "<group>"; };
@@ -42,18 +72,23 @@
 		6DBF3815B8A540EE82D91515 /* 1st-slide-desk.webp */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "1st-slide-desk.webp"; path = "../src/assets/1st-slide-desk.webp"; sourceTree = "<group>"; };
 		71453D3B5FBE407BBD527062 /* FontAwesome6_Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = FontAwesome6_Regular.ttf; path = "../node_modules/react-native-vector-icons/Fonts/FontAwesome6_Regular.ttf"; sourceTree = "<group>"; };
 		7450292C695E49EA80D7CC10 /* microscan_logo.png */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = microscan_logo.png; path = ../src/assets/microscan_logo.png; sourceTree = "<group>"; };
+		75A912395EB0FE86C25C6893 /* NotificationService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = ISPApp/AppDelegate.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = ISPApp/LaunchScreen.storyboard; sourceTree = "<group>"; };
+		82B074106AB8148E61C7A0E5 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		85C4C3DC14894149B5BC6C90 /* FontAwesome5_Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = FontAwesome5_Regular.ttf; path = "../node_modules/react-native-vector-icons/Fonts/FontAwesome5_Regular.ttf"; sourceTree = "<group>"; };
 		8783E1C128314670B2C954DB /* speed.png */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = speed.png; path = "../src/assets/intro-icons/speed.png"; sourceTree = "<group>"; };
 		8AA15FFC36194FC0A6392CCC /* FontAwesome5_Brands.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = FontAwesome5_Brands.ttf; path = "../node_modules/react-native-vector-icons/Fonts/FontAwesome5_Brands.ttf"; sourceTree = "<group>"; };
 		96307CC8369048549C27B268 /* isp_app.png */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = isp_app.png; path = ../src/assets/isp_app.png; sourceTree = "<group>"; };
 		971322E71FAD406FB8648BD1 /* computer.png */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = computer.png; path = "../src/assets/intro-icons/computer.png"; sourceTree = "<group>"; };
+		9D5DCF07EFE330DC28CEA53D /* Pods-NotificationService.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-NotificationService.debug.xcconfig"; path = "Target Support Files/Pods-NotificationService/Pods-NotificationService.debug.xcconfig"; sourceTree = "<group>"; };
 		A1120DC7DA144A3BB493B0F5 /* payment-method.png */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "payment-method.png"; path = "../src/assets/intro-icons/payment-method.png"; sourceTree = "<group>"; };
 		AAB64189F5304506AC2CC20A /* DNA3.jpg */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = DNA3.jpg; path = ../src/assets/DNA3.jpg; sourceTree = "<group>"; };
+		B51B63136AA047F416349E43 /* NotificationService.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; name = NotificationService.appex; path = NotificationService.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		C2426C2995933B31BA7C9163 /* libPods-Spacecom End User App.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-Spacecom End User App.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		C536D5563881DD0C7AD08E85 /* Pods-Spacecom End User App.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Spacecom End User App.debug.xcconfig"; path = "Target Support Files/Pods-Spacecom End User App/Pods-Spacecom End User App.debug.xcconfig"; sourceTree = "<group>"; };
 		D00F62B9353B4B0B860B8036 /* MaterialIcons.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = MaterialIcons.ttf; path = "../node_modules/react-native-vector-icons/Fonts/MaterialIcons.ttf"; sourceTree = "<group>"; };
+		D02C26BC91C044F3B622C35E /* NotificationService-Bridging-Header.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "NotificationService-Bridging-Header.h"; sourceTree = "<group>"; };
 		DCA21F8E8ADE4F3AA8EC4E5E /* FontAwesome6_Solid.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = FontAwesome6_Solid.ttf; path = "../node_modules/react-native-vector-icons/Fonts/FontAwesome6_Solid.ttf"; sourceTree = "<group>"; };
 		DEF7B02F9FCF437986A73454 /* _header_background.png */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = _header_background.png; path = ../src/assets/_header_background.png; sourceTree = "<group>"; };
 		DFA9D7DF8D644C169EAB8B83 /* titleLogo.png */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = titleLogo.png; path = ../src/assets/titleLogo.png; sourceTree = "<group>"; };
@@ -65,6 +100,7 @@
 		ED07B975AB624FAFAFB74FE0 /* SimpleLineIcons.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = SimpleLineIcons.ttf; path = "../node_modules/react-native-vector-icons/Fonts/SimpleLineIcons.ttf"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F371EE46201A4CCCB3325BCB /* Feather.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = Feather.ttf; path = "../node_modules/react-native-vector-icons/Fonts/Feather.ttf"; sourceTree = "<group>"; };
+		F3BB7F359235BF2416870AA8 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		F45B8AB52D6D4B4F9DB6B6A0 /* movie.png */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = movie.png; path = "../src/assets/intro-icons/movie.png"; sourceTree = "<group>"; };
 		FDFD38804F0342988EF10616 /* isp_logo_.png */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = isp_logo_.png; path = ../src/assets/isp_logo_.png; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -75,6 +111,15 @@
 			buildActionMask = 2147483647;
 			files = (
 				6B3437EE31F41DFA6A621A39 /* libPods-Spacecom End User App.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		14D96E466486F80C7409CB5D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BA11B744C96F0F2EFDB7902A /* Foundation.framework in Frameworks */,
+				F5BE9F3DA869FC2E35D98AF5 /* libPods-NotificationService.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -99,8 +144,18 @@
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
 				C2426C2995933B31BA7C9163 /* libPods-Spacecom End User App.a */,
+				6D2BFF642B7ECC65F2F7AABB /* iOS */,
+				25CFBA43A409B4E35D4B4D69 /* libPods-NotificationService.a */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		6D2BFF642B7ECC65F2F7AABB /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				82B074106AB8148E61C7A0E5 /* Foundation.framework */,
+			);
+			name = iOS;
 			sourceTree = "<group>";
 		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
@@ -120,6 +175,7 @@
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
 				BBD78D7AC51CEA395F1C20DB /* Pods */,
 				C75F7F0C6B044C468B9D857E /* Resources */,
+				A6378A07E8A2626FDF4A5C46 /* NotificationService */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -129,9 +185,21 @@
 		83CBBA001A601CBA00E9B192 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				13B07F961A680F5B00A75B9A /* ComcastApp.app */,
+				13B07F961A680F5B00A75B9A /* MonarkBroadbandApp.app */,
+				B51B63136AA047F416349E43 /* NotificationService.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		A6378A07E8A2626FDF4A5C46 /* NotificationService */ = {
+			isa = PBXGroup;
+			children = (
+				75A912395EB0FE86C25C6893 /* NotificationService.swift */,
+				F3BB7F359235BF2416870AA8 /* Info.plist */,
+				D02C26BC91C044F3B622C35E /* NotificationService-Bridging-Header.h */,
+			);
+			name = NotificationService;
+			path = NotificationService;
 			sourceTree = "<group>";
 		};
 		BBD78D7AC51CEA395F1C20DB /* Pods */ = {
@@ -139,6 +207,8 @@
 			children = (
 				C536D5563881DD0C7AD08E85 /* Pods-Spacecom End User App.debug.xcconfig */,
 				5BA5CD1872CEC38DEA6F7A41 /* Pods-Spacecom End User App.release.xcconfig */,
+				35E741595C13A2C3DDCC9BDF /* Pods-NotificationService.release.xcconfig */,
+				9D5DCF07EFE330DC28CEA53D /* Pods-NotificationService.debug.xcconfig */,
 			);
 			path = Pods;
 			sourceTree = "<group>";
@@ -200,6 +270,7 @@
 				BD693159C259D8BEBD9DC8A4 /* [CP] Check Pods Manifest.lock */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
+				5FAD44F0160149DAA861B371 /* Embed Foundation Extensions */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				E25410CCB7CA414C9FA4B9FA /* Copy Razorpay dSYMs */,
 				3F6296318BE2A7ED0C3EAE1D /* Resources */,
@@ -212,11 +283,31 @@
 			buildRules = (
 			);
 			dependencies = (
+				69979AD7DCA2DE8BA0BEAD30 /* PBXTargetDependency */,
 			);
 			name = "Spacecom End User App";
 			productName = ISPApp;
-			productReference = 13B07F961A680F5B00A75B9A /* ComcastApp.app */;
+			productReference = 13B07F961A680F5B00A75B9A /* MonarkBroadbandApp.app */;
 			productType = "com.apple.product-type.application";
+		};
+		57454264AC1BB0826B624A4F /* NotificationService */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F2610087EDA918162A6457F6 /* Build configuration list for PBXNativeTarget "NotificationService" */;
+			buildPhases = (
+				308D2139A264E72345465F0B /* [CP] Check Pods Manifest.lock */,
+				836BDE00C8DC3F141D18D349 /* Sources */,
+				14D96E466486F80C7409CB5D /* Frameworks */,
+				AB5BE221BE56DCD19FB68DFD /* Resources */,
+				3BB9203072C8B7F104CEBC5F /* [CP] Copy Pods Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = NotificationService;
+			productName = NotificationService;
+			productReference = B51B63136AA047F416349E43 /* NotificationService.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -248,6 +339,7 @@
 			projectRoot = "";
 			targets = (
 				13B07F861A680F5B00A75B9A /* Spacecom End User App */,
+				57454264AC1BB0826B624A4F /* NotificationService */,
 			);
 		};
 /* End PBXProject section */
@@ -263,11 +355,19 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		AB5BE221BE56DCD19FB68DFD /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
 		00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -284,6 +384,7 @@
 		};
 		10D881D72F0C3B0700F6A763 /* Pre-sign Razorpay Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -302,6 +403,7 @@
 		};
 		10D881DA2F0CB4F000F6A763 /* Fix Razorpay Code Signing */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -318,8 +420,48 @@
 			shellPath = /bin/sh;
 			shellScript = "     set +e\n     if [ -d \"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/Razorpay.framework/_CodeSignature\" ]; then\n       rm -rf \"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/Razorpay.framework/_CodeSignature\"\n     fi\n     if [ -d \"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/RazorpayCore.framework/_CodeSignature\" ]; then\n       rm -rf \"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/RazorpayCore.framework/_CodeSignature\"\n     fi\n";
 		};
+		308D2139A264E72345465F0B /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-NotificationService-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+		3BB9203072C8B7F104CEBC5F /* [CP] Copy Pods Resources */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-NotificationService/Pods-NotificationService-resources-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Copy Pods Resources";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-NotificationService/Pods-NotificationService-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-NotificationService/Pods-NotificationService-resources.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
 		9268882CFB68CC3D7080A6C9 /* [CP-User] [RNFB] Core Configuration */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -372,6 +514,7 @@
 		};
 		E25410CCB7CA414C9FA4B9FA /* Copy Razorpay dSYMs */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -413,7 +556,24 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		836BDE00C8DC3F141D18D349 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8670C44E7F6F751BD4C0B00C /* NotificationService.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		69979AD7DCA2DE8BA0BEAD30 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = NotificationService;
+			target = 57454264AC1BB0826B624A4F /* NotificationService */;
+			targetProxy = 517C67A0B302A9E7B7585069 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
@@ -425,26 +585,26 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = "Spacecom End User App.entitlements";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Development";
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 48;
 				DEVELOPMENT_TEAM = NADT67WN3N;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = ISPApp/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "DNA Infotel";
+				INFOPLIST_KEY_CFBundleDisplayName = Microscan;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.1;
+				MARKETING_VERSION = 3.0.7;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
 					"-lc++",
 					"-Wl,-rpath,@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.spacecom.log2space.dnainfotel;
-				PRODUCT_NAME = DNAInfotelApp;
+				PRODUCT_BUNDLE_IDENTIFIER = com.l2sClient.microscan;
+				PRODUCT_NAME = MicroscanApp;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
@@ -459,27 +619,98 @@
 				ASSETCATALOG_COMPILER_GENERATE_ASSET_SYMBOLS = YES;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = "Spacecom End User App.entitlements";
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 48;
 				DEVELOPMENT_TEAM = NADT67WN3N;
 				INFOPLIST_FILE = ISPApp/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "DNA Infotel";
+				INFOPLIST_KEY_CFBundleDisplayName = Microscan;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.1;
+				MARKETING_VERSION = 3.0.7;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
 					"-lc++",
 					"-Wl,-rpath,@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.spacecom.log2space.dnainfotel;
-				PRODUCT_NAME = DNAInfotelApp;
+				PRODUCT_BUNDLE_IDENTIFIER = com.l2sClient.microscan;
+				PRODUCT_NAME = MicroscanApp;
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = Release;
+		};
+		38B8A50629852780B78C3859 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 9D5DCF07EFE330DC28CEA53D /* Pods-NotificationService.debug.xcconfig */;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 48;
+				DEFINES_MODULE = YES;
+				DEVELOPMENT_TEAM = NADT67WN3N;
+				GENERATE_INFOPLIST_FILE = NO;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"${PODS_ROOT}/Headers/Public\"",
+					"\"${PODS_ROOT}/Headers/Public/CTNotificationService\"",
+					"\"${PODS_ROOT}/Headers/Public/CleverTap-iOS-SDK\"",
+				);
+				INFOPLIST_FILE = NotificationService/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 3.0.7;
+				PRODUCT_BUNDLE_IDENTIFIER = com.l2sClient.microscan.NotificationService;
+				PRODUCT_NAME = NotificationService;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "NotificationService/NotificationService-Bridging-Header.h";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		5E22383C62F38456617A6E19 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 35E741595C13A2C3DDCC9BDF /* Pods-NotificationService.release.xcconfig */;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 48;
+				DEFINES_MODULE = YES;
+				DEVELOPMENT_TEAM = NADT67WN3N;
+				GENERATE_INFOPLIST_FILE = NO;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"${PODS_ROOT}/Headers/Public\"",
+					"\"${PODS_ROOT}/Headers/Public/CTNotificationService\"",
+					"\"${PODS_ROOT}/Headers/Public/CleverTap-iOS-SDK\"",
+				);
+				INFOPLIST_FILE = NotificationService/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 3.0.7;
+				PRODUCT_BUNDLE_IDENTIFIER = com.l2sClient.microscan.NotificationService;
+				PRODUCT_NAME = NotificationService;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "NotificationService/NotificationService-Bridging-Header.h";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
 		};
@@ -652,6 +883,15 @@
 			buildConfigurations = (
 				83CBBA201A601CBA00E9B192 /* Debug */,
 				83CBBA211A601CBA00E9B192 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F2610087EDA918162A6457F6 /* Build configuration list for PBXNativeTarget "NotificationService" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5E22383C62F38456617A6E19 /* Release */,
+				38B8A50629852780B78C3859 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

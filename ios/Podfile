@@ -149,3 +149,10 @@ FIX
     end
   end
 end
+
+# CleverTap rich push (images) + Push Impressions — Microscan Notification Service Extension
+# Uses CleverTap-iOS-SDK only (no CTNotificationService — avoids "No such module" with static pods).
+target 'NotificationService' do
+  platform :ios, min_ios_version_supported
+  pod 'CleverTap-iOS-SDK', :modular_headers => true
+end

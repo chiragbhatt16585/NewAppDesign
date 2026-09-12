@@ -18,11 +18,25 @@ const identifyCleverTapSessionUser = (username?: string | null): void => {
   if (!username) {
     return;
   }
-  registerCleverTapUserOnLogin(username);
+  const sessionIdentity = String(username).trim();
+  registerCleverTapUserOnLogin(sessionIdentity);
   void apiService
-    .authUser(username)
+    .authUser(sessionIdentity)
     .then(authUserData => {
-      syncCleverTapWithAuthUser(username, authUserData as Record<string, unknown>);
+      const data = (authUserData || {}) as Record<string, unknown>;
+      // Prefer canonical username from authUser when present (OTP login may start with phone).
+      const resolvedIdentity =
+        String(
+          data.username ||
+            data.Username ||
+            data.user_id ||
+            data.login_id ||
+            sessionIdentity,
+        ).trim() || sessionIdentity;
+      if (resolvedIdentity !== sessionIdentity) {
+        registerCleverTapUserOnLogin(resolvedIdentity);
+      }
+      syncCleverTapWithAuthUser(resolvedIdentity, data);
     })
     .catch(authUserError => {
       console.warn(

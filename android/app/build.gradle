@@ -103,13 +103,13 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.spacecom.log2space.dnainfotel"
+    namespace "in.spacecom.log2space.client.microscan"
     defaultConfig {
-        applicationId "com.spacecom.log2space.dnainfotel"
+        applicationId "in.spacecom.log2space.client.microscan"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 299
-        versionName "299"
+        versionCode 48
+        versionName "48"
         buildConfigField "boolean", "IS_NEW_ARCHITECTURE_ENABLED", (findProperty("newArchEnabled") ?: "false")
     }
     
@@ -126,8 +126,7 @@ android {
                 exclude '**/com/spacecom/log2space/onesevenstar/**'
                 exclude '**/com/microscan/**'
                 exclude '**/com/netfixnetworks/**'
-                // Non-in client — exclude all in.* client app packages
-                exclude '**/in/spacecom/log2space/client/microscan/**'
+                // in.spacecom.log2space.client.microscan — exclude other in.* client packages
                 exclude '**/in/spacecom/log2space/client/netfix/**'
                 exclude '**/in/spacecom/log2space/client/monarkuser/**'
                 exclude '**/in/spacecom/log2space/client/cityzone/**'
@@ -143,7 +142,7 @@ android {
                 keyPassword 'android'
             }
             release {
-                storeFile file('NewL2SDnaInfotel.jks')
+                storeFile file('Log2SpaceEndUserMicroscan.jks')
                 storePassword 'log2space'
                 keyAlias 'log2space'
                 keyPassword 'log2space'
@@ -173,6 +172,9 @@ dependencies {
     // Needed by CleverTap FcmMessageListenerService / FCM token APIs
     implementation(platform("com.google.firebase:firebase-bom:34.2.0"))
     implementation("com.google.firebase:firebase-messaging")
+
+    // CleverTap rich push templates (images / advanced templates) — Microscan
+    implementation("com.clevertap.android:push-templates:2.4.0")
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")

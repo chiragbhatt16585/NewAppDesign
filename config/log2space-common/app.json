@@ -3,7 +3,7 @@
   "expo": {
     "name": "Log2space",
     "slug": "log2space-common",
-    "version": "1.0.14",
+    "version": "1",
     "orientation": "portrait",
     "icon": "./app-icons/icon.png",
     "userInterfaceStyle": "light",
@@ -17,16 +17,16 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "in.spacecom.log2space.user",
-      "buildNumber": "14"
+      "bundleIdentifier": "com.spacecom.log2space.enduser",
+      "buildNumber": "1"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./app-icons/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
       },
-      "package": "in.spacecom.log2space.user",
-      "versionCode": 14
+      "package": "com.spacecom.log2space.enduser",
+      "versionCode": 1
     },
     "web": {
       "favicon": "./app-icons/favicon.png"
